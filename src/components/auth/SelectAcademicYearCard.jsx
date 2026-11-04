@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { FiCalendar, FiCheckCircle } from 'react-icons/fi'
 import { tahunAjaranService } from '../../services/tahunAjaranService'
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/tailgrids/core/alert'
-import { Card } from '@/components/tailgrids/core/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/ui/alert'
+import { Card } from '@/components/ui/card'
 
 export default function SelectAcademicYearCard({ onNavigate, disabled = false }) {
   const [year, setYear] = useState('')

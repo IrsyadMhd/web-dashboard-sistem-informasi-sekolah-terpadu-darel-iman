@@ -59,9 +59,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import StatCard from '../components/StatCard'
 import KpiQuickViewModal from '../components/KpiQuickViewModal'
 import ModalErrorBoundary from '../components/common/ModalErrorBoundary'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Button } from '@/components/tailgrids/core/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/tailgrids/core/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Modal } from '../components/ui/modal'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -763,7 +763,7 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-1 pb-3 px-3">
-            <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
               {/* Absensi */}
               <button
                 onClick={() => navigate('/dashboard/attendance')}

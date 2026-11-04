@@ -51,6 +51,7 @@ import { EmptyState } from '../ui/empty-state'
 import PersonAvatar from '../../components/ui/PersonAvatar'
 import api from '../../services/api'
 import { familyPortalService } from '../../services/familyPortalService'
+import Swal from '@/components/ui/compat/swal-heroui'
 import CetakKartuSiswaModal from '../siswa/CetakKartuSiswaModal'
 
 const valueOf = (source, keys, fallback = '-') => {
@@ -265,17 +266,32 @@ export default function StudentProfileWorkspace({
     const file = e.target.files?.[0]
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      alert('Format berkas tidak didukung. Silakan pilih gambar (JPG, PNG, WEBP).')
+      Swal.fire({
+        title: 'Format Berkas Tidak Didukung',
+        text: 'Silakan pilih gambar dengan format JPG, PNG, atau WEBP.',
+        icon: 'warning',
+        confirmButtonColor: '#059669',
+      })
       return
     }
     if (file.size > 3 * 1024 * 1024) {
-      alert('Ukuran berkas terlalu besar. Maksimal 3MB.')
+      Swal.fire({
+        title: 'Ukuran Berkas Terlalu Besar',
+        text: 'Ukuran foto maksimal yang diperbolehkan adalah 3MB.',
+        icon: 'warning',
+        confirmButtonColor: '#059669',
+      })
       return
     }
 
     const childId = student.id || student.uuid
     if (!childId) {
-      alert('ID Siswa tidak ditemukan.')
+      Swal.fire({
+        title: 'ID Siswa Tidak Ditemukan',
+        text: 'Data identitas siswa belum termuat dengan lengkap.',
+        icon: 'error',
+        confirmButtonColor: '#059669',
+      })
       return
     }
 
@@ -306,13 +322,29 @@ export default function StudentProfileWorkspace({
         if (typeof onPhotoUpdated === 'function') {
           onPhotoUpdated(savedUrl, childId)
         }
+        Swal.fire({
+          title: 'Foto Berhasil Diperbarui',
+          text: 'Foto profil siswa telah berhasil disimpan ke server.',
+          icon: 'success',
+          confirmButtonColor: '#059669',
+        })
       } else {
-        alert(res?.message || 'Gagal menyimpan foto siswa ke server.')
+        Swal.fire({
+          title: 'Gagal Menyimpan Foto',
+          text: res?.message || 'Gagal menyimpan foto siswa ke server.',
+          icon: 'error',
+          confirmButtonColor: '#059669',
+        })
         setCustomPhoto(initialPhoto)
       }
     } catch (err) {
       const errMsg = err.response?.data?.message || err.message || 'Terjadi kesalahan saat mengunggah foto siswa.'
-      alert(errMsg)
+      Swal.fire({
+        title: 'Gagal Mengunggah Foto',
+        text: errMsg,
+        icon: 'error',
+        confirmButtonColor: '#059669',
+      })
       setCustomPhoto(initialPhoto)
     } finally {
       setUploadingPhoto(false)

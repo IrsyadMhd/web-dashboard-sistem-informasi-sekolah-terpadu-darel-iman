@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { DatePicker } from '@/components/ui/date-picker'
 import { motion } from 'framer-motion'
 import {
   Award,
@@ -25,10 +26,10 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import {
-  ArrowBothDirectionHorizontal2,
-  Download1,
-  Upload1,
-} from '@tailgrids/icons'
+  ArrowRightLeft as ArrowBothDirectionHorizontal2,
+  Download as Download1,
+  Upload as Upload1,
+} from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -47,6 +48,7 @@ import {
 
 import { exportCsv } from '../components/reports/ReportKit'
 import { reportService } from '../services/reportService'
+import { useDebounce } from '../hooks/useDebounce'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { PersonIdentityCell } from '../components/ui/PersonIdentityCell'
@@ -68,9 +70,9 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
-} from '@/components/tailgrids/core/card'
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   TableRoot,
   TableHeader,
@@ -78,14 +80,14 @@ import {
   TableBody,
   TableRow,
   TableCell,
-} from '@/components/tailgrids/core/table'
-import { Pagination } from '@/components/tailgrids/core/pagination'
-import { Input } from '@/components/tailgrids/core/input'
+} from '@/components/ui/table'
+import { Pagination } from '@/components/ui/pagination'
+import { Input } from '@/components/ui/input'
 import {
   HoverCard,
   HoverCardTrigger,
   HoverCardContent,
-} from '@/components/tailgrids/core/hover-card'
+} from '@/components/ui/hover-card'
 import {
   Dialog,
   DialogBody,
@@ -94,8 +96,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
-import { Backdrop } from '@/components/tailgrids/core/overlay'
+} from '@/components/ui/dialog'
+import { Backdrop } from '@/components/ui/dialog'
 
 const angka = (nilai) => new Intl.NumberFormat('id-ID').format(Number(nilai || 0))
 const warnaPie = ['#059669', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
@@ -171,6 +173,7 @@ export default function LaporanAlumniPage() {
   const [dashboard, setDashboard] = useState({})
 
   const [pencarian, setPencarian] = useState('')
+  const debouncedPencarian = useDebounce(pencarian, 350)
   const [unit, setUnit] = useState('semua')
   const [tahunLulus, setTahunLulus] = useState('semua')
   const [mutasiType, setMutasiType] = useState('semua')
@@ -222,7 +225,7 @@ export default function LaporanAlumniPage() {
       setLoading(true)
       setError('')
       const params = {}
-      if (pencarian) params.search = pencarian
+      if (debouncedPencarian) params.search = debouncedPencarian
       if (tahunLulus !== 'semua') params.tahun_lulus = tahunLulus
       if (mutasiType !== 'semua') params.mutasi_type = mutasiType
       if (tujuanKelulusan !== 'semua') params.tujuan_kelulusan = tujuanKelulusan
@@ -238,7 +241,7 @@ export default function LaporanAlumniPage() {
     } finally {
       setLoading(false)
     }
-  }, [pencarian, tahunLulus, mutasiType, tujuanKelulusan])
+  }, [debouncedPencarian, tahunLulus, mutasiType, tujuanKelulusan])
 
   useEffect(() => {
     muatData()
@@ -1162,28 +1165,28 @@ export default function LaporanAlumniPage() {
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <div>
                       <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Mulai</label>
-                      <input
-                        type="date"
+                      <DatePicker
                         value={dateFrom}
                         onChange={(e) => {
                           setDateFrom(e.target.value)
                           setPeriod('custom')
                           setHalaman(1)
                         }}
-                        className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                        placeholder="Mulai..."
+                        inputClassName="h-8 text-[11px]"
                       />
                     </div>
                     <div>
                       <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Selesai</label>
-                      <input
-                        type="date"
+                      <DatePicker
                         value={dateTo}
                         onChange={(e) => {
                           setDateTo(e.target.value)
                           setPeriod('custom')
                           setHalaman(1)
                         }}
-                        className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                        placeholder="Selesai..."
+                        inputClassName="h-8 text-[11px]"
                       />
                     </div>
                   </div>

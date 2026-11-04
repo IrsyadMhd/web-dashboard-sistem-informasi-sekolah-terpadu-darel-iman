@@ -30,6 +30,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
+import PageContainer from '../../components/app/PageContainer'
 import { useToast } from '../../components/app'
 import { authService } from '../../services/authService'
 import { useAuthStore } from '../../stores/authStore'
@@ -38,6 +39,7 @@ import { resolveFoundationName } from '../../utils/printHelper'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import { Skeleton } from '../../components/ui/skeleton'
+import { SmartScrollFab } from '../../components/common'
 
 const containerVariants = {
   hidden: { opacity: 0, y: 15 },
@@ -305,13 +307,13 @@ export function FoundationProfilePage() {
   const avatarDisplayUrl = profile.foto || profile.photo_url || profile.avatar_url || employee?.photo_url || employee?.avatar_url || employee?.foto
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-16">
-      {/* 🧭 Breadcrumb Navigation */}
-      <motion.div variants={itemVariants} className="print:hidden">
+    <PageContainer maxW="7xl">
+      <div className="mb-4 print:hidden">
         <AppBreadcrumb items={[{ label: 'Yayasan', href: '/dashboard/yayasan' }, { label: 'Profil Pengurus' }]} />
-      </motion.div>
+      </div>
 
-      {/* 1. Header Profil Modern Hero Card */}
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-16">
+        {/* 1. Header Profil Modern Hero Card */}
       <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
         {/* Ambient Glow Background Accent */}
         <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
@@ -385,7 +387,7 @@ export function FoundationProfilePage() {
       </motion.div>
 
       {/* 2. Tabs Bar */}
-      <motion.div variants={itemVariants} className="rounded-[20px] border border-emerald-500/20 bg-emerald-50/50 p-2 shadow-xs dark:border-emerald-900/40 dark:bg-[#13221f] flex items-center gap-2 overflow-x-auto scrollbar-none">
+      <motion.div variants={itemVariants} className="rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-emerald-50/60 p-2 shadow-sm dark:bg-[#1B2433] flex items-center gap-2 overflow-x-auto scrollbar-none">
         {[
           { id: 'pribadi', label: 'Informasi Pribadi', icon: UserRound },
           { id: 'jabatan', label: 'Informasi Jabatan', icon: Briefcase },
@@ -414,7 +416,7 @@ export function FoundationProfilePage() {
       </motion.div>
 
       {/* 3. Tab Content */}
-      <motion.div variants={itemVariants} className="bg-white dark:bg-[#13221f] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+      <motion.div variants={itemVariants} id="tab-konten-profil" className="scroll-mt-6 relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] p-6">
         {/* Tab 1: Informasi Pribadi */}
         {activeTab === 'pribadi' && (
           <div className="space-y-6">
@@ -912,6 +914,9 @@ export function FoundationProfilePage() {
       )}
 
 
+    {/* Smart Floating Scroll Navigator */}
+    <SmartScrollFab targetId="tab-konten-profil" downTooltip="Langsung ke Konten Profil" />
     </motion.div>
+    </PageContainer>
   )
 }

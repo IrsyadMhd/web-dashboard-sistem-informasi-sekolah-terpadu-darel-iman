@@ -45,7 +45,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 
 import {
   PageContainer,
@@ -64,8 +64,8 @@ import {
   PrintOptionModal,
 } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
-import { Upload1, Download1 } from '@tailgrids/icons'
-import { Button } from '@/components/tailgrids/core/button'
+import { Upload as Upload1, Download as Download1 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 import ChartCard from '../components/dashboard/ChartCard'
 import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
@@ -85,10 +85,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
-import { Backdrop } from '@/components/tailgrids/core/overlay'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
+} from '@/components/ui/dialog'
+import { Backdrop } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 export default function MusyrifDashboardPage({ defaultTab }) {
   const navigate = useNavigate()

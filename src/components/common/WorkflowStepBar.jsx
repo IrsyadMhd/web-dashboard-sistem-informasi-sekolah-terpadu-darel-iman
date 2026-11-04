@@ -136,3 +136,5 @@ WorkflowStepBar.propTypes = {
   onNextStep: PropTypes.func,
   moduleName: PropTypes.string,
 }
+
+export default WorkflowStepBar

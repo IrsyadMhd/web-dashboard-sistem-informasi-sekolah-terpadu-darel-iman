@@ -30,6 +30,8 @@ import {
   Layers,
   GraduationCap,
   Building,
+  Building2,
+  Lock,
   Hash,
   Loader2,
   Check,
@@ -43,19 +45,29 @@ import { educationUnitService } from '../services/educationUnitService'
 import { getUnitJenjang } from './MasterCapaianPembelajaranPage'
 import { ActionDropdown, useToast } from '../components/app'
 import { Checkbox } from '../components/ui/checkbox'
+import { Button } from '../components/ui/button'
+import { TableRoot, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppDataTable from '../components/app/AppDataTable'
 import { useAuthStore } from '../stores/authStore'
-import { getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
+import { getUserRoleLevel, ROLE_LEVELS, hasRoleLevel, isFoundationUser } from '../auth/portalResolver'
+import { SmartScrollFab } from '../components/common'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { downloadFileFromApi } from '../utils/exportUtils'
 import {
   PrintOptionModal,
   MasterFilterSelect,
 } from '../components/master-data'
+import {
+  Select as HeroSelect,
+  SelectTrigger as HeroSelectTrigger,
+  SelectValue as HeroSelectValue,
+  SelectContent as HeroSelectContent,
+  SelectItem as HeroSelectItem,
+} from '../components/ui/select'
 
-const KELOMPOK_LIST = ['Kelompok A', 'Kelompok B', 'Kekhasan SIT', 'Muatan Lokal', "Al-Qur'an/Tahfizh"]
+const KELOMPOK_LIST = ['Pelajaran Wajib', 'Pelajaran Pendukung', 'Kekhasan SIT', 'Muatan Lokal', "Al-Qur'an/Tahfizh", 'Lainnya']
 const KATEGORI_LIST = ['Wajib', 'Pilihan', 'Tahfizh/Diniyah', 'Ekstrakurikuler', 'Vokasi']
 
 // ── 1. DEFINISI TONE WARNA KARTU KPI MODERN ──────────────────────────────────
@@ -210,7 +222,7 @@ export default function MasterSubjectPage({
     kode_mapel: '',
     nama_mapel: '',
     nama_singkat: '',
-    kelompok_mapel: 'Kelompok A',
+    kelompok_mapel: 'Pelajaran Wajib',
     kategori: 'Wajib',
     jenjang: 'SD',
     tingkat_kelas: 'All',
@@ -236,11 +248,13 @@ export default function MasterSubjectPage({
   }, [user])
 
   const userLevel = useMemo(() => getUserRoleLevel(user), [user])
+  const isFoundation = useMemo(() => isFoundationUser(user), [user])
+  const canManage = useMemo(() => !isFoundation && hasRoleLevel(user, ROLE_LEVELS.OPERATOR), [isFoundation, user])
 
   const canViewAllUnits = useMemo(() => {
     if (!user || userRoles.length === 0) return false
-    return userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
-  }, [user, userRoles, userLevel])
+    return isFoundation || userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
+  }, [user, userRoles, userLevel, isFoundation])
 
   // Queries
   const { data: unitDropdown = [] } = useQuery({
@@ -326,6 +340,12 @@ export default function MasterSubjectPage({
       setSelectedUnitFilter(effectiveUserUnitId)
     }
   }, [canViewAllUnits, effectiveUserUnitId, selectedUnitFilter])
+
+  const selectedUnitName = useMemo(() => {
+    if (!selectedUnitFilter) return ''
+    const found = (unitDropdown || []).find((u) => String(u.id) === String(selectedUnitFilter))
+    return found?.name ?? found?.nama ?? found?.nama_unit ?? userUnitName ?? ''
+  }, [unitDropdown, selectedUnitFilter, userUnitName])
 
   const { data: responseData = {}, isLoading, isError, refetch } = useQuery({
     queryKey: [
@@ -508,6 +528,7 @@ export default function MasterSubjectPage({
   }
 
   const handleOpenFormTambah = () => {
+    if (!canManage) return
     setSelectedForEdit(null)
     const defaultUnit = selectedUnitFilter || (availableUnitOptions[0]?.id || unitDropdown[0]?.id || '')
     const matchingKur = resolveKurikulumForUnit(defaultUnit)
@@ -524,7 +545,7 @@ export default function MasterSubjectPage({
       kode_mapel: '',
       nama_mapel: '',
       nama_singkat: '',
-      kelompok_mapel: 'Kelompok A',
+      kelompok_mapel: 'Pelajaran Wajib',
       kategori: 'Wajib',
       jenjang: defaultJenjang,
       tingkat_kelas: 'All',
@@ -543,6 +564,7 @@ export default function MasterSubjectPage({
   }
 
   const handleOpenFormEdit = (row) => {
+    if (!canManage) return
     setSelectedForEdit(row)
     setFormData({
       unit_pendidikan_id: row.unit_pendidikan_id || '',
@@ -550,7 +572,7 @@ export default function MasterSubjectPage({
       kode_mapel: row.kode_mapel || row.code || '',
       nama_mapel: row.nama_mapel || row.name || '',
       nama_singkat: row.nama_singkat || '',
-      kelompok_mapel: row.kelompok_mapel || 'Kelompok A',
+      kelompok_mapel: row.kelompok_mapel || 'Pelajaran Wajib',
       kategori: row.kategori || 'Wajib',
       jenjang: row.jenjang || 'SD',
       tingkat_kelas: row.tingkat_kelas || 'All',
@@ -651,7 +673,7 @@ export default function MasterSubjectPage({
 
   const handleDownloadTemplate = () => {
     const headers = ['kode_mapel', 'nama_mapel', 'nama_singkat', 'kelompok_mapel', 'kategori', 'jenjang', 'jam_pelajaran', 'kkm', 'bobot_pengetahuan', 'bobot_keterampilan', 'bobot_sikap']
-    const sample = ['MP-SD-PAI', 'Pendidikan Agama Islam', 'PAI', 'Kelompok A', 'Wajib', 'SD', '2', '75', '40', '40', '20']
+    const sample = ['MP-SD-PAI', 'Pendidikan Agama Islam', 'PAI', 'Pelajaran Wajib', 'Wajib', 'SD', '2', '75', '40', '40', '20']
     const csvContent = [headers.join(','), sample.map((v) => `"${v}"`).join(',')].join('\n')
     const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -663,20 +685,21 @@ export default function MasterSubjectPage({
     notify('Template Diunduh', 'Format template CSV berhasil disimpan.', 'success')
   }
 
-  // 4 Vivid Gradient Squircle Action Buttons (Identik Benchmark StudentsPage & EducationUnitsPage)
+  // 4 Vivid Gradient Squircle Action Buttons (HeroUI Button with Squircle styling)
   const pageActions = (
     <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
       {/* 1. Tombol Cetak Laporan (Vivid Indigo / Purple Squircle) */}
       <div className="group relative inline-flex">
-        <button
+        <Button
           type="button"
+          iconOnly
           title="Cetak & Download Data Mata Pelajaran"
           aria-label="Cetak & Download Data Mata Pelajaran"
           className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-indigo-500/20"
           onClick={() => setIsPrintModalOpen(true)}
         >
           <Printer className="size-5 text-white" strokeWidth={2.2} />
-        </button>
+        </Button>
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
           Cetak Data (Print)
@@ -684,33 +707,37 @@ export default function MasterSubjectPage({
       </div>
 
       {/* 2. Import Button (Vivid Sky Blue Squircle) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Import Data Mata Pelajaran"
-          aria-label="Import Data Mata Pelajaran"
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-sky-500/20"
-          onClick={() => setIsImportModalOpen(true)}
-        >
-          <Upload className="size-5 text-white" strokeWidth={2.2} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Import Data
+      {canManage && (
+        <div className="group relative inline-flex">
+          <Button
+            type="button"
+            iconOnly
+            title="Import Data Mata Pelajaran"
+            aria-label="Import Data Mata Pelajaran"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-sky-500/20"
+            onClick={() => setIsImportModalOpen(true)}
+          >
+            <Upload className="size-5 text-white" strokeWidth={2.2} />
+          </Button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Import Data
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 3. Export / Download Button (Vivid Amber / Orange Squircle) */}
       <div className="group relative inline-flex">
-        <button
+        <Button
           type="button"
+          iconOnly
           title="Export Data Mata Pelajaran"
           aria-label="Export Data Mata Pelajaran"
           className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-amber-500/20"
           onClick={() => setIsExportModalOpen(true)}
         >
           <Download className="size-5 text-white" strokeWidth={2.2} />
-        </button>
+        </Button>
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
           Export Data
@@ -718,21 +745,24 @@ export default function MasterSubjectPage({
       </div>
 
       {/* 4. Tambah Mata Pelajaran Button (Vivid Emerald / Teal Squircle) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Tambah Mata Pelajaran Baru"
-          aria-label="Tambah Mata Pelajaran Baru"
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-emerald-500/20"
-          onClick={handleOpenFormTambah}
-        >
-          <Plus className="size-5 text-white" strokeWidth={2.5} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Tambah Mapel
+      {canManage && (
+        <div className="group relative inline-flex">
+          <Button
+            type="button"
+            iconOnly
+            title="Tambah Mata Pelajaran Baru"
+            aria-label="Tambah Mata Pelajaran Baru"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-emerald-500/20"
+            onClick={handleOpenFormTambah}
+          >
+            <Plus className="size-5 text-white" strokeWidth={2.5} />
+          </Button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Tambah Mapel
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 
@@ -825,6 +855,85 @@ export default function MasterSubjectPage({
         </div>
       )}
 
+      {/* ── Unit Performance & KPI Scope Bar (Hero UI Component) ── */}
+      <div className="relative overflow-hidden rounded-[22px] border border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-5 mb-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/20 shrink-0 border border-emerald-300/40">
+              <Building2 className="size-5" />
+            </div>
+            <div>
+              <p className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                Cakupan Data & KPI Mata Pelajaran
+                <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/60">
+                  {canViewAllUnits ? (selectedUnitName ? `Unit: ${selectedUnitName}` : 'Semua Unit') : 'Unit Terkunci'}
+                </span>
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {canViewAllUnits
+                  ? 'Pilih unit pendidikan untuk melihat total mata pelajaran & KPI unit spesifik, atau pilih "Semua Unit" untuk melihat seluruh unit.'
+                  : `Menampilkan total mata pelajaran, keaktifan kurikulum, dan KPI khusus untuk unit ${selectedUnitName || userUnitName || 'sekolah Anda'}.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            {canViewAllUnits ? (
+              <div className="relative min-w-[260px] sm:w-72">
+                <HeroSelect
+                  value={selectedUnitFilter || ''}
+                  onChange={(val) => {
+                    setSelectedUnitFilter(String(val || ''))
+                    setPage(1)
+                  }}
+                >
+                  <HeroSelectTrigger className="w-full h-10 rounded-xl border border-emerald-300/80 bg-white px-3.5 text-xs font-bold text-slate-800 shadow-2xs transition-all hover:border-emerald-500 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-emerald-800/80 dark:bg-slate-900 dark:text-slate-100">
+                    <HeroSelectValue placeholder="Semua Unit" />
+                  </HeroSelectTrigger>
+                  <HeroSelectContent className="z-50 max-h-72 overflow-y-auto bg-white dark:bg-[#1B2433] border border-emerald-200 dark:border-emerald-800/80 rounded-2xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95">
+                    <HeroSelectItem id="" className="text-xs font-bold py-2 text-emerald-700 dark:text-emerald-400">
+                      Semua Unit
+                    </HeroSelectItem>
+                    {availableUnitOptions.map((u, idx) => {
+                      const val = String(u.id ?? u.unit_id ?? `unit-${idx}`)
+                      const label = u.name ?? u.nama ?? u.nama_unit ?? val
+                      return (
+                        <HeroSelectItem
+                          key={`kpi-unit-${val}-${idx}`}
+                          id={val}
+                          className="text-xs font-semibold py-2"
+                        >
+                          {label}
+                        </HeroSelectItem>
+                      )
+                    })}
+                  </HeroSelectContent>
+                </HeroSelect>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/80 bg-emerald-50/80 px-3.5 py-2 text-xs font-bold text-emerald-900 shadow-2xs dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200">
+                <Lock className="size-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Unit: {selectedUnitName || userUnitName || 'Unit Sekolah Anda'}</span>
+              </div>
+            )}
+
+            {canViewAllUnits && selectedUnitFilter && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedUnitFilter('')
+                  setPage(1)
+                }}
+                title="Reset Filter Unit ke Semua Unit"
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-emerald-200/90 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* ── MODERN MULTI-TONE KPI CARDS ──────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
         <ModernKpiCard
@@ -852,7 +961,8 @@ export default function MasterSubjectPage({
       </div>
 
       {/* ── CANONICAL APPDATATABLE EMERALD OUTER CONTAINER ───────────────────── */}
-      <AppDataTable
+      <div id="tabel-mata-pelajaran" className="scroll-mt-6">
+        <AppDataTable
         title="Daftar Mata Pelajaran"
         icon={BookOpen}
         iconClassName="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 border border-emerald-300/40 shadow-emerald-600/30"
@@ -969,77 +1079,79 @@ export default function MasterSubjectPage({
         renderTable={() => (
           <div className="overflow-x-auto">
             {/* Bulk Action Strip when checkboxes selected */}
-            {selectedIds.length > 0 && (
-              <div className="flex items-center justify-between gap-3 bg-emerald-50 px-5 py-3 border-b border-emerald-200 dark:bg-emerald-950/60 dark:border-emerald-800">
+            {canManage && selectedIds.length > 0 && (
+              <div className="flex items-center justify-between gap-3 bg-emerald-50 px-5 py-3 border-b border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800/60">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center rounded-lg bg-emerald-700 text-white px-2.5 py-1 text-xs font-black">
-                    {selectedIds.length} Dipilih
-                  </span>
-                  <span className="text-xs font-semibold text-emerald-900 dark:text-emerald-300">
-                    Tindakan serentak untuk data mata pelajaran terpilih:
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="success"
+                    size="xs"
                     onClick={() => bulkStatusMutation.mutate({ ids: selectedIds, status: true })}
                     disabled={bulkStatusMutation.isPending}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition cursor-pointer shadow-xs"
                   >
                     <CheckCircle2 className="size-3.5" />
                     <span>Aktifkan</span>
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="warning"
+                    size="xs"
                     onClick={() => bulkStatusMutation.mutate({ ids: selectedIds, status: false })}
                     disabled={bulkStatusMutation.isPending}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700 transition cursor-pointer shadow-xs"
                   >
                     <Archive className="size-3.5" />
                     <span>Nonaktifkan</span>
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="danger"
+                    size="xs"
                     onClick={() => setBulkDeleteConfirmOpen(true)}
                     disabled={bulkDeleteMutation.isPending}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-700 transition cursor-pointer shadow-xs"
                   >
                     <Trash2 className="size-3.5" />
                     <span>Hapus Massal</span>
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
 
-            <table className="w-full table-fixed text-left text-sm text-slate-600" aria-label="Daftar mata pelajaran">
-              <thead className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-950 dark:border-emerald-800/80 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200">
-                <tr>
-                  <th className="w-[5%] px-3 py-3.5 text-center">
-                    <div className="flex justify-center">
-                      <Checkbox
-                        size="sm"
-                        checked={isAllSelected}
-                        onChange={toggleSelectAll}
-                        aria-label={isAllSelected ? 'Batalkan pilih semua' : 'Pilih semua mata pelajaran'}
-                      />
-                    </div>
-                  </th>
-                  <th className="w-[28%] px-3 py-3.5 font-extrabold">Identitas Mapel</th>
-                  <th className="hidden w-[20%] px-3 py-3.5 font-extrabold md:table-cell">Kurikulum & Unit</th>
-                  <th className="hidden w-[16%] px-3 py-3.5 font-extrabold lg:table-cell">Klasifikasi</th>
-                  <th className="hidden w-[14%] px-3 py-3.5 text-center font-extrabold xl:table-cell">Parameter</th>
-                  <th className="hidden w-[9%] px-2 py-3.5 text-center font-extrabold sm:table-cell">Status</th>
-                  <th className="w-[10%] px-2 py-3.5 text-center font-extrabold">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-100/80 font-medium text-slate-700 dark:divide-emerald-900/40 dark:text-slate-300">
-                {items.map((row) => {
+            <TableRoot className="w-full table-fixed text-left text-sm text-slate-600" aria-label="Daftar mata pelajaran">
+              <TableHeader className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-950 dark:border-emerald-800/80 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200">
+                <TableRow>
+                  <TableHead className="w-[5%] px-3 py-3.5 text-center">
+                    {canManage ? (
+                      <div className="flex justify-center">
+                        <Checkbox
+                          size="sm"
+                          checked={isAllSelected}
+                          onChange={toggleSelectAll}
+                          aria-label={isAllSelected ? 'Batalkan pilih semua' : 'Pilih semua mata pelajaran'}
+                        />
+                      </div>
+                    ) : (
+                      <span className="font-extrabold text-[11px]">NO</span>
+                    )}
+                  </TableHead>
+                  <TableHead className="w-[28%] px-3 py-3.5 font-extrabold">Identitas Mapel</TableHead>
+                  <TableHead className="hidden w-[20%] px-3 py-3.5 font-extrabold md:table-cell">Kurikulum & Unit</TableHead>
+                  <TableHead className="hidden w-[16%] px-3 py-3.5 font-extrabold lg:table-cell">Klasifikasi</TableHead>
+                  <TableHead className="hidden w-[14%] px-3 py-3.5 text-center font-extrabold xl:table-cell">Parameter</TableHead>
+                  <TableHead className="hidden w-[9%] px-2 py-3.5 text-center font-extrabold sm:table-cell">Status</TableHead>
+                  <TableHead className="w-[10%] px-2 py-3.5 text-center font-extrabold">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-emerald-100/80 font-medium text-slate-700 dark:divide-emerald-900/40 dark:text-slate-300">
+                {items.map((row, idx) => {
                   const isSelected = selectedIds.includes(row.id)
                   const subjectName = row.nama_mapel || row.name || 'Mata pelajaran'
                   const subjectColor = row.warna || '#0E5C44'
 
                   return (
-                    <tr
+                    <TableRow
                       key={row.id}
                       onClick={() => handleOpenDetail(row)}
                       title="Klik baris untuk melihat detail mata pelajaran"
@@ -1048,17 +1160,23 @@ export default function MasterSubjectPage({
                         isSelected && 'bg-emerald-50/60 dark:bg-emerald-950/30'
                       )}
                     >
-                      <td className="px-3 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-center">
-                          <Checkbox
-                            size="sm"
-                            checked={isSelected}
-                            onChange={() => toggleSelectRow(row.id)}
-                            aria-label={`${isSelected ? 'Batalkan pilihan' : 'Pilih'} ${subjectName}`}
-                          />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3.5">
+                      <TableCell className="px-3 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                        {canManage ? (
+                          <div className="flex justify-center">
+                            <Checkbox
+                              size="sm"
+                              checked={isSelected}
+                              onChange={() => toggleSelectRow(row.id)}
+                              aria-label={`${isSelected ? 'Batalkan pilihan' : 'Pilih'} ${subjectName}`}
+                            />
+                          </div>
+                        ) : (
+                          <span className="font-bold text-slate-400 dark:text-slate-500 text-xs tabular-nums">
+                            {(page - 1) * perPage + idx + 1}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-3 py-3.5">
                         <div className="flex min-w-0 items-center gap-3">
                           <span
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-xs border text-white font-bold"
@@ -1082,13 +1200,13 @@ export default function MasterSubjectPage({
                                 {row.unit_pendidikan?.name || 'Unit'}
                               </span>
                               <span className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 text-[9px] font-extrabold text-emerald-800 dark:text-emerald-300">
-                                {row.kelompok_mapel || 'Kelompok A'}
+                                {row.kelompok_mapel || 'Pelajaran Wajib'}
                               </span>
                             </div>
                           </div>
                         </div>
-                      </td>
-                      <td className="hidden px-3 py-3.5 md:table-cell">
+                      </TableCell>
+                      <TableCell className="hidden px-3 py-3.5 md:table-cell">
                         <p className="truncate text-xs font-bold text-slate-800 dark:text-slate-100">
                           {row.kurikulum?.nama_kurikulum || 'Kurikulum Terpadu'}
                         </p>
@@ -1096,18 +1214,18 @@ export default function MasterSubjectPage({
                           <Building className="size-3 text-slate-400 shrink-0" />
                           <span className="truncate">{row.unit_pendidikan?.name || 'Semua Unit'}</span>
                         </p>
-                      </td>
-                      <td className="hidden px-3 py-3.5 lg:table-cell">
+                      </TableCell>
+                      <TableCell className="hidden px-3 py-3.5 lg:table-cell">
                         <div className="space-y-1">
                           <span className="inline-block rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                            {row.kelompok_mapel || 'Kelompok A'}
+                            {row.kelompok_mapel || 'Pelajaran Wajib'}
                           </span>
                           <span className="block w-fit rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-[10px] font-extrabold text-[#0E5C44] dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
                             {row.kategori || 'Wajib'}
                           </span>
                         </div>
-                      </td>
-                      <td className="hidden px-3 py-3.5 text-center xl:table-cell">
+                      </TableCell>
+                      <TableCell className="hidden px-3 py-3.5 text-center xl:table-cell">
                         <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-100/90 dark:bg-emerald-950/80 border border-emerald-200/90 px-2 py-0.5 text-[10px] font-black text-emerald-900 dark:text-emerald-200">
                           <Clock3 className="size-3 text-emerald-700 dark:text-emerald-400" />
                           {row.jam_pelajaran || 2} JP · KKM {row.kkm || 75}
@@ -1115,8 +1233,8 @@ export default function MasterSubjectPage({
                         <p className="mt-1 text-[9px] font-semibold text-slate-400">
                           P:{row.bobot_pengetahuan || 40} / K:{row.bobot_keterampilan || 40} / S:{row.bobot_sikap || 20}
                         </p>
-                      </td>
-                      <td className="hidden px-2 py-3.5 text-center sm:table-cell">
+                      </TableCell>
+                      <TableCell className="hidden px-2 py-3.5 text-center sm:table-cell">
                         <span
                           className={cn(
                             'inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-black border',
@@ -1128,14 +1246,14 @@ export default function MasterSubjectPage({
                           <span className={cn('size-1.5 rounded-full shrink-0', row.status ? 'bg-emerald-500' : 'bg-rose-500')} />
                           <span>{row.status ? 'Aktif' : 'Nonaktif'}</span>
                         </span>
-                      </td>
-                      <td className="px-2 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                      </TableCell>
+                      <TableCell className="px-2 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
                         <span className="inline-flex justify-center">
                           <ActionDropdown
                             onView={() => handleOpenDetail(row)}
-                            onEdit={!row.is_deleted ? () => handleOpenFormEdit(row) : undefined}
+                            onEdit={canManage && !row.is_deleted ? () => handleOpenFormEdit(row) : undefined}
                             extraItems={
-                              row.is_deleted
+                              row.is_deleted && canManage
                                 ? [
                                     {
                                       label: 'Pulihkan Data',
@@ -1145,18 +1263,19 @@ export default function MasterSubjectPage({
                                   ]
                                 : []
                             }
-                            onDelete={!row.is_deleted ? () => setDeleteTarget(row) : undefined}
+                            onDelete={canManage && !row.is_deleted ? () => setDeleteTarget(row) : undefined}
                           />
                         </span>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </TableRoot>
           </div>
         )}
       />
+    </div>
 
       {/* ── HARMONIZED FORM MODAL (TAMBAH / EDIT) ────────────────────────────── */}
       <AnimatePresence>
@@ -1553,8 +1672,9 @@ export default function MasterSubjectPage({
 
                   {/* Footer Aksi */}
                   <div className="flex items-center justify-between border-t border-slate-100 bg-white pt-4 dark:border-slate-800 dark:bg-slate-950">
-                    <button
+                    <Button
                       type="button"
+                      variant="danger"
                       disabled={simpanMutation.isPending}
                       onClick={() => setIsFormModalOpen(false)}
                       className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
@@ -1563,9 +1683,10 @@ export default function MasterSubjectPage({
                         <X className="size-3.5 text-white" strokeWidth={2.2} />
                       </div>
                       <span>Batal</span>
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="submit"
+                      variant="success"
                       disabled={simpanMutation.isPending}
                       className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50"
                     >
@@ -1577,7 +1698,7 @@ export default function MasterSubjectPage({
                         </div>
                       )}
                       <span>{simpanMutation.isPending ? 'Menyimpan...' : 'Simpan Data'}</span>
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </div>
@@ -1665,7 +1786,7 @@ export default function MasterSubjectPage({
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-slate-500">Klasifikasi</span>
                       <span className="font-bold text-slate-700 dark:text-slate-300">
-                        {selectedForDetail.kelompok_mapel || 'Kelompok A'} · {selectedForDetail.kategori || 'Wajib'}
+                        {selectedForDetail.kelompok_mapel || 'Pelajaran Wajib'} · {selectedForDetail.kategori || 'Wajib'}
                       </span>
                     </div>
                   </div>
@@ -2155,6 +2276,9 @@ export default function MasterSubjectPage({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Smart Floating Scroll Navigator (Opsi A) */}
+      <SmartScrollFab targetId="tabel-mata-pelajaran" downTooltip="Langsung ke Tabel Mata Pelajaran" />
     </PageContainer>
   )
 }

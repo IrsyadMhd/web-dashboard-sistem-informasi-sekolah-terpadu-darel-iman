@@ -11,8 +11,8 @@ export const employeeService = {
     return data
   },
 
-  getPositions: async () => {
-    const { data } = await api.get('/employees/positions')
+  getPositions: async (params = {}) => {
+    const { data } = await api.get('/employees/positions', { params })
     return data
   },
 

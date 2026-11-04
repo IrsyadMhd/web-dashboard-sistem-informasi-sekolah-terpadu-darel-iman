@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   AlertCircle, Award, BookOpen, BookOpenCheck, CalendarCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight,
-  ClipboardList, Clock3, FileCheck2, GraduationCap, HeartHandshake, LayoutDashboard, Loader2,
+  ClipboardList, Clock3, CreditCard, FileCheck2, GraduationCap, HeartHandshake, LayoutDashboard, Loader2,
   Megaphone, MessageCircle, RefreshCw, Save, Send, ShieldCheck, Sparkles, UserRound, X,
 } from 'lucide-react'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -22,9 +22,10 @@ import AttendanceWorkspace from '../components/portal/AttendanceWorkspace'
 import ExamGridsWorkspace from '../components/portal/ExamGridsWorkspace'
 import CbtExamsWorkspace from '../components/portal/CbtExamsWorkspace'
 import ExamResultsWorkspace from '../components/portal/ExamResultsWorkspace'
-import { Button } from '../components/tailgrids/core/button'
-import { Badge } from '../components/tailgrids/core/badge'
-import { Card, CardContent } from '../components/tailgrids/core/card'
+import ParentBillsWorkspace from '../components/portal/ParentBillsWorkspace'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
+import { Card, CardContent } from '../components/ui/card'
 import { useAuthStore } from '../stores/authStore'
 import { isParentRole } from '../auth/portalResolver'
 
@@ -43,6 +44,7 @@ const tabs = [
   { id: 'kisi', label: 'Kisi-kisi', icon: BookOpenCheck, pastelColor: 'bg-violet-100/90 text-violet-700 hover:bg-violet-600 hover:text-white dark:bg-violet-950/60 dark:text-violet-300 dark:hover:bg-violet-600 hover:shadow-md hover:shadow-violet-500/20' },
   { id: 'ujian', label: 'Ujian CBT', icon: FileCheck2, pastelColor: 'bg-rose-100/90 text-rose-700 hover:bg-rose-600 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-600 hover:shadow-md hover:shadow-rose-500/20' },
   { id: 'hasil', label: 'Hasil', icon: Award, pastelColor: 'bg-cyan-100/90 text-cyan-700 hover:bg-cyan-600 hover:text-white dark:bg-cyan-950/60 dark:text-cyan-300 dark:hover:bg-cyan-600 hover:shadow-md hover:shadow-cyan-500/20' },
+  { id: 'bills', label: 'Tagihan & SPP', icon: CreditCard, pastelColor: 'bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 hover:shadow-md hover:shadow-emerald-500/20' },
 ]
 
 const studentPortalPaths = {
@@ -50,7 +52,7 @@ const studentPortalPaths = {
   schedules: '/portal-siswa/jadwal', materials: '/portal-siswa/materi', assignments: '/portal-siswa/tugas',
   tahfizh: '/portal-siswa/tahfizh', grades: '/portal-siswa/nilai', 'student-notes': '/portal-siswa/komentar-guru',
   mutabaah: '/portal-siswa/mutabaah', attendance: '/portal-siswa/absensi', kisi: '/portal-siswa/kisi-kisi',
-  ujian: '/portal-siswa/ujian-cbt', hasil: '/portal-siswa/hasil',
+  ujian: '/portal-siswa/ujian-cbt', hasil: '/portal-siswa/hasil', bills: '/portal-siswa/tagihan',
 }
 
 const formatDate = (value) => value
@@ -388,7 +390,7 @@ export default function StudentPortalPage({ section = 'ringkasan' }) {
   const selectTab = (id) => navigate(studentPortalPaths[id])
 
   useEffect(() => {
-    const resources = ['profile', 'announcements', 'schedules', 'materials', 'assignments', 'student-notes', 'tahfizh', 'grades', 'mutabaah', 'attendance']
+    const resources = ['profile', 'announcements', 'schedules', 'materials', 'assignments', 'student-notes', 'tahfizh', 'grades', 'mutabaah', 'attendance', 'bills']
     if (activeTab === 'attendance') {
       setPanelLoading(true)
       Promise.all([api.get('/portal/attendance'), api.get('/portal/permissions')])
@@ -883,6 +885,20 @@ const KpiCardPastelStyles = {
 
         {!panelLoading && activeTab === 'hasil' && (
           <ExamResultsWorkspace resultsData={resultsData} reports={reportsRecords} loading={panelLoading} />
+        )}
+
+        {!panelLoading && activeTab === 'bills' && (
+          <ParentBillsWorkspace
+            bills={portalRecords}
+            loading={panelLoading}
+            student={student}
+            onRefresh={() => {
+              api.get('/portal/bills').then((res) => {
+                const list = res.data?.data?.data ?? res.data?.data ?? []
+                setPortalRecords(Array.isArray(list) ? list : [])
+              })
+            }}
+          />
         )}
     </div>
   )

@@ -16,7 +16,7 @@ import {
   FileText,
   Globe,
 } from 'lucide-react'
-import { Download1, Upload1, ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
+import { Download as Download1, Upload as Upload1, ArrowRightLeft as ArrowBothDirectionHorizontal2 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { usePengaturanStore } from '../stores/pengaturanStore'
 import PageContainer from '../components/app/PageContainer'
@@ -26,9 +26,9 @@ import CsvImportModal from '../components/master-data/CsvImportModal'
 import { educationUnitService } from '../services/educationUnitService'
 import { dashboardPemantauanService } from '../services/dashboardPemantauanService'
 
-// TailGrids Core Components
 import { Button } from '../components/ui/button'
-import { Breadcrumbs } from '@/components/tailgrids/core/breadcrumbs'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   Dialog,
   DialogHeader,
@@ -37,9 +37,9 @@ import {
   DialogBody,
   DialogFooter,
   DialogClose,
-} from '@/components/tailgrids/core/dialog'
-import { AlertDialog } from '@/components/tailgrids/core/alert-dialog'
-import { Pagination } from '@/components/tailgrids/core/pagination'
+} from '@/components/ui/dialog'
+import { AlertDialog } from '@/components/ui/alert-dialog'
+import { Pagination } from '@/components/ui/pagination'
 import {
   TableRoot,
   TableHeader,
@@ -47,13 +47,14 @@ import {
   TableHead,
   TableRow,
   TableCell,
-} from '@/components/tailgrids/core/table'
+} from '@/components/ui/table'
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from '@/components/tailgrids/core/hover-card'
+} from '@/components/ui/hover-card'
 import { MasterStatsGrid, MasterStatCard } from '../components/master-data'
+import { SmartScrollFab } from '../components/common'
 
 const STORAGE_KEY = 'school_news_announcements_db'
 
@@ -617,7 +618,7 @@ export default function NewsManagementPage() {
         </motion.div>
 
         {/* 1. SINGLE UNIFIED DATATABLE CARD CONTAINER (FILTER BAR & DATATABLE DIGABUNGKAN DENGAN GRADASI ZAMRUD) */}
-        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+        <motion.div variants={itemVariants} id="tabel-berita-informasi" className="scroll-mt-6 relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* BARIS 1: HEADER CARD TITLE + SOFT PASTEL SQUIRCLE ACTION BUTTONS */}
         <div className="flex flex-col gap-4 border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-5 sm:p-6 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
@@ -1013,12 +1014,11 @@ export default function NewsManagementPage() {
                 <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1">
                   Tanggal Publikasi *
                 </label>
-                <input
-                  type="date"
+                <DatePicker
                   value={form.tanggal_publikasi}
                   onChange={(e) => setForm({ ...form, tanggal_publikasi: e.target.value })}
                   required
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  inputClassName="py-2 text-xs font-semibold"
                 />
               </div>
 
@@ -1337,6 +1337,9 @@ export default function NewsManagementPage() {
         ]}
         onImport={handleImportNews}
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-berita-informasi" downTooltip="Langsung ke Tabel Berita" />
       </motion.div>
     </PageContainer>
   )

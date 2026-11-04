@@ -17,9 +17,10 @@ import { ReadOnlyDetailModal } from '../../../components/reports/ReadOnlyDetailM
 import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { printCleanTable } from '../../../utils/printHelper'
 import { usePengaturanStore } from '../../../stores/pengaturanStore'
+import { SmartScrollFab } from '../../../components/common'
 
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
 
@@ -318,7 +319,7 @@ export function LaporanAlumniPage() {
       </motion.div>
 
       {/* 7. Rekap Per Unit */}
-      <motion.div variants={itemVariants}>
+      <motion.div variants={itemVariants} id="tabel-rekap-alumni" className="scroll-mt-6">
         <ReportRecapTable
           title="Rekapitulasi Alumni per Unit Asal Pendidikan"
           columns={recapColumns}
@@ -379,6 +380,9 @@ export function LaporanAlumniPage() {
         title="Detail Profile & Karir Alumni"
         data={detailModalData}
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-rekap-alumni" downTooltip="Langsung ke Tabel Alumni" />
     </motion.div>
   )
 }

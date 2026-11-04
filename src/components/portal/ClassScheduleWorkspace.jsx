@@ -21,6 +21,7 @@ import {
   Printer,
 } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '../ui/card'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Button as HeroButton, Chip as HeroChip } from '@heroui/react'
 import api from '../../services/api'
 import { scheduleService } from '../../services/scheduleService'
@@ -636,23 +637,20 @@ export default function ClassScheduleWorkspace({ schedules = [], loading = false
 
                 {/* Input Tanggal Riil Kalender */}
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                    <Calendar className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>Tanggal:</span>
-                    <input
-                      type="date"
-                      aria-label="Pilih Tanggal Jadwal"
-                      value={selectedDate.toISOString().slice(0, 10)}
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          const newD = new Date(e.target.value)
-                          setSelectedDate(newD)
-                          setSelectedDay(newD.getDay())
-                        }
-                      }}
-                      className="bg-transparent font-black text-emerald-950 dark:text-emerald-200 outline-none cursor-pointer text-xs"
-                    />
-                  </div>
+                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">Tanggal:</span>
+                  <DatePicker
+                    aria-label="Pilih Tanggal Jadwal"
+                    value={selectedDate.toISOString().slice(0, 10)}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const newD = new Date(e.target.value)
+                        setSelectedDate(newD)
+                        setSelectedDay(newD.getDay())
+                      }
+                    }}
+                    className="w-40"
+                    inputClassName="h-8 text-xs font-black text-emerald-950 dark:text-emerald-200"
+                  />
                 </div>
               </div>
 

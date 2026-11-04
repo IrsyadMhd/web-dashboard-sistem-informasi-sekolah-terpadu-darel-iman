@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sliders,
@@ -23,13 +23,25 @@ import {
   BookOpen,
   School,
   Check,
+  ChevronDown,
 } from 'lucide-react'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppTabs from '../components/app/AppTabs'
 import { businessOptionService } from '../services/businessOptionService'
 import { codeGeneratorService } from '../services/codeGeneratorService'
 import { educationUnitService } from '../services/educationUnitService'
-import Swal from '../components/tailgrids/compat/swal-tailgrids'
+import { useAuthStore } from '../stores/authStore'
+import { hasRoleLevel, ROLE_LEVELS, isFoundationUser } from '../auth/portalResolver'
+import { SmartScrollFab } from '../components/common'
+import Swal from '../components/ui/compat/swal-heroui'
+import {
+  TableRoot,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/table'
 
 const PRESET_GROUPS = [
   { key: 'parent_occupation', label: 'Pekerjaan Orang Tua / Wali' },
@@ -56,7 +68,163 @@ const ENTITY_TYPE_LABELS = {
   unit_code: 'Kode Unit Pendidikan',
 }
 
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'w-full',
+  searchable = false,
+  ariaLabel = '',
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+      (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  const hasValue = value !== '' && value !== 'semua' && value !== 'all' && value !== undefined && value !== null
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`h-9.5 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+          isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+            : hasValue
+            ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
+            : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} min-w-[200px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div className="truncate">{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export default function MasterDataDinamisPage() {
+  const user = useAuthStore((state) => state.user)
+  const isFoundation = isFoundationUser(user)
+  const canManage = !isFoundation && hasRoleLevel(user, ROLE_LEVELS.OPERATOR)
+
   const [activeTab, setActiveTab] = useState('options') // 'options' | 'generator'
   
   // ── Tab 1: Business Options States ──
@@ -103,6 +271,39 @@ export default function MasterDataDinamisPage() {
   const [testExtra, setTestExtra] = useState('')
   const [livePreviewCode, setLivePreviewCode] = useState('')
   const [isTestingCode, setIsTestingCode] = useState(false)
+
+  const groupFilterOptions = useMemo(() => [
+    { value: '', label: '-- Semua Kelompok / Grup --' },
+    ...PRESET_GROUPS.map((g) => ({
+      value: g.key,
+      label: g.label,
+      subtext: g.key,
+    })),
+  ], [])
+
+  const entityTypeOptions = useMemo(() => {
+    return Object.entries(ENTITY_TYPE_LABELS).map(([k, v]) => ({
+      value: k,
+      label: v,
+    }))
+  }, [])
+
+  const unitTestOptions = useMemo(() => [
+    { value: '', label: '-- Semua Unit / Tanpa Unit --' },
+    ...units.map((u) => ({
+      value: String(u.id),
+      label: `${u.name} (${u.code || u.level})`,
+    })),
+  ], [units])
+
+  const optionModalGroupOptions = useMemo(() => [
+    ...PRESET_GROUPS.map((g) => ({
+      value: g.key,
+      label: g.label,
+      subtext: g.key,
+    })),
+    { value: '__custom__', label: '+ Kelompok Kustom Baru' },
+  ], [])
 
   // ── Fetch Options ──
   const fetchOptions = async () => {
@@ -172,6 +373,7 @@ export default function MasterDataDinamisPage() {
 
   // ── Option Handlers ──
   const handleOpenAddOption = () => {
+    if (!canManage) return
     setEditingOption(null)
     setOptionForm({
       group: selectedGroup || 'parent_occupation',
@@ -186,6 +388,7 @@ export default function MasterDataDinamisPage() {
   }
 
   const handleOpenEditOption = (item) => {
+    if (!canManage) return
     setEditingOption(item)
     const isPreset = PRESET_GROUPS.some(g => g.key === item.group)
     setOptionForm({
@@ -202,6 +405,7 @@ export default function MasterDataDinamisPage() {
 
   const handleSaveOption = async (e) => {
     e.preventDefault()
+    if (!canManage) return
     const targetGroup = optionForm.group === '__custom__' ? optionForm.custom_group.trim() : optionForm.group
     if (!targetGroup) {
       Swal.fire('Validasi Gagal', 'Kelompok / Group opsi bisnis wajib diisi.', 'error')
@@ -242,6 +446,7 @@ export default function MasterDataDinamisPage() {
   }
 
   const handleToggleOptionStatus = async (item) => {
+    if (!canManage) return
     try {
       await businessOptionService.toggleStatus(item.id)
       setOptions(prev => prev.map(o => o.id === item.id ? { ...o, is_active: !o.is_active } : o))
@@ -251,6 +456,7 @@ export default function MasterDataDinamisPage() {
   }
 
   const handleDeleteOption = async (item) => {
+    if (!canManage) return
     const confirm = await Swal.fire({
       title: 'Hapus Opsi Bisnis?',
       text: `Apakah Anda yakin ingin menghapus opsi "${item.name}"? Data yang sudah tersimpan pada riwayat transaksi tidak akan terhapus.`,
@@ -275,6 +481,7 @@ export default function MasterDataDinamisPage() {
 
   // ── Generator Config Handlers ──
   const handleOpenEditConfig = (item) => {
+    if (!canManage) return
     setEditingConfig(item)
     setConfigForm({
       entity_type: item.entity_type,
@@ -289,6 +496,7 @@ export default function MasterDataDinamisPage() {
 
   const handleSaveConfig = async (e) => {
     e.preventDefault()
+    if (!canManage) return
     setIsSubmittingConfig(true)
     try {
       await codeGeneratorService.saveConfig({
@@ -375,7 +583,7 @@ export default function MasterDataDinamisPage() {
       {activeTab === 'options' && (
         <div className="space-y-4">
           {/* Toolbar & Filter Bar */}
-          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+          <div id="tabel-opsi-bisnis" className="scroll-mt-6 relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
             <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -386,13 +594,15 @@ export default function MasterDataDinamisPage() {
                   Seluruh dropdown dan pilihan form akan mengambil data terbaru langsung dari tabel ini.
                 </p>
               </div>
-              <button
-                onClick={handleOpenAddOption}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-600/20 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah Opsi Baru</span>
-              </button>
+              {canManage && (
+                <button
+                  onClick={handleOpenAddOption}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-600/20 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah Opsi Baru</span>
+                </button>
+              )}
             </div>
 
             {/* Filter Bar */}
@@ -408,115 +618,137 @@ export default function MasterDataDinamisPage() {
                 />
               </div>
               <div className="sm:w-64">
-                <select
+                <HeroUiFilterSelect
                   value={selectedGroup}
-                  onChange={(e) => setSelectedGroup(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl text-xs sm:text-sm border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium"
-                >
-                  <option value="">-- Semua Kelompok / Grup --</option>
-                  {PRESET_GROUPS.map((g) => (
-                    <option key={g.key} value={g.key}>
-                      {g.label} ({g.key})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedGroup(val)}
+                  options={groupFilterOptions}
+                  placeholder="Semua Kelompok / Grup"
+                  icon={Sliders}
+                  searchable={true}
+                  className="w-full"
+                  ariaLabel="Pilih Kelompok Opsi"
+                />
               </div>
             </div>
 
             {/* Datatable */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs sm:text-sm">
-                <thead>
-                  <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-100">
-                    <th className="py-3 px-4 font-bold w-12 text-center">No</th>
-                    <th className="py-3 px-4 font-bold">Grup / Kategori</th>
-                    <th className="py-3 px-4 font-bold">Nama Pilihan</th>
-                    <th className="py-3 px-4 font-bold">Kode Kanonik</th>
-                    <th className="py-3 px-4 font-bold text-center w-20">Urutan</th>
-                    <th className="py-3 px-4 font-bold text-center w-28">Status</th>
-                    <th className="py-3 px-4 font-bold text-right w-36">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+              <TableRoot className="w-full text-left border-collapse text-xs sm:text-sm">
+                <TableHeader>
+                  <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-100">
+                    <TableHead className="py-3 px-4 font-bold w-12 text-center">No</TableHead>
+                    <TableHead className="py-3 px-4 font-bold">Grup / Kategori</TableHead>
+                    <TableHead className="py-3 px-4 font-bold">Nama Pilihan</TableHead>
+                    <TableHead className="py-3 px-4 font-bold">Kode Kanonik</TableHead>
+                    <TableHead className="py-3 px-4 font-bold text-center w-20">Urutan</TableHead>
+                    <TableHead className="py-3 px-4 font-bold text-center w-28">Status</TableHead>
+                    {canManage && <TableHead className="py-3 px-4 font-bold text-right w-36">Aksi</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                   {isLoadingOptions ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <TableRow>
+                      <TableCell colSpan={canManage ? 7 : 6} className="py-12 text-center text-slate-400">
                         <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-600" />
                         <span>Memuat data opsi bisnis...</span>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : options.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <TableRow>
+                      <TableCell colSpan={canManage ? 7 : 6} className="py-12 text-center text-slate-400">
                         Belum ada opsi bisnis yang cocok dengan filter.
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     options.map((opt, idx) => (
-                      <tr key={opt.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
-                        <td className="py-3 px-4 text-center font-medium text-slate-400">{idx + 1}</td>
-                        <td className="py-3 px-4">
+                      <TableRow key={opt.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
+                        <TableCell className="py-3 px-4 text-center font-medium text-slate-400">{idx + 1}</TableCell>
+                        <TableCell className="py-3 px-4">
                           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-mono">
                             {opt.group}
                           </span>
-                        </td>
-                        <td className="py-3 px-4 font-bold text-slate-800 dark:text-slate-100">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 font-bold text-slate-800 dark:text-slate-100">
                           {opt.name}
                           {opt.description && (
                             <p className="text-[11px] text-slate-400 font-normal">{opt.description}</p>
                           )}
-                        </td>
-                        <td className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-300">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-300">
                           {opt.code}
-                        </td>
-                        <td className="py-3 px-4 text-center font-bold text-slate-600 dark:text-slate-300">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center font-bold text-slate-600 dark:text-slate-300">
                           {opt.order ?? 0}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => handleToggleOptionStatus(opt)}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
-                              opt.is_active
-                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
-                            }`}
-                          >
-                            {opt.is_active ? (
-                              <>
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Aktif</span>
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="w-3.5 h-3.5 text-slate-400" />
-                                <span>Nonaktif</span>
-                              </>
-                            )}
-                          </button>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="inline-flex items-center gap-1.5">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center">
+                          {canManage ? (
                             <button
-                              onClick={() => handleOpenEditOption(opt)}
-                              className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
-                              title="Edit Opsi"
+                              onClick={() => handleToggleOptionStatus(opt)}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                                opt.is_active
+                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400'
+                              }`}
                             >
-                              <Pencil className="w-4 h-4" />
+                              {opt.is_active ? (
+                                <>
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Aktif</span>
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>Nonaktif</span>
+                                </>
+                              )}
                             </button>
-                            <button
-                              onClick={() => handleDeleteOption(opt)}
-                              className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                              title="Hapus Opsi"
+                          ) : (
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                                opt.is_active
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
+                                  : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                              }`}
                             >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                              {opt.is_active ? (
+                                <>
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Aktif</span>
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>Nonaktif</span>
+                                </>
+                              )}
+                            </span>
+                          )}
+                        </TableCell>
+                        {canManage && (
+                          <TableCell className="py-3 px-4 text-right">
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditOption(opt)}
+                                className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
+                                title="Edit Opsi"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteOption(opt)}
+                                className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                title="Hapus Opsi"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
                     ))
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </TableRoot>
             </div>
           </div>
         </div>
@@ -542,35 +774,31 @@ export default function MasterDataDinamisPage() {
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Jenis Entitas Kode
                 </label>
-                <select
+                <HeroUiFilterSelect
                   value={testEntity}
-                  onChange={(e) => setTestEntity(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl text-xs sm:text-sm border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-medium"
-                >
-                  {Object.entries(ENTITY_TYPE_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setTestEntity(val)}
+                  options={entityTypeOptions}
+                  placeholder="Pilih Entitas Kode"
+                  icon={Tag}
+                  className="w-full"
+                  ariaLabel="Pilih Jenis Entitas Kode"
+                />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Unit Pendidikan (Opsional)
                 </label>
-                <select
+                <HeroUiFilterSelect
                   value={testUnitId}
-                  onChange={(e) => setTestUnitId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl text-xs sm:text-sm border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-medium"
-                >
-                  <option value="">-- Semua Unit / Tanpa Unit --</option>
-                  {units.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.code || u.level})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setTestUnitId(val)}
+                  options={unitTestOptions}
+                  placeholder="Semua Unit / Tanpa Unit"
+                  icon={School}
+                  searchable={true}
+                  className="w-full"
+                  ariaLabel="Pilih Unit Pendidikan"
+                />
               </div>
 
               <div>
@@ -622,7 +850,7 @@ export default function MasterDataDinamisPage() {
           </div>
 
           {/* Configs Table */}
-          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+          <div id="tabel-konfigurasi-generator" className="scroll-mt-6 relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
             <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60">
               <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <Settings2 className="w-4 h-4 text-emerald-600" />
@@ -634,70 +862,72 @@ export default function MasterDataDinamisPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs sm:text-sm">
-                <thead>
-                  <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-100">
-                    <th className="py-3 px-4 font-bold">Entitas Bisnis</th>
-                    <th className="py-3 px-4 font-bold">Prefix</th>
-                    <th className="py-3 px-4 font-bold text-center">Pemisah</th>
-                    <th className="py-3 px-4 font-bold text-center">Digit (Padding)</th>
-                    <th className="py-3 px-4 font-bold">Pola Format</th>
-                    <th className="py-3 px-4 font-bold text-center">Sequence</th>
-                    <th className="py-3 px-4 font-bold text-right w-24">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+              <TableRoot className="w-full text-left border-collapse text-xs sm:text-sm">
+                <TableHeader>
+                  <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-100">
+                    <TableHead className="py-3 px-4 font-bold">Entitas Bisnis</TableHead>
+                    <TableHead className="py-3 px-4 font-bold">Prefix</TableHead>
+                    <TableHead className="py-3 px-4 font-bold text-center">Pemisah</TableHead>
+                    <TableHead className="py-3 px-4 font-bold text-center">Digit (Padding)</TableHead>
+                    <TableHead className="py-3 px-4 font-bold">Pola Format</TableHead>
+                    <TableHead className="py-3 px-4 font-bold text-center">Sequence</TableHead>
+                    {canManage && <TableHead className="py-3 px-4 font-bold text-right w-24">Aksi</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                   {isLoadingConfigs ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <TableRow>
+                      <TableCell colSpan={canManage ? 7 : 6} className="py-12 text-center text-slate-400">
                         <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-600" />
                         <span>Memuat aturan generator...</span>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : generatorConfigs.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <TableRow>
+                      <TableCell colSpan={canManage ? 7 : 6} className="py-12 text-center text-slate-400">
                         Belum ada konfigurasi generator kustom (menggunakan default sistem).
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     generatorConfigs.map((cfg) => (
-                      <tr key={cfg.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
-                        <td className="py-3 px-4 font-bold text-slate-800 dark:text-slate-100">
+                      <TableRow key={cfg.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
+                        <TableCell className="py-3 px-4 font-bold text-slate-800 dark:text-slate-100">
                           {ENTITY_TYPE_LABELS[cfg.entity_type] || cfg.entity_type}
                           <span className="block font-mono text-[11px] text-slate-400 font-normal">
                             {cfg.entity_type}
                           </span>
-                        </td>
-                        <td className="py-3 px-4 font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 font-mono font-bold text-emerald-700 dark:text-emerald-400">
                           {cfg.prefix || '-'}
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono text-slate-600 dark:text-slate-300">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center font-mono text-slate-600 dark:text-slate-300">
                           {cfg.separator || '-'}
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
                           {cfg.padding_length}
-                        </td>
-                        <td className="py-3 px-4 font-mono text-xs text-slate-700 dark:text-slate-300">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 font-mono text-xs text-slate-700 dark:text-slate-300">
                           {cfg.format_pattern}
-                        </td>
-                        <td className="py-3 px-4 text-center font-bold text-slate-800 dark:text-slate-100">
+                        </TableCell>
+                        <TableCell className="py-3 px-4 text-center font-bold text-slate-800 dark:text-slate-100">
                           {cfg.current_sequence ?? 0}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => handleOpenEditConfig(cfg)}
-                            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
-                            title="Edit Format Aturan"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
+                        </TableCell>
+                        {canManage && (
+                          <TableCell className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => handleOpenEditConfig(cfg)}
+                              className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                              title="Edit Format Aturan"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          </TableCell>
+                        )}
+                      </TableRow>
                     ))
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </TableRoot>
             </div>
           </div>
         </div>
@@ -732,19 +962,17 @@ export default function MasterDataDinamisPage() {
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                       Kelompok / Grup Opsi
                     </label>
-                    <select
+                    <HeroUiFilterSelect
                       value={optionForm.group}
-                      onChange={(e) => setOptionForm(prev => ({ ...prev, group: e.target.value }))}
+                      onChange={(val) => setOptionForm(prev => ({ ...prev, group: val }))}
                       disabled={!!editingOption}
-                      className="w-full px-3 py-2 rounded-xl text-xs sm:text-sm border border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 disabled:opacity-50"
-                    >
-                      {PRESET_GROUPS.map((g) => (
-                        <option key={g.key} value={g.key}>
-                          {g.label} ({g.key})
-                        </option>
-                      ))}
-                      <option value="__custom__">+ Kelompok Kustom Baru</option>
-                    </select>
+                      options={optionModalGroupOptions}
+                      placeholder="Pilih Kelompok Opsi"
+                      icon={Sliders}
+                      searchable={true}
+                      className="w-full"
+                      ariaLabel="Pilih Kelompok / Grup Opsi"
+                    />
                   </div>
 
                   {optionForm.group === '__custom__' && (
@@ -973,6 +1201,12 @@ export default function MasterDataDinamisPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab
+        targetId={activeTab === 'options' ? 'tabel-opsi-bisnis' : 'tabel-konfigurasi-generator'}
+        downTooltip={activeTab === 'options' ? 'Langsung ke Tabel Opsi' : 'Langsung ke Tabel Aturan'}
+      />
     </div>
   )
 }

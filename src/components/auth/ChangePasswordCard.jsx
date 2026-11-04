@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { FiEye, FiEyeOff, FiClock, FiCheckCircle, FiAlertTriangle, FiXCircle, FiHelpCircle, FiX } from 'react-icons/fi'
 import { motion, AnimatePresence } from 'framer-motion'
 import { authService } from '../../services/authService'
-import { Button } from '@/components/tailgrids/core/button'
-import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/tailgrids/core/alert'
-import { Card } from '@/components/tailgrids/core/card'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/ui/alert'
+import { Card } from '@/components/ui/card'
 
 export default function ChangePasswordCard() {
   const [form, setForm] = useState({

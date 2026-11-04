@@ -15,10 +15,11 @@ import { ReadOnlyDetailModal } from '../../../components/reports/ReadOnlyDetailM
 import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
-import { Breadcrumbs } from '@/components/tailgrids/core/breadcrumbs'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { printCleanTable } from '../../../utils/printHelper'
 import { usePengaturanStore } from '../../../stores/pengaturanStore'
+import { SmartScrollFab } from '../../../components/common'
 
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
 
@@ -279,12 +280,14 @@ export function LaporanSiswaPage() {
       </div>
 
       {/* 7. Rekap Per Unit */}
-      <ReportRecapTable
-        title="Rekapitulasi Siswa per Unit Pendidikan"
-        columns={recapColumns}
-        data={unit_recaps}
-        totalRow={unit_recaps_total}
-      />
+      <div id="tabel-rekap-siswa" className="scroll-mt-6">
+        <ReportRecapTable
+          title="Rekapitulasi Siswa per Unit Pendidikan"
+          columns={recapColumns}
+          data={unit_recaps}
+          totalRow={unit_recaps_total}
+        />
+      </div>
 
       {/* 8. Data Rinci */}
       <ReportDetailTable
@@ -325,6 +328,9 @@ export function LaporanSiswaPage() {
         title="Detail Biodata & Akademik Siswa"
         data={detailModalData}
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-rekap-siswa" downTooltip="Langsung ke Tabel Siswa" />
     </div>
   )
 }

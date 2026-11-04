@@ -33,8 +33,8 @@ import {
   Users,
   Info,
 } from 'lucide-react'
-import { Button } from '../tailgrids/core/button'
-import { Badge } from '../tailgrids/core/badge'
+import { Button } from '../ui/button'
+import { Badge } from '../ui/badge'
 import InAppEmbedViewerModal from './InAppEmbedViewerModal'
 
 // Task type visual configurations (100% dynamic, rich colorful palette)

@@ -50,4 +50,11 @@ export const lmsRaporService = {
     const response = await api.get('/lms/rapor/options')
     return response.data
   },
+
+  import: async (formData) => {
+    const response = await api.post('/lms/rapor/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
 }

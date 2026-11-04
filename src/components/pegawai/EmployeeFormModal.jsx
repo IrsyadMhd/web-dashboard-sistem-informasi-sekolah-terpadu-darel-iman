@@ -27,7 +27,8 @@ import {
   X,
 } from 'lucide-react'
 import PersonAvatar from '../ui/PersonAvatar'
-import { Spinner } from '@/components/tailgrids/core/spinner'
+import { Spinner } from '@/components/ui/spinner'
+import { DatePicker } from '@/components/ui/date-picker'
 
 export const DEFAULT_RELIGION_OPTIONS = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu']
 export const DEFAULT_MARITAL_OPTIONS = ['Menikah', 'Belum Menikah', 'Cerai Hidup', 'Cerai Mati']
@@ -54,11 +55,24 @@ export default function EmployeeFormModal({
   handleFotoUpload,
   isUnitPersonnelManager = false,
   isGlobalPersonnelManager = true,
+  userUnitId = '',
   canDeleteEmployee = false,
   toggleEmployeeStatus,
   onDeleteTarget,
 }) {
   if (!isOpen) return null
+
+  // Isolasi Unit: Kunci unit jika user bukan global manager atau adalah unit personnel manager
+  const isUnitLocked = (!isGlobalPersonnelManager || isUnitPersonnelManager) && Boolean(userUnitId)
+
+  // Filter daftar unit hanya untuk unit user jika dalam mode isolasi unit
+  const filteredUnitsList = useMemo(() => {
+    if (isUnitLocked) {
+      const scoped = unitsList.filter((u) => String(u.id ?? u.unit_id ?? '') === String(userUnitId))
+      return scoped.length > 0 ? scoped : (userUnitId ? [{ id: userUnitId, name: 'Unit Pengguna' }] : unitsList)
+    }
+    return unitsList
+  }, [unitsList, isUnitLocked, userUnitId])
 
   // Normalisasi opsi status pegawai unik
   const availableStatusPegawai = useMemo(() => {
@@ -96,32 +110,32 @@ export default function EmployeeFormModal({
 
   return (
     <div
-      className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md print:hidden animate-fadeIn"
+      className="overlay modal fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 sm:p-5 bg-slate-950/70 backdrop-blur-md print:hidden animate-fadeIn overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="employee-form-title"
       tabIndex={-1}
     >
-      <div className="modal-dialog font-sans my-auto w-full max-w-4xl">
-        <div className="modal-content flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+      <div className="modal-dialog font-sans my-auto w-full max-w-4xl py-2 sm:py-0">
+        <div className="modal-content flex max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
           {/* Top accent bar */}
           <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
 
           {/* Header */}
-          <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2.5 text-[#0E5C44] dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
-                <UserPlus className="h-5 w-5" strokeWidth={2.25} />
+          <div className="modal-header flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-4 sm:px-6 py-3.5 sm:py-4.5 dark:border-slate-800 dark:bg-slate-950">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2 sm:p-2.5 text-[#0E5C44] dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75] shrink-0">
+                <UserPlus className="h-4 sm:h-5 w-4 sm:w-5" strokeWidth={2.25} />
               </div>
-              <div>
-                <h3 id="employee-form-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>{isEditMode ? (isUnitPersonnelManager ? 'Edit Jabatan Pegawai' : 'Edit Pegawai') : 'Tambah Pegawai'}</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+              <div className="min-w-0">
+                <h3 id="employee-form-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span className="truncate">{isEditMode ? (isUnitPersonnelManager ? 'Edit Jabatan Pegawai' : 'Edit Pegawai') : 'Tambah Pegawai'}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60 shrink-0">
                     <Sparkles className="size-3" />
                     {isEditMode ? 'Update' : 'Baru'}
                   </span>
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                   Langkah {currentStep} dari 4 · {
                     currentStep === 1 ? 'Identitas & Foto' :
                     currentStep === 2 ? 'Kepegawaian' :
@@ -131,16 +145,16 @@ export default function EmployeeFormModal({
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {isUnitPersonnelManager && (
-                <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-extrabold text-amber-800 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60">
+                <span className="hidden sm:inline-flex rounded-full bg-amber-50 px-3 py-1 text-[10px] font-extrabold text-amber-800 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60">
                   Hanya jabatan unit ini yang dapat diubah
                 </span>
               )}
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl p-2 bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                className="rounded-xl p-2 bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shrink-0"
                 aria-label="Tutup"
               >
                 <X className="size-4" strokeWidth={2.25} />
@@ -149,13 +163,13 @@ export default function EmployeeFormModal({
           </div>
 
           {/* Step Wizard Indicator (Standardized Horizontal Bar) */}
-          <div className="border-b border-slate-100 bg-slate-50/70 p-2.5 dark:border-slate-800 dark:bg-slate-900/50">
-            <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+          <div className="border-b border-slate-100 bg-slate-50/70 p-2 sm:p-2.5 dark:border-slate-800 dark:bg-slate-900/50 overflow-x-auto no-scrollbar">
+            <div className="grid grid-cols-4 gap-1 sm:gap-2 min-w-[280px]">
               {[
-                { step: 1, label: 'Identitas & Foto', icon: UserCheck },
-                { step: 2, label: 'Kepegawaian', icon: BriefcaseBusiness },
-                { step: 3, label: 'Kontak & Alamat', icon: Phone },
-                { step: 4, label: 'Konfirmasi', icon: CheckCircle2 },
+                { step: 1, label: 'Identitas & Foto', shortLabel: 'Identitas', icon: UserCheck },
+                { step: 2, label: 'Kepegawaian', shortLabel: 'Kepegawaian', icon: BriefcaseBusiness },
+                { step: 3, label: 'Kontak & Alamat', shortLabel: 'Kontak', icon: Phone },
+                { step: 4, label: 'Konfirmasi', shortLabel: 'Selesai', icon: CheckCircle2 },
               ].map((s) => {
                 const isActive = currentStep === s.step
                 const isDone = currentStep > s.step
@@ -164,7 +178,7 @@ export default function EmployeeFormModal({
                     key={s.step}
                     type="button"
                     onClick={() => setCurrentStep(s.step)}
-                    className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-2.5 text-[11px] font-extrabold transition-all duration-200 cursor-pointer ${
+                    className={`flex items-center justify-center gap-1 sm:gap-1.5 rounded-xl py-2 px-1.5 sm:px-2.5 text-[10px] sm:text-[11px] font-extrabold transition-all duration-200 cursor-pointer min-w-0 ${
                       isActive
                         ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600'
                         : isDone
@@ -173,7 +187,8 @@ export default function EmployeeFormModal({
                     }`}
                   >
                     <s.icon className={`size-3.5 shrink-0 ${isActive ? 'text-white' : isDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
-                    <span className="truncate">{s.label}</span>
+                    <span className="hidden sm:inline truncate">{s.label}</span>
+                    <span className="sm:hidden truncate">{s.shortLabel}</span>
                   </button>
                 )
               })}
@@ -269,7 +284,7 @@ export default function EmployeeFormModal({
                 </div>
 
                 {/* NIY & NIK */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                       NIY (Nomor Induk Yayasan) <span className="text-slate-400 font-normal">(Auto jika kosong)</span>
@@ -308,7 +323,7 @@ export default function EmployeeFormModal({
                 </div>
 
                 {/* Gelar Depan & Nama Lengkap */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Gelar Depan</label>
                     <div className="relative flex items-center">
@@ -324,7 +339,7 @@ export default function EmployeeFormModal({
                       />
                     </div>
                   </div>
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                       Nama Lengkap <span className="text-rose-500">*</span>
                     </label>
@@ -345,7 +360,7 @@ export default function EmployeeFormModal({
                 </div>
 
                 {/* Gelar Belakang & Nama Panggilan */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Gelar Belakang</label>
                     <div className="relative flex items-center">
@@ -379,7 +394,7 @@ export default function EmployeeFormModal({
                 </div>
 
                 {/* Jenis Kelamin, Tempat Lahir, Tanggal Lahir */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                       Jenis Kelamin <span className="text-rose-500">*</span>
@@ -415,22 +430,17 @@ export default function EmployeeFormModal({
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Lahir</label>
-                    <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                        <Calendar className="size-4" />
-                      </div>
-                      <input
-                        type="date"
-                        value={formData.tanggal_lahir || ''}
-                        onChange={(e) => setFormData((p) => ({ ...p, tanggal_lahir: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                      />
-                    </div>
+                    <DatePicker
+                      value={formData.tanggal_lahir || ''}
+                      onChange={(e) => setFormData((p) => ({ ...p, tanggal_lahir: e.target.value }))}
+                      inputClassName="py-2.5 text-xs font-semibold"
+                      placeholder="Pilih tanggal lahir..."
+                    />
                   </div>
                 </div>
 
                 {/* Agama, Status Perkawinan, Pendidikan Terakhir */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Agama</label>
                     <div className="relative flex items-center">
@@ -495,9 +505,16 @@ export default function EmployeeFormModal({
                   Status & Penempatan Kepegawaian
                 </h3>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Unit Kerja / Sekolah</label>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                      Unit Kerja / Sekolah
+                      {isUnitLocked && (
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold ml-1.5">
+                          (Terkunci Unit Anda)
+                        </span>
+                      )}
+                    </label>
                     <div className="relative flex items-center">
                       <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
                         <Building2 className="size-4" />
@@ -505,11 +522,11 @@ export default function EmployeeFormModal({
                       <select
                         value={formData.unit_id || ''}
                         onChange={(e) => setFormData((p) => ({ ...p, unit_id: e.target.value }))}
-                        disabled={isUnitPersonnelManager}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 disabled:bg-slate-100/80 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer"
+                        disabled={isUnitLocked || isUnitPersonnelManager}
+                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 disabled:bg-slate-100/80 disabled:text-slate-500 disabled:cursor-not-allowed cursor-pointer"
                       >
                         <option value="">Pilih Unit Pendidikan</option>
-                        {unitsList.map((u) => (
+                        {filteredUnitsList.map((u) => (
                           <option key={u.id} value={u.id}>{u.name}</option>
                         ))}
                       </select>
@@ -535,7 +552,7 @@ export default function EmployeeFormModal({
                   </div>
                 </div>
 
-                <div className={`grid grid-cols-2 gap-3 ${isUnitPersonnelManager ? 'hidden' : ''}`}>
+                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isUnitPersonnelManager ? 'hidden' : ''}`}>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Status Pegawai</label>
                     <div className="relative flex items-center">
@@ -572,34 +589,24 @@ export default function EmployeeFormModal({
                   </div>
                 </div>
 
-                <div className={`grid grid-cols-2 gap-3 ${isUnitPersonnelManager ? 'hidden' : ''}`}>
+                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isUnitPersonnelManager ? 'hidden' : ''}`}>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Masuk</label>
-                    <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                        <Calendar className="size-4" />
-                      </div>
-                      <input
-                        type="date"
-                        value={formData.tanggal_masuk || ''}
-                        onChange={(e) => setFormData((p) => ({ ...p, tanggal_masuk: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                      />
-                    </div>
+                    <DatePicker
+                      value={formData.tanggal_masuk || ''}
+                      onChange={(e) => setFormData((p) => ({ ...p, tanggal_masuk: e.target.value }))}
+                      inputClassName="py-2.5 text-xs font-semibold"
+                      placeholder="Pilih tanggal masuk..."
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Keluar (Jika Ada)</label>
-                    <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                        <Calendar className="size-4" />
-                      </div>
-                      <input
-                        type="date"
-                        value={formData.tanggal_keluar || ''}
-                        onChange={(e) => setFormData((p) => ({ ...p, tanggal_keluar: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                      />
-                    </div>
+                    <DatePicker
+                      value={formData.tanggal_keluar || ''}
+                      onChange={(e) => setFormData((p) => ({ ...p, tanggal_keluar: e.target.value }))}
+                      inputClassName="py-2.5 text-xs font-semibold"
+                      placeholder="Pilih tanggal keluar..."
+                    />
                   </div>
                 </div>
               </div>
@@ -612,7 +619,7 @@ export default function EmployeeFormModal({
                   Kontak & Alamat
                 </h3>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">No. WhatsApp / HP</label>
                     <div className="relative flex items-center">
@@ -661,7 +668,7 @@ export default function EmployeeFormModal({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Kota / Kabupaten</label>
                     <div className="relative flex items-center">
@@ -703,54 +710,54 @@ export default function EmployeeFormModal({
                   Konfirmasi Data Pegawai
                 </h3>
 
-                <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/50 to-white dark:bg-slate-900/60 dark:border-slate-800 p-5 space-y-3 text-xs">
-                  <div className="flex justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/50 to-white dark:bg-slate-900/60 dark:border-slate-800 p-4 sm:p-5 space-y-2.5 sm:space-y-3 text-xs">
+                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2 gap-0.5 sm:gap-2">
                     <span className="text-slate-500 font-medium">NIY:</span>
-                    <span className="font-bold text-slate-800 dark:text-white">{formData.niy || '(Otomatis di-generate)'}</span>
+                    <span className="font-bold text-slate-800 dark:text-white break-words">{formData.niy || '(Otomatis di-generate)'}</span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2 gap-0.5 sm:gap-2">
                     <span className="text-slate-500 font-medium">NIK:</span>
                     <span className="font-bold text-slate-800 dark:text-white">{formData.nik || '-'}</span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2 gap-0.5 sm:gap-2">
                     <span className="text-slate-500 font-medium">Nama Lengkap:</span>
-                    <span className="font-bold text-slate-800 dark:text-white">
+                    <span className="font-bold text-slate-800 dark:text-white break-words">
                       {[formData.gelar_depan, formData.nama_lengkap, formData.gelar_belakang].filter(Boolean).join(' ') || '-'}
                     </span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2 gap-0.5 sm:gap-2">
                     <span className="text-slate-500 font-medium">Jenis Kelamin:</span>
                     <span className="font-bold text-slate-800 dark:text-white">{formData.jenis_kelamin === 'L' ? 'Laki-laki (L)' : 'Perempuan (P)'}</span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2 gap-0.5 sm:gap-2">
                     <span className="text-slate-500 font-medium">Agama / Status Nikah:</span>
                     <span className="font-bold text-slate-800 dark:text-white">
                       {formData.agama || 'Islam'} · {formData.status_perkawinan || '-'}
                     </span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2 gap-0.5 sm:gap-2">
                     <span className="text-slate-500 font-medium">Pendidikan Terakhir:</span>
                     <span className="font-bold text-slate-800 dark:text-white">{formData.pendidikan_terakhir || '-'}</span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2 gap-0.5 sm:gap-2">
                     <span className="text-slate-500 font-medium">Unit Kerja & Jabatan:</span>
-                    <span className="font-bold text-slate-800 dark:text-white">
+                    <span className="font-bold text-slate-800 dark:text-white break-words">
                       {unitsList.find((u) => String(u.id) === String(formData.unit_id))?.name || '-'} — {positionsList.find((p) => String(p.id) === String(formData.jabatan_id))?.name || '-'}
                     </span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2 gap-0.5 sm:gap-2">
                     <span className="text-slate-500 font-medium">Status Kepegawaian:</span>
                     <span className="font-bold text-emerald-700 dark:text-emerald-400">
                       {formData.status_pegawai || 'Tetap'} ({formData.status || 'Aktif'})
                     </span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2 gap-0.5 sm:gap-2">
                     <span className="text-slate-500 font-medium">Kontak HP / WhatsApp:</span>
                     <span className="font-bold text-slate-800 dark:text-white">{formData.no_hp || '-'}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-2">
                     <span className="text-slate-500 font-medium">Email:</span>
-                    <span className="font-bold text-slate-800 dark:text-white">{formData.email || '-'}</span>
+                    <span className="font-bold text-slate-800 dark:text-white break-words">{formData.email || '-'}</span>
                   </div>
                 </div>
               </div>
@@ -758,12 +765,12 @@ export default function EmployeeFormModal({
           </div>
 
           {/* Bottom Footer Actions */}
-          <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
+          <div className="modal-footer flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 border-t border-slate-100 bg-white px-4 sm:px-6 py-3.5 sm:py-4 dark:border-slate-800 dark:bg-[#1B2433] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer disabled:opacity-50"
             >
               <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
                 <X className="size-3.5 text-white" strokeWidth={2.2} />
@@ -771,13 +778,13 @@ export default function EmployeeFormModal({
               <span>Batal</span>
             </button>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5">
               {currentStep > 1 && !isUnitPersonnelManager && (
                 <button
                   type="button"
                   onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 text-white px-4 py-2.5 text-xs font-extrabold border border-blue-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
+                  className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 text-white px-4 py-2.5 text-xs font-extrabold border border-blue-300/40 transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
                     <ArrowLeft className="size-3.5 text-white" strokeWidth={2.2} />
@@ -790,7 +797,7 @@ export default function EmployeeFormModal({
                   type="button"
                   onClick={() => setCurrentStep((s) => Math.min(4, s + 1))}
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50"
+                  className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.02] transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   <span>Selanjutnya</span>
                   <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
@@ -803,7 +810,7 @@ export default function EmployeeFormModal({
                   type="button"
                   onClick={onSubmit}
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-400/50 shadow-md shadow-emerald-700/20 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50"
+                  className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-400/50 shadow-md shadow-emerald-700/20 hover:scale-[1.02] transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <Spinner size="xs" />

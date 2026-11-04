@@ -141,23 +141,23 @@ export default function TahunAjaranTable({
                 <td className="px-3.5 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
                   <ActionDropdown
                     onView={!deleted ? () => onDetail?.(item) : undefined}
-                    onEdit={!deleted ? () => onEdit?.(item) : undefined}
-                    onDelete={!deleted ? () => onDelete?.(item) : undefined}
+                    onEdit={!deleted && onEdit ? () => onEdit(item) : undefined}
+                    onDelete={!deleted && onDelete ? () => onDelete(item) : undefined}
                     extraItems={
-                      deleted
+                      deleted && onRestore
                         ? [
                             {
                               label: 'Pulihkan Data',
                               icon: <RotateCcw className="size-4 text-emerald-600" />,
-                              onClick: () => onRestore?.(item),
+                              onClick: () => onRestore(item),
                             },
                           ]
-                        : !isActive
+                        : !isActive && onSetAktif
                         ? [
                             {
                               label: 'Jadikan Aktif Utama',
                               icon: <CheckCircle2 className="size-4 text-emerald-600" />,
-                              onClick: () => onSetAktif?.(item),
+                              onClick: () => onSetAktif(item),
                             },
                           ]
                         : []

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { FileSpreadsheet, FileText, Download } from 'lucide-react'
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from '@/components/tailgrids/core/dialog'
-import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
-import { Button } from '@/components/tailgrids/core/button'
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from '@/components/ui/dialog'
+import { Backdrop, OverlayWrapper } from '@/components/ui/overlay'
+import { Button } from '@/components/ui/button'
 
 export function ReportExportModal({ isOpen, onClose, onConfirmExport, defaultFormat = 'excel' }) {
   const [includeSummary, setIncludeSummary] = useState(true)

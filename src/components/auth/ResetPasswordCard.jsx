@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FiLock, FiEye, FiEyeOff, FiShield, FiCheck } from 'react-icons/fi'
+import Swal from '@/components/ui/compat/swal-heroui'
 
 export default function ResetPasswordCard({ onNavigate }) {
   const [password, setPassword] = useState('')
@@ -21,7 +22,12 @@ export default function ResetPasswordCard({ onNavigate }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (password !== confirmPassword) {
-      alert('Konfirmasi password tidak cocok!')
+      Swal.fire({
+        title: 'Konfirmasi Tidak Cocok',
+        text: 'Konfirmasi password yang Anda masukkan tidak cocok dengan password baru.',
+        icon: 'warning',
+        confirmButtonColor: '#059669',
+      })
       return
     }
     setSuccess(true)

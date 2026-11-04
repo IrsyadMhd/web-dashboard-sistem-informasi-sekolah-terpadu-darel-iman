@@ -56,8 +56,15 @@ export const lmsDiskusiService = {
     return response.data
   },
 
-  getOptions: async () => {
-    const response = await api.get('/lms/diskusi/options')
+  getOptions: async (params = {}) => {
+    const response = await api.get('/lms/diskusi/options', { params })
+    return response.data
+  },
+
+  import: async (formData) => {
+    const response = await api.post('/lms/diskusi/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
     return response.data
   },
 }

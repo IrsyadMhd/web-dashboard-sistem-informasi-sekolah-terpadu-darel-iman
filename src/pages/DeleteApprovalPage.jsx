@@ -21,8 +21,8 @@ import { useToast } from '../components/app/ToastProvider'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { deleteRequestService } from '../services/deleteRequestService'
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 const containerVariants = {
   hidden: { opacity: 0 },

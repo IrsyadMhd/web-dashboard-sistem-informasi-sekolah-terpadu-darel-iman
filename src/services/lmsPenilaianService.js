@@ -45,4 +45,11 @@ export const lmsPenilaianService = {
     const response = await api.get('/lms/penilaian/options')
     return response.data
   },
+
+  import: async (formData) => {
+    const response = await api.post('/lms/penilaian/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
 }

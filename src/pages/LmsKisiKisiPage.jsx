@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, BookOpen, Target, Award, Plus, Search, Edit3, Trash2,
   Copy, CheckCircle2, XCircle, Clock, Sparkles, RefreshCw, X,
-  AlertTriangle, ChevronRight, ShieldAlert,
+  AlertTriangle, ChevronLeft, ChevronRight, ShieldAlert,
+  Layers, CheckSquare, ChevronDown, Check, School, Lock,
 } from 'lucide-react'
 import { lmsKisiKisiService } from '../services/lmsKisiKisiService'
 import { subjectService } from '../services/subjectService'
@@ -13,32 +14,102 @@ import { useUnitStore } from '../stores/unitStore'
 import { usePengaturanStore } from '../stores/pengaturanStore'
 import ActionDropdown from '../components/app/ActionDropdown'
 import PageContainer from '../components/app/PageContainer'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { useDebounce } from '../hooks/useDebounce'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { MasterDataTable, SquircleActionButton, PrintOptionModal } from '../components/master-data'
+import {
+  TableRoot,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/table'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import { RotateCcw, Printer } from 'lucide-react'
 
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.02 } } }
 const itemVariants = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } } }
 
-function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
-  const tones = {
-    emerald: { card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20', title: 'text-emerald-700 dark:text-emerald-400', icon: 'text-emerald-500', val: 'text-emerald-600 dark:text-emerald-300', sub: 'text-emerald-600/70 dark:text-emerald-400/70' },
-    blue: { card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20', title: 'text-blue-700 dark:text-blue-400', icon: 'text-blue-500', val: 'text-blue-600 dark:text-blue-300', sub: 'text-blue-600/70 dark:text-blue-400/70' },
-    purple: { card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20', title: 'text-purple-700 dark:text-purple-400', icon: 'text-purple-500', val: 'text-purple-600 dark:text-purple-300', sub: 'text-purple-600/70 dark:text-purple-400/70' },
-    amber: { card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20', title: 'text-amber-700 dark:text-amber-400', icon: 'text-amber-500', val: 'text-amber-600 dark:text-amber-300', sub: 'text-amber-600/70 dark:text-amber-400/70' },
-  }
-  const t = tones[tone] || tones.emerald
+// ── PALET WARNA RESMI MODERN KPI CARDS ──
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+  },
+  blue: {
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-indigo-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-indigo-950/20 dark:to-slate-900',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/30',
+    tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-sky-600/80 dark:text-sky-400/80',
+  },
+  purple: {
+    card: 'border-purple-300/70 bg-gradient-to-br from-purple-50 via-fuchsia-50/60 to-white hover:border-purple-400 dark:border-purple-700/50 dark:from-purple-950/40 dark:via-fuchsia-950/20 dark:to-slate-900',
+    glow: 'bg-purple-400/20 group-hover:bg-purple-400/30',
+    iconBox: 'bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white shadow-purple-500/30',
+    tag: 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+    title: 'text-purple-700 dark:text-purple-400',
+    val: 'text-purple-700 dark:text-purple-300',
+    sub: 'text-purple-600/80 dark:text-purple-400/80',
+  },
+  amber: {
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+  },
+}
+
+function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald', onClick, active = false }) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+  const isClickable = typeof onClick === 'function'
+
   return (
-    <motion.div variants={itemVariants} whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.96 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }} onClick={onClick}
-      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group`}>
-      <div className="flex items-center justify-between">
-        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
-        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+    <motion.div
+      whileHover={{ scale: 1.02, y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-4 sm:p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${
+        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+      } ${t.card} ${active ? '!ring-2 !ring-emerald-500 !border-emerald-500 shadow-md shadow-emerald-500/20' : ''}`}
+    >
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm ${t.iconBox}`}>
+            <Icon className="h-4.5 w-4.5" />
+          </div>
+          <div>
+            <p className={`text-xs font-bold ${t.title}`}>{label}</p>
+            {tag && (
+              <span className={`inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-extrabold ${t.tag}`}>
+                {tag}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
-      <p className={`mt-2 text-2xl font-extrabold ${t.val}`}>{value ?? 0}</p>
-      {subtext && <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>{subtext}</p>}
+      <p className={`text-2xl font-black tabular-nums tracking-tight ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-xs font-semibold ${t.sub} truncate`}>
+          {subtext}
+        </p>
+      )}
     </motion.div>
   )
 }
@@ -134,6 +205,307 @@ function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, item, isSubmitting 
   )
 }
 
+// ── HEROUI MODAL SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  label,
+  value,
+  onChange,
+  options = [],
+  placeholder = '-- Pilih Opsi --',
+  disabled = false,
+  required = false,
+  helperText = '',
+  icon: IconComponent = null,
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      {label && (
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+            : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[90] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {/* Search Input jika searchable */}
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* List options */}
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div>{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 font-normal">{opt.subtext}</div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {helperText && (
+        <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          {helperText}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen((prev) => !prev)
+          setSearch('')
+        }}
+        className={`h-9 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== undefined && value !== null
+            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNavigateToBankSoal }) {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
@@ -204,6 +576,17 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
     return rawRoles.map((r) => (typeof r === 'string' ? r : r?.name || '')).filter(Boolean)
   }, [user])
 
+  const isSuperAdminOrYayasan = useMemo(() => {
+    return userRoles.some((r) => ['super_admin', 'Super Admin', 'super-admin', 'yayasan', 'Yayasan', 'pengurus_yayasan', 'ketua_yayasan'].includes(r))
+  }, [userRoles])
+
+  const isDivisiPendidikan = useMemo(() => {
+    return userRoles.some((r) => ['Divisi Pendidikan', 'divisi_pendidikan', 'divisi-pendidikan', 'Kepala Bidang Pendidikan', 'kepala_bidang_pendidikan', 'Divisi Kurikulum', 'Divisi Kesiswaan'].includes(r))
+  }, [userRoles])
+
+  const canSelectUnit = isSuperAdminOrYayasan || isDivisiPendidikan
+  const userUnitName = user?.unit_name || user?.employee?.unit?.nama_unit || user?.employee?.unit?.name || 'Unit Anda'
+
   const isAdminOrKurikulum = useMemo(() => {
     const normalized = userRoles.map((r) => r.toLowerCase().replace(/[\s_-]+/g, ''))
     return normalized.some((r) =>
@@ -220,8 +603,16 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
   const [pagination, setPagination] = useState({ currentPage: 1, lastPage: 1, total: 0 })
   const [stats, setStats] = useState({ total: 0, aktif: 0, nonaktif: 0, total_soal_target: 0, uh: 0, pts: 0, pas: 0 })
   const [loadingOptions, setLoadingOptions] = useState(false)
-  const [options, setOptions] = useState({ subjects: [], kurikulum: [], kelas: [], semesters: [], tahun_ajaran: [], guru: [], capaian_pembelajaran: [], tujuan_pembelajaran: [], jenis_ujian_options: [], level_kognitif_options: [] })
+  const [options, setOptions] = useState({ subjects: [], kurikulum: [], kelas: [], semesters: [], tahun_ajaran: [], guru: [], capaian_pembelajaran: [], tujuan_pembelajaran: [], jenis_ujian_options: [], level_kognitif_options: [], units: [] })
+  const [selectedUnit, setSelectedUnit] = useState(canSelectUnit ? '' : (userUnitId ? String(userUnitId) : ''))
   const [filters, setFilters] = useState({ search: '', mata_pelajaran_id: '', jenis_ujian: '', status: '', kelas_id: '', semester_id: '' })
+  const [searchInput, setSearchInput] = useState('')
+  const debouncedSearch = useDebounce(searchInput, 350)
+
+  useEffect(() => {
+    setFilters((p) => ({ ...p, search: debouncedSearch }))
+  }, [debouncedSearch])
+
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -238,8 +629,8 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
     distribusi_bobot: {}, status: true,
   })
 
-  useEffect(() => { fetchStats(); fetchOptions() }, [userUnitId, activeUnit])
-  useEffect(() => { fetchData(1) }, [filters, userUnitId, activeUnit])
+  useEffect(() => { fetchStats(); fetchOptions() }, [userUnitId, activeUnit, selectedUnit])
+  useEffect(() => { fetchData(1) }, [filters, userUnitId, activeUnit, selectedUnit])
 
   // Auto-set default jenis_ujian dan level_kognitif dari opsi pertama backend
   useEffect(() => {
@@ -263,7 +654,8 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
     setLoading(true)
     try {
       const params = { page, per_page: 10, ...filters }
-      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
+      if (effectiveUnit) params.unit_pendidikan_id = effectiveUnit
       if (activeUnit) params.jenjang = activeUnit
       const response = await lmsKisiKisiService.getDaftar(params)
       if (response?.data) {
@@ -271,7 +663,8 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
         let filtered = raw.filter((item) => {
           if (!item) return false
           const iUnit = item.unit_pendidikan_id || item.unit_id || item.mata_pelajaran?.unit_pendidikan_id
-          if (userUnitId && iUnit) return String(iUnit) === String(userUnitId)
+          if (!canSelectUnit && userUnitId && iUnit) return String(iUnit) === String(userUnitId)
+          if (canSelectUnit && selectedUnit && iUnit) return String(iUnit) === String(selectedUnit)
           return true
         })
         setDataList(filtered)
@@ -284,7 +677,8 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
   const fetchStats = async () => {
     try {
       const params = {}
-      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
+      if (effectiveUnit) params.unit_pendidikan_id = effectiveUnit
       if (activeUnit) params.jenjang = activeUnit
       const res = await lmsKisiKisiService.getStats(params)
       if (res?.data) setStats(res.data)
@@ -295,7 +689,8 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
     setLoadingOptions(true)
     try {
       const params = {}
-      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
+      if (effectiveUnit) params.unit_pendidikan_id = effectiveUnit
       if (activeUnit) params.jenjang = activeUnit
       if (mapelId) params.mata_pelajaran_id = mapelId
       if (cpId) params.cp_id = cpId
@@ -307,7 +702,8 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
       const subjects = normalizeArray(rawSubjects).filter((s) => {
         if (!s) return false
         const sU = s.unit_pendidikan_id || s.unit_id
-        if (userUnitId && sU) return String(sU) === String(userUnitId)
+        if (!canSelectUnit && userUnitId && sU) return String(sU) === String(userUnitId)
+        if (canSelectUnit && selectedUnit && sU) return String(sU) === String(selectedUnit)
         return true
       })
 
@@ -315,12 +711,14 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
       const kelas = normalizeArray(rawKelas).filter((k) => {
         if (!k) return false
         const kU = k.unit_pendidikan_id || k.unit_id
-        if (userUnitId && kU) return String(kU) === String(userUnitId)
+        if (!canSelectUnit && userUnitId && kU) return String(kU) === String(userUnitId)
+        if (canSelectUnit && selectedUnit && kU) return String(kU) === String(selectedUnit)
         return true
       })
 
       setOptions((prev) => ({
         ...prev,
+        units: resData.units !== undefined ? normalizeArray(resData.units) : prev.units,
         subjects: rawSubjects !== undefined ? subjects : prev.subjects,
         kurikulum: resData.kurikulum !== undefined ? normalizeArray(resData.kurikulum) : prev.kurikulum,
         kelas: rawKelas !== undefined ? kelas : prev.kelas,
@@ -396,6 +794,18 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!formData.judul_kisi?.trim()) {
+      showNotification('Judul Kisi-kisi Ujian wajib diisi.', 'error')
+      return
+    }
+    if (!formData.mata_pelajaran_id) {
+      showNotification('Mata Pelajaran wajib dipilih.', 'error')
+      return
+    }
+    if (!formData.jenis_ujian) {
+      showNotification('Jenis Ujian wajib dipilih.', 'error')
+      return
+    }
     const { pg = 0, isian = 0, esai = 0 } = formData.distribusi_bobot || {}
     const totalBobot = pg + isian + esai
     if (totalBobot > 0 && totalBobot !== 100) { setDistribusiError(`Total bobot harus 100%. Saat ini: ${totalBobot}%`); return }
@@ -442,239 +852,448 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
     const link = document.createElement('a'); link.href = encodeURI(csv); link.download = `kisi_kisi_ujian_${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(link); link.click(); document.body.removeChild(link)
   }
 
-  const resetFilters = () => { setFilters({ search: '', mata_pelajaran_id: '', jenis_ujian: '', status: '', kelas_id: '', semester_id: '' }); fetchData(1) }
-  const hasActiveFilter = filters.search || filters.mata_pelajaran_id || filters.jenis_ujian || filters.status || filters.kelas_id || filters.semester_id
+  const resetFilters = () => {
+    if (canSelectUnit) setSelectedUnit('')
+    setSearchInput('')
+    setFilters({ search: '', mata_pelajaran_id: '', jenis_ujian: '', status: '', kelas_id: '', semester_id: '' })
+    fetchData(1)
+  }
+  const hasActiveFilter = Boolean((canSelectUnit && selectedUnit) || filters.search || filters.mata_pelajaran_id || filters.jenis_ujian || filters.status || filters.kelas_id || filters.semester_id || searchInput)
 
-  const dropdownCls = 'h-10 rounded-[12px] border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100'
+  const dropdownCls = 'h-9 rounded-xl border border-emerald-200/90 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800/80 dark:bg-[#111827] dark:text-slate-100 transition-all'
   const inputCls = 'w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-600 outline-none transition'
   const labelCls = 'block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5'
 
-  const pageActions = (
-    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
-      <SquircleActionButton variant="import" label="Import" onClick={() => setImportOpen(true)} />
-      <SquircleActionButton variant="export" label="Export" onClick={handleExportCSV} />
-      <SquircleActionButton variant="view" label="Cetak" icon={Printer} onClick={() => setIsPrintModalOpen(true)} />
-      <SquircleActionButton variant="primary" label="Buat Kisi-kisi Baru" onClick={() => handleOpenModal()} />
-    </div>
-  )
-
   return (
     <PageContainer maxW="7xl">
-      <div className="lms-kisi-kisi-page space-y-6">
-        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
+      {/* Breadcrumb Terpadu */}
+      {!embedded && (
+        <div className="mb-4">
+          <AppBreadcrumb
+            items={[
+              { label: 'LMS', href: '/dashboard/lms' },
+              { label: 'Kisi-kisi Ujian', href: '/dashboard/lms/kisi-kisi' },
+            ]}
+            pageTitle="Kisi-kisi Ujian"
+          />
+        </div>
+      )}
 
-          {/* Hero */}
-          {!embedded && !hidePageHeader && (
-            <motion.div variants={itemVariants}>
-              <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-8 text-white shadow-xl">
-                <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur-md mb-3">
-                      <Sparkles className="h-3.5 w-3.5" /><span>Modul Evaluasi &amp; Penilaian LMS</span>
-                    </div>
-                    <h1 className="text-3xl font-bold tracking-tight">Kisi-kisi Ujian (Exam Blueprint)</h1>
-                    <p className="mt-2 text-emerald-100 text-sm max-w-2xl leading-relaxed">Cetak biru penyelarasan CP, TP, dan Taksonomi Bloom — fondasi utama sebelum membuat soal dan ujian CBT.</p>
+      <div className="lms-kisi-kisi-page space-y-6 pb-12">
+        {/* Modern Hero Header Card (Vivid Emerald Spec) */}
+        {!embedded && !hidePageHeader && (
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-4 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+            <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-transparent blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-teal-500/30 via-emerald-400/20 to-transparent blur-3xl" />
+
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+                <div className="flex size-11 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <FileText className="size-5 sm:size-7 text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                      <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                      Evaluasi &amp; Penilaian LMS
+                    </span>
                   </div>
-                  <button onClick={() => handleOpenModal()} className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-[#0E5C44] shadow-lg hover:bg-emerald-50 active:scale-95 transition-all">
-                    <Plus className="h-4 w-4 stroke-[2.5]" /><span>Buat Kisi-kisi Baru</span>
-                  </button>
+                  <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Kisi-kisi Ujian (Exam Blueprint)
+                  </h1>
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                    Cetak biru penyelarasan CP, TP, dan Taksonomi Bloom — fondasi utama sebelum menyusun bank soal dan asesmen CBT.
+                  </p>
                 </div>
               </div>
-            </motion.div>
-          )}
 
-          {/* KPI */}
-          <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiTintedCard icon={FileText} label="Total Kisi-kisi" value={stats.total} subtext={`${stats.aktif} Status Aktif`} tone="emerald" onClick={() => setFilters((p) => ({ ...p, jenis_ujian: '', status: '' }))} />
-            <KpiTintedCard icon={Target} label="Target Butir Soal" value={stats.total_soal_target} subtext="Soal direncanakan" tone="blue" onClick={() => setFilters((p) => ({ ...p, jenis_ujian: '', status: '' }))} />
-            <KpiTintedCard icon={BookOpen} label={`Kisi-kisi ${getJenisLabel('UH')}`} value={stats.uh} subtext={getJenisFullName('UH')} tone="purple" onClick={() => setFilters((p) => ({ ...p, jenis_ujian: 'UH' }))} />
-            <KpiTintedCard icon={Award} label={`${getJenisLabel('PTS')} & ${getJenisLabel('PAS')}`} value={(stats.pts || 0) + (stats.pas || 0)} subtext="Ujian Semester" tone="amber" onClick={() => setFilters((p) => ({ ...p, jenis_ujian: 'PTS' }))} />
-          </motion.div>
-
-          {/* Tab Nav */}
-          {tabNav && <div className="my-2">{typeof tabNav === 'function' ? tabNav() : tabNav}</div>}
-
-          {/* Filter Bar */}
-          <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3">
-            <div className="relative w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <input type="text" placeholder="Cari judul kisi-kisi, KD, level kognitif..." value={filters.search}
-                onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))}
-                className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100" />
+              <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300/80 bg-emerald-50/80 px-3 py-1.5 sm:px-3.5 sm:py-2 text-[11px] sm:text-xs font-extrabold text-emerald-800 shadow-xs dark:border-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600 dark:text-emerald-400" />
+                  Cetak Biru Asesmen
+                </span>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <select value={filters.mata_pelajaran_id} onChange={(e) => setFilters((p) => ({ ...p, mata_pelajaran_id: e.target.value }))} className={dropdownCls}>
-                <option value="">Semua Mata Pelajaran</option>
-                {options.subjects.map((s) => <option key={s.id} value={s.id}>{getSubjectLabel(s)}</option>)}
-              </select>
-              <select value={filters.jenis_ujian} onChange={(e) => setFilters((p) => ({ ...p, jenis_ujian: e.target.value }))} className={dropdownCls}>
-                <option value="">Semua Jenis Ujian</option>
-                {options.jenis_ujian_options.length > 0
-                  ? options.jenis_ujian_options.map((j) => <option key={j.id} value={j.id}>{getJenisFullName(j.id) || j.nama}</option>)
-                  : <><option value="UH">{getJenisFullName('UH')}</option><option value="PTS">{getJenisFullName('PTS')}</option><option value="PAS">{getJenisFullName('PAS')}</option><option value="CBT">{getJenisFullName('CBT')}</option><option value="Remedial">{getJenisFullName('Remedial')}</option></>
-                }
-              </select>
-              <select value={filters.kelas_id} onChange={(e) => setFilters((p) => ({ ...p, kelas_id: e.target.value }))} className={dropdownCls}>
-                <option value="">Semua Kelas</option>
-                {options.kelas.map((k) => <option key={k.id} value={k.id}>{k.nama_kelas || k.tingkat || k.nama}</option>)}
-              </select>
-              <select value={filters.semester_id} onChange={(e) => setFilters((p) => ({ ...p, semester_id: e.target.value }))} className={dropdownCls}>
-                <option value="">Semua Semester</option>
-                {options.semesters.map((s) => <option key={s.id} value={s.id}>{s.name || s.nama || s.nama_semester}</option>)}
-              </select>
-              <select value={filters.status} onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))} className={dropdownCls}>
-                <option value="">Semua Status</option>
-                <option value="1">Aktif</option>
-                <option value="0">Nonaktif</option>
-              </select>
-              {hasActiveFilter && (
-                <button type="button" onClick={resetFilters} className="inline-flex h-10 items-center gap-1.5 rounded-[12px] border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors">
-                  <RotateCcw className="h-3.5 w-3.5" /><span>Reset Filter</span>
+          </div>
+        )}
+
+        {/* Modern Multi-Tone KPI Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+          <ModernKpiCard
+            icon={FileText}
+            label="Total Kisi-kisi"
+            value={stats.total}
+            tag="Semua"
+            subtext={`${stats.aktif} Status Aktif`}
+            tone="emerald"
+            active={filters.jenis_ujian === '' && filters.status === ''}
+            onClick={() => setFilters((p) => ({ ...p, jenis_ujian: '', status: '' }))}
+          />
+          <ModernKpiCard
+            icon={Target}
+            label="Target Butir Soal"
+            value={stats.total_soal_target}
+            tag="Target Soal"
+            subtext="Soal direncanakan"
+            tone="blue"
+            onClick={() => setFilters((p) => ({ ...p, jenis_ujian: '', status: '' }))}
+          />
+          <ModernKpiCard
+            icon={BookOpen}
+            label={`Kisi-kisi ${getJenisLabel('UH')}`}
+            value={stats.uh}
+            tag="Ulangan Harian"
+            subtext={getJenisFullName('UH')}
+            tone="purple"
+            active={filters.jenis_ujian === 'UH'}
+            onClick={() => setFilters((p) => ({ ...p, jenis_ujian: 'UH' }))}
+          />
+          <ModernKpiCard
+            icon={Award}
+            label={`${getJenisLabel('PTS')} & ${getJenisLabel('PAS')}`}
+            value={(stats.pts || 0) + (stats.pas || 0)}
+            tag="Ujian Semester"
+            subtext="Asesmen Berkala"
+            tone="amber"
+            active={filters.jenis_ujian === 'PTS'}
+            onClick={() => setFilters((p) => ({ ...p, jenis_ujian: 'PTS' }))}
+          />
+        </div>
+
+        {/* Tab Nav (if provided) */}
+        {tabNav && <div>{typeof tabNav === 'function' ? tabNav() : tabNav}</div>}
+
+        {/* Master Datatable Panel (Canonical Emerald Datatable Container) */}
+        <section
+          className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]"
+          aria-labelledby="kisikisi-table-title"
+        >
+          {/* Toolbar Baris 1: Header Judul & 4 Tombol Soft Squircle Action */}
+          <div className="border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3.5 sm:px-6 md:px-8 dark:border-emerald-800/60">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                  <h2 id="kisikisi-table-title" className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                    Daftar Kisi-kisi Ujian
+                  </h2>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                    {pagination.total} Total
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+                  Indikator kelengkapan butir soal aktual vs target ditampilkan di setiap baris.
+                </p>
+              </div>
+
+              {/* 4 Soft Squircle Action Buttons */}
+              <div className="flex items-center gap-1.5 sm:gap-2 self-start sm:self-auto flex-wrap">
+                <SquircleActionButton
+                  variant="import"
+                  label="Import"
+                  onClick={() => setImportOpen(true)}
+                />
+                <SquircleActionButton
+                  variant="export"
+                  label="Export"
+                  onClick={handleExportCSV}
+                />
+                <SquircleActionButton
+                  variant="view"
+                  label="Cetak"
+                  icon={Printer}
+                  onClick={() => setIsPrintModalOpen(true)}
+                />
+                <SquircleActionButton
+                  variant="primary"
+                  label="Buat Kisi-kisi Baru"
+                  onClick={() => handleOpenModal()}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Toolbar Baris 2: Search Input dengan Debounce */}
+          <div className="p-3 sm:p-4 border-b border-emerald-200/80 bg-white/70 dark:border-emerald-800/60 dark:bg-[#1B2433]">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Cari judul kisi-kisi, indikator CP/TP, KD, atau level kognitif..."
+                className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold rounded-xl border border-emerald-200/90 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => setSearchInput('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
-          </motion.div>
+          </div>
 
-          {/* Datatable — Emerald Style */}
-          <motion.div variants={itemVariants}>
-            <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 px-5 py-4 sm:px-6 dark:border-emerald-800/60 dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
-                <div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-white">
-                    Daftar Kisi-kisi Ujian <span className="text-xs font-normal text-slate-400">({pagination.total} total)</span>
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Indikator kelengkapan soal aktual vs target ditampilkan di setiap baris</p>
-                </div>
-                {pageActions}
+          {/* Toolbar Baris 3: Horizontal Filters & Reset Button */}
+          <div className="px-3 sm:px-4 py-2.5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:border-emerald-800/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 flex flex-wrap items-center gap-2">
+            {/* Unit Dropdown (Divisi Pendidikan / Global) atau Locked Unit Badge */}
+            {canSelectUnit ? (
+              <HeroUiFilterSelect
+                value={selectedUnit}
+                onChange={(val) => setSelectedUnit(val)}
+                placeholder={`Semua Unit (${options.units?.length || 'SIT'})`}
+                icon={School}
+                popoverWidth="min-w-[220px]"
+                searchable={options.units?.length > 5}
+                options={[
+                  { value: '', label: `Semua Unit (${options.units?.length || 'SIT'})` },
+                  ...(options.units || []).map((u) => ({ value: String(u.id), label: u.name || u.nama_unit })),
+                ]}
+              />
+            ) : (
+              <div
+                title="Terkunci: Menampilkan data khusus unit wewenang Anda"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300/80 bg-emerald-50 text-[11px] font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
+              >
+                <School className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>{userUnitName}</span>
+                <Lock className="size-3 text-emerald-500 ml-0.5 opacity-80" />
               </div>
+            )}
 
-              <MasterDataTable className="!rounded-none !border-0 !shadow-none">
-                <div className="overflow-x-auto min-h-[340px] pb-4">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      <tr>
-                        <th className="px-5 py-3.5 whitespace-nowrap">Judul &amp; Mata Pelajaran</th>
-                        <th className="px-5 py-3.5 whitespace-nowrap">Capaian (CP / TP)</th>
-                        <th className="px-5 py-3.5 whitespace-nowrap">Jenis &amp; Kognitif</th>
-                        <th className="px-5 py-3.5 whitespace-nowrap">Soal / Durasi</th>
-                        <th className="px-5 py-3.5 whitespace-nowrap">Kelengkapan Soal</th>
-                        <th className="px-5 py-3.5 whitespace-nowrap">Status</th>
-                        <th className="px-5 py-3.5 text-right whitespace-nowrap">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
-                      {loading ? (
-                        <tr><td colSpan="7" className="text-center py-14 text-slate-400">
-                          <div className="flex flex-col items-center gap-2"><RefreshCw className="w-6 h-6 animate-spin text-emerald-600" /><span className="text-xs">Memuat data kisi-kisi...</span></div>
-                        </td></tr>
-                      ) : dataList.length === 0 ? (
-                        <tr><td colSpan="7" className="text-center py-14 text-slate-400">
-                          <div className="flex flex-col items-center gap-2"><FileText className="w-10 h-10 text-slate-200 dark:text-slate-700" /><span className="text-xs font-medium">Belum ada kisi-kisi ujian ditemukan.</span></div>
-                        </td></tr>
-                      ) : dataList.map((item) => {
-                        const bankCount = item.bank_soal_count ?? 0
-                        const ujianCount = item.ujian_count ?? 0
-                        return (
-                          <tr key={item.id} className="group hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer"
-                            onClick={(e) => { if (e.target.closest('button, a, [data-no-rowclick]')) return; setRowDetailItem(item); setShowRowDetailModal(true) }}>
-                            <td className="px-5 py-4">
-                              <div className="font-semibold text-slate-800 dark:text-white leading-snug">{item.judul_kisi}</div>
-                              <div className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mt-0.5">{item.mata_pelajaran?.name || 'Mata Pelajaran N/A'}</div>
-                              {(item.kelas || item.semester) && (
-                                <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5">
-                                  {item.kelas && <span>{item.kelas.nama_kelas || item.kelas.tingkat}</span>}
-                                  {item.kelas && item.semester && <span>·</span>}
-                                  {item.semester && <span>{item.semester.nama_semester || item.semester.name}</span>}
-                                </div>
-                              )}
-                              {ujianCount > 0 && (
-                                <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800">
-                                  <ShieldAlert className="w-2.5 h-2.5 text-amber-500" />
-                                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">Dipakai di {ujianCount} ujian</span>
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-5 py-4 max-w-[180px]">
-                              {item.cp ? (
-                                <div className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-md text-[11px] font-medium mb-1 border border-emerald-100 dark:border-emerald-800">
-                                  {item.cp.kode_cp ? `CP: ${item.cp.kode_cp}` : item.cp.nama_cp}
-                                </div>
-                              ) : <div className="text-[11px] text-slate-400 italic">CP belum ditentukan</div>}
-                              {item.tp && <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">TP: {item.tp.kode_tp || item.tp.nama_tp}</div>}
-                            </td>
-                            <td className="px-5 py-4 whitespace-nowrap">
-                              <span className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full border ${getJenisBadgeColor(item.jenis_ujian)}`}>
-                                {getJenisLabel(item.jenis_ujian)}
-                              </span>
-                              {item.level_kognitif && (
-                                <div className="text-[10px] text-slate-400 mt-1">
-                                  {getKognitifLabel(item.level_kognitif)}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-5 py-4 whitespace-nowrap">
-                              <div className="font-bold text-slate-800 dark:text-white text-sm">{item.jumlah_soal} Soal</div>
-                              <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5"><Clock className="w-3 h-3" /><span>{item.alokasi_waktu_menit} Menit</span></div>
-                            </td>
-                            <td className="px-5 py-4 min-w-[140px]">
-                              <SoalProgressBar current={bankCount} target={item.jumlah_soal || 0} />
-                              {bankCount < (item.jumlah_soal || 0) && (
-                                <button
-                                  type="button"
-                                  data-no-rowclick
-                                  onClick={(e) => { e.stopPropagation(); handleGoToBankSoal(item) }}
-                                  className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer">
-                                  <Plus className="w-3 h-3" />Tambah Soal<ChevronRight className="w-3 h-3" />
-                                </button>
-                              )}
-                            </td>
-                            <td className="px-5 py-4 whitespace-nowrap">
-                              {item.status
-                                ? <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full text-xs font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Aktif</span>
-                                : <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 rounded-full text-xs font-medium"><span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Nonaktif</span>
-                              }
-                            </td>
-                            <td className="px-5 py-4 text-right">
-                              <ActionDropdown
-                                onView={() => { setViewingItem(item); setShowRowDetailModal(true); setRowDetailItem(item) }}
-                                onEdit={() => handleOpenModal(item)}
-                                onDelete={() => handleDelete(item.id, item)}
-                                extraItems={[
-                                  { label: 'Duplikasi Kisi-kisi', icon: <Copy className="size-4 text-emerald-500" />, onClick: () => handleDuplicate(item.id) },
-                                  { label: 'Buat Soal dari Kisi ini', icon: <ChevronRight className="size-4 text-blue-500" />, onClick: () => handleGoToBankSoal(item) },
-                                ]} />
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="px-5 py-4 border-t border-emerald-100/60 dark:border-emerald-900/30 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-emerald-950/30 flex items-center justify-between">
-                  <span className="text-xs text-slate-500 dark:text-slate-400">Halaman {pagination.currentPage} dari {pagination.lastPage} ({pagination.total} Data Total)</span>
-                  <div className="flex gap-2">
-                    <button disabled={pagination.currentPage <= 1} onClick={() => fetchData(pagination.currentPage - 1)} className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-emerald-200/60 dark:border-slate-700 rounded-xl text-xs font-medium disabled:opacity-50 hover:bg-emerald-50 dark:hover:bg-slate-700 transition">Sebelumnya</button>
-                    <button disabled={pagination.currentPage >= pagination.lastPage} onClick={() => fetchData(pagination.currentPage + 1)} className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-emerald-200/60 dark:border-slate-700 rounded-xl text-xs font-medium disabled:opacity-50 hover:bg-emerald-50 dark:hover:bg-slate-700 transition">Selanjutnya</button>
-                  </div>
-                </div>
-              </MasterDataTable>
-            </section>
-          </motion.div>
+            <HeroUiFilterSelect
+              value={filters.mata_pelajaran_id}
+              onChange={(val) => setFilters((p) => ({ ...p, mata_pelajaran_id: val }))}
+              placeholder="Semua Mata Pelajaran"
+              icon={BookOpen}
+              popoverWidth="min-w-[240px]"
+              searchable
+              options={[
+                { value: '', label: 'Semua Mata Pelajaran' },
+                ...options.subjects.map((s) => ({ value: s.id, label: getSubjectLabel(s) })),
+              ]}
+            />
+
+            <HeroUiFilterSelect
+              value={filters.jenis_ujian}
+              onChange={(val) => setFilters((p) => ({ ...p, jenis_ujian: val }))}
+              placeholder="Semua Jenis Ujian"
+              icon={Target}
+              popoverWidth="min-w-[220px]"
+              options={[
+                { value: '', label: 'Semua Jenis Ujian' },
+                ...(options.jenis_ujian_options.length > 0
+                  ? options.jenis_ujian_options.map((j) => ({ value: j.id, label: getJenisFullName(j.id) || j.nama }))
+                  : [
+                      { value: 'UH', label: getJenisFullName('UH') },
+                      { value: 'PTS', label: getJenisFullName('PTS') },
+                      { value: 'PAS', label: getJenisFullName('PAS') },
+                      { value: 'CBT', label: getJenisFullName('CBT') },
+                      { value: 'Remedial', label: getJenisFullName('Remedial') },
+                    ]),
+              ]}
+            />
+
+            <HeroUiFilterSelect
+              value={filters.kelas_id}
+              onChange={(val) => setFilters((p) => ({ ...p, kelas_id: val }))}
+              placeholder="Semua Kelas"
+              icon={Layers}
+              popoverWidth="min-w-[170px]"
+              options={[
+                { value: '', label: 'Semua Kelas' },
+                ...options.kelas.map((k) => ({ value: k.id, label: k.nama_kelas || k.tingkat || k.nama })),
+              ]}
+            />
+
+            <HeroUiFilterSelect
+              value={filters.semester_id}
+              onChange={(val) => setFilters((p) => ({ ...p, semester_id: val }))}
+              placeholder="Semua Semester"
+              popoverWidth="min-w-[160px]"
+              options={[
+                { value: '', label: 'Semua Semester' },
+                ...options.semesters.map((s) => ({ value: s.id, label: s.name || s.nama || s.nama_semester })),
+              ]}
+            />
+
+            <HeroUiFilterSelect
+              value={filters.status}
+              onChange={(val) => setFilters((p) => ({ ...p, status: val }))}
+              placeholder="Semua Status"
+              popoverWidth="min-w-[150px]"
+              options={[
+                { value: '', label: 'Semua Status' },
+                { value: '1', label: 'Aktif' },
+                { value: '0', label: 'Nonaktif' },
+              ]}
+            />
+
+            {hasActiveFilter && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ml-auto"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Reset Filter</span>
+              </button>
+            )}
+          </div>
+
+          {/* Datatable Body */}
+          <MasterDataTable className="!rounded-none !border-0 !shadow-none">
+            <div className="overflow-x-auto min-h-[340px]">
+              <TableRoot className="w-full text-left text-sm">
+                <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <TableRow>
+                    <TableHead className="px-5 py-3.5 whitespace-nowrap">Judul &amp; Mata Pelajaran</TableHead>
+                    <TableHead className="px-5 py-3.5 whitespace-nowrap">Capaian (CP / TP)</TableHead>
+                    <TableHead className="px-5 py-3.5 whitespace-nowrap">Jenis &amp; Kognitif</TableHead>
+                    <TableHead className="px-5 py-3.5 whitespace-nowrap">Soal / Durasi</TableHead>
+                    <TableHead className="px-5 py-3.5 whitespace-nowrap">Kelengkapan Soal</TableHead>
+                    <TableHead className="px-5 py-3.5 whitespace-nowrap">Status</TableHead>
+                    <TableHead className="px-5 py-3.5 text-right whitespace-nowrap">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
+                  {loading ? (
+                    <TableRow><TableCell colSpan={7} className="text-center py-14 text-slate-400">
+                      <div className="flex flex-col items-center gap-2"><RefreshCw className="w-6 h-6 animate-spin text-emerald-600" /><span className="text-xs">Memuat data kisi-kisi...</span></div>
+                    </TableCell></TableRow>
+                  ) : dataList.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center py-14 text-slate-400">
+                      <div className="flex flex-col items-center gap-2"><FileText className="w-10 h-10 text-slate-200 dark:text-slate-700" /><span className="text-xs font-medium">Belum ada kisi-kisi ujian ditemukan.</span></div>
+                    </TableCell></TableRow>
+                  ) : dataList.map((item) => {
+                    const bankCount = item.bank_soal_count ?? 0
+                    const ujianCount = item.ujian_count ?? 0
+                    return (
+                      <TableRow key={item.id} className="group hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer"
+                        onClick={(e) => { if (e.target.closest('button, a, [data-no-rowclick]')) return; setRowDetailItem(item); setShowRowDetailModal(true) }}>
+                        <TableCell className="px-5 py-4">
+                          <div className="font-semibold text-slate-800 dark:text-white leading-snug">{item.judul_kisi}</div>
+                          <div className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mt-0.5">{item.mata_pelajaran?.name || 'Mata Pelajaran N/A'}</div>
+                          {(item.kelas || item.semester) && (
+                            <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+                              {item.kelas && <span>{item.kelas.nama_kelas || item.kelas.tingkat}</span>}
+                              {item.kelas && item.semester && <span>·</span>}
+                              {item.semester && <span>{item.semester.nama_semester || item.semester.name}</span>}
+                            </div>
+                          )}
+                          {ujianCount > 0 && (
+                            <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800">
+                              <ShieldAlert className="w-2.5 h-2.5 text-amber-500" />
+                              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">Dipakai di {ujianCount} ujian</span>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="px-5 py-4 max-w-[180px]">
+                          {item.cp ? (
+                            <div className="inline-block px-2 py-0.5 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-md text-[11px] font-medium mb-1 border border-emerald-100 dark:border-emerald-800">
+                              {item.cp.kode_cp ? `CP: ${item.cp.kode_cp}` : item.cp.nama_cp}
+                            </div>
+                          ) : <div className="text-[11px] text-slate-400 italic">CP belum ditentukan</div>}
+                          {item.tp && <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">TP: {item.tp.kode_tp || item.tp.nama_tp}</div>}
+                        </TableCell>
+                        <TableCell className="px-5 py-4 whitespace-nowrap">
+                          <span className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full border ${getJenisBadgeColor(item.jenis_ujian)}`}>
+                            {getJenisLabel(item.jenis_ujian)}
+                          </span>
+                          {item.level_kognitif && (
+                            <div className="text-[10px] text-slate-400 mt-1">
+                              {getKognitifLabel(item.level_kognitif)}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="px-5 py-4 whitespace-nowrap">
+                          <div className="font-bold text-slate-800 dark:text-white text-sm">{item.jumlah_soal} Soal</div>
+                          <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5"><Clock className="w-3 h-3" /><span>{item.alokasi_waktu_menit} Menit</span></div>
+                        </TableCell>
+                        <TableCell className="px-5 py-4 min-w-[140px]">
+                          <SoalProgressBar current={bankCount} target={item.jumlah_soal || 0} />
+                          {bankCount < (item.jumlah_soal || 0) && (
+                            <button
+                              type="button"
+                              data-no-rowclick
+                              onClick={(e) => { e.stopPropagation(); handleGoToBankSoal(item) }}
+                              className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer">
+                              <Plus className="w-3 h-3" />Tambah Soal<ChevronRight className="w-3 h-3" />
+                            </button>
+                          )}
+                        </TableCell>
+                        <TableCell className="px-5 py-4 whitespace-nowrap">
+                          {item.status
+                            ? <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-full text-xs font-medium"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Aktif</span>
+                            : <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 rounded-full text-xs font-medium"><span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Nonaktif</span>
+                          }
+                        </TableCell>
+                        <TableCell className="px-5 py-4 text-right">
+                          <ActionDropdown
+                            onView={() => { setViewingItem(item); setShowRowDetailModal(true); setRowDetailItem(item) }}
+                            onEdit={() => handleOpenModal(item)}
+                            onDelete={() => handleDelete(item.id, item)}
+                            extraItems={[
+                              { label: 'Duplikasi Kisi-kisi', icon: <Copy className="size-4 text-emerald-500" />, onClick: () => handleDuplicate(item.id) },
+                              { label: 'Buat Soal dari Kisi ini', icon: <ChevronRight className="size-4 text-blue-500" />, onClick: () => handleGoToBankSoal(item) },
+                            ]} />
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </TableRoot>
+            </div>
+
+            {/* Modern Emerald Squircle Pagination Footer */}
+            <div className="px-5 py-4 border-t border-emerald-100/60 dark:border-emerald-900/30 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-emerald-950/30 flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Halaman <strong className="text-slate-800 dark:text-slate-200">{pagination.currentPage}</strong> dari <strong className="text-slate-800 dark:text-slate-200">{pagination.lastPage}</strong> ({pagination.total} Data Total)
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={pagination.currentPage <= 1}
+                  onClick={() => fetchData(pagination.currentPage - 1)}
+                  title="Halaman Sebelumnya"
+                  aria-label="Halaman Sebelumnya"
+                  className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
+                >
+                  <ChevronLeft className="size-4 shrink-0 text-white" />
+                </button>
+                <span className="px-2.5 py-1 text-xs font-black text-slate-700 dark:text-slate-300">
+                  {pagination.currentPage} / {pagination.lastPage}
+                </span>
+                <button
+                  type="button"
+                  disabled={pagination.currentPage >= pagination.lastPage}
+                  onClick={() => fetchData(pagination.currentPage + 1)}
+                  title="Halaman Berikutnya"
+                  aria-label="Halaman Berikutnya"
+                  className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
+                >
+                  <ChevronRight className="size-4 shrink-0 text-white" />
+                </button>
+              </div>
+            </div>
+          </MasterDataTable>
+        </section>
 
           {/* Row Detail Modal */}
           {showRowDetailModal && rowDetailItem && (
-            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowRowDetailModal(false)}>
-              <div className="bg-white dark:bg-[#1B2433] rounded-[20px] w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-gradient-to-r from-emerald-50/50 to-transparent dark:from-emerald-950/30">
+            <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setShowRowDetailModal(false)}>
+              <div className="bg-white dark:bg-[#1B2433] rounded-[24px] w-full max-w-lg shadow-2xl shadow-emerald-950/20 border-2 border-emerald-300 dark:border-emerald-700/80 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+                <div className="flex items-start justify-between px-6 py-4 border-b border-emerald-100/60 dark:border-slate-700 bg-gradient-to-r from-emerald-50/60 via-teal-50/30 to-transparent dark:from-emerald-950/30">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5"><FileText className="w-5 h-5" /></div>
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/30 shrink-0 mt-0.5"><FileText className="w-5 h-5 text-white" /></div>
                     <div>
                       <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{rowDetailItem.judul_kisi}</h2>
                       <p className="text-xs text-slate-500 mt-0.5">{rowDetailItem.mata_pelajaran?.name || '-'} · {rowDetailItem.jenis_ujian || '-'}</p>
                     </div>
                   </div>
-                  <button onClick={() => setShowRowDetailModal(false)} className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400"><X className="w-5 h-5" /></button>
+                  <button onClick={() => setShowRowDetailModal(false)} className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 transition cursor-pointer"><X className="w-5 h-5" /></button>
                 </div>
                 <div className="px-6 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
                   <div className="flex flex-wrap gap-2">
@@ -752,72 +1371,133 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
 
           {/* Create/Edit Modal */}
           {showModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-              <div className="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-[24px] shadow-2xl overflow-hidden my-8">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-emerald-100/60 dark:border-slate-700 bg-gradient-to-r from-emerald-50/60 to-transparent dark:from-emerald-950/30">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
+              <div className="relative w-full max-w-2xl bg-white dark:bg-[#1B2433] rounded-[24px] shadow-2xl shadow-emerald-950/20 border-2 border-emerald-300 dark:border-emerald-700/80 overflow-hidden my-8">
+                <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+                <div className="flex items-center justify-between px-6 py-5 border-b border-emerald-100/60 dark:border-slate-700 bg-gradient-to-r from-emerald-50/60 via-teal-50/30 to-transparent dark:from-emerald-950/30">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-700"><FileText className="w-4 h-4" /></div>
-                    <h3 className="text-base font-bold text-slate-800 dark:text-white">{editingItem ? 'Edit Kisi-kisi Ujian' : 'Buat Kisi-kisi Ujian Baru'}</h3>
+                    <div className="size-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/30">
+                      <FileText className="size-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
+                        {editingItem ? 'Edit Kisi-kisi Ujian' : 'Buat Kisi-kisi Ujian Baru'}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {editingItem ? 'Perbarui rincian capaian pembelajaran & sebaran soal' : 'Definisikan kisi-kisi dan distribusi bobot soal ujian'}
+                      </p>
+                    </div>
                   </div>
-                  <button onClick={() => setShowModal(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl transition"><X className="w-5 h-5" /></button>
+                  <button onClick={() => setShowModal(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl transition cursor-pointer">
+                    <X className="size-5" />
+                  </button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
                   <div><label className={labelCls}>Judul Kisi-kisi Ujian *</label>
                     <input type="text" required placeholder="Contoh: Kisi-kisi PTS Gasal Matematika Kelas 8" value={formData.judul_kisi} onChange={(e) => setFormData({ ...formData, judul_kisi: e.target.value })} className={inputCls} /></div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label className={labelCls}>Mata Pelajaran *</label>
-                      <select required value={formData.mata_pelajaran_id} onChange={(e) => handleMataPelajaranChange(e.target.value)} className={inputCls}>
-                        <option value="">-- Pilih Mata Pelajaran --</option>
-                        {options.subjects.length > 0 ? options.subjects.map((s) => <option key={s.id} value={s.id}>{getSubjectLabel(s)}</option>) : <option value="" disabled>Belum ada mapel aktif</option>}
-                      </select></div>
-                    <div><label className={labelCls}>Jenis Ujian *</label>
-                      <select required value={formData.jenis_ujian} onChange={(e) => setFormData({ ...formData, jenis_ujian: e.target.value })} className={inputCls}>
-                        <option value="">-- Pilih Jenis Ujian --</option>
-                        {options.jenis_ujian_options.map((j) => <option key={j.id} value={j.id}>{getJenisFullName(j.id) || j.nama}</option>)}
-                      </select></div>
+                    <HeroUiModalSelect
+                      label="Mata Pelajaran"
+                      required
+                      value={formData.mata_pelajaran_id}
+                      onChange={(val) => handleMataPelajaranChange(val)}
+                      placeholder="-- Pilih Mata Pelajaran --"
+                      icon={BookOpen}
+                      searchable
+                      options={options.subjects.map((s) => ({ value: s.id, label: getSubjectLabel(s) }))}
+                    />
+                    <HeroUiModalSelect
+                      label="Jenis Ujian"
+                      required
+                      value={formData.jenis_ujian}
+                      onChange={(val) => setFormData((p) => ({ ...p, jenis_ujian: val }))}
+                      placeholder="-- Pilih Jenis Ujian --"
+                      icon={Target}
+                      options={
+                        options.jenis_ujian_options.length > 0
+                          ? options.jenis_ujian_options.map((j) => ({ value: j.id, label: getJenisFullName(j.id) || j.nama }))
+                          : [
+                              { value: 'UH', label: getJenisFullName('UH') },
+                              { value: 'PTS', label: getJenisFullName('PTS') },
+                              { value: 'PAS', label: getJenisFullName('PAS') },
+                              { value: 'CBT', label: getJenisFullName('CBT') },
+                              { value: 'Remedial', label: getJenisFullName('Remedial') },
+                            ]
+                      }
+                    />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className={labelCls + ' mb-0'}>Capaian Pembelajaran (CP)</label>
-                        <span className="text-[10px] text-slate-400 font-medium">Opsional</span>
-                      </div>
-                      <select value={formData.cp_id} disabled={!formData.mata_pelajaran_id} onChange={(e) => handleCpChange(e.target.value)} className={`${inputCls} disabled:opacity-50`}>
-                        {!formData.mata_pelajaran_id ? <option value="">Pilih mapel terlebih dahulu</option>
-                          : loadingOptions ? <option value="">Memuat CP...</option>
-                          : options.capaian_pembelajaran.length > 0
-                            ? <>{<option value="">-- Pilih CP (Opsional) --</option>}{options.capaian_pembelajaran.map((cp) => <option key={cp.id} value={cp.id}>{cp.label || (cp.kode_cp ? `[${cp.kode_cp}] ${cp.nama_cp}` : cp.nama_cp)}</option>)}</>
-                            : <option value="">Belum ada master CP untuk mapel ini</option>}
-                      </select>
+                      <HeroUiModalSelect
+                        label="Capaian Pembelajaran (CP)"
+                        value={formData.cp_id}
+                        disabled={!formData.mata_pelajaran_id}
+                        onChange={(val) => handleCpChange(val)}
+                        placeholder={
+                          !formData.mata_pelajaran_id
+                            ? 'Pilih mapel terlebih dahulu'
+                            : loadingOptions
+                            ? 'Memuat CP...'
+                            : options.capaian_pembelajaran.length > 0
+                            ? '-- Pilih CP (Opsional) --'
+                            : 'Belum ada master CP untuk mapel ini'
+                        }
+                        icon={Layers}
+                        searchable
+                        options={options.capaian_pembelajaran.map((cp) => ({
+                          value: cp.id,
+                          label: cp.label || (cp.kode_cp ? `[${cp.kode_cp}] ${cp.nama_cp}` : cp.nama_cp),
+                        }))}
+                      />
                       {formData.mata_pelajaran_id && options.capaian_pembelajaran.length === 0 && !loadingOptions && (
                         <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">Master CP belum tersedia untuk mapel ini. Anda dapat langsung mengisikan indikator kompetensi pada kolom uraian di bawah.</p>
                       )}
                     </div>
                     <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className={labelCls + ' mb-0'}>Tujuan Pembelajaran (TP)</label>
-                        <span className="text-[10px] text-slate-400 font-medium">Opsional</span>
-                      </div>
-                      <select value={formData.tp_id} disabled={!formData.cp_id} onChange={(e) => setFormData({ ...formData, tp_id: e.target.value })} className={`${inputCls} disabled:opacity-50`}>
-                        {!formData.cp_id ? <option value="">Pilih CP terlebih dahulu</option>
-                          : loadingOptions ? <option value="">Memuat TP...</option>
-                          : options.tujuan_pembelajaran.length > 0
-                            ? <>{<option value="">-- Pilih TP (Opsional) --</option>}{options.tujuan_pembelajaran.map((tp) => <option key={tp.id} value={tp.id}>{tp.label || (tp.kode_tp ? `[${tp.kode_tp}] ${tp.nama_tp}` : tp.nama_tp)}</option>)}</>
-                            : <option value="">Belum ada TP untuk CP ini (Opsional)</option>}
-                      </select>
+                      <HeroUiModalSelect
+                        label="Tujuan Pembelajaran (TP)"
+                        value={formData.tp_id}
+                        disabled={!formData.cp_id}
+                        onChange={(val) => setFormData((p) => ({ ...p, tp_id: val }))}
+                        placeholder={
+                          !formData.cp_id
+                            ? 'Pilih CP terlebih dahulu'
+                            : loadingOptions
+                            ? 'Memuat TP...'
+                            : options.tujuan_pembelajaran.length > 0
+                            ? '-- Pilih TP (Opsional) --'
+                            : 'Belum ada TP untuk CP ini (Opsional)'
+                        }
+                        icon={CheckSquare}
+                        searchable
+                        options={options.tujuan_pembelajaran.map((tp) => ({
+                          value: tp.id,
+                          label: tp.label || (tp.kode_tp ? `[${tp.kode_tp}] ${tp.nama_tp}` : tp.nama_tp),
+                        }))}
+                      />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label className={labelCls}>Kelas</label>
-                      <select value={formData.kelas_id} onChange={(e) => setFormData({ ...formData, kelas_id: e.target.value })} className={inputCls}>
-                        <option value="">-- Pilih Kelas --</option>
-                        {options.kelas.map((k) => <option key={k.id} value={k.id}>{k.nama_kelas || k.tingkat || k.nama}</option>)}
-                      </select></div>
-                    <div><label className={labelCls}>Semester</label>
-                      <select value={formData.semester_id} onChange={(e) => setFormData({ ...formData, semester_id: e.target.value })} className={inputCls}>
-                        <option value="">-- Pilih Semester --</option>
-                        {options.semesters.map((s) => <option key={s.id} value={s.id}>{s.name || s.nama || s.nama_semester}</option>)}
-                      </select></div>
+                    <HeroUiModalSelect
+                      label="Kelas"
+                      value={formData.kelas_id}
+                      onChange={(val) => setFormData((p) => ({ ...p, kelas_id: val }))}
+                      placeholder="-- Pilih Kelas --"
+                      options={options.kelas.map((k) => ({
+                        value: k.id,
+                        label: k.nama_kelas || k.tingkat || k.nama,
+                      }))}
+                    />
+                    <HeroUiModalSelect
+                      label="Semester"
+                      value={formData.semester_id}
+                      onChange={(val) => setFormData((p) => ({ ...p, semester_id: val }))}
+                      placeholder="-- Pilih Semester --"
+                      options={options.semesters.map((s) => ({
+                        value: s.id,
+                        label: s.name || s.nama || s.nama_semester,
+                      }))}
+                    />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div><label className={labelCls}>Jumlah Soal Target *</label>
@@ -825,11 +1505,16 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                     <div><label className={labelCls}>Alokasi Waktu (Menit) *</label>
                       <input type="number" required min="5" value={formData.alokasi_waktu_menit} onChange={(e) => setFormData({ ...formData, alokasi_waktu_menit: parseInt(e.target.value) || 0 })} className={inputCls} /></div>
                   </div>
-                  <div><label className={labelCls}>Level Kognitif Bloom</label>
-                    <select value={formData.level_kognitif} onChange={(e) => setFormData({ ...formData, level_kognitif: e.target.value })} className={inputCls}>
-                      <option value="">-- Pilih Level Kognitif --</option>
-                      {options.level_kognitif_options.map((l) => <option key={l.id} value={l.id}>{getKognitifLabel(l.nama || l.id) || l.nama}</option>)}
-                    </select></div>
+                  <HeroUiModalSelect
+                    label="Level Kognitif Bloom"
+                    value={formData.level_kognitif}
+                    onChange={(val) => setFormData((p) => ({ ...p, level_kognitif: val }))}
+                    placeholder="-- Pilih Level Kognitif --"
+                    options={options.level_kognitif_options.map((l) => ({
+                      value: l.id,
+                      label: getKognitifLabel(l.nama || l.id) || l.nama,
+                    }))}
+                  />
                   <div>
                     <label className={labelCls}>Distribusi Bobot Soal <span className="text-slate-400 font-normal normal-case">(Total harus = 100%)</span></label>
                     <div className="grid grid-cols-3 gap-3">
@@ -845,18 +1530,29 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                       ? <div className="mt-2 flex items-center gap-1.5 text-rose-600 dark:text-rose-400"><AlertTriangle className="w-3.5 h-3.5" /><p className="text-xs font-medium">{distribusiError}</p></div>
                       : (() => { const tot = (formData.distribusi_bobot?.pg || 0) + (formData.distribusi_bobot?.isian || 0) + (formData.distribusi_bobot?.esai || 0); return tot > 0 ? <p className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">✓ Total: {tot}% {tot === 100 ? '— Valid' : ''}</p> : <p className="mt-1 text-[10px] text-slate-400">Kosongkan jika tidak ingin mengatur distribusi bobot</p> })()}
                   </div>
-                  <div><label className={labelCls}>Guru Penyusun</label>
+                  <div>
                     {isAdminOrKurikulum ? (
-                      <select value={formData.guru_id} onChange={(e) => setFormData({ ...formData, guru_id: e.target.value })} className={inputCls}>
-                        <option value="">-- Pilih Guru --</option>
-                        {options.guru.map((g) => <option key={g.id} value={g.id}>{g.nama_lengkap || g.name || g.nama}{String(g.id) === String(userEmployeeId) ? ' (Anda)' : ''}</option>)}
-                      </select>
+                      <HeroUiModalSelect
+                        label="Guru Penyusun"
+                        value={formData.guru_id}
+                        onChange={(val) => setFormData((p) => ({ ...p, guru_id: val }))}
+                        placeholder="-- Pilih Guru --"
+                        searchable
+                        options={options.guru.map((g) => ({
+                          value: g.id,
+                          label: `${g.nama_lengkap || g.name || g.nama}${String(g.id) === String(userEmployeeId) ? ' (Anda)' : ''}`,
+                        }))}
+                      />
                     ) : (
-                      <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                        <span className="truncate">{currentTeacherName} (Akun Anda)</span>
+                      <div>
+                        <label className={labelCls}>Guru Penyusun</label>
+                        <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                          <span className="truncate">{currentTeacherName} (Akun Anda)</span>
+                        </div>
                       </div>
-                    )}</div>
+                    )}
+                  </div>
                   <div><label className={labelCls}>Uraian Indikator / Kompetensi Dasar</label>
                     <textarea rows="3" placeholder="Tuliskan materi pokok atau indikator pencapaian..." value={formData.kompetensi_dasar} onChange={(e) => setFormData({ ...formData, kompetensi_dasar: e.target.value })} className={`${inputCls} resize-none`} /></div>
                   <div className="flex items-center gap-3 pt-1">
@@ -891,7 +1587,6 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
             item={deleteModal.item}
             isSubmitting={deleteModal.isSubmitting}
           />
-        </motion.div>
       </div>
     </PageContainer>
   )

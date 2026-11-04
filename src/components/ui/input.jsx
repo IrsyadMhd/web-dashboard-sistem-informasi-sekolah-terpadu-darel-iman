@@ -3,7 +3,18 @@ import PropTypes from 'prop-types'
 import { Input as HeroInput } from '@heroui/react'
 import { cn } from '../../lib/utils'
 
-export const Input = React.forwardRef(({ className, type = 'text', isError = false, ...props }, ref) => {
+import { DatePicker } from './date-picker'
+import { TimePicker } from './time-picker'
+
+export const Input = React.forwardRef(({ className, type = 'text', isError = false, useNative = false, ...props }, ref) => {
+  if (!useNative && type === 'date') {
+    return <DatePicker ref={ref} isError={isError} className={className} {...props} />
+  }
+
+  if (!useNative && type === 'time') {
+    return <TimePicker ref={ref} isError={isError} className={className} {...props} />
+  }
+
   return (
     <HeroInput
       type={type}

@@ -26,39 +26,49 @@ import {
   Check,
   Printer,
   Pencil,
+  Sparkles,
 } from 'lucide-react'
-import { Download1, Upload1 } from '@tailgrids/icons'
+import { Download as Download1, Upload as Upload1 } from 'lucide-react'
 
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppDataTable from '../components/app/AppDataTable'
 import ActionDropdown from '../components/app/ActionDropdown'
-import { MasterStatCard, MasterStatsGrid } from '../components/master-data'
-import { printCleanTable, resolveFoundationName } from '../utils/printHelper'
+import { MasterStatCard, MasterStatsGrid, PrintOptionModal } from '../components/master-data'
+import { printCleanTable, downloadPdfTable, resolveFoundationName } from '../utils/printHelper'
 import { usePengaturanStore } from '../stores/pengaturanStore'
+import { useToast } from '../components/app/ToastProvider'
 
 import { useDaftarPemantauanDivisi, useAksiPemantauanDivisi } from '../hooks/useDashboardPemantauan'
 import PemantauanDivisiFormModal from '../components/pemantauan/PemantauanDivisiFormModal'
 import ImporDivisiModal from '../components/pemantauan/ImporDivisiModal'
 import { useAuthStore } from '../stores/authStore'
-import { getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
+import { getUserRoleLevel, ROLE_LEVELS, isFoundationUser } from '../auth/portalResolver'
+import { SmartScrollFab } from '../components/common'
 import { useUnitStore } from '../stores/unitStore'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { educationUnitService } from '../services/educationUnitService'
 import { divisionService } from '../services/divisionService'
 import useDebounce from '../hooks/useDebounce'
 
-import { AlertDialog } from '@/components/tailgrids/core/alert-dialog'
-import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/tailgrids/core/dialog'
-import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Alert, AlertContent, AlertTitle, AlertDescription } from '@/components/tailgrids/core/alert'
+import { AlertDialog } from '@/components/ui/alert-dialog'
+import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Backdrop, OverlayWrapper } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertContent, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from '@/components/tailgrids/core/hover-card'
+} from '@/components/ui/hover-card'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 
 const STATUS_MAP = {
   proses: { label: 'Dalam Proses', color: 'sky' },
@@ -134,12 +144,16 @@ export default function MonitoringDivisiPage() {
   const [filterUnit, setFilterUnit] = useState('')
 
   // Detail & Action Modal States
+  const toast = useToast()
+  const queryClient = useQueryClient()
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState(null)
   const [isImportOpen, setIsImportOpen] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [localItems, setLocalItems] = useState([])
 
   // Auth & Role Context
@@ -156,16 +170,51 @@ export default function MonitoringDivisiPage() {
   }, [user])
 
   const userLevel = useMemo(() => getUserRoleLevel(user), [user])
+  const isFoundation = useMemo(() => isFoundationUser(user), [user])
+  const canManage = useMemo(() => {
+    if (!user) return false
+    if (isFoundation) return false
+    if (user.is_superadmin) return true
+    return (
+      userLevel <= ROLE_LEVELS.ADMIN ||
+      userLevel === ROLE_LEVELS.DIVISI_PENDIDIKAN ||
+      userLevel === ROLE_LEVELS.KEPALA_SEKOLAH ||
+      userRoles.some((r) => /divisi|bidang[\s_]*pendidikan|pengawasan[\s_]*akademik|kepala[\s_]*sekolah|kepsek/i.test(r))
+    )
+  }, [user, isFoundation, userLevel, userRoles])
+
   const isSuperAdminOrYayasan = useMemo(() => {
     if (!user) return false
     if (user.is_superadmin) return true
-    return userLevel <= ROLE_LEVELS.ADMIN || userLevel === ROLE_LEVELS.PIMPINAN_YAYASAN // Level 1, 2, 5
+    return userLevel <= ROLE_LEVELS.ADMIN || userLevel === ROLE_LEVELS.PIMPINAN_YAYASAN // Level 1, 2
   }, [user, userLevel])
 
-  const isKepalaSekolahOrDivisiPendidikan = useMemo(() => {
+  const isDivisi = useMemo(() => {
+    if (!user) return false
     if (isSuperAdminOrYayasan) return false
-    return userLevel === ROLE_LEVELS.KEPALA_SEKOLAH || userLevel === ROLE_LEVELS.PIMPINAN_YAYASAN // Level 4, 5
-  }, [isSuperAdminOrYayasan, userLevel])
+    return (
+      userLevel === ROLE_LEVELS.DIVISI_PENDIDIKAN ||
+      userRoles.some((r) => /divisi|bidang[\s_]*pendidikan|pengawasan[\s_]*akademik/i.test(r))
+    )
+  }, [user, userLevel, userRoles, isSuperAdminOrYayasan])
+
+  const isKepalaSekolah = useMemo(() => {
+    if (!user) return false
+    if (isSuperAdminOrYayasan || isDivisi) return false
+    return (
+      userLevel === ROLE_LEVELS.KEPALA_SEKOLAH ||
+      userRoles.some((r) => /kepala[\s_]*sekolah|kepsek/i.test(r))
+    )
+  }, [user, userLevel, userRoles, isSuperAdminOrYayasan, isDivisi])
+
+  // Divisi Pendidikan berwenang memonitor di SEMUA UNIT (tidak terkunci pada 1 unit)
+  // Hanya Kepala Sekolah yang unitnya terkunci ke unit masing-masing
+  const isUnitRestricted = isKepalaSekolah
+
+  const isYayasanTarget = (name) => {
+    if (!name) return false
+    return /yayasan|pengurus[\s_]*yayasan|ketua[\s_]*yayasan|sekretaris[\s_]*yayasan|bendahara[\s_]*yayasan|pembina[\s_]*yayasan|pengawas[\s_]*yayasan/i.test(name)
+  }
 
   // React Query Hooks
   const { data: unitsData } = useQuery({
@@ -177,7 +226,6 @@ export default function MonitoringDivisiPage() {
     return Array.isArray(list) ? list : []
   }, [unitsData])
 
-  const isUnitRestricted = isKepalaSekolahOrDivisiPendidikan
   const currentUserUnit =
     user?.education_unit ||
     user?.unit_name ||
@@ -187,10 +235,13 @@ export default function MonitoringDivisiPage() {
     educationUnits[0]?.code ||
     ''
 
-  const { data, isLoading, isError, refetch } = useDaftarPemantauanDivisi({
+  const { data, isLoading, isError, isFetching, refetch } = useDaftarPemantauanDivisi({
     page,
     per_page: perPage,
     search: debouncedSearch || undefined,
+    unit_pendidikan: filterUnit || undefined,
+    nama_divisi: filterDivisi || undefined,
+    status_pemantauan: filterStatus || undefined,
   })
 
   const { data: rawDivisionsData } = useQuery({
@@ -209,18 +260,24 @@ export default function MonitoringDivisiPage() {
     fromApi.forEach((d) => {
       const name = d.name || d.nama || d.code
       if (name && !set.has(name)) {
+        if (isDivisi && isYayasanTarget(name)) {
+          return // Divisi tidak berhak memonitoring pengurus yayasan
+        }
         set.add(name)
         list.push({ id: d.id || name, name })
       }
     })
     rawApiItems.forEach((item) => {
       if (item.nama_divisi && !set.has(item.nama_divisi)) {
+        if (isDivisi && isYayasanTarget(item.nama_divisi)) {
+          return // Divisi tidak berhak memonitoring pengurus yayasan
+        }
         set.add(item.nama_divisi)
         list.push({ id: item.nama_divisi, name: item.nama_divisi })
       }
     })
     return list
-  }, [rawDivisionsData, rawApiItems])
+  }, [rawDivisionsData, rawApiItems, isDivisi])
 
   const combinedItems = useMemo(() => {
     const deletedSet = new Set(localItems.filter((i) => i._deleted).map((i) => i.id))
@@ -235,19 +292,28 @@ export default function MonitoringDivisiPage() {
     const all = [...newLocals, ...fromApi]
 
     return all.map((item) => ({
-      unit_pendidikan: item.unit_pendidikan || (educationUnits[0]?.name || educationUnits[0]?.code || ''),
+      unit_pendidikan: item.unit_pendidikan || item.unit?.name || 'Seluruh Unit / Umum',
       petugas_supervisi: item.petugas_supervisi || '',
       kategori_laporan: item.kategori_laporan || '',
       ...item,
     }))
-  }, [rawApiItems, localItems, educationUnits])
+  }, [rawApiItems, localItems])
 
   // Filter items by Unit scope, Divisi, Status, Search
   const filteredItems = useMemo(() => {
     return combinedItems.filter((item) => {
-      // Unit access filter check (filter when a specific unit filter is chosen)
-      if (filterUnit && item.unit_pendidikan && item.unit_pendidikan !== filterUnit) {
+      // Divisi Pendidikan tidak berhak memonitoring pengurus yayasan
+      if (isDivisi && isYayasanTarget(item.nama_divisi)) {
         return false
+      }
+
+      // Unit access filter check (filter when a specific unit filter is chosen)
+      if (filterUnit) {
+        const u = (item.unit_pendidikan || item.unit?.name || '').toLowerCase()
+        const f = filterUnit.toLowerCase()
+        if (u !== f && !u.includes(f) && !f.includes(u)) {
+          return false
+        }
       }
 
       if (filterDivisi) {
@@ -263,7 +329,7 @@ export default function MonitoringDivisiPage() {
       }
       return true
     })
-  }, [combinedItems, filterUnit, filterDivisi, filterStatus, debouncedSearch])
+  }, [combinedItems, filterUnit, filterDivisi, filterStatus, debouncedSearch, isDivisi])
 
   const pagination = {
     currentPage: page,
@@ -288,48 +354,90 @@ export default function MonitoringDivisiPage() {
     setPage(1)
   }
 
-  // Export CSV Handler
+  // Export CSV Handler with UTF-8 BOM & Blob
   const handleExportCsv = () => {
-    if (filteredItems.length === 0) return
-    const headers = [
-      'ID',
-      'Unit Pendidikan',
-      'Nama Divisi',
-      'Kategori Laporan',
-      'Aspek Pemantauan',
-      'Capaian (%)',
-      'Status Pemantauan',
-      'Tanggal',
-      'Petugas Supervisi',
-      'Catatan',
-    ]
-    const rows = filteredItems.map((item) => [
-      item.id || '',
-      `"${(item.unit_pendidikan || '').replace(/"/g, '""')}"`,
-      `"${(item.nama_divisi || '').replace(/"/g, '""')}"`,
-      `"${(item.kategori_laporan || '').replace(/"/g, '""')}"`,
-      `"${(item.aspek_pemantauan || '').replace(/"/g, '""')}"`,
-      item.persentase_capaian || 0,
-      item.status_pemantauan || '',
-      item.tanggal_pemantauan || '',
-      `"${(item.petugas_supervisi || '').replace(/"/g, '""')}"`,
-      `"${(item.catatan || '').replace(/"/g, '""')}"`,
-    ])
+    if (!filteredItems || filteredItems.length === 0) {
+      toast.warning('Tidak ada data pemantauan untuk diekspor')
+      return
+    }
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `monitoring_divisi_sit_${new Date().toISOString().split('T')[0]}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    try {
+      const headers = [
+        'ID',
+        'Unit Pendidikan',
+        'Nama Divisi',
+        'Kategori Laporan',
+        'Aspek Pemantauan',
+        'Capaian (%)',
+        'Status Pemantauan',
+        'Tanggal',
+        'Petugas Supervisi',
+        'Catatan',
+      ]
+      const rows = filteredItems.map((item) => [
+        item.id || '',
+        `"${(item.unit_pendidikan || '').replace(/"/g, '""')}"`,
+        `"${(item.nama_divisi || '').replace(/"/g, '""')}"`,
+        `"${(item.kategori_laporan || '').replace(/"/g, '""')}"`,
+        `"${(item.aspek_pemantauan || '').replace(/"/g, '""')}"`,
+        item.persentase_capaian || 0,
+        item.status_pemantauan || '',
+        item.tanggal_pemantauan || '',
+        `"${(item.petugas_supervisi || '').replace(/"/g, '""')}"`,
+        `"${(item.catatan || '').replace(/"/g, '""')}"`,
+      ])
+
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', `monitoring_divisi_sit_${new Date().toISOString().split('T')[0]}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      toast.success(`Berhasil mengekspor ${filteredItems.length} data pemantauan (CSV)`)
+    } catch (err) {
+      console.error('Gagal mengekspor data CSV:', err)
+      toast.error('Gagal mengekspor data laporan pemantauan ke CSV')
+    }
   }
 
-  // Print Datatable Handler
-  const handlePrintDatatable = () => {
-    if (!filteredItems || filteredItems.length === 0) return
+  // Refresh Real-Time Data Handler
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['dashboard-pemantauan'] }),
+        queryClient.invalidateQueries({ queryKey: ['pemantauan-divisi'] }),
+        queryClient.invalidateQueries({ queryKey: ['divisions-dropdown-monitoring-divisi'] }),
+        refetch(),
+      ])
+      toast.success('Data pemantauan divisi berhasil disegarkan secara real-time')
+    } catch (err) {
+      console.error('Gagal menyegarkan data:', err)
+      toast.error('Gagal menyegarkan data pemantauan divisi')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  // Print Modal & Export Actions
+  const handleOpenPrintModal = () => {
+    if (!filteredItems || filteredItems.length === 0) {
+      toast.warning('Tidak ada data pemantauan untuk dicetak')
+      return
+    }
+    setIsPrintModalOpen(true)
+  }
+
+  const handlePrintClean = (orientation = 'landscape') => {
+    if (!filteredItems || filteredItems.length === 0) {
+      toast.warning('Tidak ada data pemantauan untuk dicetak')
+      return
+    }
     const rows = filteredItems.map((item, idx) => [
       idx + 1,
       item.unit_pendidikan || '-',
@@ -345,8 +453,37 @@ export default function MonitoringDivisiPage() {
       subtitle: `Agregasi Kinerja ${foundationName} (Total: ${filteredItems.length} Data)`,
       headers: ['No', 'Unit Pendidikan', 'Divisi', 'Aspek Pemantauan', 'Capaian', 'Status', 'Tanggal', 'Supervisor'],
       rows,
-      orientation: 'landscape',
+      orientation,
+      foundationName,
     })
+    setIsPrintModalOpen(false)
+  }
+
+  const handleDownloadPdf = (orientation = 'landscape') => {
+    if (!filteredItems || filteredItems.length === 0) {
+      toast.warning('Tidak ada data pemantauan untuk diunduh')
+      return
+    }
+    const rows = filteredItems.map((item, idx) => [
+      idx + 1,
+      item.unit_pendidikan || '-',
+      item.nama_divisi || '-',
+      item.aspek_pemantauan || '-',
+      `${item.persentase_capaian || 0}%`,
+      item.status_pemantauan || '-',
+      item.tanggal_pemantauan || '-',
+      item.petugas_supervisi || '-',
+    ])
+    downloadPdfTable({
+      title: 'LAPORAN MONITORING & EVALUASI DIVISI',
+      subtitle: `Agregasi Kinerja ${foundationName} (Total: ${filteredItems.length} Data)`,
+      headers: ['No', 'Unit Pendidikan', 'Divisi', 'Aspek Pemantauan', 'Capaian', 'Status', 'Tanggal', 'Supervisor'],
+      rows,
+      orientation,
+      filename: `laporan_monitoring_divisi_${new Date().toISOString().split('T')[0]}.pdf`,
+      foundationName,
+    })
+    setIsPrintModalOpen(false)
   }
 
   // Handle Import Success
@@ -370,21 +507,25 @@ export default function MonitoringDivisiPage() {
 
   // Modal Action Handlers
   const handleOpenCreate = () => {
+    if (!canManage) return
     setSelectedRecord(null)
     setIsFormOpen(true)
   }
 
   const handleOpenEdit = (record) => {
+    if (!canManage) return
     setSelectedRecord(record)
     setIsFormOpen(true)
   }
 
   const handleOpenDelete = (id) => {
+    if (!canManage) return
     setDeleteTargetId(id)
     setIsDeleteOpen(true)
   }
 
   const handleFormSubmit = async (formData) => {
+    if (!canManage) return
     if (selectedRecord?.id) {
       setLocalItems((prev) =>
         prev.map((item) => (item.id === selectedRecord.id ? { ...item, ...formData } : item))
@@ -420,7 +561,7 @@ export default function MonitoringDivisiPage() {
   }
 
   const handleConfirmDelete = async () => {
-    if (!deleteTargetId) return
+    if (!canManage || !deleteTargetId) return
     setLocalItems((prev) => [...prev.filter((i) => i.id !== deleteTargetId), { id: deleteTargetId, _deleted: true }])
     await hapus.mutateAsync(deleteTargetId, {
       onSuccess: () => {
@@ -488,6 +629,12 @@ export default function MonitoringDivisiPage() {
                   <p>
                     <strong className="text-slate-900 dark:text-white">Capaian Target:</strong> {row.persentase_capaian || 0}%
                   </p>
+                  {row.indikator_riil && (
+                    <p>
+                      <strong className="text-slate-900 dark:text-white">Metrik Riil:</strong>{' '}
+                      <span className="font-bold text-blue-600 dark:text-blue-400">{row.indikator_riil}</span>
+                    </p>
+                  )}
                   {row.petugas_supervisi && (
                     <p>
                       <strong className="text-slate-900 dark:text-white">Pengawas:</strong> {row.petugas_supervisi}
@@ -529,11 +676,18 @@ export default function MonitoringDivisiPage() {
           <p className="font-bold text-slate-900 dark:text-slate-100 text-xs leading-snug">
             {row.aspek_pemantauan || '-'}
           </p>
-          {row.kategori_laporan && (
-            <span className="inline-block text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-900/40">
-              {row.kategori_laporan}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {row.kategori_laporan && (
+              <span className="inline-block text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-900/40">
+                {row.kategori_laporan}
+              </span>
+            )}
+            {row.indikator_riil && (
+              <span className="inline-block text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-900/40">
+                {row.indikator_riil}
+              </span>
+            )}
+          </div>
           {row.catatan && <p className="text-[11px] text-slate-400 line-clamp-1 italic max-w-xs">{row.catatan}</p>}
         </div>
       ),
@@ -623,24 +777,28 @@ export default function MonitoringDivisiPage() {
           >
             <FileText className="h-3.5 w-3.5" />
           </button>
-          <button
-            type="button"
-            title="Ubah Data Supervisi"
-            aria-label="Ubah Data Supervisi"
-            onClick={() => handleOpenEdit(row)}
-            className="inline-flex size-8 items-center justify-center rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300 transition-colors cursor-pointer shadow-2xs border border-amber-200/60 dark:border-amber-900/60"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            title="Hapus Data Supervisi"
-            aria-label="Hapus Data Supervisi"
-            onClick={() => handleOpenDelete(row.id)}
-            className="inline-flex size-8 items-center justify-center rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300 transition-colors cursor-pointer shadow-2xs border border-rose-200/60 dark:border-rose-900/60"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          {canManage && (
+            <>
+              <button
+                type="button"
+                title="Ubah Data Supervisi"
+                aria-label="Ubah Data Supervisi"
+                onClick={() => handleOpenEdit(row)}
+                className="inline-flex size-8 items-center justify-center rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300 transition-colors cursor-pointer shadow-2xs border border-amber-200/60 dark:border-amber-900/60"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                title="Hapus Data Supervisi"
+                aria-label="Hapus Data Supervisi"
+                onClick={() => handleOpenDelete(row.id)}
+                className="inline-flex size-8 items-center justify-center rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300 transition-colors cursor-pointer shadow-2xs border border-rose-200/60 dark:border-rose-900/60"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
         </div>
       ),
     },
@@ -649,39 +807,44 @@ export default function MonitoringDivisiPage() {
   // Soft Pastel Squircle Action Buttons (Toolbar Row 1 Header) - Compliant with Capability Lock
   const renderActionButtons = (
     <div className="flex items-center gap-2">
-      {/* Tambah Supervisi Button - Soft Pastel Emerald Squircle */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Tambah Laporan Supervisi Divisi"
-          aria-label="Tambah Laporan Supervisi Divisi"
-          onClick={handleOpenCreate}
-          className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
-        >
-          <Plus className="size-5" />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Tambah Supervisi
-        </div>
-      </div>
+      {canManage && (
+        <>
+          {/* Tambah Supervisi Button - Soft Pastel Emerald Squircle */}
+          <div className="group relative inline-flex">
+            <button
+              type="button"
+              title="Tambah Laporan Supervisi Divisi"
+              aria-label="Tambah Laporan Supervisi Divisi"
+              onClick={handleOpenCreate}
+              className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+            >
+              <Plus className="size-5" />
+            </button>
+            <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+              <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+              Tambah Supervisi
+            </div>
+          </div>
 
-      {/* Impor CSV Button - Soft Pastel Sky Squircle */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Impor Data Laporan Supervisi (CSV)"
-          aria-label="Impor Data Laporan Supervisi (CSV)"
-          onClick={() => setIsImportOpen(true)}
-          className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-700 hover:bg-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
-        >
-          <Upload1 className="size-5" />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Impor CSV
-        </div>
-      </div>
+          {/* Impor CSV Button - Soft Pastel Sky Squircle */}
+          <div className="group relative inline-flex">
+            <button
+              type="button"
+              title="Impor Data Laporan Supervisi (CSV)"
+              aria-label="Impor Data Laporan Supervisi (CSV)"
+              onClick={() => setIsImportOpen(true)}
+              className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-700 hover:bg-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+            >
+              <Upload1 className="size-5" />
+            </button>
+            <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+              <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+              Impor CSV
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Ekspor CSV/Excel Button - Soft Pastel Amber/Orange Squircle */}
       <div className="group relative inline-flex">
         <button
@@ -705,14 +868,15 @@ export default function MonitoringDivisiPage() {
           type="button"
           title="Segarkan Data Real-Time"
           aria-label="Segarkan Data Real-Time"
-          onClick={() => refetch()}
-          className="flex size-10 items-center justify-center rounded-2xl bg-[#EDE9FE] text-[#7C3AED] hover:bg-[#DDD6FE] dark:bg-purple-950/60 dark:text-purple-300 dark:hover:bg-purple-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+          onClick={handleRefresh}
+          disabled={isRefreshing || isFetching}
+          className="flex size-10 items-center justify-center rounded-2xl bg-[#EDE9FE] text-[#7C3AED] hover:bg-[#DDD6FE] dark:bg-purple-950/60 dark:text-purple-300 dark:hover:bg-purple-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          <RefreshCcw className="size-5" />
+          <RefreshCcw className={`size-5 ${isRefreshing || isFetching ? 'animate-spin' : ''}`} />
         </button>
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Segarkan Data Real-Time
+          {isRefreshing || isFetching ? 'Menyegarkan Data...' : 'Segarkan Data Real-Time'}
         </div>
       </div>
 
@@ -720,16 +884,16 @@ export default function MonitoringDivisiPage() {
       <div className="group relative inline-flex">
         <button
           type="button"
-          title="Cetak Data Laporan (Print)"
-          aria-label="Cetak Data Laporan (Print)"
-          onClick={handlePrintDatatable}
+          title="Cetak Data Laporan (Print/PDF)"
+          aria-label="Cetak Data Laporan (Print/PDF)"
+          onClick={handleOpenPrintModal}
           className="flex size-10 items-center justify-center rounded-2xl bg-[#E0E7FF] text-[#4338CA] hover:bg-[#C7D2FE] dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
         >
           <Printer className="size-5" />
         </button>
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Cetak Data (Print)
+          Cetak Data (Print/PDF)
         </div>
       </div>
     </div>
@@ -967,11 +1131,17 @@ export default function MonitoringDivisiPage() {
                   </h1>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
                     <ShieldCheck className="h-3.5 w-3.5" />
-                    {isUnitRestricted ? (currentUserUnit || 'Unit Anda') : (filterUnit || (educationUnits.length > 0 ? `${educationUnits.length} Unit Pendidikan` : 'Seluruh Unit'))}
+                    {isKepalaSekolah
+                      ? (currentUserUnit || 'Unit Anda')
+                      : isDivisi
+                      ? (filterUnit || 'Semua Unit (Kepsek & Guru)')
+                      : (filterUnit || (educationUnits.length > 0 ? `${educationUnits.length} Unit Pendidikan` : 'Seluruh Unit'))}
                   </span>
                 </div>
                 <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
-                  Pemantauan terpadu ketercapaian target divisi operasional di seluruh unit pendidikan.
+                  {isDivisi
+                    ? 'Supervisi dan pemantauan kinerja Kepala Sekolah serta Pegawai & Guru di seluruh unit pendidikan (SD IT, SMP IT, SMA IT, Ponpes).'
+                    : 'Pemantauan terpadu ketercapaian target divisi operasional di seluruh unit pendidikan.'}
                 </p>
               </div>
             </div>
@@ -1014,40 +1184,82 @@ export default function MonitoringDivisiPage() {
           )}
         </motion.div> */}
 
-        {/* Quick Preset Filter Tabs (Populated Dynamically from Database Divisions) */}
-        <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-2 pb-1 overflow-x-auto print:hidden">
-          <button
-            type="button"
-            onClick={() => setFilterDivisi('')}
-            className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer shadow-2xs ${filterDivisi === ''
-                ? 'bg-slate-900 text-white shadow-md dark:bg-slate-100 dark:text-slate-900'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-              }`}
-          >
-            <Layers className="h-4 w-4" />
-            <span>Semua Divisi</span>
-            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px]">{combinedItems.length}</span>
-          </button>
+        {/* Quick Filter Divisi Dropdown Selector (Menggantikan deretan pill panjang agar tampilan rapi & proporsional) */}
+        <motion.div
+          variants={itemVariants}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border-2 border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-3.5 shadow-2xs dark:border-emerald-700/40 dark:bg-slate-900/60 print:hidden"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs shadow-emerald-600/30">
+              <Layers className="size-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-emerald-950 dark:text-emerald-300">
+                  Filter Cepat Divisi
+                </span>
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                  {divisionOptions.length} Divisi Tersedia
+                </span>
+              </div>
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                {filterDivisi ? (
+                  <>
+                    Menampilkan laporan untuk: <strong className="text-emerald-700 dark:text-emerald-300">{filterDivisi}</strong> ({filteredItems.length} data)
+                  </>
+                ) : (
+                  <>Menampilkan seluruh divisi dan unit operasional ({combinedItems.length} total laporan)</>
+                )}
+              </p>
+            </div>
+          </div>
 
-          {divisionOptions.map((div) => {
-            const isSelected = filterDivisi === div.name
-            const count = combinedItems.filter((i) => i.nama_divisi === div.name).length
-            return (
-              <button
-                key={div.id || div.name}
-                type="button"
-                onClick={() => setFilterDivisi(isSelected ? '' : div.name)}
-                className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer shadow-2xs ${isSelected
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                  }`}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-80">
+              <Select
+                value={filterDivisi || ''}
+                onChange={(val) => {
+                  setFilterDivisi(String(val || ''))
+                  setPage(1)
+                }}
               >
-                <Layers className="h-4 w-4 text-emerald-500" />
-                <span>{div.name}</span>
-                {count > 0 && <span className="rounded-full bg-black/10 dark:bg-white/10 px-1.5 py-0.2 text-[10px]">{count}</span>}
+                <SelectTrigger className="w-full h-10 rounded-xl border border-emerald-300/80 bg-white px-3.5 text-xs font-bold text-slate-800 shadow-2xs transition-all hover:border-emerald-500 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-emerald-800/80 dark:bg-slate-900 dark:text-slate-100">
+                  <SelectValue placeholder={`Semua Divisi (${combinedItems.length} Laporan)`} />
+                </SelectTrigger>
+                <SelectContent className="z-50 max-h-72 overflow-y-auto bg-white dark:bg-[#1B2433] border border-emerald-200 dark:border-emerald-800/80 rounded-2xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95">
+                  <SelectItem id="" className="text-xs font-bold py-2 text-emerald-700 dark:text-emerald-400">
+                    Semua Divisi ({combinedItems.length} Laporan)
+                  </SelectItem>
+                  {divisionOptions.map((div) => {
+                    const count = combinedItems.filter((i) => i.nama_divisi === div.name).length
+                    return (
+                      <SelectItem
+                        key={div.id || div.name}
+                        id={div.name}
+                        className="text-xs font-semibold py-2"
+                      >
+                        {div.name} {count > 0 ? `(${count})` : ''}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {filterDivisi && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterDivisi('')
+                  setPage(1)
+                }}
+                className="h-10 px-3.5 rounded-xl border border-rose-300/80 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-bold transition-all duration-150 cursor-pointer shadow-2xs shrink-0 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
+                title="Reset filter divisi"
+              >
+                Reset
               </button>
-            )
-          })}
+            )}
+          </div>
         </motion.div>
 
         {/* KPI Stats Grid Complying with TAILGRIDS_CARD_COMPONENT */}
@@ -1083,7 +1295,7 @@ export default function MonitoringDivisiPage() {
         </motion.div>
 
         {/* AppDataTable complying with TailGrids Benchmark */}
-        <motion.div variants={itemVariants}>
+        <motion.div id="tabel-pemantauan-divisi" className="scroll-mt-6" variants={itemVariants}>
           <AppDataTable
             printableHeader={
               <div className="flex items-end justify-between border-b border-slate-400 pb-1.5 text-slate-900">
@@ -1123,95 +1335,148 @@ export default function MonitoringDivisiPage() {
           />
         </motion.div>
 
-        {/* Detail Modal (Read-only Capability Compliance) */}
-        {isDetailOpen && selectedRecord && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#1B2433] dark:border dark:border-slate-800 space-y-4">
-              <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
-                <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-emerald-600" />
-                  <span>Detail Pemantauan Divisi</span>
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsDetailOpen(false)}
-                  className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+        {/* Detail Modal (Hero UI Specification) */}
+        <AnimatePresence>
+          {isDetailOpen && selectedRecord && (
+            <div
+              role="dialog"
+              tabIndex={-1}
+              aria-modal="true"
+              aria-labelledby="detail-divisi-modal-title"
+              className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setIsDetailOpen(false)
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="font-sans my-auto w-full max-w-lg"
+              >
+                <div className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                  {/* Top Accent Gradient Bar */}
+                  <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
 
-              <div className="space-y-3 rounded-2xl bg-slate-50 dark:bg-slate-900/80 p-4 border border-slate-200/80 dark:border-slate-800">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-slate-900 dark:text-white text-sm">{selectedRecord.nama_divisi}</span>
-                  <Badge color={STATUS_MAP[selectedRecord.status_pemantauan]?.color || 'gray'} size="sm">
-                    {STATUS_MAP[selectedRecord.status_pemantauan]?.label || selectedRecord.status_pemantauan}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
-                  <div>
-                    <span className="text-slate-500 block font-medium">Unit Pendidikan</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{selectedRecord.unit_pendidikan || '-'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block font-medium">Capaian Target</span>
-                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{selectedRecord.persentase_capaian || 0}%</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block font-medium">Petugas Supervisi</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{selectedRecord.petugas_supervisi || '-'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block font-medium">Tanggal Supervisi</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{selectedRecord.tanggal_pemantauan || '-'}</span>
-                  </div>
-                </div>
-                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800">
-                  <span className="text-slate-500 text-xs block font-medium">Aspek & Indikator</span>
-                  <p className="font-bold text-slate-800 dark:text-slate-200 text-xs mt-0.5">{selectedRecord.aspek_pemantauan || '-'}</p>
-                </div>
-                {selectedRecord.catatan && (
-                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800">
-                    <span className="text-slate-500 text-xs block font-medium">Catatan Supervisor</span>
-                    <p className="text-slate-600 dark:text-slate-300 italic text-xs mt-0.5">"{selectedRecord.catatan}"</p>
-                  </div>
-                )}
-              </div>
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/40 shrink-0">
+                        <Building2 className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      </div>
+                      <div>
+                        <h3 id="detail-divisi-modal-title" className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Detail Pemantauan Divisi</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400">
+                            <Sparkles className="size-3" />
+                            Detail Kinerja
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {selectedRecord.nama_divisi} · {selectedRecord.unit_pendidikan}
+                        </p>
+                      </div>
+                    </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <Button
-                  type="button"
-                  variant="danger"
-                  onClick={() => {
-                    const id = selectedRecord.id
-                    setIsDetailOpen(false)
-                    handleOpenDelete(id)
-                  }}
-                >
-                  Hapus
-                </Button>
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="ghost" onClick={() => setIsDetailOpen(false)}>
-                    Tutup
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    onClick={() => {
-                      const rec = selectedRecord
-                      setIsDetailOpen(false)
-                      handleOpenEdit(rec)
-                    }}
-                  >
-                    Ubah Data
-                  </Button>
+                    <button
+                      type="button"
+                      onClick={() => setIsDetailOpen(false)}
+                      aria-label="Tutup detail modal"
+                      className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer"
+                    >
+                      <X className="size-4 text-white" strokeWidth={2.25} />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-sm">
+                    {/* Live Metric Banner Card */}
+                    <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-emerald-500/10 p-4 shadow-xs dark:border-emerald-700/40 dark:bg-slate-900/60">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                            Capaian Kinerja Target
+                          </p>
+                          <p className="text-3xl font-black text-emerald-700 dark:text-emerald-300 mt-1">
+                            {selectedRecord.persentase_capaian || 0}%
+                          </p>
+                          {selectedRecord.indikator_riil && (
+                            <p className="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 mt-1">
+                              {selectedRecord.indikator_riil}
+                            </p>
+                          )}
+                        </div>
+                        <Badge color={STATUS_MAP[selectedRecord.status_pemantauan]?.color || 'gray'} size="md">
+                          {STATUS_MAP[selectedRecord.status_pemantauan]?.label || selectedRecord.status_pemantauan}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                      <div>
+                        <span className="text-slate-500 block font-medium">Unit Pendidikan</span>
+                        <span className="font-extrabold text-slate-800 dark:text-slate-200">{selectedRecord.unit_pendidikan || '-'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block font-medium">Petugas Supervisi</span>
+                        <span className="font-extrabold text-slate-800 dark:text-slate-200">{selectedRecord.petugas_supervisi || '-'}</span>
+                      </div>
+                      <div className="col-span-2 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                        <span className="text-slate-500 block font-medium">Aspek Pemantauan</span>
+                        <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">{selectedRecord.aspek_pemantauan || '-'}</p>
+                      </div>
+                      {selectedRecord.catatan && (
+                        <div className="col-span-2 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                          <span className="text-slate-500 block font-medium">Catatan / Rekomendasi Pengawas</span>
+                          <p className="text-slate-700 dark:text-slate-300 italic mt-0.5 font-medium">"{selectedRecord.catatan}"</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/80 px-6 py-4 dark:border-slate-800 dark:bg-slate-950/80">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const id = selectedRecord.id
+                        setIsDetailOpen(false)
+                        handleOpenDelete(id)
+                      }}
+                      className="px-4 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-extrabold text-xs transition-all shadow-2xs cursor-pointer dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300"
+                    >
+                      Hapus
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsDetailOpen(false)}
+                        className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-extrabold text-xs transition-all shadow-2xs cursor-pointer dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                      >
+                        Tutup
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const rec = selectedRecord
+                          setIsDetailOpen(false)
+                          handleOpenEdit(rec)
+                        }}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500 transition-all cursor-pointer"
+                      >
+                        <Pencil className="size-3.5" />
+                        Ubah Data
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
 
-        {/* Form Modal (Create / Edit) */}
+        {/* Form Modal (Create / Edit - Hero UI) */}
         <PemantauanDivisiFormModal
           isOpen={isFormOpen}
           onClose={() => setIsFormOpen(false)}
@@ -1220,6 +1485,7 @@ export default function MonitoringDivisiPage() {
           isSubmitting={tambah.isPending || ubah.isPending}
           currentUserUnit={currentUserUnit}
           isUnitRestricted={isUnitRestricted}
+          isDivisi={isDivisi}
           unitOptions={educationUnits}
           divisionOptions={divisionOptions}
         />
@@ -1231,40 +1497,123 @@ export default function MonitoringDivisiPage() {
           onImportSuccess={handleImportSuccess}
         />
 
-        {/* Delete Confirmation Alert Dialog */}
-        {isDeleteOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#1B2433] dark:border dark:border-slate-800 space-y-4 animate-[masterModalFadeScale_0.25s_ease-out]">
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                Hapus Data Pemantauan Divisi?
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Data laporan monitoring yang dihapus tidak dapat dipulihkan kembali. Apakah Anda yakin ingin melanjutkan?
-              </p>
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setIsDeleteOpen(false)
-                    setDeleteTargetId(null)
-                  }}
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="button"
-                  variant="danger"
-                  disabled={hapus.isPending}
-                  onClick={handleConfirmDelete}
-                >
-                  {hapus.isPending ? 'Menghapus...' : 'Ya, Hapus Data'}
-                </Button>
-              </div>
+        {/* Cetak / Unduh PDF Option Modal */}
+        <PrintOptionModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          title="Opsi Cetak Pemantauan Divisi"
+          subtitle={`Pilih metode pencetakan atau unduh PDF laporan supervisi (${filteredItems.length} data)`}
+          onPrint={handlePrintClean}
+          onDownloadPdf={handleDownloadPdf}
+          previewHeaders={['No', 'Unit Pendidikan', 'Divisi', 'Aspek Pemantauan', 'Capaian', 'Status', 'Tanggal', 'Supervisor']}
+          previewRows={filteredItems.slice(0, 5).map((item, idx) => [
+            idx + 1,
+            item.unit_pendidikan || '-',
+            item.nama_divisi || '-',
+            item.aspek_pemantauan || '-',
+            `${item.persentase_capaian || 0}%`,
+            item.status_pemantauan || '-',
+            item.tanggal_pemantauan || '-',
+            item.petugas_supervisi || '-',
+          ])}
+        />
+
+        {/* Delete Confirmation Alert Dialog (TailGrids Hero UI Harmonized) */}
+        <AnimatePresence>
+          {isDeleteOpen && (
+            <div
+              role="dialog"
+              tabIndex={-1}
+              aria-modal="true"
+              aria-labelledby="delete-divisi-modal-title"
+              className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget && !hapus.isPending) {
+                  setIsDeleteOpen(false)
+                  setDeleteTargetId(null)
+                }
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="font-sans my-auto w-full max-w-md"
+              >
+                <div className="flex flex-col overflow-hidden rounded-3xl border border-rose-200/80 bg-white shadow-2xl shadow-rose-950/20 dark:border-rose-900/60 dark:bg-[#182232] dark:shadow-black/60">
+                  {/* Top Accent Gradient Bar */}
+                  <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 shrink-0" />
+
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/20 border border-rose-300/40 shrink-0">
+                        <Trash2 className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      </div>
+                      <div>
+                        <h3 id="delete-divisi-modal-title" className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Hapus Laporan Supervisi?</span>
+                        </h3>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-extrabold text-rose-700 border border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-400">
+                          Hapus Permanen
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDeleteOpen(false)
+                        setDeleteTargetId(null)
+                      }}
+                      disabled={hapus.isPending}
+                      aria-label="Batal hapus"
+                      className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <X className="size-4" strokeWidth={2.25} />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-6 space-y-3">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                      Laporan supervisi divisi ini akan dihapus secara permanen dari database. Tindakan ini tidak dapat dipulihkan. Apakah Anda yakin ingin melanjutkan?
+                    </p>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/80 px-6 py-4 dark:border-slate-800 dark:bg-slate-950/80">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDeleteOpen(false)
+                        setDeleteTargetId(null)
+                      }}
+                      disabled={hapus.isPending}
+                      className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-extrabold text-xs transition-all shadow-2xs cursor-pointer dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={hapus.isPending}
+                      onClick={handleConfirmDelete}
+                      className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 text-white font-black text-xs shadow-md shadow-rose-600/25 hover:from-rose-600 hover:to-red-800 transition-all cursor-pointer disabled:opacity-60"
+                    >
+                      <Trash2 className="size-4" />
+                      {hapus.isPending ? 'Menghapus...' : 'Ya, Hapus Data'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
       </motion.div>
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-pemantauan-divisi" downTooltip="Langsung ke Tabel Supervisi" />
     </PageContainer>
   )
 }

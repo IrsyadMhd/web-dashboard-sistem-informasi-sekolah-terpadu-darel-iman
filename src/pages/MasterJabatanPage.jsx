@@ -27,7 +27,7 @@ import {
   FileSpreadsheet,
   FileText,
 } from 'lucide-react'
-import { Download1, Upload1, Plus } from '@tailgrids/icons'
+import { Download as Download1, Upload as Upload1, Plus } from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -54,16 +54,17 @@ import AppBadge from '../components/app/AppBadge'
 import { MasterStatusBadge, PrintOptionModal } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { downloadFileFromApi } from '../utils/exportUtils'
-import { Button } from '@/components/tailgrids/core/button'
-import { Checkbox } from '@/components/tailgrids/core/checkbox'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from '@/components/tailgrids/core/hover-card'
+} from '@/components/ui/hover-card'
 import { useAuthStore } from '../stores/authStore'
 import { usePengaturanStore } from '../stores/pengaturanStore'
-import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
+import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS, isFoundationUser } from '../auth/portalResolver'
+import { SmartScrollFab } from '../components/common'
 import { useDebounce } from '../hooks/useDebounce'
 import { cn } from '../lib/utils'
 
@@ -180,10 +181,11 @@ export default function MasterJabatanPage() {
   const sitePengaturan = usePengaturanStore((state) => state.pengaturan)
   const roles = user?.roles || (user?.role ? [user.role] : [])
   const userLevel = getUserRoleLevel(user)
+  const isFoundation = isFoundationUser(user)
   const isKepalaSekolah = userLevel === ROLE_LEVELS.KEPALA_SEKOLAH // Level 4
-  const canManageGlobalPositions = userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
-  const canManageUnitPositions = userLevel === ROLE_LEVELS.OPERATOR || userLevel === ROLE_LEVELS.KEPALA_SEKOLAH // Level 3-4: Operator & Kepsek/Divisi
-  const canEditPosition = userLevel <= ROLE_LEVELS.KEPALA_SEKOLAH // Level 1 s/d 4
+  const canManageGlobalPositions = !isFoundation && userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem Murni (Bukan Yayasan)
+  const canManageUnitPositions = !isFoundation && (userLevel === ROLE_LEVELS.OPERATOR || userLevel === ROLE_LEVELS.KEPALA_SEKOLAH) // Level 3-4: Operator & Kepsek/Divisi
+  const canEditPosition = !isFoundation && userLevel <= ROLE_LEVELS.KEPALA_SEKOLAH // Level 1 s/d 4 (Bukan Yayasan)
 
   const isPengurusYayasanRow = (row) => {
     if (!row) return false
@@ -1058,7 +1060,7 @@ export default function MasterJabatanPage() {
         </motion.div>
 
         {/* ── Canonical Emerald Datatable Container ─────────────────────────── */}
-        <motion.div variants={itemVariants}>
+        <motion.div variants={itemVariants} id="tabel-master-jabatan" className="scroll-mt-6">
           <AppDataTable
             title="Data Jabatan"
             description="Daftar jabatan sesuai pencarian, cakupan unit, dan filter yang dipilih."
@@ -2095,6 +2097,8 @@ export default function MasterJabatanPage() {
         )}
       </AnimatePresence>
 
+      {/* Smart Floating Scroll Navigator (Opsi A) */}
+      <SmartScrollFab targetId="tabel-master-jabatan" downTooltip="Langsung ke Tabel Jabatan" />
     </PageContainer>
   )
 }

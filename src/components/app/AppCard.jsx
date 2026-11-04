@@ -19,10 +19,12 @@ export default function AppCard({
   noPadding = false,
   className = '',
   contentClassName = '',
+  id,
   children,
+  ...props
 }) {
   return (
-    <Card className={cn('shadow-xs dark:bg-[#1B2433] dark:border-slate-800', className)}>
+    <Card id={id} className={cn('shadow-xs dark:bg-[#1B2433] dark:border-slate-800', className)} {...props}>
       {(title || actions || Icon) && (
         <CardHeader className="flex flex-row items-center justify-between gap-3 p-4 md:p-5">
           <div className="flex min-w-0 items-center gap-3">

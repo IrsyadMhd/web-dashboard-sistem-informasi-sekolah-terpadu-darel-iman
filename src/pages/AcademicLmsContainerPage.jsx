@@ -26,6 +26,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import AcademicModuleContainer from '../components/akademik/AcademicModuleContainer'
+import { HeroUiPageFallback } from '../components/common'
 import { useAuthStore } from '../stores/authStore'
 
 const MasterTahunAjaranPage = lazy(() => import('./MasterTahunAjaranPage'))
@@ -392,10 +393,10 @@ export default function AcademicLmsContainerPage({ section }) {
     >
       <Suspense
         fallback={
-          <div className="flex flex-col items-center justify-center p-12 text-slate-500 dark:text-slate-400 space-y-3">
-            <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-sm font-medium">Memuat modul {selected.label}...</p>
-          </div>
+          <HeroUiPageFallback
+            title={`Menyiapkan Modul ${selected?.label || 'Akademik'}...`}
+            message="Sedang memuat data kurikulum, materi, dan penugasan akademik."
+          />
         }
       >
         <ActivePage

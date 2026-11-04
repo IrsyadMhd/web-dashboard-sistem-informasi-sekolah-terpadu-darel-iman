@@ -27,6 +27,7 @@ import { Skeleton } from '../../components/ui/skeleton'
 import { EmptyState } from '../../components/ui/empty-state'
 import AppTabs from '../../components/app/AppTabs'
 import { useToast } from '../../components/app'
+import { SmartScrollFab } from '../../components/common'
 
 const TAB_CATEGORIES = [
   { key: 'all', label: 'Semua' },
@@ -286,7 +287,7 @@ export function FoundationNotificationsPage() {
       </div>
 
       {/* 4. Notification Cards List */}
-      <div className="bg-white dark:bg-[#13221f] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div id="daftar-notifikasi-yayasan" className="bg-white dark:bg-[#13221f] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden scroll-mt-6">
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-black text-slate-800 dark:text-white">Daftar Pemberitahuan</h3>
@@ -395,7 +396,8 @@ export function FoundationNotificationsPage() {
         </div>
       </div>
 
-
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="daftar-notifikasi-yayasan" downTooltip="Langsung ke Notifikasi" />
     </div>
   )
 }

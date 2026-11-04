@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS, ROLES } from '../auth/portalResolver'
 import {
   School,
   Users,
@@ -33,6 +34,7 @@ import {
   Upload,
   Eye,
   RefreshCcw,
+  Lock,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { kelasService } from '../services/kelasService'
@@ -55,7 +57,15 @@ import {
 } from '../components/ui/dialog'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
+import { TableRoot, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table'
 import PersonAvatar from '../components/ui/PersonAvatar'
+import {
+  Select as HeroSelect,
+  SelectTrigger as HeroSelectTrigger,
+  SelectValue as HeroSelectValue,
+  SelectContent as HeroSelectContent,
+  SelectItem as HeroSelectItem,
+} from '../components/ui/select'
 
 
 
@@ -256,6 +266,158 @@ const itemVariants = {
   },
 }
 
+// ── HEROUI FILTER SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'w-full',
+  searchable = false,
+  ariaLabel = '',
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+      (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  const hasValue = value !== '' && value !== 'semua' && value !== 'all' && value !== undefined && value !== null
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`h-9 sm:h-10 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+          isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+            : hasValue
+            ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
+            : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} min-w-[200px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div className="truncate">{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export default function MasterKelasPage({ embedded = false, hidePageHeader = false, hideBreadcrumb = false }) {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
@@ -263,18 +425,29 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
   // Global Toast
   const { pushToast } = useToast()
 
-  // Role Access Check for Unit Pendidikan Filter
-  const canSeeUnitFilter = useMemo(() => {
-    if (!user) return false
-    const userRoles = Array.isArray(user.roles)
-      ? user.roles.map((r) => (typeof r === 'string' ? r : r.name || ''))
-      : typeof user.role === 'string'
-        ? [user.role]
-        : []
-    const normalized = userRoles.map((r) => String(r).toLowerCase().replace(/[\s_-]+/g, ''))
-    const allowedRoles = ['superadmin', 'admin', 'yayasan', 'ketuayayasan', 'pengurusyayasan', 'sekretarisyayasan', 'bendaharayayasan']
-    return normalized.some((r) => allowedRoles.includes(r))
+  // Role Access Detection & Resolution (SSOT)
+  const userRoles = useMemo(() => {
+    if (!user) return []
+    if (Array.isArray(user.roles)) return user.roles.map((r) => (typeof r === 'string' ? r : r.name || ''))
+    if (user.role) return [typeof user.role === 'string' ? user.role : user.role.name || '']
+    return []
   }, [user])
+  const userLevel = useMemo(() => getUserRoleLevel(user), [user])
+  const isSuperAdminOrYayasan = userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
+
+  // Deteksi role Divisi Pendidikan (akses supervisi lintas unit)
+  const isDivisiPendidikan = useMemo(() => {
+    if (isSuperAdminOrYayasan) return false
+    return (
+      userLevel === ROLE_LEVELS.DIVISI_PENDIDIKAN ||
+      hasAnyRole(userRoles, ROLES.DIVISI) ||
+      userRoles.some((r) => /divisi|bidang[\s_]*pendidikan|pengawasan[\s_]*akademik/i.test(r))
+    )
+  }, [userLevel, userRoles, isSuperAdminOrYayasan])
+
+  // Role Access Check for Unit Pendidikan Filter (Super Admin, Admin, Yayasan, dan Divisi Pendidikan)
+  const canSeeUnitFilter = isSuperAdminOrYayasan || isDivisiPendidikan
+  const canSelectUnit = canSeeUnitFilter
 
   // Role Access Check for Managing Students (Pindah Kelas) for Kepala Sekolah, Admin, Superadmin, etc.
   const canManageSiswaKelas = useMemo(() => {
@@ -330,15 +503,33 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
 
   const canImport = canCreate
 
-  // State Filter & Search
+  const userUnitId = useMemo(() => {
+    return (
+      user?.unit_id ||
+      user?.education_unit_id ||
+      user?.employee?.unit_id ||
+      user?.metadata?.education_unit_id ||
+      user?.metadata?.unit_id ||
+      ''
+    )
+  }, [user])
+
+  // State Filter & Search (Bila bukan global user, otomatis terkunci ke unit pengguna)
   const [search, setSearch] = useState('')
-  const [selectedUnitFilter, setSelectedUnitFilter] = useState('')
+  const [selectedUnitFilter, setSelectedUnitFilter] = useState(() => (!canSeeUnitFilter && userUnitId ? String(userUnitId) : ''))
   const [selectedTahunFilter, setSelectedTahunFilter] = useState('')
   const [selectedSemesterFilter, setSelectedSemesterFilter] = useState('')
   const [selectedKelasFilter, setSelectedKelasFilter] = useState('')
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('')
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
+
+  // Otomatis kunci unit filter jika bukan global user
+  useEffect(() => {
+    if (!canSeeUnitFilter && userUnitId && selectedUnitFilter !== String(userUnitId)) {
+      setSelectedUnitFilter(String(userUnitId))
+    }
+  }, [canSeeUnitFilter, userUnitId, selectedUnitFilter])
 
   // Modal Form State Wizard
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
@@ -374,6 +565,11 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
   })
 
   const masterUnits = optionsData?.units || EMPTY_OPTIONS
+  const selectedUnitName = useMemo(() => {
+    if (!selectedUnitFilter) return ''
+    const found = masterUnits.find((u) => String(u.id ?? u.unit_id) === String(selectedUnitFilter))
+    return found?.name ?? found?.nama ?? found?.nama_unit ?? user?.unit_name ?? ''
+  }, [masterUnits, selectedUnitFilter, user])
   const masterTahunAjaran = optionsData?.tahun_ajaran || EMPTY_OPTIONS
   const masterSemesters = optionsData?.semesters || EMPTY_OPTIONS
   const masterEmployees = optionsData?.employees || optionsData?.guru || EMPTY_OPTIONS
@@ -418,20 +614,43 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
     total_kapasitas: 0,
   }
 
-  // Generate Master Kelas Options for Dropdown Filter
+  // Generate Master Kelas Options for Dropdown Filter (Cascading turunan dari unit pendidikan)
   const masterKelasOptions = useMemo(() => {
     const list = []
     const seen = new Set()
     const all = [...(optionsData?.kelas || []), ...(rawList || [])]
+    const filterUnit = selectedUnitFilter ? String(selectedUnitFilter).toLowerCase().trim() : ''
+
     all.forEach((k) => {
+      const kUnitId = String(k.unit_pendidikan_id || k.unit_id || k.education_unit_id || '').toLowerCase().trim()
+      if (filterUnit && kUnitId && kUnitId !== filterUnit) {
+        return
+      }
       const name = k.nama_kelas || k.name
       if (name && !seen.has(name)) {
         seen.add(name)
-        list.push({ id: k.id, nama_kelas: name, kode_kelas: k.kode_kelas || '' })
+        list.push({
+          id: k.id,
+          nama_kelas: name,
+          kode_kelas: k.kode_kelas || '',
+          unit_id: k.unit_pendidikan_id || k.unit_id || '',
+        })
       }
     })
     return list.sort((a, b) => a.nama_kelas.localeCompare(b.nama_kelas))
-  }, [optionsData?.kelas, rawList])
+  }, [optionsData?.kelas, rawList, selectedUnitFilter])
+
+  // Auto-reset filter kelas jika unit pendidikan berganti dan kelas aktif tidak terdapat di unit baru
+  useEffect(() => {
+    if (selectedKelasFilter && masterKelasOptions.length > 0) {
+      const exists = masterKelasOptions.some(
+        (k) => String(k.nama_kelas) === String(selectedKelasFilter) || String(k.id) === String(selectedKelasFilter)
+      )
+      if (!exists) {
+        setSelectedKelasFilter('')
+      }
+    }
+  }, [masterKelasOptions, selectedKelasFilter])
 
   // Destination Classes for Pindah Kelas (Restricted to the SAME tingkat e.g. Tingkat 1 -> Tingkat 1)
   const destinationClasses = useMemo(() => {
@@ -739,7 +958,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
 
   const resetFilters = () => {
     setSearch('')
-    setSelectedUnitFilter('')
+    setSelectedUnitFilter(!canSeeUnitFilter && userUnitId ? String(userUnitId) : '')
     setSelectedTahunFilter('')
     setSelectedSemesterFilter('')
     setSelectedKelasFilter('')
@@ -1247,21 +1466,21 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                         </p>
                       </div>
                       <div className="max-h-44 overflow-auto rounded-2xl border border-emerald-200/80 bg-white shadow-2xs dark:border-emerald-900/50 dark:bg-[#182232]">
-                        <table className="w-full text-left text-[11px]">
-                          <thead className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 font-bold text-slate-700 dark:text-slate-200">
-                            <tr>
+                        <TableRoot className="w-full text-left text-[11px]">
+                          <TableHeader className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 font-bold text-slate-700 dark:text-slate-200">
+                            <TableRow>
                               {['Kode', 'Nama Kelas', 'Tingkat', 'Status'].map(h => (
-                                <th key={h} className="px-3 py-2.5">{h}</th>
+                                <TableHead key={h} className="px-3 py-2.5">{h}</TableHead>
                               ))}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                             {importPreviewData.map((r, i) => (
-                              <tr key={i} className="hover:bg-emerald-50/30 dark:hover:bg-slate-800/40 transition-colors">
-                                <td className="px-3 py-2 font-mono font-semibold text-slate-700 dark:text-slate-300">{r.kode}</td>
-                                <td className="px-3 py-2 font-medium text-slate-900 dark:text-white">{r.nama}</td>
-                                <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{r.tingkat}</td>
-                                <td className="px-3 py-2">
+                              <TableRow key={i} className="hover:bg-emerald-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                                <TableCell className="px-3 py-2 font-mono font-semibold text-slate-700 dark:text-slate-300">{r.kode}</TableCell>
+                                <TableCell className="px-3 py-2 font-medium text-slate-900 dark:text-white">{r.nama}</TableCell>
+                                <TableCell className="px-3 py-2 text-slate-600 dark:text-slate-300">{r.tingkat}</TableCell>
+                                <TableCell className="px-3 py-2">
                                   <span className={cn(
                                     "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold",
                                     r.status === 'Valid' || r.status === 'Siap Impor'
@@ -1270,11 +1489,11 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                                   )}>
                                     {r.status}
                                   </span>
-                                </td>
-                              </tr>
+                                </TableCell>
+                              </TableRow>
                             ))}
-                          </tbody>
-                        </table>
+                          </TableBody>
+                        </TableRoot>
                       </div>
                     </div>
                   )}
@@ -1556,7 +1775,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                     </h1>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
                       <ShieldCheck className="h-3.5 w-3.5" />
-                      Manajemen Rombel
+                      {isDivisiPendidikan ? 'Supervisi Divisi Pendidikan' : 'Manajemen Rombel'}
                     </span>
                   </div>
                   <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
@@ -1574,6 +1793,84 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
             </div>
           </motion.div>
         )}
+
+        {/* ── Unit Performance & KPI Scope Bar (Hero UI Component) ── */}
+        <motion.div
+          variants={itemVariants}
+          className="relative overflow-visible z-20 rounded-[22px] border border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-5 shadow-sm"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/20 shrink-0 border border-emerald-300/40">
+                <Building2 className="size-5" />
+              </div>
+              <div>
+                <p className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  Cakupan Data & KPI Rombongan Belajar
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/60">
+                    {canSeeUnitFilter ? (selectedUnitName ? `Unit: ${selectedUnitName}` : 'Semua Unit') : 'Unit Terkunci'}
+                  </span>
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {canSeeUnitFilter
+                    ? `Pilih unit pendidikan untuk melihat total kelas & KPI rombel unit spesifik, atau pilih "Semua Unit" untuk melihat seluruh unit${isDivisiPendidikan ? ' (Supervisi Divisi Pendidikan)' : ''}.`
+                    : `Menampilkan total rombel, keaktifan kelas, dan KPI khusus untuk unit ${selectedUnitName || user?.unit_name || 'sekolah Anda'}.`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              {canSeeUnitFilter ? (
+                <div className="relative min-w-[260px] sm:w-72">
+                  <HeroUiFilterSelect
+                    value={selectedUnitFilter || ''}
+                    onChange={(val) => {
+                      setSelectedUnitFilter(String(val || ''))
+                      setSelectedKelasFilter('')
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: '', label: 'Semua Unit Pendidikan' },
+                      ...masterUnits.map((u, idx) => {
+                        const val = String(u.id ?? u.unit_id ?? `unit-${idx}`)
+                        const label = u.name ?? u.nama ?? u.nama_unit ?? val
+                        return {
+                          value: val,
+                          label: label,
+                          subtext: u.code || u.kode_unit ? `Kode: ${u.code || u.kode_unit}` : undefined,
+                        }
+                      }),
+                    ]}
+                    placeholder="Semua Unit Pendidikan"
+                    icon={Building2}
+                    searchable={masterUnits.length > 5}
+                    ariaLabel="Filter Unit Scope"
+                  />
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/80 bg-emerald-50/80 px-3.5 py-2 text-xs font-bold text-emerald-900 shadow-2xs dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  <Lock className="size-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>Unit: {selectedUnitName || user?.unit_name || 'Unit Sekolah Anda'}</span>
+                </div>
+              )}
+
+              {canSeeUnitFilter && selectedUnitFilter && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedUnitFilter('')
+                    setSelectedKelasFilter('')
+                    setPage(1)
+                  }}
+                  title="Reset Filter Unit ke Semua Unit"
+                  className="px-3 py-2 text-xs font-bold text-slate-600 hover:text-emerald-700 hover:bg-emerald-100/50 dark:text-slate-400 dark:hover:text-emerald-300 rounded-xl transition cursor-pointer"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+        </motion.div>
 
         {/* ── 4-Kartu Ringkasan KPI Multi-Tone ── */}
         <motion.div variants={itemVariants}>
@@ -1627,97 +1924,141 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
             searchPlaceholder="Cari kode kelas, nama kelas, atau nama wali kelas..."
             filters={
               <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
-                {/* Filter Unit Pendidikan - Only for Superadmin, Admin & Pengurus Yayasan */}
+                {/* Filter Unit Pendidikan - Superadmin, Admin, Pengurus Yayasan, Divisi Pendidikan */}
                 {canSeeUnitFilter && (
-                  <div className="relative w-full sm:w-auto">
-                    <select
-                      aria-label="Filter unit pendidikan"
+                  <div className="w-full sm:w-56">
+                    <HeroUiFilterSelect
+                      ariaLabel="Filter unit pendidikan"
                       value={selectedUnitFilter}
-                      onChange={(e) => { setSelectedUnitFilter(e.target.value); setPage(1) }}
-                      className="w-full sm:w-auto min-w-[140px] h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                    >
-                      <option value="">Semua Unit Pendidikan</option>
-                      {masterUnits.map((u) => (<option key={u.id} value={u.id}>{u.name}</option>))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                      onChange={(val) => {
+                        setSelectedUnitFilter(String(val || ''))
+                        setSelectedKelasFilter('')
+                        setPage(1)
+                      }}
+                      options={[
+                        { value: '', label: 'Semua Unit Pendidikan' },
+                        ...masterUnits.map((u, idx) => ({
+                          value: String(u.id ?? u.unit_id ?? `unit-${idx}`),
+                          label: u.name ?? u.nama ?? u.nama_unit,
+                          subtext: u.code ? `Kode: ${u.code}` : undefined,
+                        })),
+                      ]}
+                      placeholder="Semua Unit Pendidikan"
+                      icon={Building2}
+                      searchable={masterUnits.length > 5}
+                    />
                   </div>
                 )}
 
                 {/* Filter Tahun Ajaran */}
-                <div className="relative w-full sm:w-auto">
-                  <select
-                    aria-label="Filter tahun ajaran"
+                <div className="w-full sm:w-52">
+                  <HeroUiFilterSelect
+                    ariaLabel="Filter tahun ajaran"
                     value={selectedTahunFilter}
-                    onChange={(e) => { setSelectedTahunFilter(e.target.value); setSelectedSemesterFilter(''); setPage(1) }}
-                    className="w-full sm:w-auto min-w-[140px] h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Tahun Ajaran</option>
-                    {masterTahunAjaran.map((tahun) => (<option key={tahun.id} value={tahun.id}>{tahun.name}</option>))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    onChange={(val) => {
+                      setSelectedTahunFilter(String(val || ''))
+                      setSelectedSemesterFilter('')
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: '', label: 'Semua Tahun Ajaran' },
+                      ...masterTahunAjaran.map((tahun) => ({
+                        value: String(tahun.id),
+                        label: tahun.name,
+                        subtext: tahun.is_active ? 'Aktif' : undefined,
+                      })),
+                    ]}
+                    placeholder="Semua Tahun Ajaran"
+                    icon={Calendar}
+                    searchable={masterTahunAjaran.length > 5}
+                  />
                 </div>
 
                 {/* Filter Semester */}
-                <div className="relative w-full sm:w-auto">
-                  <select
-                    aria-label="Filter semester"
+                <div className="w-full sm:w-44">
+                  <HeroUiFilterSelect
+                    ariaLabel="Filter semester"
                     value={selectedSemesterFilter}
-                    onChange={(e) => { setSelectedSemesterFilter(e.target.value); setPage(1) }}
-                    className="w-full sm:w-auto min-w-[140px] h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Semester</option>
-                    {masterSemesters
-                      .filter((semester) => !selectedTahunFilter || semester.academic_year_id === selectedTahunFilter)
-                      .map((semester) => (<option key={semester.id} value={semester.id}>{semester.name}</option>))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    onChange={(val) => {
+                      setSelectedSemesterFilter(String(val || ''))
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: '', label: 'Semua Semester' },
+                      ...masterSemesters
+                        .filter((semester) => !selectedTahunFilter || semester.academic_year_id === selectedTahunFilter)
+                        .map((semester) => ({
+                          value: String(semester.id),
+                          label: semester.name,
+                        })),
+                    ]}
+                    placeholder="Semua Semester"
+                    icon={Calendar}
+                  />
                 </div>
 
                 {/* Filter Kelas Rombel */}
-                <div className="relative w-full sm:w-auto">
-                  <select
-                    aria-label="Filter kelas"
+                <div className="w-full sm:w-52">
+                  <HeroUiFilterSelect
+                    ariaLabel="Filter kelas"
                     value={selectedKelasFilter}
-                    onChange={(e) => { setSelectedKelasFilter(e.target.value); setPage(1) }}
-                    className="w-full sm:w-auto min-w-[140px] h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Kelas</option>
-                    {masterKelasOptions.map((k) => (<option key={k.id || k.nama_kelas} value={k.nama_kelas}>{k.nama_kelas} ({k.kode_kelas})</option>))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    onChange={(val) => {
+                      setSelectedKelasFilter(String(val || ''))
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: '', label: 'Semua Kelas' },
+                      ...masterKelasOptions.map((k) => ({
+                        value: String(k.nama_kelas),
+                        label: k.nama_kelas,
+                        subtext: k.kode_kelas ? `Kode: ${k.kode_kelas}` : undefined,
+                      })),
+                    ]}
+                    placeholder="Semua Kelas"
+                    icon={School}
+                    searchable={masterKelasOptions.length > 5}
+                  />
                 </div>
 
                 {/* Filter Status */}
-                <div className="relative w-full sm:w-auto">
-                  <select
-                    aria-label="Filter status"
+                <div className="w-full sm:w-40">
+                  <HeroUiFilterSelect
+                    ariaLabel="Filter status"
                     value={selectedStatusFilter}
-                    onChange={(e) => { setSelectedStatusFilter(e.target.value); setPage(1) }}
-                    className="w-full sm:w-auto min-w-[140px] h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Status</option>
-                    <option value="Aktif">Aktif</option>
-                    <option value="Tidak Aktif">Tidak Aktif</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    onChange={(val) => {
+                      setSelectedStatusFilter(String(val || ''))
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: '', label: 'Semua Status' },
+                      { value: 'Aktif', label: 'Aktif' },
+                      { value: 'Tidak Aktif', label: 'Tidak Aktif' },
+                    ]}
+                    placeholder="Semua Status"
+                    icon={CheckCircle2}
+                  />
                 </div>
 
                 {/* Filter Per Page */}
-                <div className="relative w-full sm:w-auto">
-                  <select
-                    aria-label="Tampilkan per halaman"
+                <div className="w-full sm:w-36">
+                  <HeroUiFilterSelect
+                    ariaLabel="Tampilkan per halaman"
                     value={perPage}
-                    onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1) }}
-                    className="w-full sm:w-auto min-w-[140px] h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value={5}>5 per hal</option>
-                    <option value={10}>10 per hal</option>
-                    <option value={15}>15 per hal</option>
-                    <option value={25}>25 per hal</option>
-                    <option value={50}>50 per hal</option>
-                    <option value={100}>100 per hal</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    onChange={(val) => {
+                      setPerPage(Number(val))
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: 5, label: '5 per hal' },
+                      { value: 10, label: '10 per hal' },
+                      { value: 15, label: '15 per hal' },
+                      { value: 25, label: '25 per hal' },
+                      { value: 50, label: '50 per hal' },
+                      { value: 100, label: '100 per hal' },
+                    ]}
+                    placeholder="10 per hal"
+                    icon={Hash}
+                  />
                 </div>
 
                 {/* Reset Filter Button */}
@@ -1728,10 +2069,10 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                     size="xs"
                     onPress={resetFilters}
                     onClick={resetFilters}
-                    className="w-full sm:w-auto sm:ml-auto justify-center h-10 px-3 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/30 flex items-center gap-1.5 cursor-pointer"
+                    className="w-full sm:w-auto sm:ml-auto justify-center h-9 sm:h-10 px-3 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/30 flex items-center gap-1.5 cursor-pointer"
                   >
                     <RefreshCcw className="size-3.5" />
-                    <span>Reset</span>
+                    <span>Reset Filter</span>
                   </Button>
                 )}
               </div>
@@ -1753,46 +2094,46 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
             itemsPerPage={perPage}
             onPageChange={setPage}
             renderTable={() => (
-              <table className="w-full text-left border-collapse" aria-label="Daftar kelas dan rombongan belajar">
-                <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-                  <tr className="hover:bg-transparent border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent">
-                    <th className="py-3.5 px-4 w-12 text-center bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">NO</th>
-                    <th className="py-3.5 px-4 w-14 text-center bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">LOGO</th>
-                    <th className="py-3.5 px-4 bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">KODE & KELAS</th>
-                    <th className="py-3.5 px-4 bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">JENJANG / TINGKAT</th>
-                    <th className="py-3.5 px-4 bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">UNIT PENDIDIKAN</th>
-                    <th className="py-3.5 px-4 bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">WALI KELAS</th>
-                    <th className="py-3.5 px-4 bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">KAPASITAS & RUANGAN</th>
-                    <th className="py-3.5 px-4 text-center bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">STATUS</th>
-                    <th className="py-3.5 px-4 text-center w-36 bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">AKSI</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-xs font-medium">
+              <TableRoot className="w-full text-left border-collapse" aria-label="Daftar kelas dan rombongan belajar">
+                <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                  <TableRow className="hover:bg-transparent border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent">
+                    <TableHead className="py-3.5 px-4 w-12 text-center bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">NO</TableHead>
+                    <TableHead className="py-3.5 px-4 w-14 text-center bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">LOGO</TableHead>
+                    <TableHead className="py-3.5 px-4 bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">KODE & KELAS</TableHead>
+                    <TableHead className="py-3.5 px-4 bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">JENJANG / TINGKAT</TableHead>
+                    <TableHead className="py-3.5 px-4 bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">UNIT PENDIDIKAN</TableHead>
+                    <TableHead className="py-3.5 px-4 bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">WALI KELAS</TableHead>
+                    <TableHead className="py-3.5 px-4 bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">KAPASITAS & RUANGAN</TableHead>
+                    <TableHead className="py-3.5 px-4 text-center bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">STATUS</TableHead>
+                    <TableHead className="py-3.5 px-4 text-center w-36 bg-transparent text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">AKSI</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-xs font-medium">
                   {rawList.map((item, index) => {
                     const styleUnit = getUnitBadgeStyle(item.jenjang || item.unit_pendidikan?.level)
                     const recordNo = (paginationInfo.current_page - 1) * perPage + index + 1
 
                     return (
-                      <tr
+                      <TableRow
                         key={item.id}
                         onClick={() => { setDetailKelas(item); setIsDetailModalOpen(true) }}
                         title="Klik baris untuk melihat detail kelas"
                         className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all duration-150 cursor-pointer"
                       >
                         {/* NO */}
-                        <td className="py-3.5 px-4 text-center text-slate-500 dark:text-slate-400 font-bold">
+                        <TableCell className="py-3.5 px-4 text-center text-slate-500 dark:text-slate-400 font-bold">
                           {recordNo}
-                        </td>
+                        </TableCell>
 
                         {/* LOGO */}
-                        <td className="py-3.5 px-4 text-center">
+                        <TableCell className="py-3.5 px-4 text-center">
                           <div className={`w-9 h-9 rounded-2xl ${styleUnit.bg} ${styleUnit.text} font-black text-xs flex items-center justify-center shadow-xs mx-auto border ${styleUnit.border}`}>
                             {(item.jenjang || item.unit_pendidikan?.level || 'SD').slice(0, 3)}
                           </div>
-                        </td>
+                        </TableCell>
 
                         {/* KODE & KELAS */}
-                        <td className="py-3.5 px-4">
+                        <TableCell className="py-3.5 px-4">
                           <div className="font-bold text-slate-900 dark:text-white text-sm">{item.nama_kelas}</div>
                           <div className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{item.kode_kelas}</div>
                           {/* Mobile Compact Metadata Row */}
@@ -1807,50 +2148,52 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                               {item.jumlah_siswa || 0}/{item.kapasitas || 30} Siswa
                             </span>
                           </div>
-                        </td>
+                        </TableCell>
 
                         {/* JENJANG / TINGKAT */}
-                        <td className="py-3.5 px-4">
+                        <TableCell className="py-3.5 px-4">
                           <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-bold ${styleUnit.bg} ${styleUnit.text} ${styleUnit.border}`}>
                             {item.jenjang} - Tkt {item.tingkat}
                           </span>
-                        </td>
+                        </TableCell>
 
                         {/* UNIT PENDIDIKAN */}
-                        <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-200">
+                        <TableCell className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-200">
                           {item.unit_pendidikan?.name || '-'}
-                        </td>
+                        </TableCell>
 
                         {/* WALI KELAS */}
-                        <td className="py-3.5 px-4">
+                        <TableCell className="py-3.5 px-4">
                           <PersonIdentityCell
                             src={item.wali_kelas?.photo_url || item.wali_kelas?.avatar_url || item.wali_kelas?.foto}
                             name={item.wali_kelas?.nama_tampil || item.wali_kelas?.nama_lengkap || item.wali_kelas?.name || 'Belum diatur'}
                             subtitle={item.wali_kelas?.niy ? `NIY ${item.wali_kelas.niy}` : 'Wali kelas'}
                           />
-                        </td>
+                        </TableCell>
 
                         {/* KAPASITAS & RUANGAN */}
-                        <td className="py-3.5 px-4 text-xs text-slate-600 dark:text-slate-300">
-                          <button
+                        <TableCell className="py-3.5 px-4 text-xs text-slate-600 dark:text-slate-300">
+                          <Button
                             type="button"
+                            variant="outline"
+                            size="sm"
                             onClick={(e) => { e.stopPropagation(); openSiswaModal(item) }}
-                            className="group/btn inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/50 px-2.5 py-1 text-left font-bold text-slate-800 hover:border-emerald-300 hover:bg-emerald-100/60 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-slate-200 dark:hover:bg-emerald-900/60 transition-all cursor-pointer shadow-2xs"
+                            className="group/btn inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/50 px-2.5 py-1 text-left font-bold text-slate-800 hover:border-emerald-300 hover:bg-emerald-100/60 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-slate-200 dark:hover:bg-emerald-900/60 transition-all cursor-pointer shadow-2xs h-auto"
                             title="Klik untuk melihat data siswa, wali kelas & pindah kelas"
                           >
                             <span><strong>{item.jumlah_siswa || 0}</strong> / {item.kapasitas || 30} Siswa</span>
                             <Users className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 group-hover/btn:scale-110 transition-transform" />
-                          </button>
+                          </Button>
                           <div className="text-slate-500 dark:text-slate-400 font-medium mt-1">Ruang: {item.ruangan || '-'}</div>
-                        </td>
+                        </TableCell>
 
                         {/* STATUS */}
-                        <td className="py-3.5 px-4 text-center">
+                        <TableCell className="py-3.5 px-4 text-center">
                           <MasterStatusBadge active={item.status === 'Aktif'} inactiveLabel="Tidak Aktif" />
-                        </td>
+                        </TableCell>
 
                         {/* AKSI */}
-                        <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                           <span className="inline-flex justify-center">
                             <ActionDropdown
                               onView={() => { setDetailKelas(item); setIsDetailModalOpen(true) }}
@@ -1865,12 +2208,12 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                               ]}
                             />
                           </span>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </TableRoot>
             )}
           />
         </motion.div>
@@ -2602,97 +2945,99 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
 
                   {/* Datatable Siswa */}
                   <div className="overflow-x-auto rounded-2xl border-2 border-emerald-300 dark:border-emerald-700/80 bg-white dark:bg-[#1B2433]">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200 font-extrabold uppercase tracking-wider">
-                        <tr>
+                    <TableRoot className="w-full text-left text-xs">
+                      <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200 font-extrabold uppercase tracking-wider">
+                        <TableRow>
                           {canManageSiswaKelas && (
-                            <th className="py-3.5 px-3 w-10 text-center">
+                            <TableHead className="py-3.5 px-3 w-10 text-center">
                               <input
                                 type="checkbox"
                                 checked={filteredSiswaList.length > 0 && selectedStudentIds.length === filteredSiswaList.length}
                                 onChange={toggleSelectAllStudents}
                                 className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                               />
-                            </th>
+                            </TableHead>
                           )}
-                          <th className="py-3.5 px-4 w-12 text-center">NO</th>
-                          <th className="py-3.5 px-4">SISWA</th>
-                          <th className="py-3.5 px-4">NIS / NISN</th>
-                          <th className="py-3.5 px-4 text-center">JENIS KELAMIN</th>
-                          <th className="py-3.5 px-4 text-center">STATUS</th>
-                          {canManageSiswaKelas && <th className="py-3.5 px-4 text-center w-28">AKSI</th>}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 font-medium">
+                          <TableHead className="py-3.5 px-4 w-12 text-center">NO</TableHead>
+                          <TableHead className="py-3.5 px-4">SISWA</TableHead>
+                          <TableHead className="py-3.5 px-4">NIS / NISN</TableHead>
+                          <TableHead className="py-3.5 px-4 text-center">JENIS KELAMIN</TableHead>
+                          <TableHead className="py-3.5 px-4 text-center">STATUS</TableHead>
+                          {canManageSiswaKelas && <TableHead className="py-3.5 px-4 text-center w-28">AKSI</TableHead>}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 font-medium">
                         {siswaQuery.isLoading ? (
-                          <tr>
-                            <td colSpan={canManageSiswaKelas ? 7 : 6} className="py-8 text-center text-slate-500 font-medium">
+                          <TableRow>
+                            <TableCell colSpan={canManageSiswaKelas ? 7 : 6} className="py-8 text-center text-slate-500 font-medium">
                               Memuat data siswa rombel...
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ) : paginatedSiswaList.length > 0 ? (
                           paginatedSiswaList.map((siswaItem, idx) => {
                             const isChecked = selectedStudentIds.includes(siswaItem.id)
 
                             return (
-                              <tr key={siswaItem.id || idx} className={`transition-colors ${isChecked ? 'bg-purple-50/60 dark:bg-purple-950/20' : 'hover:bg-emerald-50/40 dark:hover:bg-slate-800/40'}`}>
+                              <TableRow key={siswaItem.id || idx} className={`transition-colors ${isChecked ? 'bg-purple-50/60 dark:bg-purple-950/20' : 'hover:bg-emerald-50/40 dark:hover:bg-slate-800/40'}`}>
                                 {canManageSiswaKelas && (
-                                  <td className="py-3 px-3 text-center">
+                                  <TableCell className="py-3 px-3 text-center">
                                     <input
                                       type="checkbox"
                                       checked={isChecked}
                                       onChange={() => toggleSelectStudent(siswaItem.id)}
                                       className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                                     />
-                                  </td>
+                                  </TableCell>
                                 )}
-                                <td className="py-3 px-4 font-bold text-slate-500 text-center">
+                                <TableCell className="py-3 px-4 font-bold text-slate-500 text-center">
                                   {(siswaModalPage - 1) * SISWA_MODAL_PAGE_SIZE + idx + 1}
-                                </td>
-                                <td className="py-3 px-4">
+                                </TableCell>
+                                <TableCell className="py-3 px-4">
                                   <PersonIdentityCell
                                     src={siswaItem.photo_url || siswaItem.photo}
                                     name={siswaItem.full_name || siswaItem.nama || 'Siswa'}
                                   />
-                                </td>
-                                <td className="py-3 px-4">
+                                </TableCell>
+                                <TableCell className="py-3 px-4">
                                   <div className="font-mono text-slate-800 dark:text-slate-200 font-bold">{siswaItem.nis || '-'}</div>
                                   <div className="text-[11px] text-slate-400 font-mono">NISN: {siswaItem.nisn || '-'}</div>
-                                </td>
-                                <td className="py-3 px-4 text-center">
+                                </TableCell>
+                                <TableCell className="py-3 px-4 text-center">
                                   <Badge color={siswaItem.gender === 'male' || siswaItem.gender === 'L' ? 'blue' : 'pink'} size="sm">
                                     {siswaItem.gender === 'male' || siswaItem.gender === 'L' ? 'Laki-laki' : 'Perempuan'}
                                   </Badge>
-                                </td>
-                                <td className="py-3 px-4 text-center">
+                                </TableCell>
+                                <TableCell className="py-3 px-4 text-center">
                                   <AppBadge variant={siswaItem.is_active !== false ? 'success' : 'neutral'} dot>
                                     {siswaItem.is_active !== false ? 'Aktif' : 'Nonaktif'}
                                   </AppBadge>
-                                </td>
+                                </TableCell>
                                 {canManageSiswaKelas && (
-                                  <td className="py-3 px-4 text-center">
-                                    <button
+                                  <TableCell className="py-3 px-4 text-center">
+                                    <Button
                                       type="button"
+                                      size="xs"
+                                      variant="ghost"
                                       onClick={() => openSingleMoveDialog(siswaItem)}
                                       className="inline-flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold text-purple-700 bg-purple-50 dark:bg-purple-950/50 dark:text-purple-300 rounded-xl border border-purple-200 hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-colors"
                                       title="Pindahkan siswa ke kelas lain"
                                     >
                                       <ArrowRightLeft className="h-3 w-3" /> Pindah
-                                    </button>
-                                  </td>
+                                    </Button>
+                                  </TableCell>
                                 )}
-                              </tr>
+                              </TableRow>
                             )
                           })
                         ) : (
-                          <tr>
-                            <td colSpan={canManageSiswaKelas ? 7 : 6} className="py-8 text-center text-slate-400 font-medium">
+                          <TableRow>
+                            <TableCell colSpan={canManageSiswaKelas ? 7 : 6} className="py-8 text-center text-slate-400 font-medium">
                               {siswaSearch ? 'Tidak ada siswa yang cocok dengan pencarian.' : 'Belum ada siswa terdaftar di rombel ini.'}
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         )}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </TableRoot>
                   </div>
                 </div>
 

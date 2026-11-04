@@ -23,7 +23,7 @@ import {
   Trash2,
   Users,
 } from 'lucide-react'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { lmsPengumpulanTugasService } from '../services/lmsPengumpulanTugasService'
 import { api } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
@@ -42,6 +42,7 @@ import {
 import InAppEmbedViewerModal from '../components/portal/InAppEmbedViewerModal'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { useDebounce } from '../hooks/useDebounce'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import {
   MasterDataTable,
@@ -49,6 +50,14 @@ import {
   PrintOptionModal,
 } from '../components/master-data'
 import CsvImportModal from '../components/master-data/CsvImportModal'
+import {
+  TableRoot,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table'
 import { RotateCcw, Printer, Search } from 'lucide-react'
 
 const containerVariants = {
@@ -277,6 +286,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
 
   // Filters & Pagination
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [selectedPenugasan, setSelectedPenugasan] = useState('')
   const [selectedSiswa, setSelectedSiswa] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
@@ -426,7 +436,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
       const params = {
         page,
         per_page: 15,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         penugasan_id: selectedPenugasan || undefined,
         siswa_id: selectedSiswa || undefined,
         status: selectedStatus || undefined,
@@ -467,7 +477,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
 
   useEffect(() => {
     fetchData()
-  }, [page, selectedPenugasan, selectedSiswa, selectedStatus])
+  }, [page, debouncedSearch, selectedPenugasan, selectedSiswa, selectedStatus])
 
   const handleSearchSubmit = (e) => {
     if (e) e.preventDefault()
@@ -664,23 +674,37 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       {/* Master Canonical Page Header (Hidden when embedded) */}
       {!embedded && !hidePageHeader && (
-        <motion.div variants={itemVariants}>
-        <AppPageHeader
-          variant="brand"
-          icon={UploadCloud}
-          eyebrow="LMS Pelaksanaan Pembelajaran"
-          title="Pengumpulan Tugas Siswa"
-          description="Kelola submission tugas siswa, riwayat pengumpulan file & link, serta proses koreksi dan penilaian hasil kerja secara terpadu."
-          actions={
-            <button
-              onClick={handleOpenCreateModal}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#0E5C44] font-semibold text-sm shadow-lg hover:bg-emerald-50 transition-all duration-200 active:scale-95 dark:bg-slate-900 dark:text-[#3FBF75] dark:hover:bg-slate-800"
-            >
-              <Plus className="w-4 h-4" />
-              Input / Kumpul Tugas
-            </button>
-          }
-        />
+        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40">
+                <UploadCloud className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Pengumpulan Tugas Siswa
+                  </h1>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                    <BookOpen className="h-3.5 w-3.5" />
+                    Modul LMS Terpadu
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  Kelola submission tugas siswa, riwayat pengumpulan file &amp; link, serta proses koreksi dan penilaian hasil kerja secara terpadu.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Monitoring Tugas</span>
+              </div>
+            </div>
+          </div>
         </motion.div>
       )}
 
@@ -889,21 +913,21 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
             </div>
           ) : (
             <div className="overflow-x-auto min-h-[340px] pb-12">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200 font-black text-[11px] uppercase tracking-wider">
-                    <th className="py-3.5 pl-6 pr-4">Siswa</th>
-                    <th className="py-3.5 px-4">Penugasan &amp; Mapel</th>
-                    <th className="py-3.5 px-4">File / Link</th>
-                    <th className="py-3.5 px-4">Waktu Kumpul</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4">Nilai &amp; Catatan</th>
-                    <th className="py-3.5 pr-6 pl-4 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
+              <TableRoot className="w-full text-left border-collapse">
+                <TableHeader>
+                  <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200 font-black text-[11px] uppercase tracking-wider">
+                    <TableHead className="py-3.5 pl-6 pr-4">Siswa</TableHead>
+                    <TableHead className="py-3.5 px-4">Penugasan &amp; Mapel</TableHead>
+                    <TableHead className="py-3.5 px-4">File / Link</TableHead>
+                    <TableHead className="py-3.5 px-4">Waktu Kumpul</TableHead>
+                    <TableHead className="py-3.5 px-4">Status</TableHead>
+                    <TableHead className="py-3.5 px-4">Nilai &amp; Catatan</TableHead>
+                    <TableHead className="py-3.5 pr-6 pl-4 text-right">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
                 {dataPengumpulan.map((item) => (
-                  <tr
+                  <TableRow
                     key={item.id}
                     className="group relative hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
                     onClick={(e) => {
@@ -912,7 +936,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
                       setShowRowDetailModal(true)
                     }}
                   >
-                    <td className="py-3.5 px-4 relative">
+                    <TableCell className="py-3.5 px-4 relative">
                       {/* Hover Card */}
                       <div className="pointer-events-none absolute left-4 top-full mt-1.5 z-50 w-60 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out">
                         <div className="bg-white dark:bg-[#1B2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl p-3 space-y-1.5">
@@ -948,18 +972,18 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
                         subtitle={item.siswa?.nisn ? `NISN: ${item.siswa.nisn}` : 'NISN -'}
                         avatarSrc={item.siswa?.foto || item.siswa?.photo_url || item.siswa?.avatar_url}
                       />
-                    </td>
+                    </TableCell>
 
-                    <td className="py-3.5 px-4 max-w-xs">
+                    <TableCell className="py-3.5 px-4 max-w-xs">
                       <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
                         {item.penugasan?.judul || item.penugasan?.judul_tugas || 'Penugasan'}
                       </div>
                       <div className="text-xs text-[#0E5C44] font-medium dark:text-[#3FBF75]">
                         {item.penugasan?.subject || 'Mata Pelajaran'} • {item.penugasan?.kelas || 'Kelas'}
                       </div>
-                    </td>
+                    </TableCell>
 
-                    <td className="py-3.5 px-4">
+                    <TableCell className="py-3.5 px-4">
                       <div className="flex flex-col gap-1 text-xs">
                         {item.file || item.file_path ? (
                           <button
@@ -987,20 +1011,20 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
                           <span className="text-slate-400 dark:text-slate-500 italic">Hanya Jawaban Teks</span>
                         )}
                       </div>
-                    </td>
+                    </TableCell>
 
-                    <td className="py-3.5 px-4 text-xs text-slate-600 dark:text-slate-300">
+                    <TableCell className="py-3.5 px-4 text-xs text-slate-600 dark:text-slate-300">
                       <div>{item.waktu_kumpul || '-'}</div>
                       {item.waktu_kumpul_formatted && (
                         <div className="text-[11px] text-slate-400 dark:text-slate-500">{item.waktu_kumpul_formatted}</div>
                       )}
-                    </td>
+                    </TableCell>
 
-                    <td className="py-3.5 px-4">
+                    <TableCell className="py-3.5 px-4">
                       {getStatusBadge(item.status)}
-                    </td>
+                    </TableCell>
 
-                    <td className="py-3.5 px-4">
+                    <TableCell className="py-3.5 px-4">
                       {item.nilai !== null && item.nilai !== undefined ? (
                         <div className="flex items-center gap-2">
                           <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-[#0E5C44] font-bold text-sm dark:bg-emerald-950/80 dark:text-[#3FBF75]">
@@ -1015,19 +1039,19 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
                           "{item.catatan}"
                         </p>
                       )}
-                    </td>
+                    </TableCell>
 
-                    <td className="py-3.5 px-4 text-right">
+                    <TableCell className="py-3.5 px-4 text-right">
                       <ActionDropdown
                         onView={() => handleOpenDetail(item)}
                         onEdit={() => handleOpenEditModal(item)}
                         onDelete={() => handleDelete(item.id, item.siswa?.nama)}
                       />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </TableRoot>
           </div>
         )}
 
@@ -1042,16 +1066,21 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
               <button
                 disabled={pagination.current_page <= 1}
                 onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:border-slate-700 dark:hover:bg-slate-800"
+                className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                title="Halaman Sebelumnya"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="size-5" />
               </button>
+              <span className="px-3 py-1 font-bold text-slate-700 dark:text-slate-300">
+                {pagination.current_page} / {pagination.last_page}
+              </span>
               <button
                 disabled={pagination.current_page >= pagination.last_page}
                 onClick={() => setPage((prev) => prev + 1)}
-                className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:border-slate-700 dark:hover:bg-slate-800"
+                className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                title="Halaman Berikutnya"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="size-5" />
               </button>
             </div>
           </div>
@@ -1483,12 +1512,14 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
   return (
     <PageContainer maxW="7xl">
       {!(embedded || hideBreadcrumb) && (
-        <AppBreadcrumb
-          items={[
-            { label: 'LMS & Akademik', href: '/dashboard' },
-            { label: 'Pengumpulan Tugas Siswa' },
-          ]}
-        />
+        <div className="mb-4">
+          <AppBreadcrumb
+            items={[
+              { label: 'LMS & Akademik', href: '/dashboard' },
+              { label: 'Pengumpulan Tugas Siswa' },
+            ]}
+          />
+        </div>
       )}
       {pageContent}
     </PageContainer>

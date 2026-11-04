@@ -27,7 +27,7 @@ import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import AppBadge from '../../components/app/AppBadge'
 import AppEmptyState from '../../components/app/AppEmptyState'
 import AppSkeleton from '../../components/app/AppSkeleton'
-import { Button } from '@/components/tailgrids/core/button'
+import { Button } from '@/components/ui/button'
 
 const todayStr = new Date().toLocaleDateString('id-ID', {
   weekday: 'long',

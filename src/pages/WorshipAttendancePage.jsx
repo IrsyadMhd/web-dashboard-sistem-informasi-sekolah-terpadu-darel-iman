@@ -63,7 +63,8 @@ import {
   MasterStatCard,
   MasterStatsGrid,
 } from '../components/master-data'
-import { Button } from '@/components/tailgrids/core/button'
+import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppTabs from '../components/app/AppTabs'
 import { useToast } from '../components/app'
@@ -589,11 +590,11 @@ export default function WorshipAttendancePage() {
                 </div>
               </div>
 
-              <input
-                type="date"
+              <DatePicker
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="h-9 rounded-xl border border-emerald-500/30 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm outline-none focus:border-emerald-500 dark:border-emerald-600/40 dark:bg-slate-900 dark:text-slate-200"
+                className="w-40"
+                inputClassName="h-9 text-xs font-semibold"
               />
 
               <Button

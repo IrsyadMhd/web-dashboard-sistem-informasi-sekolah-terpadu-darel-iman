@@ -13,15 +13,16 @@ import {
   Users,
   Layers,
 } from 'lucide-react'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { AppDataTable } from '../app'
-import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent } from '@/components/tailgrids/core/card'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Button } from '@/components/tailgrids/core/button'
-import { Alert, AlertIndicator, AlertContent, AlertTitle, AlertDescription } from '@/components/tailgrids/core/alert'
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from '@/components/tailgrids/core/dialog'
-import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
-import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
+import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertIndicator, AlertContent, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from '@/components/ui/dialog'
+import { Backdrop, OverlayWrapper } from '@/components/ui/overlay'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { DatePicker } from '@/components/ui/date-picker'
 import { SquircleActionButton, PrintOptionModal } from '../master-data'
 import CsvImportModal from '../master-data/CsvImportModal'
 import { printCleanTable, downloadPdfTable } from '../../utils/printHelper'
@@ -540,11 +541,10 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
               {activePeriod === 'harian' && (
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Pilih Tanggal</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={filters.date || new Date().toISOString().split('T')[0]}
                     onChange={(e) => onFilterChange({ ...filters, date: e.target.value })}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:border-emerald-600"
+                    inputClassName="h-10 text-xs font-semibold"
                   />
                 </div>
               )}
@@ -553,20 +553,18 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
                 <>
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Tanggal Mulai</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={filters.start_date || ''}
                       onChange={(e) => onFilterChange({ ...filters, start_date: e.target.value })}
-                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:border-emerald-600"
+                      inputClassName="h-10 text-xs font-semibold"
                     />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Tanggal Selesai</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={filters.end_date || ''}
                       onChange={(e) => onFilterChange({ ...filters, end_date: e.target.value })}
-                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:border-emerald-600"
+                      inputClassName="h-10 text-xs font-semibold"
                     />
                   </div>
                 </>

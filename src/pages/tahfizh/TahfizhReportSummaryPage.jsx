@@ -52,12 +52,14 @@ import {
 } from '../../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../../utils/printHelper'
 import * as XLSX from 'xlsx'
-import { Pagination } from '@/components/tailgrids/core/pagination'
+import { Pagination } from '@/components/ui/pagination'
+import { DatePicker } from '@/components/ui/date-picker'
+import HeroUiFilterSelect from '../../components/ui/HeroUiFilterSelect'
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from '@/components/tailgrids/core/hover-card'
+} from '@/components/ui/hover-card'
 import {
   Dialog,
   DialogBody,
@@ -65,7 +67,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
+} from '@/components/ui/dialog'
 
 const MODAL_PAGE_SIZE = 6
 const today = () => new Date().toISOString().slice(0, 10)
@@ -1207,7 +1209,7 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
 
 
       {/* 🟢 MAIN TABLE & FILTER CARD (Data Rekapan Tahfizh Santri matching Mutabaah style) */}
-      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
+      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="relative overflow-visible z-10 rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
         <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
         {/* Header Baris 1: Title & Vivid Gradient Squircle Action Buttons (§H.5) */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3.5 sm:px-6 md:px-8 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60">
@@ -1299,114 +1301,93 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
           <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
             <div className="w-full sm:w-auto min-w-[140px]">
               <label htmlFor="rekapan-dari" className="sr-only">Dari tanggal</label>
-              <div className="relative flex items-center">
-                <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                  <CalendarDays className="size-4" />
-                </div>
-                <input
-                  id="rekapan-dari"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value)
-                    setPeriodType('kustom')
-                    setCurrentPage(1)
-                  }}
-                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-3 py-2 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                />
-              </div>
+              <DatePicker
+                id="rekapan-dari"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value)
+                  setPeriodType('kustom')
+                  setCurrentPage(1)
+                }}
+                className="w-full sm:w-auto min-w-[140px]"
+                inputClassName="py-2 text-xs font-semibold"
+                placeholder="Dari tanggal..."
+              />
             </div>
             <div className="w-full sm:w-auto min-w-[140px]">
               <label htmlFor="rekapan-sampai" className="sr-only">Sampai tanggal</label>
-              <div className="relative flex items-center">
-                <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                  <CalendarDays className="size-4" />
-                </div>
-                <input
-                  id="rekapan-sampai"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value)
-                    setPeriodType('kustom')
-                    setCurrentPage(1)
-                  }}
-                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-3 py-2 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                />
-              </div>
+              <DatePicker
+                id="rekapan-sampai"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value)
+                  setPeriodType('kustom')
+                  setCurrentPage(1)
+                }}
+                className="w-full sm:w-auto min-w-[140px]"
+                inputClassName="py-2 text-xs font-semibold"
+                placeholder="Sampai tanggal..."
+              />
             </div>
-            <div className="w-full sm:w-auto min-w-[140px]">
-              <label htmlFor="rekapan-unit" className="sr-only">Unit pendidikan</label>
-              <div className="relative flex items-center">
-                <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                  <Building2 className="size-4" />
-                </div>
-                <select
-                  id="rekapan-unit"
-                  value={selectedUnit}
-                  disabled={!isGlobalScope && units.length <= 1}
-                  onChange={(e) => {
-                    setSelectedUnit(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2 appearance-none text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer disabled:opacity-50"
-                >
-                {(isGlobalScope || units.length > 1) && (
-                  <option value="">Semua Unit {isMusyrifRole ? 'Ponpes' : ''}</option>
-                )}
-                {units.map((unit) => (
-                  <option key={unit.id} value={String(unit.id)}>{unit.name}</option>
-                ))}
-              </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
-              </div>
+            <div className="w-full sm:w-auto min-w-[170px]">
+              <HeroUiFilterSelect
+                value={selectedUnit}
+                disabled={!isGlobalScope && units.length <= 1}
+                onChange={(val) => {
+                  setSelectedUnit(val)
+                  setCurrentPage(1)
+                }}
+                options={[
+                  ...((isGlobalScope || units.length > 1) ? [{ value: '', label: `Semua Unit ${isMusyrifRole ? 'Ponpes' : ''}` }] : []),
+                  ...units.map((unit) => ({ value: String(unit.id), label: unit.name }))
+                ]}
+                placeholder={`Semua Unit ${isMusyrifRole ? 'Ponpes' : ''}`}
+                icon={Building2}
+                searchable={units.length > 5}
+                ariaLabel="Unit pendidikan"
+                popoverWidth="min-w-[200px]"
+              />
             </div>
-            <div className="w-full sm:w-auto min-w-[140px]">
-              <label htmlFor="rekapan-rombel" className="sr-only">Rombel kelas</label>
-              <div className="relative flex items-center">
-                <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                  <Users className="size-4" />
-                </div>
-                <select
-                  id="rekapan-rombel"
-                  value={selectedClass}
-                  onChange={(e) => {
-                    setSelectedClass(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2 appearance-none text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                >
-                <option value="">{isSubjectTeacherOnly ? 'Semua Rombel Binaan' : 'Semua Rombel'}</option>
-                {(isSubjectTeacherOnly ? teacherClasses : classes).map((cls) => (
-                  <option key={cls.id} value={cls.id}>{cls.name || cls.nama_kelas}</option>
-                ))}
-              </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
-              </div>
+            <div className="w-full sm:w-auto min-w-[170px]">
+              <HeroUiFilterSelect
+                value={selectedClass}
+                onChange={(val) => {
+                  setSelectedClass(val)
+                  setCurrentPage(1)
+                }}
+                options={[
+                  { value: '', label: isSubjectTeacherOnly ? 'Semua Rombel Binaan' : 'Semua Rombel' },
+                  ...(isSubjectTeacherOnly ? teacherClasses : classes).map((cls) => ({
+                    value: String(cls.id),
+                    label: cls.name || cls.nama_kelas
+                  }))
+                ]}
+                placeholder={isSubjectTeacherOnly ? 'Semua Rombel Binaan' : 'Semua Rombel'}
+                icon={Users}
+                searchable={(isSubjectTeacherOnly ? teacherClasses : classes).length > 5}
+                ariaLabel="Rombel kelas"
+                popoverWidth="min-w-[200px]"
+              />
             </div>
-            <div className="w-full sm:w-auto min-w-[140px]">
-              <label htmlFor="rekapan-jenis" className="sr-only">Jenis setoran</label>
-              <div className="relative flex items-center">
-                <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                  <BookOpen className="size-4" />
-                </div>
-                <select
-                  id="rekapan-jenis"
-                  value={typeFilter}
-                  onChange={(e) => {
-                    setTypeFilter(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2 appearance-none text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                >
-                <option value="semua">Semua Jenis</option>
-                <option value="Ziyadah">Ziyadah</option>
-                <option value="Murajaah">Murajaah</option>
-                <option value="Tasmi">Tasmi'</option>
-                <option value="Ujian">Ujian</option>
-              </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
-              </div>
+            <div className="w-full sm:w-auto min-w-[150px]">
+              <HeroUiFilterSelect
+                value={typeFilter}
+                onChange={(val) => {
+                  setTypeFilter(val)
+                  setCurrentPage(1)
+                }}
+                options={[
+                  { value: 'semua', label: 'Semua Jenis' },
+                  { value: 'Ziyadah', label: 'Ziyadah' },
+                  { value: 'Murajaah', label: 'Murajaah' },
+                  { value: 'Tasmi', label: "Tasmi'" },
+                  { value: 'Ujian', label: 'Ujian' },
+                ]}
+                placeholder="Semua Jenis"
+                icon={BookOpen}
+                ariaLabel="Jenis setoran"
+                popoverWidth="min-w-[170px]"
+              />
             </div>
             <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[160px]">
               <label htmlFor="rekapan-cari" className="sr-only">Pencarian santri</label>
@@ -1427,30 +1408,26 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
                 />
               </div>
             </div>
-            <div className="w-full sm:w-auto min-w-[140px]">
-              <label htmlFor="rekapan-tampil" className="sr-only">Tampilkan per halaman</label>
-              <div className="relative flex items-center">
-                <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                  <Layers className="size-4" />
-                </div>
-                <select
-                  id="rekapan-tampil"
-                  value={perPage}
-                  onChange={(e) => {
-                    setPerPage(Number(e.target.value))
-                    setCurrentPage(1)
-                  }}
-                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2 appearance-none text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                >
-                <option value={5}>5 per hal</option>
-                <option value={10}>10 per hal</option>
-                <option value={15}>15 per hal</option>
-                <option value={25}>25 per hal</option>
-                <option value={50}>50 per hal</option>
-                <option value={100}>100 per hal</option>
-              </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
-              </div>
+            <div className="w-full sm:w-auto min-w-[130px]">
+              <HeroUiFilterSelect
+                value={perPage}
+                onChange={(val) => {
+                  setPerPage(Number(val))
+                  setCurrentPage(1)
+                }}
+                options={[
+                  { value: 5, label: '5 per hal' },
+                  { value: 10, label: '10 per hal' },
+                  { value: 15, label: '15 per hal' },
+                  { value: 25, label: '25 per hal' },
+                  { value: 50, label: '50 per hal' },
+                  { value: 100, label: '100 per hal' },
+                ]}
+                placeholder="10 per hal"
+                icon={Layers}
+                ariaLabel="Tampilkan per halaman"
+                popoverWidth="min-w-[140px]"
+              />
             </div>
             <button
               type="button"

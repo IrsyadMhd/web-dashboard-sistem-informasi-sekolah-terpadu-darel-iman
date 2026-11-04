@@ -14,8 +14,9 @@ import {
 import { attendanceDashboardService } from '../../services/attendance/attendanceDashboardService'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import { MasterEmptyState, MasterErrorState } from '../../components/master-data'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Button } from '@/components/tailgrids/core/button'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 
 const unwrap = (response) => response?.data?.data || response?.data || []
 const formatDate = (value) =>
@@ -265,12 +266,12 @@ export default function StudentAttendanceHistoryPage() {
               <label className="text-xs font-semibold text-slate-500" htmlFor="attendance-from">
                 Dari:
               </label>
-              <input
+              <DatePicker
                 id="attendance-from"
-                type="date"
                 value={filters.date_from}
                 onChange={(e) => setFilters({ ...filters, date_from: e.target.value })}
-                className="h-10 rounded-xl border border-emerald-500/30 bg-white px-3 text-xs font-medium text-slate-900 outline-none transition focus:border-emerald-500 dark:border-emerald-600/40 dark:bg-slate-900 dark:text-white"
+                className="w-36"
+                inputClassName="h-10 text-xs font-medium"
               />
             </div>
 
@@ -278,12 +279,12 @@ export default function StudentAttendanceHistoryPage() {
               <label className="text-xs font-semibold text-slate-500" htmlFor="attendance-to">
                 Sampai:
               </label>
-              <input
+              <DatePicker
                 id="attendance-to"
-                type="date"
                 value={filters.date_to}
                 onChange={(e) => setFilters({ ...filters, date_to: e.target.value })}
-                className="h-10 rounded-xl border border-emerald-500/30 bg-white px-3 text-xs font-medium text-slate-900 outline-none transition focus:border-emerald-500 dark:border-emerald-600/40 dark:bg-slate-900 dark:text-white"
+                className="w-36"
+                inputClassName="h-10 text-xs font-medium"
               />
             </div>
 

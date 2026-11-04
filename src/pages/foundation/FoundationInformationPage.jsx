@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Calendar,
@@ -14,12 +14,16 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
+  Check,
+  ChevronDown,
+  Search,
 } from 'lucide-react'
 import { dashboardPemantauanService } from '../../services/dashboardPemantauanService'
 import { educationUnitService } from '../../services/educationUnitService'
-import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
+import { ArrowRightLeft as ArrowBothDirectionHorizontal2 } from 'lucide-react'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import { useToast } from '../../components/app'
+import { SmartScrollFab } from '../../components/common'
 import api from '../../services/api'
 import {
   MasterBadge,
@@ -70,7 +74,224 @@ function formatFullDate(value) {
   return Number.isNaN(date.getTime()) ? 'Terbaru' : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+const MODERN_CARD_TONES = {
+  emerald: {
+    badgeBg: 'bg-emerald-500/10 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-500/20',
+    iconGradient: 'from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-500/25',
+    glow: 'bg-emerald-500/15 group-hover:bg-emerald-500/25',
+    border: 'hover:border-emerald-400/60 dark:hover:border-emerald-500/40',
+  },
+  sky: {
+    badgeBg: 'bg-sky-500/10 text-sky-800 dark:bg-sky-500/20 dark:text-sky-300 border-sky-500/20',
+    iconGradient: 'from-sky-500 via-blue-600 to-indigo-700 shadow-sky-500/25',
+    glow: 'bg-sky-500/15 group-hover:bg-sky-500/25',
+    border: 'hover:border-sky-400/60 dark:hover:border-sky-500/40',
+  },
+  amber: {
+    badgeBg: 'bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border-amber-500/20',
+    iconGradient: 'from-amber-500 via-orange-600 to-amber-700 shadow-amber-500/25',
+    glow: 'bg-amber-500/15 group-hover:bg-amber-500/25',
+    border: 'hover:border-amber-400/60 dark:hover:border-amber-500/40',
+  },
+  purple: {
+    badgeBg: 'bg-purple-500/10 text-purple-800 dark:bg-purple-500/20 dark:text-purple-300 border-purple-500/20',
+    iconGradient: 'from-purple-500 via-violet-600 to-indigo-700 shadow-purple-500/25',
+    glow: 'bg-purple-500/15 group-hover:bg-purple-500/25',
+    border: 'hover:border-purple-400/60 dark:hover:border-purple-500/40',
+  },
+}
 
+function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', tag = 'METRIK', active = false, onClick }) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+  return (
+    <motion.div
+      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-[20px] border p-5 shadow-xs transition-all duration-300 hover:shadow-lg dark:bg-[#1B2433] cursor-pointer ${
+        active
+          ? 'border-emerald-500 bg-emerald-50/40 shadow-sm dark:border-emerald-500/70 dark:bg-emerald-950/20'
+          : `border-slate-200/80 bg-white dark:border-slate-800/80 ${t.border}`
+      }`}
+    >
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all duration-500 ${t.glow}`} />
+      <div className="relative z-10 flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${t.badgeBg}`}>
+              {tag}
+            </span>
+          </div>
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 pt-0.5">{title}</p>
+        </div>
+        <div className={`flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-md transition-transform duration-300 group-hover:scale-105 ${t.iconGradient}`}>
+          {Icon && <Icon className="size-5 text-white" />}
+        </div>
+      </div>
+      <div className="relative z-10 mt-3 flex items-baseline justify-between gap-2">
+        <div>
+          <p className="text-2xl sm:text-3xl font-black tabular-nums tracking-tight text-slate-900 dark:text-white">
+            {value}
+          </p>
+          {subtext && (
+            <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{subtext}</p>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'w-full',
+  searchable = false,
+  ariaLabel = '',
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+      (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  const hasValue = value !== '' && value !== 'semua' && value !== 'all' && value !== undefined && value !== null
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`h-9.5 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+          isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+            : hasValue
+            ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
+            : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} min-w-[200px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div className="truncate">{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export function FoundationInformationPage() {
   const toast = useToast()
@@ -205,6 +426,43 @@ export function FoundationInformationPage() {
     return c.includes('agenda') || c === 'event'
   }).length
 
+  const categoryFilterOptions = useMemo(() => [
+    { value: 'all', label: `Semua (${totalCount})` },
+    { value: 'pengumuman', label: `Pengumuman (${pengumumanCount})` },
+    { value: 'berita', label: `Berita (${beritaCount})` },
+    { value: 'agenda', label: `Agenda (${agendaCount})` },
+  ], [totalCount, pengumumanCount, beritaCount, agendaCount])
+
+  const perPageOptions = useMemo(() => [
+    { value: '5', label: '5 per Halaman' },
+    { value: '10', label: '10 per Halaman' },
+    { value: '15', label: '15 per Halaman' },
+    { value: '25', label: '25 per Halaman' },
+    { value: '50', label: '50 per Halaman' },
+  ], [])
+
+  const modalCategoryOptions = useMemo(() => [
+    { value: 'Pengumuman', label: 'Pengumuman Resmi' },
+    { value: 'Berita', label: 'Berita Kegiatan Sekolah' },
+    { value: 'Agenda', label: 'Agenda Terpadu' },
+    { value: 'PPDB', label: 'PPDB & Pendaftaran' },
+    { value: 'Akademik', label: 'Pengumuman Akademik' },
+    { value: 'Prestasi', label: 'Capaian Prestasi' },
+  ], [])
+
+  const targetUnitOptions = useMemo(() => [
+    { value: 'all', label: 'Seluruh Unit (Yayasan)' },
+    ...educationUnits.map((u) => ({
+      value: u.name || u.code,
+      label: u.name,
+    })),
+  ], [educationUnits])
+
+  const statusOptions = useMemo(() => [
+    { value: 'Dipublikasikan', label: 'Dipublikasikan (Terbit)' },
+    { value: 'Draft', label: 'Simpan Draft' },
+  ], [])
+
   const handleRefresh = () => {
     setPage(1)
     fetchInformation(Boolean(information.length))
@@ -214,7 +472,7 @@ export function FoundationInformationPage() {
     <MasterDataPage hideBreadcrumb className="foundation-information-page">
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-12">
         {/* Breadcrumb Navigation */}
-        <motion.div variants={itemVariants} className="print:hidden">
+        <motion.div variants={itemVariants} className="mb-4 print:hidden">
           <AppBreadcrumb items={[{ label: 'Yayasan', href: '/dashboard/yayasan' }, { label: 'Informasi Sekolah' }]} />
         </motion.div>
 
@@ -255,49 +513,47 @@ export function FoundationInformationPage() {
         </motion.div>
 
         {/* Stat Cards Ringkasan Informasi */}
-        <motion.div variants={itemVariants}>
-          <MasterStatsGrid>
-            <MasterStatCard
-              icon={FileText}
-              label="Total Informasi"
-              value={totalCount}
-              description="Semua kategori"
-              variant="success"
-              delay={40}
-              active={activeTab === 'all'}
-              onClick={() => { setActiveTab('all'); setPage(1) }}
-            />
-            <MasterStatCard
-              icon={Megaphone}
-              label="Pengumuman"
-              value={pengumumanCount}
-              description="Pengumuman resmi"
-              variant="info"
-              delay={80}
-              active={activeTab === 'pengumuman'}
-              onClick={() => { setActiveTab('pengumuman'); setPage(1) }}
-            />
-            <MasterStatCard
-              icon={FileText}
-              label="Berita Terbit"
-              value={beritaCount}
-              description="Berita sekolah"
-              variant="warning"
-              delay={120}
-              active={activeTab === 'berita'}
-              onClick={() => { setActiveTab('berita'); setPage(1) }}
-            />
-            <MasterStatCard
-              icon={Calendar}
-              label="Agenda"
-              value={agendaCount}
-              description="Agenda mendatang"
-              variant="neutral"
-              delay={160}
-              active={activeTab === 'agenda'}
-              onClick={() => { setActiveTab('agenda'); setPage(1) }}
-            />
-          </MasterStatsGrid>
+        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <ModernKpiCard
+            icon={FileText}
+            title="Total Informasi"
+            value={totalCount}
+            subtext="Semua kategori informasi"
+            tone="emerald"
+            tag="TOTAL INFORMASI"
+            active={activeTab === 'all'}
+            onClick={() => { setActiveTab('all'); setPage(1) }}
+          />
+          <ModernKpiCard
+            icon={Megaphone}
+            title="Pengumuman"
+            value={pengumumanCount}
+            subtext="Pengumuman resmi yayasan"
+            tone="sky"
+            tag="PENGUMUMAN"
+            active={activeTab === 'pengumuman'}
+            onClick={() => { setActiveTab('pengumuman'); setPage(1) }}
+          />
+          <ModernKpiCard
+            icon={FileText}
+            title="Berita Terbit"
+            value={beritaCount}
+            subtext="Kabar & artikel sekolah"
+            tone="amber"
+            tag="BERITA"
+            active={activeTab === 'berita'}
+            onClick={() => { setActiveTab('berita'); setPage(1) }}
+          />
+          <ModernKpiCard
+            icon={Calendar}
+            title="Agenda Kegiatan"
+            value={agendaCount}
+            subtext="Agenda terencana mendatang"
+            tone="purple"
+            tag="AGENDA"
+            active={activeTab === 'agenda'}
+            onClick={() => { setActiveTab('agenda'); setPage(1) }}
+          />
         </motion.div>
 
         {/* Filter Bar */}
@@ -306,19 +562,23 @@ export function FoundationInformationPage() {
             search={<MasterSearchInput placeholder="Cari judul atau isi pengumuman/berita..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />}
             filters={
               <>
-                <MasterFilterSelect value={activeTab} onChange={(e) => { setActiveTab(e.target.value); setPage(1) }} aria-label="Filter kategori">
-                  <option value="all">Semua ({totalCount})</option>
-                  <option value="pengumuman">Pengumuman ({pengumumanCount})</option>
-                  <option value="berita">Berita ({beritaCount})</option>
-                  <option value="agenda">Agenda ({agendaCount})</option>
-                </MasterFilterSelect>
-                <MasterFilterSelect value={perPage} onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1) }} aria-label="Tampilkan per halaman">
-                  <option value={5}>5 per Halaman</option>
-                  <option value={10}>10 per Halaman</option>
-                  <option value={15}>15 per Halaman</option>
-                  <option value={25}>25 per Halaman</option>
-                  <option value={50}>50 per Halaman</option>
-                </MasterFilterSelect>
+                <HeroUiFilterSelect
+                  value={activeTab}
+                  onChange={(val) => { setActiveTab(val); setPage(1) }}
+                  options={categoryFilterOptions}
+                  placeholder="Kategori Informasi"
+                  icon={Megaphone}
+                  ariaLabel="Filter Kategori Informasi"
+                  className="w-44"
+                />
+                <HeroUiFilterSelect
+                  value={String(perPage)}
+                  onChange={(val) => { setPerPage(Number(val)); setPage(1) }}
+                  options={perPageOptions}
+                  placeholder="Tampilkan per halaman"
+                  ariaLabel="Tampilkan per halaman"
+                  className="w-40"
+                />
                 <button
                   type="button"
                   onClick={() => setIsManageModalOpen(true)}
@@ -343,7 +603,7 @@ export function FoundationInformationPage() {
 
         {/* Content DataTable / Cards */}
         <motion.div variants={itemVariants}>
-          <MasterDataTable className="foundation-table">
+          <MasterDataTable id="tabel-informasi-sekolah" className="foundation-table scroll-mt-6">
             <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-700">
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Informasi & Pengumuman</h2>
@@ -672,35 +932,28 @@ export function FoundationInformationPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Kategori Informasi *</label>
-                    <select
+                    <HeroUiFilterSelect
                       value={infoForm.kategori}
-                      onChange={(e) => setInfoForm((prev) => ({ ...prev, kategori: e.target.value }))}
-                      className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                      required
-                    >
-                      <option value="Pengumuman">Pengumuman Resmi</option>
-                      <option value="Berita">Berita Kegiatan Sekolah</option>
-                      <option value="Agenda">Agenda Terpadu</option>
-                      <option value="PPDB">PPDB & Pendaftaran</option>
-                      <option value="Akademik">Pengumuman Akademik</option>
-                      <option value="Prestasi">Capaian Prestasi</option>
-                    </select>
+                      onChange={(val) => setInfoForm((prev) => ({ ...prev, kategori: val }))}
+                      options={modalCategoryOptions}
+                      placeholder="Pilih Kategori"
+                      icon={Megaphone}
+                      className="w-full"
+                      ariaLabel="Pilih Kategori Informasi"
+                    />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Target Unit Sekolah *</label>
-                    <select
+                    <HeroUiFilterSelect
                       value={infoForm.target_unit}
-                      onChange={(e) => setInfoForm((prev) => ({ ...prev, target_unit: e.target.value }))}
-                      className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                    >
-                      <option value="all">Seluruh Unit (Yayasan)</option>
-                      {educationUnits.map((u) => (
-                        <option key={u.id} value={u.name || u.code}>
-                          {u.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setInfoForm((prev) => ({ ...prev, target_unit: val }))}
+                      options={targetUnitOptions}
+                      placeholder="Pilih Target Unit"
+                      searchable={true}
+                      className="w-full"
+                      ariaLabel="Pilih Target Unit Sekolah"
+                    />
                   </div>
                 </div>
 
@@ -742,14 +995,14 @@ export function FoundationInformationPage() {
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Status Publikasi</label>
-                    <select
+                    <HeroUiFilterSelect
                       value={infoForm.status}
-                      onChange={(e) => setInfoForm((prev) => ({ ...prev, status: e.target.value }))}
-                      className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                    >
-                      <option value="Dipublikasikan">Dipublikasikan (Terbit)</option>
-                      <option value="Draft">Simpan Draft</option>
-                    </select>
+                      onChange={(val) => setInfoForm((prev) => ({ ...prev, status: val }))}
+                      options={statusOptions}
+                      placeholder="Pilih Status"
+                      className="w-full"
+                      ariaLabel="Pilih Status Publikasi"
+                    />
                   </div>
                 </div>
 
@@ -781,6 +1034,8 @@ export function FoundationInformationPage() {
         )}
       </AnimatePresence>
 
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-informasi-sekolah" downTooltip="Langsung ke Tabel Informasi" />
     </MasterDataPage>
   )
 }

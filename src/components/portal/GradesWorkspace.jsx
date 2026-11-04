@@ -17,7 +17,7 @@ import {
   BarChart2,
   MessageSquare,
 } from 'lucide-react'
-import { Button } from '../tailgrids/core/button'
+import { Button } from '../ui/button'
 
 const getSubjectColor = (subjectName = '', subjectCode = '') => {
   const s = `${subjectName} ${subjectCode}`.toLowerCase()

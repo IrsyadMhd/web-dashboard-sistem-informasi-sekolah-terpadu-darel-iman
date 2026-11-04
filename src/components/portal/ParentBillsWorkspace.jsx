@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   CreditCard,
   CheckCircle2,
@@ -15,11 +15,19 @@ import {
   Copy,
   Check,
   Sparkles,
+  X,
+  ChevronRight,
+  RefreshCw,
+  Building2,
+  CheckSquare,
+  Square,
+  Info,
 } from 'lucide-react'
-import { Card } from '../tailgrids/core/card'
-import { Badge } from '../tailgrids/core/badge'
-import { Button } from '../tailgrids/core/button'
+import { Card } from '../ui/card'
+import { Badge } from '../ui/badge'
+import { Button } from '../ui/button'
 import AppTabs from '../app/AppTabs'
+import api from '../../services/api'
 import { printCleanTable, resolveFoundationName } from '../../utils/printHelper'
 import { usePengaturanStore } from '../../stores/pengaturanStore'
 
@@ -37,11 +45,21 @@ const formatDate = (val) => {
   }
 }
 
-export default function ParentBillsWorkspace({ bills = [], loading = false, student }) {
+export default function ParentBillsWorkspace({ bills = [], loading = false, student, onRefresh }) {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [activeReceipt, setActiveReceipt] = useState(null)
   const [copiedVa, setCopiedVa] = useState(false)
+  const [copiedModalVa, setCopiedModalVa] = useState(false)
+
+  // Multi-select for VA Payment
+  const [selectedBillIds, setSelectedBillIds] = useState([])
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false)
+  const [selectedBank, setSelectedBank] = useState('BSI') // 'BSI' or 'NAGARI'
+  const [processingVa, setProcessingVa] = useState(false)
+  const [vaResult, setVaResult] = useState(null)
+  const [payError, setPayError] = useState(null)
+
   const pengaturan = usePengaturanStore((state) => state.pengaturan)
   const foundationName = resolveFoundationName(pengaturan)
 
@@ -51,11 +69,18 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
   const bsiPrefix = pengaturan?.bsi_va_prefix || '9023'
   const studentVa = studentMeta.no_va || studentMeta.nis_pembayaran || student?.no_va || (studentNis ? `${bsiPrefix}${String(studentNis).replace(/\D/g, '')}` : '')
 
-  const handleCopyVa = () => {
-    if (!studentVa) return
-    navigator.clipboard.writeText(studentVa)
+  const handleCopyVa = (val = studentVa) => {
+    if (!val) return
+    navigator.clipboard.writeText(val)
     setCopiedVa(true)
     setTimeout(() => setCopiedVa(false), 2000)
+  }
+
+  const handleCopyModalVa = (val) => {
+    if (!val) return
+    navigator.clipboard.writeText(val)
+    setCopiedModalVa(true)
+    setTimeout(() => setCopiedModalVa(false), 2000)
   }
 
   const safeBills = useMemo(() => (Array.isArray(bills) ? bills : []), [bills])
@@ -103,31 +128,124 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
     })
   }, [safeBills, filter, search])
 
+  // Unpaid bills that can be selected
+  const unpaidBills = useMemo(() => {
+    return safeBills.filter((b) => String(b.status).toUpperCase() !== 'PAID')
+  }, [safeBills])
+
+  const toggleSelectBill = (id) => {
+    setSelectedBillIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
+  }
+
+  const handleSelectAllUnpaid = () => {
+    if (selectedBillIds.length === unpaidBills.length) {
+      setSelectedBillIds([])
+    } else {
+      setSelectedBillIds(unpaidBills.map((b) => b.id))
+    }
+  }
+
+  // Selected bills objects and total
+  const selectedBillsData = useMemo(() => {
+    return safeBills.filter((b) => selectedBillIds.includes(b.id))
+  }, [safeBills, selectedBillIds])
+
+  const selectedTotal = useMemo(() => {
+    return selectedBillsData.reduce((acc, b) => acc + Number(b.remaining_amount || b.amount || 0), 0)
+  }, [selectedBillsData])
+
+  const openPaymentModal = () => {
+    setPayError(null)
+    setVaResult(null)
+    setIsPayModalOpen(true)
+  }
+
+  const handleProcessVaPayment = async () => {
+    if (selectedBillsData.length === 0) return
+    setProcessingVa(true)
+    setPayError(null)
+
+    try {
+      // Map to items expected by SIPDEI API
+      const items = selectedBillsData.map((b) => {
+        const rawId = b.metadata?.sipdei_id || String(b.id).replace(/^sipdei_/, '')
+        const numId = parseInt(rawId, 10) || 1
+        let jenis = 'TAGIHAN'
+        if (b.fee_category?.category === 'TUNGGAKAN') jenis = 'TUNGGAKAN'
+        if (b.fee_category?.category === 'DANA_ORTU_ASUH') jenis = 'DANA_ORTU_ASUH'
+
+        return {
+          jenis,
+          id: numId,
+          bayar: Number(b.remaining_amount || b.amount || 0),
+        }
+      })
+
+      const headers = {}
+      if (student?.id) {
+        headers['X-Child-Id'] = student.id
+      }
+
+      const res = await api.post(
+        '/portal/bills/pay-va',
+        {
+          bank: selectedBank,
+          items,
+        },
+        { headers }
+      )
+
+      if (res.data?.success && res.data?.data) {
+        setVaResult(res.data.data)
+        if (typeof onRefresh === 'function') {
+          onRefresh()
+        }
+      } else {
+        setPayError(res.data?.message || 'Gagal menerbitkan Virtual Account dari SIPDEI.')
+      }
+    } catch (err) {
+      setPayError(
+        err.response?.data?.message ||
+          'Terjadi kesalahan saat menghubungi server SIPDEI untuk membuat pembayaran Virtual Account.'
+      )
+    } finally {
+      setProcessingVa(false)
+    }
+  }
+
   const printReceipt = (bill, payment) => {
     setActiveReceipt({ bill, payment })
     const activePayment = payment || {}
-    const studentName = bill?.student?.nama_lengkap || bill?.student?.full_name || bill?.student?.name || '-'
-    const unitName = bill?.student?.unit?.nama_unit || bill?.student?.unit?.name || resolveFoundationName()
+    const sName = bill?.student?.nama_lengkap || bill?.student?.full_name || bill?.student?.name || studentName
+    const unitName = bill?.student?.unit?.nama_unit || bill?.student?.unit?.name || foundationName
     printCleanTable({
       title: 'BUKTI PEMBAYARAN & KUITANSI RESMI (SPP)',
-      subtitle: `No. Kuitansi: ${activePayment.invoice_number || 'INV-OFFICIAL'} | Tanggal: ${activePayment.paid_at ? new Date(activePayment.paid_at).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : new Date().toLocaleDateString('id-ID', { dateStyle: 'medium' })}`,
+      subtitle: `No. Kuitansi: ${activePayment.invoice_number || 'INV-OFFICIAL'} | Tanggal: ${
+        activePayment.paid_at
+          ? new Date(activePayment.paid_at).toLocaleDateString('id-ID', { dateStyle: 'medium' })
+          : new Date().toLocaleDateString('id-ID', { dateStyle: 'medium' })
+      }`,
       headers: ['Uraian Tagihan', 'Nama Siswa', 'NIS', 'Kelas', 'Metode Pembayaran', 'Jumlah Diterima', 'Status'],
-      rows: [[
-        bill?.title || 'Pembayaran Tagihan SPP',
-        studentName,
-        bill?.student?.nis || '-',
-        bill?.student?.kelas?.nama_kelas || bill?.student?.class_name || '-',
-        activePayment.payment_method || 'Tunai / Transfer',
-        formatRupiah(activePayment.paid_amount || bill?.amount || 0),
-        'LUNAS - TERVERIFIKASI KASIR',
-      ]],
+      rows: [
+        [
+          bill?.title || 'Pembayaran Tagihan SPP',
+          sName,
+          bill?.student?.nis || studentNis || '-',
+          bill?.student?.kelas?.nama_kelas || bill?.student?.class_name || '-',
+          activePayment.payment_method || 'Tunai / Transfer',
+          formatRupiah(activePayment.paid_amount || bill?.amount || 0),
+          'LUNAS - TERVERIFIKASI KASIR',
+        ],
+      ],
       unit: unitName,
       orientation: 'portrait',
       customFooter: `
         <div style="display:flex; justify-content:space-between; margin-top:35px; font-size:9pt; text-align:center;">
           <div>
             <p style="margin:0 0 45px 0;">Penyetor / Orang Tua Siswa</p>
-            <p style="margin:0; font-weight:bold;">(${studentName !== '-' ? studentName : 'Orang Tua / Wali Santri'})</p>
+            <p style="margin:0; font-weight:bold;">(${sName !== '-' ? sName : 'Orang Tua / Wali Santri'})</p>
           </div>
           <div>
             <p style="margin:0 0 45px 0;">Kasir / Bagian Keuangan</p>
@@ -139,7 +257,7 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       {/* 1. HERO KPI STATS */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="relative overflow-hidden rounded-[20px] border border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent p-5 shadow-xs dark:border-emerald-500/30 dark:bg-emerald-950/20">
@@ -152,29 +270,29 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
           <div className="mt-3">
             <h3 className="text-xl font-black text-slate-900 dark:text-white">{formatRupiah(stats.totalNominal)}</h3>
             <p className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              {stats.totalCount} tagihan terdaftar
+              {stats.totalCount} pos tagihan terdaftar
             </p>
           </div>
         </Card>
 
-        <Card className="relative overflow-hidden rounded-[20px] border border-blue-500/25 bg-gradient-to-br from-blue-500/10 via-sky-500/5 to-transparent p-5 shadow-xs dark:border-blue-500/30 dark:bg-blue-950/20">
+        <Card className="relative overflow-hidden rounded-[20px] border border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent p-5 shadow-xs dark:border-emerald-500/30 dark:bg-emerald-950/20">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Sudah Dilunasi</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Sudah Terbayar</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="h-5 w-5" />
             </div>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl font-black text-blue-600 dark:text-blue-400">{formatRupiah(stats.paidNominal)}</h3>
+            <h3 className="text-xl font-black text-emerald-600 dark:text-emerald-400">{formatRupiah(stats.paidNominal)}</h3>
             <p className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              {stats.paidCount} tagihan lunas
+              {stats.paidCount} tagihan lunas terverifikasi
             </p>
           </div>
         </Card>
 
         <Card className="relative overflow-hidden rounded-[20px] border border-amber-500/25 bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent p-5 shadow-xs dark:border-amber-500/30 dark:bg-amber-950/20">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Sisa Belum Lunas</span>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Sisa Menunggu Bayar</span>
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
               <Clock className="h-5 w-5" />
             </div>
@@ -188,37 +306,36 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
         </Card>
       </div>
 
-      {/* 2. INFORMASI PEMBAYARAN RESMI & VIRTUAL ACCOUNT BSI ANANDA */}
+      {/* 2. INFORMASI PEMBAYARAN RESMI & VIRTUAL ACCOUNT SIPDEI ANANDA */}
       <div className="grid grid-cols-1 gap-4">
-        {/* Virtual Account BSI Khusus Ananda */}
         <Card className="rounded-[22px] border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white p-4.5 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30">
                 <CreditCard className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
-                    Bank Syariah Indonesia (BSI)
+                    Layanan Virtual Account SIPDEI
                   </span>
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-700 dark:text-teal-300">
                     <Sparkles className="h-3 w-3" />
-                    VA Otomatis
+                    BSI & Bank Nagari
                   </span>
                 </div>
                 <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white mt-1">
-                  Virtual Account Ananda: {studentName}
+                  Tagihan Siswa: {studentName} ({studentNis || 'NIS Siswa'})
                 </h4>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <div className="rounded-xl border border-emerald-300 bg-white px-3 py-1.5 font-mono text-sm sm:text-base font-extrabold text-emerald-800 shadow-inner dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300">
-                    {studentVa || 'Belum Dibuat'}
+                    {studentVa || 'VA Resmi Dibuat Otomatis'}
                   </div>
                   {studentVa && (
                     <button
                       type="button"
-                      onClick={handleCopyVa}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold transition shadow-sm active:scale-95"
+                      onClick={() => handleCopyVa(studentVa)}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
                     >
                       {copiedVa ? (
                         <>
@@ -233,9 +350,22 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
                       )}
                     </button>
                   )}
+                  {unpaidBills.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedBillIds(unpaidBills.map((b) => b.id))
+                        openPaymentModal()
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white px-3.5 py-1.5 text-xs font-extrabold shadow-md shadow-emerald-600/30 transition active:scale-95 cursor-pointer"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                      <span>Bayar Semua Tagihan ({formatRupiah(stats.unpaidNominal)})</span>
+                    </button>
+                  )}
                 </div>
                 <p className="mt-2 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Dapat dibayarkan melalui <b>BSI Mobile</b>, <b>ATM BSI</b>, atau <b>Transfer Antar Bank</b> (Pilih Bank BSI / Kode Bank <b>451</b>). Tagihan langsung terverifikasi otomatis.
+                  Pilih tagihan yang ingin dibayarkan di bawah untuk mendapatkan nomor <b>Virtual Account Bank Nagari</b> atau <b>BSI</b> resmi yang langsung mengunci nominal dan terverifikasi otomatis.
                 </p>
               </div>
             </div>
@@ -245,18 +375,40 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
 
       {/* 3. TOOLBAR & FILTER */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <AppTabs
-          tabs={[
-            { id: 'all', label: 'Semua Tagihan' },
-            { id: 'unpaid', label: 'Belum Lunas' },
-            { id: 'paid', label: 'Lunas' },
-            { id: 'overdue', label: 'Jatuh Tempo' },
-          ]}
-          activeTab={filter}
-          onChange={setFilter}
-          ariaLabel="Filter status tagihan"
-          size="sm"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <AppTabs
+            tabs={[
+              { id: 'all', label: 'Semua Tagihan' },
+              { id: 'unpaid', label: 'Belum Lunas' },
+              { id: 'paid', label: 'Lunas' },
+              { id: 'overdue', label: 'Jatuh Tempo' },
+            ]}
+            activeTab={filter}
+            onChange={setFilter}
+            ariaLabel="Filter status tagihan"
+            size="sm"
+          />
+
+          {unpaidBills.length > 0 && (
+            <button
+              type="button"
+              onClick={handleSelectAllUnpaid}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300/80 bg-emerald-50/70 hover:bg-emerald-100/80 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 px-3 py-1.5 text-xs font-bold transition cursor-pointer"
+            >
+              {selectedBillIds.length === unpaidBills.length ? (
+                <>
+                  <CheckSquare className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Batal Pilih Semua</span>
+                </>
+              ) : (
+                <>
+                  <Square className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Pilih Semua Belum Lunas</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
 
         <div className="relative min-w-[240px]">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
@@ -270,7 +422,7 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
         </div>
       </div>
 
-      {/* 4. LIST TAGIHAN & KUITANSI */}
+      {/* 4. LIST TAGIHAN DENGAN CHECKBOX PEMBAYARAN */}
       <div className="space-y-3">
         {filteredBills.map((b) => {
           const status = String(b.status || 'UNPAID').toUpperCase()
@@ -278,32 +430,63 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
           const isOverdue = !isPaid && b.due_date && new Date(b.due_date) < new Date()
           const categoryName = b.fee_category?.name || b.feeCategory?.name || 'Biaya Sekolah'
           const payments = Array.isArray(b.payments) ? b.payments : []
+          const isSelected = selectedBillIds.includes(b.id)
 
           return (
             <motion.div key={b.id} whileHover={{ y: -1 }}>
-              <Card className="rounded-[20px] border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+              <Card
+                className={`rounded-[20px] border p-5 shadow-xs transition-all ${
+                  isSelected
+                    ? 'border-emerald-500 bg-emerald-50/30 shadow-md shadow-emerald-500/10 dark:border-emerald-500/60 dark:bg-emerald-950/20'
+                    : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900'
+                }`}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Badge color="cyan" size="sm" className="font-bold">
-                        {categoryName}
-                      </Badge>
-                      {b.source === 'sipdei' && (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-                          <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                          SIPDEI
+                  <div className="flex items-start gap-3">
+                    {!isPaid && (
+                      <button
+                        type="button"
+                        onClick={() => toggleSelectBill(b.id)}
+                        className="mt-1 flex h-6 w-6 items-center justify-center rounded-lg border border-slate-300 hover:border-emerald-500 transition cursor-pointer dark:border-slate-700"
+                      >
+                        {isSelected ? (
+                          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-600 text-white">
+                            <Check className="h-3.5 w-3.5" />
+                          </div>
+                        ) : (
+                          <div className="h-5 w-5 rounded-md bg-white dark:bg-slate-800" />
+                        )}
+                      </button>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Badge color="cyan" size="sm" className="font-bold">
+                          {categoryName}
+                        </Badge>
+                        {b.source === 'sipdei' && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                            SIPDEI
+                          </span>
+                        )}
+                        <span className="text-[11px] text-slate-400">
+                          Jatuh Tempo: {formatDate(b.due_date)}
                         </span>
-                      )}
-                      <span className="text-[11px] text-slate-400">
-                        Jatuh Tempo: {formatDate(b.due_date)}
-                      </span>
+                      </div>
+                      <h3 className="mt-2 text-base font-bold text-slate-900 dark:text-white">{b.title}</h3>
                     </div>
-                    <h3 className="mt-2 text-base font-bold text-slate-900 dark:text-white">{b.title}</h3>
                   </div>
 
                   <div className="text-right">
-                    <p className="text-lg font-black text-slate-900 dark:text-white">{formatRupiah(b.amount)}</p>
-                    <div className="mt-1 flex justify-end">
+                    <p className="text-lg font-black text-slate-900 dark:text-white">
+                      {formatRupiah(b.remaining_amount || b.amount)}
+                    </p>
+                    {b.paid_amount > 0 && !isPaid && (
+                      <p className="text-[10px] text-slate-400">
+                        Sudah dibayar: {formatRupiah(b.paid_amount)} dari {formatRupiah(b.amount)}
+                      </p>
+                    )}
+                    <div className="mt-1 flex justify-end gap-1.5">
                       {isPaid ? (
                         <Badge color="success" size="sm" className="font-extrabold">
                           LUNAS
@@ -317,6 +500,19 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
                           BELUM LUNAS
                         </Badge>
                       )}
+                      {!isPaid && (
+                        <Button
+                          type="button"
+                          size="xs"
+                          onClick={() => {
+                            setSelectedBillIds([b.id])
+                            openPaymentModal()
+                          }}
+                          className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] h-6 px-2.5 rounded-lg shadow-xs"
+                        >
+                          Bayar Ini
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -324,7 +520,9 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
                 {/* RIWAYAT PELUNASAN / KUITANSI */}
                 {payments.length > 0 && (
                   <div className="mt-4 rounded-xl bg-slate-50/70 p-3.5 dark:bg-slate-800/40">
-                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Riwayat Pembayaran & Kuitansi:</p>
+                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                      Riwayat Pembayaran & Kuitansi:
+                    </p>
                     <div className="mt-2 space-y-2">
                       {payments.map((p) => (
                         <div
@@ -375,7 +573,308 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
         )}
       </div>
 
-      {/* 5. PRINT RECEIPT TEMPLATE (HIDDEN ON SCREEN, VISIBLE ON PRINT) */}
+      {/* 5. STICKY FLOATING ACTION BAR FOR SELECTED BILLS */}
+      <AnimatePresence>
+        {selectedBillIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 w-[92%] max-w-2xl rounded-2xl border-2 border-emerald-500/50 bg-slate-900/95 p-3.5 sm:p-4 text-white shadow-2xl backdrop-blur-md"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600/80 text-white font-extrabold text-sm">
+                  {selectedBillIds.length}
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Total Pembayaran Dipilih
+                  </p>
+                  <p className="text-base sm:text-lg font-black text-emerald-400">
+                    {formatRupiah(selectedTotal)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedBillIds([])}
+                  className="rounded-xl px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={openPaymentModal}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 px-4 py-2 text-xs font-black text-white shadow-lg shadow-emerald-500/30 hover:from-emerald-600 hover:to-teal-600 transition active:scale-95 cursor-pointer"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  <span>Bayar via Virtual Account</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 6. MODAL PEMBAYARAN VIRTUAL ACCOUNT (TAILGRIDS HERO UI) */}
+      <AnimatePresence>
+        {isPayModalOpen && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.94 }}
+              className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#1B2433]"
+            >
+              {/* Garis Aksen Emerald */}
+              <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+
+              <div className="p-6">
+                {/* Header Modal */}
+                <div className="flex items-start justify-between gap-3 mb-5 border-b border-slate-100 pb-4 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/30">
+                      <CreditCard className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                        {vaResult ? 'Virtual Account Berhasil Diterbitkan' : 'Pilihan Bank Pembayaran'}
+                      </span>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                        {vaResult ? 'Instruksi Pembayaran VA' : 'Bayar Tagihan Siswa'}
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPayModalOpen(false)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {payError && (
+                  <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+                    <p>{payError}</p>
+                  </div>
+                )}
+
+                {/* STEP 1: FORM PEMILIHAN BANK & REVIEW TAGIHAN */}
+                {!vaResult ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                        Pilih Bank Tujuan Virtual Account:
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBank('BSI')}
+                          className={`rounded-2xl border-2 p-3.5 text-left transition cursor-pointer ${
+                            selectedBank === 'BSI'
+                              ? 'border-emerald-600 bg-emerald-50/70 shadow-md shadow-emerald-600/10 dark:border-emerald-500 dark:bg-emerald-950/40'
+                              : 'border-slate-200 bg-slate-50/40 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="font-extrabold text-xs text-emerald-800 dark:text-emerald-300">
+                              Bank BSI
+                            </span>
+                            {selectedBank === 'BSI' && (
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                            Bank Syariah Indonesia (BSI Mobile, ATM, Transfer Kode 451)
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBank('NAGARI')}
+                          className={`rounded-2xl border-2 p-3.5 text-left transition cursor-pointer ${
+                            selectedBank === 'NAGARI'
+                              ? 'border-emerald-600 bg-emerald-50/70 shadow-md shadow-emerald-600/10 dark:border-emerald-500 dark:bg-emerald-950/40'
+                              : 'border-slate-200 bg-slate-50/40 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="font-extrabold text-xs text-emerald-800 dark:text-emerald-300">
+                              Bank Nagari
+                            </span>
+                            {selectedBank === 'NAGARI' && (
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                            Nagari Mobile, ATM Bank Nagari, Transfer VA Kode 118
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Ringkasan Item Terpilih */}
+                    <div>
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Rincian Tagihan yang Dibayarkan ({selectedBillsData.length} item):
+                      </p>
+                      <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/50 p-2.5 dark:border-slate-800 dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
+                        {selectedBillsData.map((b) => (
+                          <div key={b.id} className="flex items-center justify-between py-1.5 text-xs">
+                            <span className="truncate pr-2 font-medium text-slate-800 dark:text-slate-200">
+                              {b.title}
+                            </span>
+                            <span className="font-bold text-slate-900 dark:text-white shrink-0">
+                              {formatRupiah(b.remaining_amount || b.amount)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3.5 dark:border-emerald-900/60 dark:bg-emerald-950/30 flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                        Total yang Harus Ditransfer:
+                      </span>
+                      <span className="text-base font-black text-emerald-700 dark:text-emerald-300">
+                        {formatRupiah(selectedTotal)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setIsPayModalOpen(false)}
+                        className="text-xs cursor-pointer font-bold"
+                      >
+                        Batal
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={processingVa}
+                        onClick={handleProcessVaPayment}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-5 rounded-xl shadow-md cursor-pointer gap-2"
+                      >
+                        {processingVa ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            <span>Menerbitkan VA...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4" />
+                            <span>Terbitkan Nomor VA Resmi</span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* STEP 2: HASIL PENERBITAN VIRTUAL ACCOUNT RESMI */
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent p-5 text-center">
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Nomor Virtual Account {vaResult.bank || selectedBank}
+                      </p>
+                      <div className="my-2 rounded-xl border border-emerald-300 bg-white p-3 font-mono text-xl sm:text-2xl font-black text-emerald-900 shadow-inner dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300 tracking-wider">
+                        {vaResult.nomor_va}
+                      </div>
+
+                      <div className="flex items-center justify-center gap-2 mt-3">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyModalVa(vaResult.nomor_va)}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 text-xs font-bold transition shadow-sm cursor-pointer"
+                        >
+                          {copiedModalVa ? (
+                            <>
+                              <Check className="h-3.5 w-3.5" />
+                              <span>Tersalin!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3.5 w-3.5" />
+                              <span>Salin Nomor VA</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 text-xs space-y-1.5 dark:border-slate-800 dark:bg-slate-900">
+                      {vaResult.kode_biller && (
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Kode Biller / Institusi:</span>
+                          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                            {vaResult.kode_biller}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Nama Akademik:</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          {vaResult.nama_akademik || 'Yayasan Dar El Iman'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-slate-800">
+                        <span className="font-bold text-slate-700 dark:text-slate-300">Total Harus Ditransfer:</span>
+                        <span className="font-black text-emerald-700 dark:text-emerald-300 text-sm">
+                          {formatRupiah(vaResult.total_bayar)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-[11px] text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300 flex items-start gap-2">
+                      <Info className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                      <p>
+                        <b>Penting:</b> Nominal transfer di m-banking/ATM harus persis sama sebesar{' '}
+                        <b>{formatRupiah(vaResult.total_bayar)}</b>. Selisih nominal dapat menyebabkan pembayaran tidak terverifikasi otomatis oleh bank.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2">
+                      {vaResult.panduan_url ? (
+                        <a
+                          href={vaResult.panduan_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                          <span>Panduan PDF ({selectedBank})</span>
+                        </a>
+                      ) : (
+                        <div />
+                      )}
+
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          setIsPayModalOpen(false)
+                          setSelectedBillIds([])
+                          setVaResult(null)
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-5 rounded-xl cursor-pointer"
+                      >
+                        Selesai
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 7. PRINT RECEIPT TEMPLATE (HIDDEN ON SCREEN, VISIBLE ON PRINT) */}
       {activeReceipt && (
         <div className="hidden print:block print:fixed print:inset-0 print:bg-white print:p-8">
           <div className="max-w-xl mx-auto border-2 border-slate-800 p-6 rounded-lg text-slate-900">
@@ -394,7 +893,7 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
               </div>
               <div className="flex justify-between">
                 <span>Nama Siswa:</span>
-                <span className="font-bold">{student?.name || student?.full_name || 'Siswa'}</span>
+                <span className="font-bold">{studentName}</span>
               </div>
               <div className="flex justify-between">
                 <span>Kelas:</span>
@@ -411,18 +910,6 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
               <div className="flex justify-between pt-1">
                 <span>Status:</span>
                 <span className="font-bold uppercase text-emerald-700">LUNAS - TERVERIFIKASI SISTEM</span>
-              </div>
-            </div>
-            <div className="mt-8 flex justify-between text-center text-xs">
-              <div>
-                <p>Orang Tua / Penyetor</p>
-                <div className="h-12"></div>
-                <p className="font-bold">({student?.parent_name || 'Wali Murid'})</p>
-              </div>
-              <div>
-                <p>Bendahara / Petugas TU</p>
-                <div className="h-12"></div>
-                <p className="font-bold">(Tata Usaha Keuangan)</p>
               </div>
             </div>
           </div>

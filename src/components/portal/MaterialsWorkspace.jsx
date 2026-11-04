@@ -32,8 +32,8 @@ import {
   X,
 } from 'lucide-react'
 import { VideoEmbedPlayer, PdfDocumentViewer } from '../common/MateriMediaEmbed'
-import { Button } from '../tailgrids/core/button'
-import { Badge } from '../tailgrids/core/badge'
+import { Button } from '../ui/button'
+import { Badge } from '../ui/badge'
 
 const typeThemes = {
   video: {

@@ -4,10 +4,10 @@ import PersonAvatar from '../ui/PersonAvatar'
 import { useAuthStore } from '../../stores/authStore'
 import { authService } from '../../services/authService'
 import { educationUnitService } from '../../services/educationUnitService'
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/tailgrids/core/alert'
-import { Card, CardContent } from '@/components/tailgrids/core/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/ui/alert'
+import { Card, CardContent } from '@/components/ui/card'
 
 export default function UserProfileCard() {
   const { user, setSession, token, loginTime } = useAuthStore()

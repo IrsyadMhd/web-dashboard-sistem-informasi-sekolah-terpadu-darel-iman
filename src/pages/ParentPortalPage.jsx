@@ -22,6 +22,7 @@ import {
   HeartHandshake,
   Home,
   Info,
+  Languages,
   Loader2,
   Megaphone,
   MessageCircle,
@@ -44,6 +45,7 @@ import ClassScheduleWorkspace from '../components/portal/ClassScheduleWorkspace'
 import MaterialsWorkspace from '../components/portal/MaterialsWorkspace'
 import AssignmentsWorkspace from '../components/portal/AssignmentsWorkspace'
 import TahfizhWorkspace from '../components/portal/TahfizhWorkspace'
+import BahasaWorkspace from '../components/portal/BahasaWorkspace'
 import GradesWorkspace from '../components/portal/GradesWorkspace'
 import TeacherCommentsWorkspace from '../components/portal/TeacherCommentsWorkspace'
 import MutabaahWorkspace from '../components/portal/MutabaahWorkspace'
@@ -56,10 +58,10 @@ import ChatGuruWorkspace from '../components/portal/ChatGuruWorkspace'
 import AcademicCalendarModal from '../components/calendar/AcademicCalendarModal'
 
 // TailGrids Core Components
-import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Button } from '@/components/tailgrids/core/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/tailgrids/core/card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 
 const menu = [
@@ -71,6 +73,7 @@ const menu = [
   ['materials', 'Materi', BookOpen, 'bg-purple-100/90 text-purple-600 border-purple-200/90 hover:bg-purple-200'],
   ['assignments', 'Tugas', ClipboardList, 'bg-fuchsia-100/90 text-fuchsia-600 border-fuchsia-200/90 hover:bg-fuchsia-200'],
   ['tahfizh', 'Tahfizh', BookOpenCheck, 'bg-emerald-100/90 text-emerald-600 border-emerald-200/90 hover:bg-emerald-200'],
+  ['bahasa', 'Pembiasaan Bahasa', Languages, 'bg-teal-100/90 text-teal-700 border-teal-200/90 hover:bg-teal-200'],
   ['grades', 'Nilai', Award, 'bg-teal-100/90 text-teal-600 border-teal-200/90 hover:bg-teal-200'],
   ['student-notes', 'Buku Penghubung', BookOpenCheck, 'bg-cyan-100/90 text-cyan-600 border-cyan-200/90 hover:bg-cyan-200'],
   ['bills', 'Tagihan & SPP', Receipt, 'bg-emerald-100/90 text-emerald-600 border-emerald-200/90 hover:bg-emerald-200'],
@@ -2081,6 +2084,10 @@ export default function ParentPortalPage() {
               student={activeChild}
               onMurajaahSubmitted={load}
             />
+          )}
+
+          {active === 'bahasa' && (
+            <BahasaWorkspace student={activeChild} loading={loading} />
           )}
 
           {active === 'grades' && (

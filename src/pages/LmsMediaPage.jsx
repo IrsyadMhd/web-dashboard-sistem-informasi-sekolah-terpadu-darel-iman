@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText,
@@ -20,6 +20,7 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   ExternalLink,
   Eye,
   FileUp,
@@ -30,9 +31,11 @@ import {
   PlayCircle,
   Info,
 } from 'lucide-react'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { lmsMediaService } from '../services/lmsMediaService'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { useDebounce } from '../hooks/useDebounce'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import {
   MasterDataTable,
@@ -40,6 +43,14 @@ import {
   PrintOptionModal,
 } from '../components/master-data'
 import CsvImportModal from '../components/master-data/CsvImportModal'
+import {
+  TableRoot,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { RotateCcw, Printer } from 'lucide-react'
 
@@ -192,6 +203,307 @@ function HarmonizedDeleteMediaModal({ isOpen, onClose, onConfirm, item, isSubmit
   )
 }
 
+// ── HEROUI MODAL FORM SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  label,
+  value,
+  onChange,
+  options = [],
+  placeholder = '-- Pilih Opsi --',
+  disabled = false,
+  required = false,
+  helperText = '',
+  icon: IconComponent = null,
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      {label && (
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+            : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[90] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {/* Search Input jika searchable */}
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* List options */}
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div>{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 font-normal">{opt.subtext}</div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {helperText && (
+        <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          {helperText}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen((prev) => !prev)
+          setSearch('')
+        }}
+        className={`h-9 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== undefined && value !== null
+            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, item: null, isSubmitting: false })
   const [dataMedia, setDataMedia] = useState([])
@@ -231,6 +543,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
 
   // Filters & Pagination
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [selectedMateri, setSelectedMateri] = useState('')
   const [selectedTipe, setSelectedTipe] = useState('')
   const [page, setPage] = useState(1)
@@ -240,6 +553,36 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
     total: 0,
     per_page: 15,
   })
+
+  const filterMateriOptions = useMemo(() => [
+    { value: '', label: 'Semua Materi Pembelajaran' },
+    ...optionsMateri.map((mat) => ({
+      value: String(mat.id),
+      label: mat.modul_ajar?.judul_modul ? `${mat.judul} (${mat.modul_ajar.judul_modul})` : mat.judul,
+    })),
+  ], [optionsMateri])
+
+  const filterTipeOptions = useMemo(() => [
+    { value: '', label: 'Semua Tipe Media' },
+    ...tipeOptions.map((opt) => ({
+      value: opt.id,
+      label: opt.nama,
+    })),
+  ], [tipeOptions])
+
+  const modalMateriOptions = useMemo(() => [
+    ...optionsMateri.map((mat) => ({
+      value: String(mat.id),
+      label: mat.modul_ajar?.judul_modul ? `${mat.judul} (${mat.modul_ajar.judul_modul})` : mat.judul,
+    })),
+  ], [optionsMateri])
+
+  const modalTipeOptions = useMemo(() => [
+    ...tipeOptions.map((opt) => ({
+      value: opt.id,
+      label: opt.nama,
+    })),
+  ], [tipeOptions])
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false)
@@ -363,7 +706,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
     try {
       const response = await lmsMediaService.getDaftar({
         page,
-        search,
+        search: debouncedSearch,
         materi_id: selectedMateri,
         tipe_file: selectedTipe,
         per_page: 15,
@@ -396,7 +739,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
 
   useEffect(() => {
     fetchDaftarMedia()
-  }, [page, search, selectedMateri, selectedTipe])
+  }, [page, debouncedSearch, selectedMateri, selectedTipe])
 
   const handleOpenCreateModal = () => {
     setEditingItem(null)
@@ -484,7 +827,16 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
   }
 
   const handleDeleteItem = async (item) => {
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus media "${item.nama_file}"?`)) {
+    const confirmResult = await Swal.fire({
+      title: 'Hapus Media Pembelajaran?',
+      text: `Apakah Anda yakin ingin menghapus media "${item.nama_file}"? Berkas yang dihapus tidak dapat dipulihkan.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus Media',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48',
+    })
+    if (!confirmResult.isConfirmed) {
       return
     }
     try {
@@ -738,12 +1090,27 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
         </motion.div>
       )}
 
-      {/* SEARCH & FILTER BAR (2-Row Layout) */}
-      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
-        {/* Baris 1: Field Pencarian Full-Width */}
-        <div className="w-full">
-          <div className="relative w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      {/* DATA TABLE CONTAINER (Integrated 3-Baris Emerald Datatable) */}
+      <motion.div variants={itemVariants}>
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]" aria-labelledby="media-table-title">
+        {/* Baris 1: Header Judul & Soft Pastel Squircle Action Buttons */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 id="media-table-title" className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">Data Media Pembelajaran</h2>
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/60">
+                {pagination.total} Data
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Daftar berkas dan sumber media pembelajaran terpadu.</p>
+          </div>
+          {pageActions}
+        </div>
+
+        {/* Baris 2: Full-Width Search Bar dengan Debounce */}
+        <div className="p-3 sm:p-4 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-emerald-950/30 border-b border-emerald-200/80 dark:border-emerald-800/60">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400" />
             <input
               type="text"
               placeholder="Cari nama media, deskripsi, atau materi..."
@@ -752,143 +1119,133 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                 setSearch(e.target.value)
                 setPage(1)
               }}
-              className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+              className="h-10 sm:h-11 w-full rounded-2xl border border-emerald-200/90 dark:border-emerald-800/60 bg-white dark:bg-[#151D2A] pl-10 pr-10 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 focus:border-[#0E5C44] transition-all shadow-xs"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('')
+                  setPage(1)
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Baris 2: Dropdown Filter & Sortir */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
-            Filter &amp; Sortir:
-          </span>
-
-          <select
+        {/* Baris 3: Dropdown Filter & Reset Button */}
+        <div className="px-3 sm:px-4 py-2.5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:border-emerald-800/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 flex flex-wrap items-center gap-2">
+          <HeroUiFilterSelect
             value={selectedMateri}
-            onChange={(e) => {
-              setSelectedMateri(e.target.value)
+            onChange={(val) => {
+              setSelectedMateri(val)
               setPage(1)
             }}
-            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-          >
-            <option value="">-- Semua Materi Pembelajaran --</option>
-            {optionsMateri.map((mat) => (
-              <option key={mat.id} value={mat.id}>
-                {mat.judul} ({mat.modul_ajar?.judul_modul || 'Modul'})
-              </option>
-            ))}
-          </select>
+            options={filterMateriOptions}
+            placeholder="Semua Materi Pembelajaran"
+            icon={BookOpen}
+            searchable={true}
+            popoverWidth="min-w-[260px]"
+          />
 
-          <select
+          <HeroUiFilterSelect
             value={selectedTipe}
-            onChange={(e) => {
-              setSelectedTipe(e.target.value)
+            onChange={(val) => {
+              setSelectedTipe(val)
               setPage(1)
             }}
-            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-          >
-            <option value="">-- Semua Tipe Media --</option>
-            {tipeOptions.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.nama}
-              </option>
-            ))}
-          </select>
+            options={filterTipeOptions}
+            placeholder="Semua Tipe Media"
+            icon={Layers}
+            popoverWidth="min-w-[180px]"
+          />
 
-          <button
-            type="button"
-            onClick={() => {
-              setSearch('')
-              setSelectedMateri('')
-              setSelectedTipe('')
-              setPage(1)
-            }}
-            className="inline-flex items-center gap-1.5 px-4 h-12 rounded-[14px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-            title="Reset Filter"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>Reset</span>
-          </button>
-        </div>
-      </motion.div>
-
-      {/* DATA TABLE CONTAINER */}
-      <motion.div variants={itemVariants}>
-      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]" aria-labelledby="media-table-title">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
-          <div>
-            <h2 id="media-table-title" className="text-base font-extrabold text-slate-900 dark:text-white">Data Media Pembelajaran</h2>
-            <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Daftar berkas dan sumber media pembelajaran terpadu.</p>
-          </div>
-          {pageActions}
+          {(search || selectedMateri || selectedTipe) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('')
+                setSelectedMateri('')
+                setSelectedTipe('')
+                setPage(1)
+              }}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ml-auto cursor-pointer"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>Reset Filter</span>
+            </button>
+          )}
         </div>
 
         <MasterDataTable className="!rounded-none !border-0 !shadow-none">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-              <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
-                <th className="w-[6%] bg-transparent px-5 sm:px-6 md:px-8 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">No</th>
-                <th className="w-[8%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Urutan</th>
-                <th className="w-[30%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">Nama Media / Lampiran</th>
-                <th className="hidden w-[14%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Tipe Media</th>
-                <th className="hidden w-[22%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Materi Pembelajaran</th>
-                <th className="hidden w-[12%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Ukuran / Durasi</th>
-                <th className="w-[12%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
+          <TableRoot className="w-full text-left text-sm border-collapse">
+            <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+              <TableRow className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+                <TableHead className="w-[6%] bg-transparent px-5 sm:px-6 md:px-8 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">No</TableHead>
+                <TableHead className="w-[8%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Urutan</TableHead>
+                <TableHead className="w-[30%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">Nama Media / Lampiran</TableHead>
+                <TableHead className="hidden w-[14%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Tipe Media</TableHead>
+                <TableHead className="hidden w-[22%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Materi Pembelajaran</TableHead>
+                <TableHead className="hidden w-[12%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Ukuran / Durasi</TableHead>
+                <TableHead className="w-[12%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
               {loading ? (
                 Array.from({ length: 5 }).map((_, idx) => (
-                  <tr key={idx} className="animate-pulse">
-                    <td className="px-6 py-4 text-center">
+                  <TableRow key={idx} className="animate-pulse">
+                    <TableCell className="px-6 py-4 text-center">
                       <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-6 mx-auto" />
-                    </td>
-                    <td className="px-6 py-4 text-center">
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-center">
                       <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-6 mx-auto" />
-                    </td>
-                    <td className="px-6 py-4">
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
                       <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-48" />
-                    </td>
-                    <td className="px-6 py-4">
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
                       <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded-full w-24" />
-                    </td>
-                    <td className="px-6 py-4">
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
                       <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-36" />
-                    </td>
-                    <td className="px-6 py-4">
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
                       <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20" />
-                    </td>
-                    <td className="px-6 py-4 text-center">
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-center">
                       <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded-lg w-20 mx-auto" />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               ) : dataMedia.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="px-6 py-12 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Layers className="w-10 h-10 text-slate-300 stroke-[1.5]" />
                       <p className="font-semibold text-slate-600 dark:text-slate-300">Belum ada Media Pembelajaran</p>
                       <p className="text-xs text-slate-400">Silakan tambahkan berkas media baru untuk materi pembelajaran.</p>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 dataMedia.map((item, idx) => (
-                  <tr
+                  <TableRow
                     key={item.id}
                     onClick={() => handleOpenPreview(item)}
                     className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
                   >
-                    <td className="py-3.5 px-5 sm:px-6 md:px-8 text-center font-medium text-slate-400">
+                    <TableCell className="py-3.5 px-5 sm:px-6 md:px-8 text-center font-medium text-slate-400">
                       {(pagination.current_page - 1) * pagination.per_page + idx + 1}
-                    </td>
-                    <td className="py-3.5 px-3 text-center">
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3 text-center">
                       <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">
                         #{item.urutan || 1}
                       </span>
-                    </td>
-                    <td className="py-3.5 px-3">
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#0E5C44] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50 shrink-0">
                           {item.tipe_file === 'pdf' && <FileText className="w-5 h-5 text-red-500" />}
@@ -914,17 +1271,17 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                           )}
                         </div>
                       </div>
-                    </td>
-                    <td className="hidden py-3.5 px-3 text-center sm:table-cell">{getTipeBadge(item.tipe_file)}</td>
-                    <td className="hidden py-3.5 px-3 md:table-cell">
+                    </TableCell>
+                    <TableCell className="hidden py-3.5 px-3 text-center sm:table-cell">{getTipeBadge(item.tipe_file)}</TableCell>
+                    <TableCell className="hidden py-3.5 px-3 md:table-cell">
                       <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                         <BookOpen className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span className="font-medium line-clamp-1">
                           {item.materi?.judul || 'Tanpa Judul Materi'}
                         </span>
                       </div>
-                    </td>
-                    <td className="hidden py-3.5 px-3 text-xs font-medium text-slate-500 dark:text-slate-400 lg:table-cell">
+                    </TableCell>
+                    <TableCell className="hidden py-3.5 px-3 text-xs font-medium text-slate-500 dark:text-slate-400 lg:table-cell">
                       {item.ukuran_formatted ? (
                         <span className="block">{item.ukuran_formatted}</span>
                       ) : null}
@@ -934,44 +1291,46 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                         </span>
                       ) : null}
                       {!item.ukuran_formatted && !item.durasi_formatted && '-'}
-                    </td>
-                    <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <ActionDropdown
                         onView={() => handleOpenPreview(item)}
                         onEdit={() => handleOpenEditModal(item)}
                         onDelete={() => handleDeleteItem(item)}
                       />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </TableRoot>
         </MasterDataTable>
 
-        {/* Pagination Footer */}
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
+        {/* Pagination Footer (Modern TailGrids Emerald Squircle) */}
+        <div className="px-6 py-4 bg-emerald-50/20 dark:bg-emerald-950/10 border-t border-emerald-100/80 dark:border-emerald-900/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
           <div>
-            Menampilkan <span className="font-bold text-slate-700 dark:text-slate-200">{dataMedia.length}</span> dari{' '}
-            <span className="font-bold text-slate-700 dark:text-slate-200">{pagination.total}</span> data
+            Menampilkan <span className="font-bold text-slate-800 dark:text-white">{dataMedia.length}</span> dari{' '}
+            <span className="font-bold text-slate-800 dark:text-white">{pagination.total}</span> data
           </div>
           <div className="flex items-center gap-2">
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+              className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Halaman Sebelumnya"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="size-5" />
             </button>
-            <span className="px-3 font-semibold">
-              Halaman {pagination.current_page} dari {pagination.last_page}
+            <span className="px-3 py-1 font-bold text-slate-700 dark:text-slate-300">
+              {pagination.current_page} / {pagination.last_page}
             </span>
             <button
               disabled={page >= pagination.last_page}
               onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+              className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Halaman Berikutnya"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="size-5" />
             </button>
           </div>
         </div>
@@ -1010,26 +1369,26 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        <th className="py-3 px-4 text-center w-12">No</th>
-                        <th className="py-3 px-4">Nama File / Judul</th>
-                        <th className="py-3 px-4">Tipe File</th>
-                        <th className="py-3 px-4">Materi Pembelajaran</th>
-                        <th className="py-3 px-4 text-right">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                  <TableRoot className="w-full text-left border-collapse">
+                    <TableHeader>
+                      <TableRow className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        <TableHead className="py-3 px-4 text-center w-12">No</TableHead>
+                        <TableHead className="py-3 px-4">Nama File / Judul</TableHead>
+                        <TableHead className="py-3 px-4">Tipe File</TableHead>
+                        <TableHead className="py-3 px-4">Materi Pembelajaran</TableHead>
+                        <TableHead className="py-3 px-4 text-right">Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
                       {kpiModalCategory.items.map((item, idx) => (
-                        <tr key={item.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                          <td className="py-3 px-4 text-center text-slate-400 text-xs font-medium">{idx + 1}</td>
-                          <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-100">{item.nama_file}</td>
-                          <td className="py-3 px-4">{getTipeBadge(item.tipe_file)}</td>
-                          <td className="py-3 px-4 text-xs text-slate-600 dark:text-slate-300">
+                        <TableRow key={item.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                          <TableCell className="py-3 px-4 text-center text-slate-400 text-xs font-medium">{idx + 1}</TableCell>
+                          <TableCell className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-100">{item.nama_file}</TableCell>
+                          <TableCell className="py-3 px-4">{getTipeBadge(item.tipe_file)}</TableCell>
+                          <TableCell className="py-3 px-4 text-xs text-slate-600 dark:text-slate-300">
                             {item.materi?.judul || 'Tanpa Judul Materi'}
-                          </td>
-                          <td className="py-3 px-4 text-right">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-right">
                             <button
                               onClick={() => {
                                 setKpiModalOpen(false)
@@ -1039,11 +1398,11 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                             >
                               Detail
                             </button>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </TableRoot>
                 </div>
               )}
             </div>
@@ -1090,22 +1449,16 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
             {/* Modal Body */}
             <form onSubmit={handleSubmitForm} className="p-6 overflow-y-auto space-y-5 flex-1">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                  Materi Pembelajaran <span className="text-red-500">*</span>
-                </label>
-                <select
+                <HeroUiModalSelect
+                  label="Materi Pembelajaran"
                   required
+                  icon={BookOpen}
+                  searchable={true}
+                  placeholder="-- Pilih Materi Pembelajaran --"
                   value={formData.materi_id}
-                  onChange={(e) => setFormData({ ...formData, materi_id: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-[12px] bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
-                >
-                  <option value="">-- Pilih Materi Pembelajaran --</option>
-                  {optionsMateri.map((mat) => (
-                    <option key={mat.id} value={mat.id}>
-                      {mat.judul} ({mat.modul_ajar?.judul_modul || 'Modul'})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData({ ...formData, materi_id: val })}
+                  options={modalMateriOptions}
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1124,20 +1477,15 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                    Tipe Media <span className="text-red-500">*</span>
-                  </label>
-                  <select
+                  <HeroUiModalSelect
+                    label="Tipe Media"
+                    required
+                    icon={Layers}
+                    placeholder="-- Pilih Tipe Media --"
                     value={formData.tipe_file}
-                    onChange={(e) => setFormData({ ...formData, tipe_file: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-[12px] bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
-                  >
-                    {tipeOptions.map((opt) => (
-                      <option key={opt.id} value={opt.id}>
-                        {opt.nama}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, tipe_file: val })}
+                    options={modalTipeOptions}
+                  />
                 </div>
               </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Target,
@@ -18,14 +18,16 @@ import {
   X,
   Award,
   ChevronRight,
+  ChevronDown,
+  Check,
   ShieldCheck,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppModal from '../components/app/AppModal'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Button } from '@/components/tailgrids/core/button'
-import { Pagination } from '@/components/tailgrids/core/pagination'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Pagination } from '@/components/ui/pagination'
 import { tahfizhTargetService } from '../services/tahfizhTargetService'
 import useDebounce from '../hooks/useDebounce'
 import { useToast } from '../components/app'
@@ -36,6 +38,311 @@ const PROGRAM_LABELS = {
   boarding: { label: 'Pesantren (Boarding)', color: 'blue' },
   regular: { label: 'Reguler', color: 'purple' },
 }
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          disabled
+            ? 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-800/60 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== undefined && value !== null && value !== 'all'
+            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-500/15 text-emerald-900 font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ── HEROUI MODAL FORM SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  label = null,
+  required = false,
+  icon: IconComponent = null,
+  disabled = false,
+  searchable = false,
+  className = '',
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative w-full ${className}`} ref={containerRef}>
+      {label && (
+        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+            : 'border-emerald-200 bg-white hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[95] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {/* Search Input jika searchable */}
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* List options */}
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#0E5C44]/10 text-[#0E5C44] font-bold dark:bg-[#3FBF75]/15 dark:text-[#3FBF75]'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div className="truncate">{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 truncate font-normal">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-[#0E5C44] dark:text-[#3FBF75] shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 
 export default function TahfizhTargetSettingPage() {
   const navigate = useNavigate()
@@ -52,6 +359,60 @@ export default function TahfizhTargetSettingPage() {
   const [selectedLevel, setSelectedLevel] = useState('all')
   const [selectedGrade, setSelectedGrade] = useState('all')
   const [selectedProgram, setSelectedProgram] = useState('all')
+
+  // Memoized Options for HeroUI Selects
+  const filterLevelOptions = useMemo(() => [
+    { value: 'all', label: 'Semua Jenjang' },
+    ...(options.levels || []).map((lvl) => ({ value: lvl, label: lvl }))
+  ], [options.levels])
+
+  const filterGradeOptions = useMemo(() => [
+    { value: 'all', label: 'Semua Kelas' },
+    ...(options.grades || []).map((gr) => ({
+      value: gr,
+      label: gr === 'ALL' ? 'Semua Kelas (ALL)' : `Kelas ${gr}`
+    }))
+  ], [options.grades])
+
+  const filterProgramOptions = useMemo(() => [
+    { value: 'all', label: 'Semua Program' },
+    { value: 'fullday', label: 'Full Day School' },
+    { value: 'boarding', label: 'Pesantren (Boarding)' },
+    { value: 'regular', label: 'Reguler' },
+  ], [])
+
+  const filterUnitOptions = useMemo(() => [
+    { value: 'all', label: 'Semua Unit (Global & Spesifik)' },
+    ...(options.units || []).map((u) => ({ value: String(u.id), label: u.name }))
+  ], [options.units])
+
+  const formLevelOptions = useMemo(() => [
+    { value: '', label: 'Semua Jenjang' },
+    ...(options.levels || []).map((lvl) => ({ value: lvl, label: lvl }))
+  ], [options.levels])
+
+  const formGradeOptions = useMemo(() => [
+    { value: 'ALL', label: 'Semua Kelas (ALL)' },
+    ...(options.grades || []).filter((g) => g !== 'ALL').map((gr) => ({
+      value: gr,
+      label: `Kelas ${gr}`
+    }))
+  ], [options.grades])
+
+  const formProgramOptions = useMemo(() => [
+    { value: 'fullday', label: 'Full Day School' },
+    { value: 'boarding', label: 'Pesantren (Boarding)' },
+    { value: 'regular', label: 'Reguler' },
+    { value: 'all', label: 'Semua Program' },
+  ], [])
+
+  const formUnitOptions = useMemo(() => [
+    { value: '', label: 'Berlaku Global untuk Jenjang Terkait' },
+    ...(options.units || []).map((u) => ({
+      value: String(u.id),
+      label: `${u.name} (${u.level})`
+    }))
+  ], [options.units])
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -318,16 +679,18 @@ export default function TahfizhTargetSettingPage() {
               <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
                 Jenjang Pendidikan
               </label>
-              <select
+              <HeroUiFilterSelect
                 value={selectedLevel}
-                onChange={(e) => { setSelectedLevel(e.target.value); setCurrentPage(1); }}
-                className="w-full text-xs rounded-xl border border-emerald-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-              >
-                <option value="all">Semua Jenjang</option>
-                {options.levels?.map((lvl) => (
-                  <option key={lvl} value={lvl}>{lvl}</option>
-                ))}
-              </select>
+                onChange={(val) => {
+                  setSelectedLevel(val)
+                  setCurrentPage(1)
+                }}
+                options={filterLevelOptions}
+                placeholder="Semua Jenjang"
+                icon={School}
+                searchable={filterLevelOptions.length > 5}
+                popoverWidth="min-w-[180px]"
+              />
             </div>
 
             {/* Filter Tingkat Kelas */}
@@ -335,16 +698,18 @@ export default function TahfizhTargetSettingPage() {
               <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
                 Tingkat Kelas
               </label>
-              <select
+              <HeroUiFilterSelect
                 value={selectedGrade}
-                onChange={(e) => { setSelectedGrade(e.target.value); setCurrentPage(1); }}
-                className="w-full text-xs rounded-xl border border-emerald-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-              >
-                <option value="all">Semua Kelas</option>
-                {options.grades?.map((gr) => (
-                  <option key={gr} value={gr}>{gr === 'ALL' ? 'Semua Kelas (ALL)' : `Kelas ${gr}`}</option>
-                ))}
-              </select>
+                onChange={(val) => {
+                  setSelectedGrade(val)
+                  setCurrentPage(1)
+                }}
+                options={filterGradeOptions}
+                placeholder="Semua Kelas"
+                icon={Layers}
+                searchable={filterGradeOptions.length > 5}
+                popoverWidth="min-w-[180px]"
+              />
             </div>
 
             {/* Filter Program */}
@@ -352,16 +717,17 @@ export default function TahfizhTargetSettingPage() {
               <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
                 Program Sekolah
               </label>
-              <select
+              <HeroUiFilterSelect
                 value={selectedProgram}
-                onChange={(e) => { setSelectedProgram(e.target.value); setCurrentPage(1); }}
-                className="w-full text-xs rounded-xl border border-emerald-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-              >
-                <option value="all">Semua Program</option>
-                <option value="fullday">Full Day School</option>
-                <option value="boarding">Pesantren (Boarding)</option>
-                <option value="regular">Reguler</option>
-              </select>
+                onChange={(val) => {
+                  setSelectedProgram(val)
+                  setCurrentPage(1)
+                }}
+                options={filterProgramOptions}
+                placeholder="Semua Program"
+                icon={Sparkles}
+                popoverWidth="min-w-[200px]"
+              />
             </div>
 
             {/* Filter Unit Spesifik */}
@@ -369,16 +735,18 @@ export default function TahfizhTargetSettingPage() {
               <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
                 Unit Spesifik
               </label>
-              <select
+              <HeroUiFilterSelect
                 value={selectedUnit}
-                onChange={(e) => { setSelectedUnit(e.target.value); setCurrentPage(1); }}
-                className="w-full text-xs rounded-xl border border-emerald-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-              >
-                <option value="all">Semua Unit (Global & Spesifik)</option>
-                {options.units?.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
+                onChange={(val) => {
+                  setSelectedUnit(val)
+                  setCurrentPage(1)
+                }}
+                options={filterUnitOptions}
+                placeholder="Semua Unit"
+                icon={BookOpen}
+                searchable={filterUnitOptions.length > 5}
+                popoverWidth="min-w-[220px]"
+              />
             </div>
           </div>
         </div>
@@ -600,51 +968,39 @@ export default function TahfizhTargetSettingPage() {
             {/* Jenjang & Kelas & Program (3 Kolom) */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Jenjang Pendidikan
-                </label>
-                <select
+                <HeroUiModalSelect
+                  label="Jenjang Pendidikan"
                   value={formData.unit_level}
-                  onChange={(e) => setFormData({ ...formData, unit_level: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="">Semua Jenjang</option>
-                  {options.levels?.map((lvl) => (
-                    <option key={lvl} value={lvl}>{lvl}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData({ ...formData, unit_level: val })}
+                  options={formLevelOptions}
+                  placeholder="Semua Jenjang"
+                  icon={School}
+                  searchable={formLevelOptions.length > 5}
+                />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Tingkat Kelas
-                </label>
-                <select
+                <HeroUiModalSelect
+                  label="Tingkat Kelas"
                   value={formData.grade_level}
-                  onChange={(e) => setFormData({ ...formData, grade_level: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="ALL">Semua Kelas (ALL)</option>
-                  {options.grades?.filter(g => g !== 'ALL').map((gr) => (
-                    <option key={gr} value={gr}>Kelas {gr}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData({ ...formData, grade_level: val })}
+                  options={formGradeOptions}
+                  placeholder="Pilih Kelas..."
+                  icon={Layers}
+                  searchable={formGradeOptions.length > 5}
+                />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Tipe Program *
-                </label>
-                <select
+                <HeroUiModalSelect
+                  label="Tipe Program"
+                  required={true}
                   value={formData.program_type}
-                  onChange={(e) => setFormData({ ...formData, program_type: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="fullday">Full Day School</option>
-                  <option value="boarding">Pesantren (Boarding)</option>
-                  <option value="regular">Reguler</option>
-                  <option value="all">Semua Program</option>
-                </select>
+                  onChange={(val) => setFormData({ ...formData, program_type: val })}
+                  options={formProgramOptions}
+                  placeholder="Pilih Program..."
+                  icon={Sparkles}
+                />
               </div>
             </div>
 
@@ -711,19 +1067,15 @@ export default function TahfizhTargetSettingPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Unit Pendidikan Spesifik (Opsional)
-                </label>
-                <select
+                <HeroUiModalSelect
+                  label="Unit Pendidikan Spesifik (Opsional)"
                   value={formData.education_unit_id}
-                  onChange={(e) => setFormData({ ...formData, education_unit_id: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="">Berlaku Global untuk Jenjang Terkait</option>
-                  {options.units?.map((u) => (
-                    <option key={u.id} value={u.id}>{u.name} ({u.level})</option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData({ ...formData, education_unit_id: val })}
+                  options={formUnitOptions}
+                  placeholder="Berlaku Global untuk Jenjang Terkait"
+                  icon={BookOpen}
+                  searchable={formUnitOptions.length > 5}
+                />
               </div>
             </div>
 

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { DatePicker } from '@/components/ui/date-picker'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   BookMarked,
@@ -24,7 +25,7 @@ import {
   X,
 } from 'lucide-react'
 import { useDebounce } from '../hooks/useDebounce'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 
 import { reportService } from '../services/reportService'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -33,11 +34,12 @@ import PageContainer from '../components/app/PageContainer'
 import AppSkeleton from '../components/app/AppSkeleton'
 import AppEmptyState from '../components/app/AppEmptyState'
 import AppErrorState from '../components/app/AppErrorState'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
-import { TableRoot, TableHeader, TableHead, TableBody, TableRow, TableCell } from '@/components/tailgrids/core/table'
-import { Pagination } from '@/components/tailgrids/core/pagination'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { TableRoot, TableHeader, TableHead, TableBody, TableRow, TableCell } from '@/components/ui/table'
+import { Pagination } from '@/components/ui/pagination'
 import { PrintOptionModal, SquircleActionButton } from '../components/master-data'
+import { SmartScrollFab } from '../components/common'
 import {
   Dialog,
   DialogBody,
@@ -45,7 +47,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
+} from '@/components/ui/dialog'
 import TahfizhSubNav from '../components/tahfizh/TahfizhSubNav'
 import { printCleanTable, downloadPdfTable, printWeeklyStudentEvaluation } from '../utils/printHelper'
 
@@ -677,7 +679,7 @@ export default function LaporanTahfizhPage() {
       </motion.div>
 
       {/* 🟢 TAILGRIDS EMERALD DATATABLE CONTAINER (DATATABLE LAPORAN DENGAN 3-BARIS TOOLBAR) */}
-      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
+      <motion.div variants={itemVariants} initial="hidden" animate="visible" id="tabel-laporan-tahfizh" className="scroll-mt-6 relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
         <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
         {/* BARIS 1: TITLE & VIVID GRADIENT SQUIRCLE ACTION BUTTONS (§H.5) */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3.5 sm:px-6 md:px-8 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60">
@@ -736,35 +738,23 @@ export default function LaporanTahfizhPage() {
             {/* Input Mulai Tanggal */}
             <div className="w-full sm:w-auto min-w-[140px]">
               <label htmlFor="laporan-from" className="sr-only">Mulai tanggal</label>
-              <div className="relative flex items-center">
-                <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                  <Calendar className="size-4" />
-                </div>
-                <input
-                  id="laporan-from"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white pl-10 pr-3 py-2 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                />
-              </div>
+              <DatePicker
+                id="laporan-from"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                placeholder="Mulai tanggal..."
+              />
             </div>
 
             {/* Input Sampai Tanggal */}
             <div className="w-full sm:w-auto min-w-[140px]">
               <label htmlFor="laporan-to" className="sr-only">Sampai tanggal</label>
-              <div className="relative flex items-center">
-                <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                  <Calendar className="size-4" />
-                </div>
-                <input
-                  id="laporan-to"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white pl-10 pr-3 py-2 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                />
-              </div>
+              <DatePicker
+                id="laporan-to"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                placeholder="Sampai tanggal..."
+              />
             </div>
 
             {/* Tombol Reset Filter Inline */}
@@ -1146,7 +1136,6 @@ export default function LaporanTahfizhPage() {
         )}
       </AnimatePresence>
 
-      {/* PRINT OPTION MODAL FOR CLEAN PRINTING & PDF DOWNLOAD */}
       <PrintOptionModal
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
@@ -1154,6 +1143,9 @@ export default function LaporanTahfizhPage() {
         onDownload={handleDownloadPdf}
         title="Laporan Rekap Tahfizh & Mutabaah Santri"
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-laporan-tahfizh" downTooltip="Langsung ke Tabel Tahfizh" />
     </PageContainer>
   )
 }

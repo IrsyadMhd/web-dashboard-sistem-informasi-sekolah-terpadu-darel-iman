@@ -34,8 +34,10 @@ import {
   GraduationCap,
   AlertTriangle,
   RotateCcw,
+  School,
+  Lock,
 } from 'lucide-react'
-import { Download1, Upload1 } from '@tailgrids/icons'
+import { Download as Download1, Upload as Upload1 } from 'lucide-react'
 import { lmsPenilaianService } from '../services/lmsPenilaianService'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -48,11 +50,12 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from '../components/tailgrids/core/hover-card'
-import { Avatar, AvatarFallback } from '../components/tailgrids/core/avatar'
-import { Badge } from '../components/tailgrids/core/badge'
-import { Button } from '../components/tailgrids/core/button'
-import { Pagination } from '../components/tailgrids/core/pagination'
+} from '../components/ui/hover-card'
+import { Avatar, AvatarFallback } from '../components/ui/avatar'
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
+import { Pagination } from '../components/ui/pagination'
+import { TableRoot, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table'
 import {
   Dialog,
   DialogBody,
@@ -61,7 +64,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../components/tailgrids/core/dialog'
+} from '../components/ui/dialog'
 import {
   Bar,
   BarChart,
@@ -86,6 +89,312 @@ function useNotifications() {
   return { items: [], push, dismiss }
 }
 
+// ── HEROUI MODAL SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  label,
+  value,
+  onChange,
+  options = [],
+  placeholder = '-- Pilih Opsi --',
+  disabled = false,
+  required = false,
+  helperText = '',
+  icon: IconComponent = null,
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      {label && (
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-emerald-400 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption && selectedOption.value !== '' ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[90] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40"
+          >
+            {/* Search Input jika searchable */}
+            {searchable && options.length > 5 && (
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* List options */}
+            <div className="max-h-56 overflow-y-auto space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div>{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 font-normal">{opt.subtext}</div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {helperText && (
+        <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          {helperText}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[200px]',
+  searchable = false,
+  ariaLabel = '',
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  const hasValue = value !== '' && value !== undefined && value !== null
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        onClick={() => {
+          setIsOpen((prev) => !prev)
+          setSearch('')
+        }}
+        className={`h-9 sm:h-10 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+            : hasValue
+            ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
+            : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 // ── HARMONIZED BATCH EXPORT MODAL ──
 function HarmonizedBatchExportModal({
@@ -439,6 +748,21 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
     )
   }, [userRoles, user?.role])
 
+  const isSuperAdminOrYayasan = useMemo(() => {
+    const roles = (user?.roles || []).map((r) => (typeof r === 'string' ? r : r.name || ''))
+    return roles.some((r) => ['super_admin', 'Super Admin', 'super-admin', 'yayasan', 'Yayasan', 'pengurus_yayasan', 'ketua_yayasan'].includes(r))
+  }, [user])
+
+  const isDivisiPendidikan = useMemo(() => {
+    const roles = (user?.roles || []).map((r) => (typeof r === 'string' ? r : r.name || ''))
+    return roles.some((r) => ['Divisi Pendidikan', 'divisi_pendidikan', 'divisi-pendidikan', 'Kepala Bidang Pendidikan', 'kepala_bidang_pendidikan', 'Divisi Kurikulum', 'Divisi Kesiswaan'].includes(r))
+  }, [user])
+
+  const canSelectUnit = isSuperAdminOrYayasan || isDivisiPendidikan
+  const userUnitId = user?.unit_id || user?.employee?.unit_id || user?.unit_pendidikan_id || ''
+  const userUnitName = user?.unit_name || user?.employee?.unit?.nama_unit || user?.employee?.unit?.name || 'Unit Anda'
+  const [selectedUnit, setSelectedUnit] = useState(canSelectUnit ? '' : (userUnitId ? String(userUnitId) : ''))
+
   const isTeacherOnly = useMemo(() => {
     if (isSupervisor) return false
     const rList = userRoles.map((r) => r.toLowerCase())
@@ -463,6 +787,7 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
     grade_distribution: { A: 0, B: 0, C: 0, D: 0 },
   })
   const [options, setOptions] = useState({
+    units: [],
     kelas: [],
     subjects: [],
     semesters: [],
@@ -485,6 +810,69 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
     semester_id: '',
     is_passed: '',
   })
+
+  // Options for HeroUI Selects
+  const filterUnitOptions = useMemo(() => [
+    { value: '', label: `Semua Unit (${(options.units || []).length || 'SIT'})` },
+    ...(options.units || []).map((u) => ({
+      value: String(u.id),
+      label: u.name || u.nama_unit,
+    })),
+  ], [options.units])
+
+  const filterKelasOptions = useMemo(() => [
+    { value: '', label: 'Semua Kelas' },
+    ...(options.kelas || []).map((k) => ({
+      value: String(k.id),
+      label: k.nama_kelas,
+    })),
+  ], [options.kelas])
+
+  const filterSubjectOptions = useMemo(() => [
+    { value: '', label: 'Semua Mata Pelajaran' },
+    ...(options.subjects || []).map((s) => ({
+      value: String(s.id),
+      label: s.name,
+    })),
+  ], [options.subjects])
+
+  const filterSemesterOptions = useMemo(() => [
+    { value: '', label: 'Semua Semester' },
+    ...(options.semesters || []).map((s) => ({
+      value: String(s.id),
+      label: s.nama_semester,
+    })),
+  ], [options.semesters])
+
+  const filterIsPassedOptions = useMemo(() => [
+    { value: '', label: 'Semua Status KKM' },
+    { value: '1', label: 'Tuntas KKM' },
+    { value: '0', label: 'Perlu Remedial' },
+  ], [])
+
+  const modalSubjectOptions = useMemo(() => [
+    { value: '', label: 'Pilih Mata Pelajaran' },
+    ...(options.subjects || []).map((s) => ({
+      value: String(s.id),
+      label: s.name,
+    })),
+  ], [options.subjects])
+
+  const modalKelasOptions = useMemo(() => [
+    { value: '', label: 'Pilih Kelas' },
+    ...(options.kelas || []).map((k) => ({
+      value: String(k.id),
+      label: k.nama_kelas,
+    })),
+  ], [options.kelas])
+
+  const modalSemesterOptions = useMemo(() => [
+    { value: '', label: 'Pilih Semester' },
+    ...(options.semesters || []).map((s) => ({
+      value: String(s.id),
+      label: s.nama_semester,
+    })),
+  ], [options.semesters])
 
   // Configurable Weights Engine State
   const [weights, setWeights] = useState({
@@ -720,15 +1108,17 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
 
   useEffect(() => {
     fetchData(1)
-  }, [debouncedSearch, filters])
+  }, [debouncedSearch, filters, selectedUnit, userUnitId])
 
   const fetchData = async (page = 1) => {
     setLoading(true)
     try {
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
       const params = {
         page,
         per_page: 10,
         search: debouncedSearch || undefined,
+        unit_pendidikan_id: effectiveUnit,
         kelas_id: filters.kelas_id || undefined,
         subject_id: filters.subject_id || undefined,
         semester_id: filters.semester_id || undefined,
@@ -753,8 +1143,10 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
 
   const fetchStats = async () => {
     try {
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
       const params = {
         search: debouncedSearch || undefined,
+        unit_pendidikan_id: effectiveUnit,
         kelas_id: filters.kelas_id || undefined,
         subject_id: filters.subject_id || undefined,
         semester_id: filters.semester_id || undefined,
@@ -1101,10 +1493,11 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
   }, [stats])
 
   const hasActiveFilters = Boolean(
-    search || filters.kelas_id || filters.subject_id || filters.semester_id || filters.is_passed !== ''
+    (canSelectUnit && selectedUnit) || search || filters.kelas_id || filters.subject_id || filters.semester_id || filters.is_passed !== ''
   )
 
   const handleResetFilters = () => {
+    if (canSelectUnit) setSelectedUnit('')
     setSearch('')
     setFilters({
       kelas_id: '',
@@ -1119,14 +1512,16 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
   }
 
   return (
-    <PageContainer>
+    <PageContainer maxW="7xl">
       {!(embedded || hideBreadcrumb) && (
-        <AppBreadcrumb
-          items={[
-            { label: 'LMS & Akademik', href: '/dashboard' },
-            { label: 'Penilaian Pembelajaran & Nilai Akhir' },
-          ]}
-        />
+        <div className="mb-4">
+          <AppBreadcrumb
+            items={[
+              { label: 'LMS & Akademik', href: '/dashboard' },
+              { label: 'Penilaian Pembelajaran & Nilai Akhir' },
+            ]}
+          />
+        </div>
       )}
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-12">
         {/* ── MODERN VIVID EMERALD HERO HEADER CARD ── */}
@@ -1582,70 +1977,77 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
                 </div>
               </div>
 
-              {/* Row 3: Horizontal Filters — scroll horizontal di mobile */}
-              <div className="-mx-1 flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap pt-0.5 px-1">
-                {/* Filter Kelas */}
-                <div className="relative shrink-0">
-                  <select
-                    value={filters.kelas_id}
-                    onChange={(e) => setFilters((p) => ({ ...p, kelas_id: e.target.value }))}
-                    aria-label="Filter Kelas"
-                    className="h-9 sm:h-10 min-w-[130px] cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-7 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
+              {/* Row 3: Horizontal Filters */}
+              <div className="flex flex-wrap items-center gap-2.5 pt-0.5">
+                {/* Unit Dropdown (Divisi Pendidikan / Global) atau Locked Unit Badge */}
+                {canSelectUnit ? (
+                  <HeroUiFilterSelect
+                    value={selectedUnit}
+                    onChange={(val) => {
+                      setSelectedUnit(val)
+                    }}
+                    options={filterUnitOptions}
+                    placeholder={`Semua Unit (${(options.units || []).length || 'SIT'})`}
+                    icon={School}
+                    ariaLabel="Filter Unit Pendidikan"
+                    popoverWidth="min-w-[220px]"
+                    searchable={(options.units || []).length > 5}
+                  />
+                ) : (
+                  <div
+                    title="Terkunci: Menampilkan data khusus unit wewenang Anda"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300/80 bg-emerald-50 text-[11px] font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
                   >
-                    <option value="">Semua Kelas</option>
-                    {options.kelas.map((k) => (
-                      <option key={k.id} value={k.id}>{k.nama_kelas}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                    <School className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>{userUnitName}</span>
+                    <Lock className="size-3 text-emerald-500 ml-0.5 opacity-80" />
+                  </div>
+                )}
+
+                {/* Filter Kelas */}
+                <HeroUiFilterSelect
+                  value={filters.kelas_id}
+                  onChange={(val) => setFilters((p) => ({ ...p, kelas_id: val }))}
+                  options={filterKelasOptions}
+                  placeholder="Semua Kelas"
+                  icon={GraduationCap}
+                  ariaLabel="Filter Kelas"
+                  popoverWidth="min-w-[180px]"
+                  searchable
+                />
 
                 {/* Filter Mata Pelajaran */}
-                <div className="relative shrink-0">
-                  <select
-                    value={filters.subject_id}
-                    onChange={(e) => setFilters((p) => ({ ...p, subject_id: e.target.value }))}
-                    aria-label="Filter Mata Pelajaran"
-                    className="h-9 sm:h-10 min-w-[150px] cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-7 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Mata Pelajaran</option>
-                    {options.subjects.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={filters.subject_id}
+                  onChange={(val) => setFilters((p) => ({ ...p, subject_id: val }))}
+                  options={filterSubjectOptions}
+                  placeholder="Semua Mata Pelajaran"
+                  icon={BookOpen}
+                  ariaLabel="Filter Mata Pelajaran"
+                  popoverWidth="min-w-[260px] sm:w-80"
+                  searchable
+                />
 
                 {/* Filter Semester */}
-                <div className="relative shrink-0">
-                  <select
-                    value={filters.semester_id}
-                    onChange={(e) => setFilters((p) => ({ ...p, semester_id: e.target.value }))}
-                    aria-label="Filter Semester"
-                    className="h-9 sm:h-10 min-w-[130px] cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-7 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Semester</option>
-                    {options.semesters.map((s) => (
-                      <option key={s.id} value={s.id}>{s.nama_semester}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={filters.semester_id}
+                  onChange={(val) => setFilters((p) => ({ ...p, semester_id: val }))}
+                  options={filterSemesterOptions}
+                  placeholder="Semua Semester"
+                  icon={Layers}
+                  ariaLabel="Filter Semester"
+                  popoverWidth="min-w-[180px]"
+                />
 
                 {/* Filter Status Kelulusan KKM */}
-                <div className="relative shrink-0">
-                  <select
-                    value={filters.is_passed}
-                    onChange={(e) => setFilters((p) => ({ ...p, is_passed: e.target.value }))}
-                    aria-label="Filter Status Kelulusan KKM"
-                    className="h-9 sm:h-10 min-w-[140px] cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-7 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Status KKM</option>
-                    <option value="1">Tuntas KKM</option>
-                    <option value="0">Perlu Remedial</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={filters.is_passed}
+                  onChange={(val) => setFilters((p) => ({ ...p, is_passed: val }))}
+                  options={filterIsPassedOptions}
+                  placeholder="Semua Status KKM"
+                  ariaLabel="Filter Status Kelulusan KKM"
+                  popoverWidth="min-w-[180px]"
+                />
 
                 {/* Reset Filter Button */}
                 {hasActiveFilters && (
@@ -1786,30 +2188,30 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
 
                 {/* Desktop Datatable View (>= md) */}
                 <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full min-w-[680px] text-left text-sm border-collapse">
-                    <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-                      <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 text-[11px] font-extrabold uppercase tracking-wider">
-                        <th className="py-3 px-4 sm:px-5">Siswa &amp; Konteks Nilai</th>
-                        <th className="py-3 px-3">Mapel &amp; Kelas</th>
-                        <th className="hidden xl:table-cell py-3 px-3 text-center">N. Tugas</th>
-                        <th className="hidden xl:table-cell py-3 px-3 text-center">CBT UH</th>
-                        <th className="hidden xl:table-cell py-3 px-3 text-center">CBT UTS</th>
-                        <th className="hidden xl:table-cell py-3 px-3 text-center">CBT UAS</th>
-                        <th className="py-3 px-3 text-center">Nilai Akhir</th>
-                        <th className="py-3 px-3 text-center">Grade &amp; Status</th>
-                        <th className="py-3 px-4 sm:px-5 text-center" aria-label="Aksi baris">
+                  <TableRoot className="w-full min-w-[680px] text-left text-sm border-collapse">
+                    <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                      <TableRow className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 text-[11px] font-extrabold uppercase tracking-wider">
+                        <TableHead className="py-3 px-4 sm:px-5">Siswa &amp; Konteks Nilai</TableHead>
+                        <TableHead className="py-3 px-3">Mapel &amp; Kelas</TableHead>
+                        <TableHead className="hidden xl:table-cell py-3 px-3 text-center">N. Tugas</TableHead>
+                        <TableHead className="hidden xl:table-cell py-3 px-3 text-center">CBT UH</TableHead>
+                        <TableHead className="hidden xl:table-cell py-3 px-3 text-center">CBT UTS</TableHead>
+                        <TableHead className="hidden xl:table-cell py-3 px-3 text-center">CBT UAS</TableHead>
+                        <TableHead className="py-3 px-3 text-center">Nilai Akhir</TableHead>
+                        <TableHead className="py-3 px-3 text-center">Grade &amp; Status</TableHead>
+                        <TableHead className="py-3 px-4 sm:px-5 text-center" aria-label="Aksi baris">
                           <span className="sr-only">Aksi</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                       {dataList.map((item) => (
-                        <tr
+                        <TableRow
                           key={item.id}
                           className="border-b border-emerald-100/90 dark:border-emerald-900/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all duration-200 hover:shadow-xs"
                         >
                           {/* Student Info with HoverCard */}
-                          <td className="py-3 px-4 sm:px-5 align-top">
+                          <TableCell className="py-3 px-4 sm:px-5 align-top">
                             <HoverCard>
                               <HoverCardTrigger asChild>
                                 <div className="cursor-pointer group flex items-center gap-3">
@@ -1843,27 +2245,27 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
                                 </div>
                               </HoverCardContent>
                             </HoverCard>
-                          </td>
+                          </TableCell>
 
                           {/* Subject & Class */}
-                          <td className="py-3 px-3 align-top">
+                          <TableCell className="py-3 px-3 align-top">
                             <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">{item.subject?.name || '-'}</div>
                             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">{item.kelas?.nama_kelas || '-'}</div>
-                          </td>
+                          </TableCell>
 
                           {/* Scores */}
-                          <td className="hidden xl:table-cell py-3 px-3 text-center font-bold text-xs tabular-nums text-slate-700 dark:text-slate-300">{item.score_assignment}</td>
-                          <td className="hidden xl:table-cell py-3 px-3 text-center font-bold text-xs tabular-nums text-slate-700 dark:text-slate-300">{item.score_quiz}</td>
-                          <td className="hidden xl:table-cell py-3 px-3 text-center font-bold text-xs tabular-nums text-slate-700 dark:text-slate-300">{item.score_midterm}</td>
-                          <td className="hidden xl:table-cell py-3 px-3 text-center font-bold text-xs tabular-nums text-slate-700 dark:text-slate-300">{item.score_final}</td>
+                          <TableCell className="hidden xl:table-cell py-3 px-3 text-center font-bold text-xs tabular-nums text-slate-700 dark:text-slate-300">{item.score_assignment}</TableCell>
+                          <TableCell className="hidden xl:table-cell py-3 px-3 text-center font-bold text-xs tabular-nums text-slate-700 dark:text-slate-300">{item.score_quiz}</TableCell>
+                          <TableCell className="hidden xl:table-cell py-3 px-3 text-center font-bold text-xs tabular-nums text-slate-700 dark:text-slate-300">{item.score_midterm}</TableCell>
+                          <TableCell className="hidden xl:table-cell py-3 px-3 text-center font-bold text-xs tabular-nums text-slate-700 dark:text-slate-300">{item.score_final}</TableCell>
 
                           {/* Final Score */}
-                          <td className="py-3 px-3 text-center font-black text-base text-[#0E5C44] dark:text-emerald-400 tabular-nums">
+                          <TableCell className="py-3 px-3 text-center font-black text-base text-[#0E5C44] dark:text-emerald-400 tabular-nums">
                             {item.final_score}
-                          </td>
+                          </TableCell>
 
                           {/* Grade & Status */}
-                          <td className="py-3 px-3 text-center align-top space-y-1">
+                          <TableCell className="py-3 px-3 text-center align-top space-y-1">
                             <div>{getGradeBadge(item.grade_letter)}</div>
                             <div>
                               {item.is_passed ? (
@@ -1872,10 +2274,10 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
                                 <Badge color="error" size="sm">REMEDIAL</Badge>
                               )}
                             </div>
-                          </td>
+                          </TableCell>
 
                           {/* Actions */}
-                          <td className="py-3 px-4 sm:px-5 text-center align-top">
+                          <TableCell className="py-3 px-4 sm:px-5 text-center align-top">
                             <div className="inline-flex items-center justify-center">
                               <ActionDropdown
                                 onView={() => {
@@ -1911,11 +2313,11 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
                                 ]}
                               />
                             </div>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </TableRoot>
                 </div>
               </>
             )}
@@ -2001,55 +2403,39 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Mata Pelajaran</label>
-                      <div className="relative">
-                        <select
-                          value={formData.subject_id}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, subject_id: e.target.value }))}
-                          required
-                          className="w-full h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                        >
-                          <option value="">Pilih Mata Pelajaran</option>
-                          {options.subjects.map((s) => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                      </div>
+                      <HeroUiModalSelect
+                        label="Mata Pelajaran"
+                        value={formData.subject_id}
+                        onChange={(val) => setFormData((prev) => ({ ...prev, subject_id: val }))}
+                        options={modalSubjectOptions}
+                        placeholder="Pilih Mata Pelajaran"
+                        icon={BookOpen}
+                        required
+                        searchable
+                      />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Kelas</label>
-                      <div className="relative">
-                        <select
-                          value={formData.kelas_id}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, kelas_id: e.target.value }))}
-                          required
-                          className="w-full h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                        >
-                          <option value="">Pilih Kelas</option>
-                          {options.kelas.map((k) => (
-                            <option key={k.id} value={k.id}>{k.nama_kelas}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                      </div>
+                      <HeroUiModalSelect
+                        label="Kelas"
+                        value={formData.kelas_id}
+                        onChange={(val) => setFormData((prev) => ({ ...prev, kelas_id: val }))}
+                        options={modalKelasOptions}
+                        placeholder="Pilih Kelas"
+                        icon={GraduationCap}
+                        required
+                        searchable
+                      />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Semester</label>
-                      <div className="relative">
-                        <select
-                          value={formData.semester_id}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, semester_id: e.target.value }))}
-                          required
-                          className="w-full h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                        >
-                          <option value="">Pilih Semester</option>
-                          {options.semesters.map((s) => (
-                            <option key={s.id} value={s.id}>{s.nama_semester}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                      </div>
+                      <HeroUiModalSelect
+                        label="Semester"
+                        value={formData.semester_id}
+                        onChange={(val) => setFormData((prev) => ({ ...prev, semester_id: val }))}
+                        options={modalSemesterOptions}
+                        placeholder="Pilih Semester"
+                        icon={Layers}
+                        required
+                      />
                     </div>
                     <div className="sm:col-span-2">
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">NIS Siswa</label>
@@ -2392,52 +2778,52 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
 
               {/* Modal Table */}
               <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-emerald-950 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200 font-extrabold border-b border-emerald-200/90 dark:border-emerald-800/80 uppercase tracking-wider text-[10px]">
-                      <th className="py-2.5 px-3">Siswa &amp; NIS</th>
-                      <th className="py-2.5 px-3">Mapel &amp; Kelas</th>
-                      <th className="py-2.5 px-3 text-center">N. Akhir</th>
-                      <th className="py-2.5 px-3 text-center">Grade</th>
-                      <th className="py-2.5 px-3 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                <TableRoot className="w-full text-left text-xs border-collapse">
+                  <TableHeader>
+                    <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-emerald-950 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200 font-extrabold border-b border-emerald-200/90 dark:border-emerald-800/80 uppercase tracking-wider text-[10px]">
+                      <TableHead className="py-2.5 px-3">Siswa &amp; NIS</TableHead>
+                      <TableHead className="py-2.5 px-3">Mapel &amp; Kelas</TableHead>
+                      <TableHead className="py-2.5 px-3 text-center">N. Akhir</TableHead>
+                      <TableHead className="py-2.5 px-3 text-center">Grade</TableHead>
+                      <TableHead className="py-2.5 px-3 text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                     {paginatedModalRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-slate-400">
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-8 text-center text-slate-400">
                           Belum ada data siswa untuk kategori ini.
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ) : (
                       paginatedModalRows.map((row) => (
-                        <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          <td className="py-2.5 px-3">
+                        <TableRow key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          <TableCell className="py-2.5 px-3">
                             <div className="font-bold text-slate-900 dark:text-white">{row.student?.full_name || 'Siswa'}</div>
                             <div className="text-[10px] text-slate-400 font-mono">NIS: {row.student?.nis || '-'}</div>
-                          </td>
-                          <td className="py-2.5 px-3">
+                          </TableCell>
+                          <TableCell className="py-2.5 px-3">
                             <div className="font-medium text-slate-800 dark:text-slate-200">{row.subject?.name || '-'}</div>
                             <div className="text-[10px] text-slate-400">{row.kelas?.nama_kelas || '-'}</div>
-                          </td>
-                          <td className="py-2.5 px-3 text-center font-bold text-[#0E5C44] dark:text-emerald-400">
+                          </TableCell>
+                          <TableCell className="py-2.5 px-3 text-center font-bold text-[#0E5C44] dark:text-emerald-400">
                             {row.final_score}
-                          </td>
-                          <td className="py-2.5 px-3 text-center">
+                          </TableCell>
+                          <TableCell className="py-2.5 px-3 text-center">
                             {getGradeBadge(row.grade_letter)}
-                          </td>
-                          <td className="py-2.5 px-3 text-center">
+                          </TableCell>
+                          <TableCell className="py-2.5 px-3 text-center">
                             {row.is_passed ? (
                               <Badge color="success" size="sm">TUNTAS</Badge>
                             ) : (
                               <Badge color="error" size="sm">REMEDIAL</Badge>
                             )}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </TableRoot>
               </div>
 
               {/* Modal Pagination */}
@@ -2797,39 +3183,19 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
                   try {
                     setIsImporting(true)
                     setImportError('')
-                    const text = await importFile.text()
-                    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
-                    if (lines.length <= 1) throw new Error('Berkas tidak memiliki data baris untuk diimport.')
-                    
-                    const newRows = lines.slice(1).map((line, idx) => {
-                      const cols = line.split(',').map((c) => c.replace(/^"|"$/g, '').trim())
-                      const scoreAssign = parseFloat(cols[4]) || 80
-                      const scoreUh = parseFloat(cols[5]) || 80
-                      const scoreUts = parseFloat(cols[6]) || 80
-                      const scoreUas = parseFloat(cols[7]) || 80
-                      const finalScore = Number(((scoreAssign * 0.2) + (scoreUh * 0.25) + (scoreUts * 0.25) + (scoreUas * 0.3)).toFixed(1))
-                      
-                      return {
-                        id: `imp-${Date.now()}-${idx}`,
-                        student: { full_name: cols[1] || `Siswa Import ${idx + 1}`, nis: cols[0] || `IMP-${idx + 1}` },
-                        subject: { name: cols[2] || 'Mata Pelajaran' },
-                        kelas: { nama_kelas: cols[3] || 'Kelas' },
-                        score_assignment: scoreAssign,
-                        score_quiz: scoreUh,
-                        score_midterm: scoreUts,
-                        score_final: scoreUas,
-                        final_score: finalScore,
-                        grade_letter: finalScore >= 85 ? 'A' : finalScore >= 75 ? 'B' : finalScore >= 60 ? 'C' : 'D',
-                        is_passed: finalScore >= 75,
-                      }
-                    })
+                    const formData = new FormData()
+                    formData.append('file', importFile)
+                    if (selectedClass) formData.append('kelas_id', selectedClass)
+                    if (selectedSubject) formData.append('subject_id', selectedSubject)
+                    if (selectedSemester) formData.append('semester_id', selectedSemester)
 
-                    setDataList((prev) => [...newRows, ...prev])
+                    const res = await lmsPenilaianService.import(formData)
                     setIsImportModalOpen(false)
                     setImportFile(null)
-                    pushToast('Import Berhasil', `Berhasil mengimport ${newRows.length} data buku nilai!`, 'success')
+                    pushToast('Import Berhasil', res?.message || 'Data buku nilai berhasil diimpor!', 'success')
+                    await fetchData(1)
                   } catch (err) {
-                    setImportError(err.message || 'Gagal memproses berkas import.')
+                    setImportError(err?.response?.data?.message || err?.message || 'Gagal memproses berkas import.')
                   } finally {
                     setIsImporting(false)
                   }

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import ActionDropdown from '../components/app/ActionDropdown'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { tujuanPembelajaranService } from '../services/tujuanPembelajaranService'
 import { capaianPembelajaranService } from '../services/capaianPembelajaranService'
 import { educationUnitService } from '../services/educationUnitService'
@@ -29,6 +30,7 @@ import { subjectService } from '../services/subjectService'
 import { getUnitJenjang } from './MasterCapaianPembelajaranPage'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { useDebounce } from '../hooks/useDebounce'
 import { useAuthStore } from '../stores/authStore'
 import { Printer } from 'lucide-react'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
@@ -200,7 +202,13 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
 
   const handleExportCSV = () => {
     if (!dataTp || dataTp.length === 0) {
-      alert('Tidak ada data Tujuan Pembelajaran untuk diekspor.')
+      Swal.fire({
+        title: 'Data Masih Kosong',
+        text: 'Tidak ada data Tujuan Pembelajaran untuk diekspor pada filter yang dipilih.',
+        icon: 'info',
+        confirmButtonText: 'Tutup',
+        confirmButtonColor: '#059669',
+      })
       return
     }
     const headers = ['NO', 'KODE TP', 'DESKRIPSI TUJUAN PEMBELAJARAN', 'CP INDUK', 'ALOKASI JP', 'STATUS']
@@ -301,6 +309,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
 
   // Filters & Pagination
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [selectedCpFilter, setSelectedCpFilter] = useState('')
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('')
   const [page, setPage] = useState(1)
@@ -436,7 +445,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
     try {
       const response = await tujuanPembelajaranService.getDaftar({
         page,
-        search,
+        search: debouncedSearch,
         cp_id: selectedCpFilter,
         status: selectedStatusFilter,
         per_page: 15,
@@ -466,7 +475,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
 
   useEffect(() => {
     fetchDaftarTp()
-  }, [page, search, selectedCpFilter, selectedStatusFilter])
+  }, [page, debouncedSearch, selectedCpFilter, selectedStatusFilter])
 
   // Dependent Dropdown Trigger: ketika Unit, Tahun, Kurikulum, atau Mata Pelajaran berubah
   useEffect(() => {
@@ -699,13 +708,36 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
       {/* Hero Section */}
       {!hidePageHeader && (
         <motion.div variants={itemVariants}>
-        <MasterPageHeader
-          tone="brand"
-          icon={Target}
-          title="Master Tujuan Pembelajaran (TP)"
-          description="Kelola Tujuan Pembelajaran (TP) berbasis relasi bertingkat: Unit Pendidikan → Tahun Ajaran → Kurikulum → Mata Pelajaran → CP Database → TP → Modul Ajar."
-          actions={pageActions}
-        />
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 mb-6">
+            <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <Target className="size-6 sm:size-7 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                      <Sparkles className="size-3 text-amber-300" />
+                      Manajemen Tujuan Pembelajaran
+                    </span>
+                  </div>
+                  <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Master Tujuan Pembelajaran (TP)
+                  </h1>
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                    Kelola Tujuan Pembelajaran (TP) berbasis relasi bertingkat: Unit → TA → Kurikulum → Mapel → CP → TP → Modul Ajar.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 shrink-0">
+                {pageActions}
+              </div>
+            </div>
+          </div>
         </motion.div>
       )}
 
@@ -947,9 +979,9 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
 
       {/* Modal Form TP - Mengikuti urutan persis yang dipersyaratkan */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-[#1B2433] w-full max-w-xl rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-            <div className="bg-gradient-to-r from-[#0E5C44] to-[#1E8E5A] p-5 text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-sm animate-fadeIn overflow-y-auto">
+          <div className="bg-white dark:bg-[#1B2433] w-full max-w-xl my-auto max-h-[calc(100dvh-2rem)] flex flex-col rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#0E5C44] to-[#1E8E5A] p-5 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <Target className="w-6 h-6 text-emerald-200" />
                 <h3 className="text-lg font-bold">
@@ -961,7 +993,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
               </button>
             </div>
 
-            <form onSubmit={handleSubmitForm} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+            <form onSubmit={handleSubmitForm} className="p-6 space-y-4 overflow-y-auto min-h-0 flex-1">
               {/* Field 1: Unit Pendidikan */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
@@ -1142,7 +1174,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
                 </div>
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="sticky bottom-0 bg-white dark:bg-[#1B2433] pt-3 pb-1 -mx-6 px-6 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={handleCloseModal}

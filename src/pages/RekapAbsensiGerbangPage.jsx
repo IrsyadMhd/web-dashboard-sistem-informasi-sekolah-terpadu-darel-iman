@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { DatePicker } from '@/components/ui/date-picker'
 import { useToast } from '../components/app/ToastProvider'
 import {
   AlertTriangle,
@@ -9,6 +10,7 @@ import {
   Camera,
   ChartPie as ChartPieIcon,
   CheckCircle2,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -72,11 +74,11 @@ import {
   MasterActionIconButton,
   PrintOptionModal,
 } from '../components/master-data'
-import { Pagination } from '@/components/tailgrids/core/pagination'
-import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/tailgrids/core/table'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/tailgrids/core/hover-card'
-import { Dialog, DialogBody, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/tailgrids/core/dialog'
-import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
+import { Pagination } from '@/components/ui/pagination'
+import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/ui/table'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
+import { Dialog, DialogBody, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Backdrop, OverlayWrapper } from '@/components/ui/dialog'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 
 
@@ -185,6 +187,143 @@ const getAttendanceBadgeVariant = (status) => {
   return 'secondary'
 }
 
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  disabled = false,
+  searchable = false,
+  widthClass = 'min-w-[150px]',
+  icon: Icon = null,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [openUpwards, setOpenUpwards] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleToggle = () => {
+    if (disabled) return
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const spaceAbove = rect.top
+      // Bila ruang di bawah < 240px dan ruang di atas lebih leluasa, buka ke atas
+      setOpenUpwards(spaceBelow < 240 && spaceAbove > spaceBelow)
+      setSearch('')
+    }
+    setIsOpen((prev) => !prev)
+  }
+
+  const selectedOption = options.find((opt) => String(opt.value) === String(value))
+  const filteredOptions = searchable || options.length > 5
+    ? options.filter((opt) => String(opt.label).toLowerCase().includes(search.toLowerCase()))
+    : options
+
+  const hasValue = value !== '' && value !== 'semua' && value !== undefined && value !== null
+
+  return (
+    <div ref={containerRef} className={`relative ${isOpen ? 'z-[60]' : 'z-10'} ${widthClass}`}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={handleToggle}
+        className={`w-full flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs font-semibold shadow-xs transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+          isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white'
+            : hasValue
+            ? 'border-emerald-500/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200 font-bold'
+            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-emerald-400'
+        }`}
+      >
+        <span className="flex items-center gap-2 truncate">
+          {Icon && (
+            <Icon
+              className={`size-3.5 shrink-0 transition-colors ${
+                hasValue ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
+              }`}
+            />
+          )}
+          <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
+        </span>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: openUpwards ? 6 : -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: openUpwards ? 6 : -6, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 ${
+              openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+            } z-[100] w-full min-w-[210px] overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/60 dark:shadow-black/60`}
+          >
+            {(searchable || options.length > 5) && (
+              <div className="mb-1.5 px-1 pt-1 border-b border-slate-100 dark:border-slate-700/60 pb-1.5">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+            <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="py-3 text-center text-xs text-slate-400 font-medium">Tidak ada pilihan</div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 font-bold dark:bg-emerald-950/70 dark:text-emerald-300'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60 font-medium'
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && <Check className="size-3.5 text-emerald-600 shrink-0" />}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export default function RekapAbsensiGerbangPage() {
   const { user } = useAuthStore()
 
@@ -232,6 +371,39 @@ export default function RekapAbsensiGerbangPage() {
 
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
   const [selectedDetailStudent, setSelectedDetailStudent] = useState(null)
+
+  const unitOptions = useMemo(() => [
+    { value: '', label: 'Semua Unit Pendidikan' },
+    ...units.map((u) => ({ value: String(u.id), label: u.nama || u.name }))
+  ], [units])
+
+  const periodOptions = useMemo(() => [
+    { value: 'semua', label: 'Semua Periode Data' },
+    { value: 'hari', label: 'Hari Ini (Per Hari)' },
+    { value: 'minggu', label: '7 Hari Terakhir (Per Minggu)' },
+    { value: 'bulan', label: 'Bulan Ini (Per Bulan)' },
+    { value: 'semester', label: '6 Bulan Terakhir (Per Semester)' },
+    { value: 'tahun', label: 'Tahun Ini (Per Tahun)' },
+    { value: 'custom', label: 'Rentang Tanggal Kustom' },
+  ], [])
+
+  const statusOptions = useMemo(() => [
+    { value: '', label: 'Semua Status' },
+    { value: 'HADIR', label: 'Hadir / Tepat Waktu' },
+    { value: 'TERLAMBAT', label: 'Terlambat' },
+    { value: 'IZIN', label: 'Izin' },
+    { value: 'SAKIT', label: 'Sakit' },
+    { value: 'ALPHA', label: 'Alpha / Belum Scan' },
+  ], [])
+
+  const perPageOptions = useMemo(() => [
+    { value: 5, label: '5' },
+    { value: 10, label: '10' },
+    { value: 15, label: '15' },
+    { value: 25, label: '25' },
+    { value: 50, label: '50' },
+    { value: 100, label: '100' },
+  ], [])
 
   // Card Modal State for Summary Cards click
   const [cardModal, setCardModal] = useState({
@@ -997,9 +1169,11 @@ export default function RekapAbsensiGerbangPage() {
 
       {/* MODERN HERO CARD HEADER (§B / §7.7 Vivid Emerald Responsive Hero) */}
       <motion.div variants={itemVariants} initial="hidden" animate="visible">
-        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-4 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
-          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
-          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+        <div className="relative z-20 rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-4 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px]">
+            <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+          </div>
 
           <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
@@ -1028,25 +1202,14 @@ export default function RekapAbsensiGerbangPage() {
             <div className="flex items-center gap-2 shrink-0 self-start lg:self-center flex-wrap">
               {/* Multi-Unit Selector (bila role multi-unit) */}
               {isMultiUnitUser && units.length > 0 && (
-                <div className="relative inline-flex items-center">
-                  <div className="pointer-events-none absolute left-3 flex items-center text-slate-400">
-                    <Building2 className="size-3.5" />
-                  </div>
-                  <select
-                    value={selectedUnit}
-                    onChange={(e) => setSelectedUnit(e.target.value)}
-                    aria-label="Filter unit pendidikan"
-                    className="h-9 appearance-none rounded-xl border border-emerald-300/80 bg-white/90 dark:bg-slate-900 pl-8 pr-7 text-xs font-bold text-slate-800 dark:text-slate-100 hover:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer shadow-xs"
-                  >
-                    <option value="">Semua Unit Pendidikan</option>
-                    {units.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.nama || u.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2 size-3 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={selectedUnit}
+                  onChange={(val) => setSelectedUnit(val)}
+                  options={unitOptions}
+                  placeholder="Semua Unit Pendidikan"
+                  icon={Building2}
+                  widthClass="min-w-[210px]"
+                />
               )}
 
               {/* Schedule Config Button */}
@@ -1589,9 +1752,9 @@ export default function RekapAbsensiGerbangPage() {
       </motion.div>
 
       {/* 3-Column Equal Grid: Filter Laporan, Grafik Kehadiran, & Distribusi */}
-      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="relative z-30 grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
         {/* Col 1: Filter Laporan */}
-        <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] space-y-4 flex flex-col justify-between h-full">
+        <article className="relative z-40 rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] space-y-4 flex flex-col justify-between h-full">
           <div>
             <div className="flex items-center justify-between gap-2 mb-4 pb-3.5 border-b border-emerald-200/90 dark:border-emerald-800/60">
               <div className="flex items-center gap-3">
@@ -1616,110 +1779,76 @@ export default function RekapAbsensiGerbangPage() {
             <div className="space-y-4">
               {/* Fitur Filter Periode Waktu (Hari, Minggu, Bulan, Semester, Tahun) */}
               <div>
-                <label htmlFor="gerbang-period" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                   Periode Waktu
                 </label>
-                <div className="relative flex items-center">
-                  <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                    <Calendar className="size-4" />
-                  </div>
-                  <select
-                    id="gerbang-period"
-                    value={period}
-                    onChange={(e) => {
-                      const nextPeriod = e.target.value
-                      setPeriod(nextPeriod)
-                      if (nextPeriod !== 'custom' && nextPeriod !== 'semua') {
-                        const { from, to } = getPeriodDateRange(nextPeriod)
-                        setDateFrom(from)
-                        setDateTo(to)
-                      } else if (nextPeriod === 'semua') {
-                        setDateFrom('')
-                        setDateTo('')
-                      }
-                      setCurrentPage(1)
-                    }}
-                    className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                  >
-                    <option value="semua">Semua Periode Data</option>
-                    <option value="hari">Hari Ini (Per Hari)</option>
-                    <option value="minggu">7 Hari Terakhir (Per Minggu)</option>
-                    <option value="bulan">Bulan Ini (Per Bulan)</option>
-                    <option value="semester">6 Bulan Terakhir (Per Semester)</option>
-                    <option value="tahun">Tahun Ini (Per Tahun)</option>
-                    <option value="custom">Rentang Tanggal Kustom</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={period}
+                  onChange={(nextPeriod) => {
+                    setPeriod(nextPeriod)
+                    if (nextPeriod !== 'custom' && nextPeriod !== 'semua') {
+                      const { from, to } = getPeriodDateRange(nextPeriod)
+                      setDateFrom(from)
+                      setDateTo(to)
+                    } else if (nextPeriod === 'semua') {
+                      setDateFrom('')
+                      setDateTo('')
+                    }
+                    setCurrentPage(1)
+                  }}
+                  options={periodOptions}
+                  placeholder="Pilih Periode..."
+                  icon={Calendar}
+                  widthClass="w-full"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
-                <div>
+                <div className="relative z-20">
                   <label htmlFor="gerbang-from" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Mulai</label>
-                  <div className="relative flex items-center">
-                    <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                      <CalendarDays className="size-4" />
-                    </div>
-                    <input
-                      id="gerbang-from"
-                      type="date"
-                      value={dateFrom}
-                      onChange={(e) => {
-                        setDateFrom(e.target.value)
-                        setPeriod('custom')
-                        setCurrentPage(1)
-                      }}
-                      className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-3 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                    />
-                  </div>
+                  <DatePicker
+                    id="gerbang-from"
+                    value={dateFrom}
+                    onChange={(e) => {
+                      setDateFrom(e.target.value)
+                      setPeriod('custom')
+                      setCurrentPage(1)
+                    }}
+                    placeholder="Pilih tanggal mulai..."
+                    popoverClassName="z-[110]"
+                  />
                 </div>
-                <div>
+                <div className="relative z-20">
                   <label htmlFor="gerbang-to" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Selesai</label>
-                  <div className="relative flex items-center">
-                    <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                      <CalendarDays className="size-4" />
-                    </div>
-                    <input
-                      id="gerbang-to"
-                      type="date"
-                      value={dateTo}
-                      onChange={(e) => {
-                        setDateTo(e.target.value)
-                        setPeriod('custom')
-                        setCurrentPage(1)
-                      }}
-                      className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-3 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                    />
-                  </div>
+                  <DatePicker
+                    id="gerbang-to"
+                    value={dateTo}
+                    onChange={(e) => {
+                      setDateTo(e.target.value)
+                      setPeriod('custom')
+                      setCurrentPage(1)
+                    }}
+                    placeholder="Pilih tanggal selesai..."
+                    popoverClassName="sm:right-0 sm:left-auto z-[110]"
+                  />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="gerbang-status" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                   Status Presensi Gerbang
                 </label>
-                <div className="relative flex items-center">
-                  <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                    <ClipboardCheck className="size-4" />
-                  </div>
-                  <select
-                    id="gerbang-status"
-                    value={status}
-                    onChange={(e) => {
-                      setStatus(e.target.value)
-                      setCurrentPage(1)
-                    }}
-                    className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                  >
-                    <option value="">Semua Status</option>
-                    <option value="HADIR">Hadir / Tepat Waktu</option>
-                    <option value="TERLAMBAT">Terlambat</option>
-                    <option value="IZIN">Izin</option>
-                    <option value="SAKIT">Sakit</option>
-                    <option value="ALPHA">Alpha / Belum Scan</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={status}
+                  onChange={(val) => {
+                    setStatus(val)
+                    setCurrentPage(1)
+                  }}
+                  options={statusOptions}
+                  placeholder="Semua Status"
+                  icon={ClipboardCheck}
+                  widthClass="w-full"
+                />
               </div>
 
               <div>
@@ -1913,7 +2042,7 @@ export default function RekapAbsensiGerbangPage() {
       </motion.div>
 
       {/* Main Datatable Outer Container */}
-      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
+      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="relative z-10 overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
         {/* Header Baris 1: Title & Action Buttons */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3.5 sm:px-6 md:px-8 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60">
           <div className="flex items-center gap-3">
@@ -1988,25 +2117,15 @@ export default function RekapAbsensiGerbangPage() {
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
             <span className="text-xs font-medium text-slate-500">Per Halaman:</span>
-            <div className="relative">
-              <select
-                value={perPage}
-                onChange={(e) => {
-                  setPerPage(Number(e.target.value))
-                  setCurrentPage(1)
-                }}
-                aria-label="Baris per halaman"
-                className="h-9 cursor-pointer appearance-none rounded-xl border border-emerald-200/80 bg-white pl-2.5 pr-8 text-xs font-bold text-slate-700 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={15}>15</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-            </div>
+            <HeroUiFilterSelect
+              value={perPage}
+              onChange={(val) => {
+                setPerPage(Number(val))
+                setCurrentPage(1)
+              }}
+              options={perPageOptions}
+              widthClass="w-20"
+            />
           </div>
         </div>
 
@@ -2269,63 +2388,62 @@ export default function RekapAbsensiGerbangPage() {
 
             {/* Modal Datatable */}
             <div className="overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 font-extrabold uppercase">
-                  <tr>
-                    <th className="py-2.5 px-4 text-[11px]">No</th>
-                    <th className="py-2.5 px-4 text-[11px]">Siswa</th>
-                    <th className="py-2.5 px-4 text-[11px]">NIS/NISN</th>
-                    <th className="py-2.5 px-4 text-[11px]">Kelas</th>
-                    <th className="py-2.5 px-4 text-[11px]">Jam Masuk</th>
-                    <th className="py-2.5 px-4 text-[11px]">Jam Pulang</th>
-                    <th className="py-2.5 px-4 text-[11px]">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+              <TableRoot className="w-full text-left text-xs">
+                <TableHeader className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 font-extrabold uppercase">
+                  <TableRow>
+                    <TableHead className="py-2.5 px-4 text-[11px]">No</TableHead>
+                    <TableHead className="py-2.5 px-4 text-[11px]">Siswa</TableHead>
+                    <TableHead className="py-2.5 px-4 text-[11px]">NIS/NISN</TableHead>
+                    <TableHead className="py-2.5 px-4 text-[11px]">Kelas</TableHead>
+                    <TableHead className="py-2.5 px-4 text-[11px]">Jam Masuk</TableHead>
+                    <TableHead className="py-2.5 px-4 text-[11px]">Jam Pulang</TableHead>
+                    <TableHead className="py-2.5 px-4 text-[11px]">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                   {paginatedModalRows.length > 0 ? (
                     paginatedModalRows.map((row, idx) => {
                       const studentName = row.student?.nama_lengkap || row.student?.full_name || 'Siswa'
                       const studentNis = row.student?.nis || row.student?.nisn || '-'
                       const kelasName = row.school_class?.name || row.school_class?.nama_kelas || '-'
-                      const st = String(row.status || '').toUpperCase()
 
                       return (
-                        <tr key={row.id || idx} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
-                          <td className="py-3 px-4 font-medium text-slate-500 tabular-nums">
+                        <TableRow key={row.id || idx} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
+                          <TableCell className="py-3 px-4 font-medium text-slate-500 tabular-nums">
                             {(cardModal.page - 1) * MODAL_PAGE_SIZE + idx + 1}
-                          </td>
-                          <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 font-bold text-slate-900 dark:text-white">
                             {studentName}
-                          </td>
-                          <td className="py-3 px-4 font-mono text-slate-600 dark:text-slate-400">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 font-mono text-slate-600 dark:text-slate-400">
                             {studentNis}
-                          </td>
-                          <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">
                             {kelasName}
-                          </td>
-                          <td className="py-3 px-4 text-emerald-700 dark:text-emerald-400 font-bold tabular-nums">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-emerald-700 dark:text-emerald-400 font-bold tabular-nums">
                             {row.check_in_time || '-'}
-                          </td>
-                          <td className="py-3 px-4 text-sky-700 dark:text-sky-400 font-bold tabular-nums">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-sky-700 dark:text-sky-400 font-bold tabular-nums">
                             {row.check_out_time || '-'}
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell className="py-3 px-4">
                             <AppBadge variant={getAttendanceBadgeVariant(row.status)}>
                               {row.status || 'HADIR'}
                             </AppBadge>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       )
                     })
                   ) : (
-                    <tr>
-                      <td colSpan="7" className="py-8 text-center text-slate-400 font-medium">
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-8 text-center text-slate-400 font-medium">
                         {cardModal.searchQuery ? 'Tidak ada data presensi yang cocok dengan pencarian.' : 'Belum ada data pada kategori ini.'}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </TableRoot>
             </div>
           </DialogBody>
 
@@ -2800,24 +2918,24 @@ export default function RekapAbsensiGerbangPage() {
                         <Layers className="h-4 w-4 text-emerald-600" /> Ringkasan Jam Seluruh Unit
                       </h4>
                       <div className="overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
-                        <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-                          <thead className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300">
-                            <tr>
-                              <th className="px-3.5 py-2">Unit</th>
-                              <th className="px-3.5 py-2">Masuk</th>
-                              <th className="px-3.5 py-2">Toleransi</th>
-                              <th className="px-3.5 py-2">Pulang</th>
-                              <th className="px-3.5 py-2 text-right">Pilih</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                        <TableRoot className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+                          <TableHeader className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300">
+                            <TableRow>
+                              <TableHead className="px-3.5 py-2">Unit</TableHead>
+                              <TableHead className="px-3.5 py-2">Masuk</TableHead>
+                              <TableHead className="px-3.5 py-2">Toleransi</TableHead>
+                              <TableHead className="px-3.5 py-2">Pulang</TableHead>
+                              <TableHead className="px-3.5 py-2 text-right">Pilih</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                             {allUnitsSchedules.map((u) => (
-                              <tr key={u.unit_id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20">
-                                <td className="px-3.5 py-2 font-bold text-slate-900 dark:text-white">{u.unit_name}</td>
-                                <td className="px-3.5 py-2 font-bold text-emerald-700 dark:text-emerald-400">{u.schedule.jam_masuk}</td>
-                                <td className="px-3.5 py-2">{u.schedule.toleransi_menit}m</td>
-                                <td className="px-3.5 py-2 font-bold text-indigo-700 dark:text-indigo-400">{u.schedule.jam_pulang}</td>
-                                <td className="px-3.5 py-2 text-right">
+                              <TableRow key={u.unit_id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20">
+                                <TableCell className="px-3.5 py-2 font-bold text-slate-900 dark:text-white">{u.unit_name}</TableCell>
+                                <TableCell className="px-3.5 py-2 font-bold text-emerald-700 dark:text-emerald-400">{u.schedule.jam_masuk}</TableCell>
+                                <TableCell className="px-3.5 py-2">{u.schedule.toleransi_menit}m</TableCell>
+                                <TableCell className="px-3.5 py-2 font-bold text-indigo-700 dark:text-indigo-400">{u.schedule.jam_pulang}</TableCell>
+                                <TableCell className="px-3.5 py-2 text-right">
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -2828,11 +2946,11 @@ export default function RekapAbsensiGerbangPage() {
                                   >
                                     Edit
                                   </button>
-                                </td>
-                              </tr>
+                                </TableCell>
+                              </TableRow>
                             ))}
-                          </tbody>
-                        </table>
+                          </TableBody>
+                        </TableRoot>
                       </div>
                     </div>
                   )}

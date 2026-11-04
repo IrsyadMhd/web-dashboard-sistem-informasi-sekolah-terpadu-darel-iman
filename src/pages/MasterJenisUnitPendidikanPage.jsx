@@ -31,7 +31,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { Download1, Upload1 } from '@tailgrids/icons'
+import { Download as Download1, Upload as Upload1 } from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -60,14 +60,25 @@ import { useToast } from '../components/app'
 import { MasterStatusBadge, PrintOptionModal } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { usePengaturanStore } from '../stores/pengaturanStore'
+import { useAuthStore } from '../stores/authStore'
+import { hasRoleLevel, ROLE_LEVELS, isFoundationUser } from '../auth/portalResolver'
+import { SmartScrollFab } from '../components/common'
 import { useDebounce } from '../hooks/useDebounce'
 import { cn } from '../lib/utils'
-import { Button } from '@/components/tailgrids/core/button'
+import { Button } from '@/components/ui/button'
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from '@/components/tailgrids/core/hover-card'
+} from '@/components/ui/hover-card'
+import {
+  TableRoot,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/table'
 
 const JENJANG_LIST = ['PAUD', 'TK', 'SD', 'MI', 'SMP', 'MTs', 'SMA', 'MA', 'Pondok Pesantren', 'Mahad']
 
@@ -218,6 +229,10 @@ const itemVariants = {
 export default function MasterJenisUnitPendidikanPage() {
   const queryClient = useQueryClient()
   const sitePengaturan = usePengaturanStore((state) => state.pengaturan)
+  const user = useAuthStore((state) => state.user)
+  const isFoundation = isFoundationUser(user)
+  const canManage = !isFoundation && hasRoleLevel(user, ROLE_LEVELS.OPERATOR)
+
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 350)
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('')
@@ -464,11 +479,13 @@ export default function MasterJenisUnitPendidikanPage() {
   })
 
   const handleOpenFormTambah = () => {
+    if (!canManage) return
     setSelectedForEdit(null)
     setIsFormModalOpen(true)
   }
 
   const handleOpenFormEdit = (item) => {
+    if (!canManage) return
     setSelectedForEdit(item)
     setIsFormModalOpen(true)
   }
@@ -926,7 +943,7 @@ export default function MasterJenisUnitPendidikanPage() {
 
         {/* Datatable Container */}
         <motion.div variants={itemVariants}>
-          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+          <div id="tabel-jenis-unit" className="scroll-mt-6 relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
             <AppDataTable
               title="Daftar Jenis Unit Pendidikan"
               description="Kelola klasifikasi, jenjang, identitas visual, dan status jenis unit pendidikan."
@@ -952,24 +969,26 @@ export default function MasterJenisUnitPendidikanPage() {
                   </div>
 
                   {/* Import Button (Vivid Sky Blue Squircle) */}
-                  <div className="group relative inline-flex">
-                    <button
-                      type="button"
-                      title="Import Data Jenis Unit"
-                      aria-label="Import Data Jenis Unit"
-                      className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-                      onClick={() => {
-                        setImportResult(null)
-                        setIsImportModalOpen(true)
-                      }}
-                    >
-                      <Upload1 className="size-5 text-white" strokeWidth={2.2} />
-                    </button>
-                    <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-xl bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                      <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                      Import Data
+                  {canManage && (
+                    <div className="group relative inline-flex">
+                      <button
+                        type="button"
+                        title="Import Data Jenis Unit"
+                        aria-label="Import Data Jenis Unit"
+                        className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                        onClick={() => {
+                          setImportResult(null)
+                          setIsImportModalOpen(true)
+                        }}
+                      >
+                        <Upload1 className="size-5 text-white" strokeWidth={2.2} />
+                      </button>
+                      <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-xl bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                        <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                        Import Data
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Export Button (Vivid Amber Squircle) */}
                   <div className="group relative inline-flex">
@@ -989,21 +1008,23 @@ export default function MasterJenisUnitPendidikanPage() {
                   </div>
 
                   {/* Tambah Jenis Unit Button (Vivid Emerald Squircle) */}
-                  <div className="group relative inline-flex">
-                    <button
-                      type="button"
-                      title="Tambah Jenis Unit Baru"
-                      aria-label="Tambah Jenis Unit Baru"
-                      className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-                      onClick={handleOpenFormTambah}
-                    >
-                      <Plus className="size-5 text-white" strokeWidth={2.5} />
-                    </button>
-                    <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-xl bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                      <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                      Tambah Jenis Unit
+                  {canManage && (
+                    <div className="group relative inline-flex">
+                      <button
+                        type="button"
+                        title="Tambah Jenis Unit Baru"
+                        aria-label="Tambah Jenis Unit Baru"
+                        className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                        onClick={handleOpenFormTambah}
+                      >
+                        <Plus className="size-5 text-white" strokeWidth={2.5} />
+                      </button>
+                      <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-xl bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                        <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                        Tambah Jenis Unit
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               }
               columns={columns}
@@ -1118,8 +1139,10 @@ export default function MasterJenisUnitPendidikanPage() {
               actionColumnLabel="AKSI"
               onRowClick={(row) => handleOpenDetail(row)}
               onView={(row) => handleOpenDetail(row)}
-              onEdit={(row) => (!row.is_deleted ? handleOpenFormEdit(row) : undefined)}
-              onDelete={(row) => (!row.is_deleted ? setDeleteTarget(row) : undefined)}
+              canEdit={(row) => canManage && !row.is_deleted}
+              canDelete={(row) => canManage && !row.is_deleted}
+              onEdit={canManage ? ((row) => (!row.is_deleted ? handleOpenFormEdit(row) : undefined)) : undefined}
+              onDelete={canManage ? ((row) => (!row.is_deleted ? setDeleteTarget(row) : undefined)) : undefined}
               extraActions={extraActions}
               renderMobileCard={renderMobileCard}
               showPagination
@@ -1624,32 +1647,32 @@ export default function MasterJenisUnitPendidikanPage() {
                     </div>
                   ) : (
                     <div className="overflow-x-auto rounded-2xl border border-emerald-200/80 dark:border-slate-800">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-[11px] font-black uppercase text-emerald-950 dark:from-emerald-950 dark:via-teal-950 dark:to-emerald-950 dark:text-emerald-200 border-b border-emerald-200 dark:border-emerald-900">
-                          <tr>
-                            <th className="px-4 py-3 text-center">No</th>
-                            <th className="px-4 py-3">Kode & Nama Jenis Unit</th>
-                            <th className="px-4 py-3">Jenjang</th>
-                            <th className="px-4 py-3 text-center">Urutan</th>
-                            <th className="px-4 py-3 text-center">Status</th>
-                            <th className="px-4 py-3 text-right">Aksi</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-emerald-100/80 font-medium text-slate-700 dark:divide-slate-800 dark:text-slate-300">
+                      <TableRoot className="w-full text-left text-xs">
+                        <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-[11px] font-black uppercase text-emerald-950 dark:from-emerald-950 dark:via-teal-950 dark:to-emerald-950 dark:text-emerald-200 border-b border-emerald-200 dark:border-emerald-900">
+                          <TableRow>
+                            <TableHead className="px-4 py-3 text-center">No</TableHead>
+                            <TableHead className="px-4 py-3">Kode & Nama Jenis Unit</TableHead>
+                            <TableHead className="px-4 py-3">Jenjang</TableHead>
+                            <TableHead className="px-4 py-3 text-center">Urutan</TableHead>
+                            <TableHead className="px-4 py-3 text-center">Status</TableHead>
+                            <TableHead className="px-4 py-3 text-right">Aksi</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody className="divide-y divide-emerald-100/80 font-medium text-slate-700 dark:divide-slate-800 dark:text-slate-300">
                           {filteredKpiItems.map((item, idx) => (
-                            <tr key={item.id || item.uuid || idx} className="hover:bg-emerald-50/40 dark:hover:bg-slate-900/50 transition-colors">
-                              <td className="px-4 py-3 font-bold text-slate-400 text-center">{idx + 1}</td>
-                              <td className="px-4 py-3">
+                            <TableRow key={item.id || item.uuid || idx} className="hover:bg-emerald-50/40 dark:hover:bg-slate-900/50 transition-colors">
+                              <TableCell className="px-4 py-3 font-bold text-slate-400 text-center">{idx + 1}</TableCell>
+                              <TableCell className="px-4 py-3">
                                 <span className="block font-black text-slate-900 dark:text-white">{item.nama_jenis || item.nama || item.name || '-'}</span>
                                 <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Kode: {item.kode_jenis || item.kode || item.code || '-'}</span>
-                              </td>
-                              <td className="px-4 py-3">
+                              </TableCell>
+                              <TableCell className="px-4 py-3">
                                 <span className="inline-flex rounded-lg bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-300">
                                   {item.jenjang || '-'}
                                 </span>
-                              </td>
-                              <td className="px-4 py-3 text-center font-bold tabular-nums">{item.urutan ?? '-'}</td>
-                              <td className="px-4 py-3 text-center">
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-center font-bold tabular-nums">{item.urutan ?? '-'} tabular-nums</TableCell>
+                              <TableCell className="px-4 py-3 text-center">
                                 {item.is_deleted || item.terhapus || Boolean(item.deleted_at) ? (
                                   <span className="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200">Terhapus</span>
                                 ) : (
@@ -1663,8 +1686,8 @@ export default function MasterJenisUnitPendidikanPage() {
                                     {item.status === 'Aktif' || item.status === true || item.is_active ? 'Aktif' : 'Tidak Aktif'}
                                   </span>
                                 )}
-                              </td>
-                              <td className="px-4 py-3 text-right">
+                              </TableCell>
+                              <TableCell className="px-4 py-3 text-right">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1676,11 +1699,11 @@ export default function MasterJenisUnitPendidikanPage() {
                                   <Eye className="size-3.5" />
                                   <span>Rincian</span>
                                 </button>
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           ))}
-                        </tbody>
-                      </table>
+                        </TableBody>
+                      </TableRoot>
                     </div>
                   )}
                 </div>
@@ -1704,7 +1727,8 @@ export default function MasterJenisUnitPendidikanPage() {
         )}
       </AnimatePresence>
 
-
+      {/* Smart Floating Scroll Navigator (Opsi A) */}
+      <SmartScrollFab targetId="tabel-jenis-unit" downTooltip="Langsung ke Tabel Jenis Unit" />
     </PageContainer>
   )
 }

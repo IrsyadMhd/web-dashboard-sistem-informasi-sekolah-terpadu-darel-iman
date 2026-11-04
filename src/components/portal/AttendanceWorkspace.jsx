@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CalendarCheck,
@@ -27,6 +27,8 @@ import {
   CalendarDays,
   BarChart3,
   TrendingUp,
+  ChevronDown,
+  Check,
 } from 'lucide-react'
 import {
   Card as HeroCard,
@@ -34,6 +36,7 @@ import {
   Button as HeroButton,
 } from '@heroui/react'
 import useDebounce from '../../hooks/useDebounce'
+import { DatePicker } from '@/components/ui/date-picker'
 import { cn } from '../../lib/utils'
 
 const formatDateLong = (val) => {
@@ -125,6 +128,309 @@ const PERMISSION_TYPES = [
   { value: 'Keperluan keluarga', label: 'Keperluan Keluarga Mendesak' },
   { value: 'Lainnya', label: 'Lainnya' },
 ]
+
+// ── HEROUI MODAL SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  label,
+  value,
+  onChange,
+  options = [],
+  placeholder = '-- Pilih Opsi --',
+  disabled = false,
+  required = false,
+  helperText = '',
+  icon: IconComponent = null,
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      {label && (
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+            : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption && selectedOption.value !== '' ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[90] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {/* Search Input jika searchable */}
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* List options */}
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div>{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 font-normal">{opt.subtext}</div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {helperText && (
+        <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          {helperText}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+  ariaLabel = '',
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        onClick={() => {
+          setIsOpen((prev) => !prev)
+          setSearch('')
+        }}
+        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== 'all' && value !== undefined && value !== null
+            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export default function AttendanceWorkspace({
   attendanceLogs = [],
@@ -275,6 +581,29 @@ export default function AttendanceWorkspace({
     })
     return Array.from(set).sort((a, b) => a.localeCompare(b))
   }, [safePermissionsHistory])
+
+  // Options for HeroUI Selects
+  const subjectFilterOptions = useMemo(() => [
+    { value: 'all', label: `Semua Mata Pelajaran (${availableSubjects.length})` },
+    ...availableSubjects.map((s) => ({ value: s, label: s })),
+  ], [availableSubjects])
+
+  const monthFilterOptions = useMemo(() => [
+    { value: 'all', label: `Semua Periode (${availableMonths.length > 0 ? `${availableMonths.length} Bulan` : 'Total'})` },
+    ...availableMonths.map((m) => ({ value: m.value, label: m.label })),
+  ], [availableMonths])
+
+  const permissionStatusFilterOptions = useMemo(() => [
+    { value: 'all', label: 'Semua Status Pengajuan' },
+    { value: 'pending', label: 'Menunggu Verifikasi' },
+    { value: 'approved', label: 'Disetujui' },
+    { value: 'rejected', label: 'Ditolak' },
+  ], [])
+
+  const permissionTypeFilterOptions = useMemo(() => [
+    { value: 'all', label: `Semua Kategori (${availablePermissionTypes.length})` },
+    ...availablePermissionTypes.map((t) => ({ value: t, label: t })),
+  ], [availablePermissionTypes])
 
   // Hitung Statistik Kehadiran Dinamis (Sesuai Periode Waktu Terpilih)
   const stats = useMemo(() => {
@@ -889,59 +1218,48 @@ export default function AttendanceWorkspace({
               </div>
 
               {/* Filter Mata Pelajaran */}
-              <div className="relative lg:col-span-3">
-                <BookOpen className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                <select
+              <div className="lg:col-span-3">
+                <HeroUiFilterSelect
                   value={selectedSubject}
-                  onChange={(e) => setSelectedSubject(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-slate-200/90 bg-white py-2 pl-9 pr-7 text-xs font-semibold text-slate-700 focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                >
-                  <option value="all">Semua Mata Pelajaran ({availableSubjects.length})</option>
-                  {availableSubjects.map((subject) => (
-                    <option key={subject} value={subject}>
-                      {subject}
-                    </option>
-                  ))}
-                </select>
-                <Filter className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+                  onChange={(val) => setSelectedSubject(val)}
+                  options={subjectFilterOptions}
+                  placeholder="Semua Mata Pelajaran"
+                  icon={BookOpen}
+                  popoverWidth="min-w-[220px]"
+                  searchable
+                />
               </div>
 
               {/* Filter Bulan / Periode */}
-              <div className="relative lg:col-span-3">
-                <Calendar className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                <select
+              <div className="lg:col-span-3">
+                <HeroUiFilterSelect
                   value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-slate-200/90 bg-white py-2 pl-9 pr-7 text-xs font-semibold text-slate-700 focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                >
-                  <option value="all">Semua Periode ({availableMonths.length > 0 ? `${availableMonths.length} Bulan` : 'Total'})</option>
-                  {availableMonths.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-                <Filter className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+                  onChange={(val) => setSelectedMonth(val)}
+                  options={monthFilterOptions}
+                  placeholder="Semua Periode"
+                  icon={Calendar}
+                  popoverWidth="min-w-[180px]"
+                />
               </div>
 
               {/* Filter Tanggal & Reset */}
               <div className="relative lg:col-span-2 flex items-center gap-1.5">
                 <div className="relative flex-1">
-                  <CalendarRange className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="date"
+                  <DatePicker
                     value={selectedDate}
                     onChange={(e) => {
                       setSelectedDate(e.target.value)
                       if (e.target.value) setSelectedPeriod('all')
                     }}
-                    className="w-full rounded-xl border border-slate-200/90 bg-white py-2 pl-8 pr-2 text-xs font-medium text-slate-700 focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    inputClassName="py-2 text-xs font-medium"
+                    placeholder="Pilih tanggal..."
                   />
                   {selectedDate && (
                     <button
                       type="button"
                       onClick={() => setSelectedDate('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10"
+                      title="Hapus filter tanggal"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -1098,37 +1416,27 @@ export default function AttendanceWorkspace({
               </div>
 
               {/* Filter Status */}
-              <div className="relative lg:col-span-3">
-                <Filter className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                <select
+              <div className="lg:col-span-3">
+                <HeroUiFilterSelect
                   value={permissionStatusFilter}
-                  onChange={(e) => setPermissionStatusFilter(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-slate-200/90 bg-white py-2 pl-9 pr-7 text-xs font-semibold text-slate-700 focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                >
-                  <option value="all">Semua Status Pengajuan</option>
-                  <option value="pending">Menunggu Verifikasi</option>
-                  <option value="approved">Disetujui</option>
-                  <option value="rejected">Ditolak</option>
-                </select>
-                <Filter className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+                  onChange={(val) => setPermissionStatusFilter(val)}
+                  options={permissionStatusFilterOptions}
+                  placeholder="Semua Status Pengajuan"
+                  icon={Filter}
+                  popoverWidth="min-w-[190px]"
+                />
               </div>
 
               {/* Filter Kategori / Jenis */}
-              <div className="relative lg:col-span-3">
-                <FileText className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                <select
+              <div className="lg:col-span-3">
+                <HeroUiFilterSelect
                   value={permissionTypeFilter}
-                  onChange={(e) => setPermissionTypeFilter(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-slate-200/90 bg-white py-2 pl-9 pr-7 text-xs font-semibold text-slate-700 focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                >
-                  <option value="all">Semua Kategori ({availablePermissionTypes.length})</option>
-                  {availablePermissionTypes.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-                <Filter className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+                  onChange={(val) => setPermissionTypeFilter(val)}
+                  options={permissionTypeFilterOptions}
+                  placeholder="Semua Kategori"
+                  icon={FileText}
+                  popoverWidth="min-w-[190px]"
+                />
               </div>
 
               {/* Reset Filter Button */}
@@ -1493,20 +1801,15 @@ export default function AttendanceWorkspace({
 
                 {/* Jenis Pengajuan */}
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Kategori / Jenis Pengajuan
-                  </label>
-                  <select
+                  <HeroUiModalSelect
+                    label="Kategori / Jenis Pengajuan"
                     value={type}
-                    onChange={(e) => setType(e.target.value)}
-                    className="h-11 w-full rounded-2xl border-2 border-slate-200/80 bg-slate-50 px-3.5 text-xs font-semibold text-slate-800 outline-none transition-all focus:border-sky-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
-                  >
-                    {PERMISSION_TYPES.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setType(val)}
+                    options={PERMISSION_TYPES}
+                    placeholder="Pilih Kategori Pengajuan"
+                    icon={FileText}
+                    required
+                  />
                 </div>
 
                 {/* Rentang Tanggal Mulai & Selesai */}
@@ -1515,12 +1818,12 @@ export default function AttendanceWorkspace({
                     <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                       Tanggal Mulai
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
                       required
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="h-11 w-full rounded-2xl border-2 border-slate-200/80 bg-slate-50 px-3.5 text-xs font-semibold text-slate-800 outline-none transition-all focus:border-sky-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
+                      inputClassName="h-11 text-xs font-semibold"
+                      placeholder="Pilih tanggal mulai..."
                     />
                   </div>
 
@@ -1528,13 +1831,13 @@ export default function AttendanceWorkspace({
                     <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                       Tanggal Selesai
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
                       required
                       min={startDate}
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="h-11 w-full rounded-2xl border-2 border-slate-200/80 bg-slate-50 px-3.5 text-xs font-semibold text-slate-800 outline-none transition-all focus:border-sky-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
+                      inputClassName="h-11 text-xs font-semibold"
+                      placeholder="Pilih tanggal selesai..."
                     />
                   </div>
                 </div>

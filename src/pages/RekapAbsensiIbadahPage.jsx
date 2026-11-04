@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { DatePicker } from '@/components/ui/date-picker'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowUpDown,
@@ -56,9 +57,9 @@ import {
 } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 
-import { Button } from '@/components/tailgrids/core/button'
-import { Input } from '@/components/tailgrids/core/input'
-import { Pagination } from '@/components/tailgrids/core/pagination'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Pagination } from '@/components/ui/pagination'
 import {
   TableBody,
   TableCell,
@@ -66,12 +67,12 @@ import {
   TableHeader,
   TableRoot,
   TableRow,
-} from '@/components/tailgrids/core/table'
+} from '@/components/ui/table'
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from '@/components/tailgrids/core/hover-card'
+} from '@/components/ui/hover-card'
 import {
   Dialog,
   DialogBody,
@@ -79,8 +80,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
-import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
+} from '@/components/ui/dialog'
+import { Backdrop, OverlayWrapper } from '@/components/ui/dialog'
 
 const MODAL_PAGE_SIZE = 6
 const today = () => new Date().toISOString().slice(0, 10)
@@ -733,28 +734,28 @@ export default function RekapAbsensiIbadahPage() {
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div>
                     <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Mulai</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={dateFrom}
                       onChange={(e) => {
                         setDateFrom(e.target.value)
                         setPeriod('custom')
                         setHalaman(1)
                       }}
-                      className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                      placeholder="Mulai..."
+                      inputClassName="h-8 text-[11px]"
                     />
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Selesai</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={dateTo}
                       onChange={(e) => {
                         setDateTo(e.target.value)
                         setPeriod('custom')
                         setHalaman(1)
                       }}
-                      className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                      placeholder="Selesai..."
+                      inputClassName="h-8 text-[11px]"
                     />
                   </div>
                 </div>

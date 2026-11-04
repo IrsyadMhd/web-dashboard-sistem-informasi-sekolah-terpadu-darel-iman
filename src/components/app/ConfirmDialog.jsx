@@ -75,9 +75,9 @@ export default function ConfirmDialog({
       isOpen={Boolean(isOpen)}
       onOpenChange={handleOpenChange}
     >
-      <HeroModal.Backdrop className="bg-slate-950/70 backdrop-blur-md fixed inset-0 z-[70] flex items-center justify-center p-4">
-        <HeroModal.Container className="w-full flex items-center justify-center min-h-full">
-          <HeroModal.Dialog className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-[#1B2433] border border-slate-200/80 dark:border-slate-800">
+      <HeroModal.Backdrop className="bg-slate-950/70 backdrop-blur-md fixed inset-0 z-[70] flex items-start sm:items-center justify-center p-3 sm:p-5 overflow-y-auto">
+        <HeroModal.Container className="w-full flex items-center justify-center min-h-full my-auto">
+          <HeroModal.Dialog className="relative w-full max-w-md my-auto max-h-[calc(100dvh-1.5rem)] flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-[#1B2433] border border-slate-200/80 dark:border-slate-800">
             {/* Top Accent Gradient Line */}
             <div
               className={cn(

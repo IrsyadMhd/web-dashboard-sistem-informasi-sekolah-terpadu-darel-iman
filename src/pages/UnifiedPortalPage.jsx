@@ -50,6 +50,7 @@ import {
   Zap,
 } from 'lucide-react'
 
+import Swal from '@/components/ui/compat/swal-heroui'
 import { familyPortalService } from '../services/familyPortalService'
 import { studentLmsService } from '../services/studentLmsService'
 import api from '../services/api'
@@ -73,10 +74,10 @@ import AcademicCalendarModal from '../components/calendar/AcademicCalendarModal'
 import { useAuthStore } from '../stores/authStore'
 
 // TailGrids Core Components
-import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Button } from '@/components/tailgrids/core/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/tailgrids/core/card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const baseMenuItems = [
   ['ringkasan', 'Dashboard', Sparkles, 'bg-sky-100/90 text-sky-600 border-sky-200/90 hover:bg-sky-200'],
@@ -195,7 +196,18 @@ function ExamWorkspace({ session, onClose, onFinished }) {
     if (finishLock.current) return
     const doubtCount = Object.values(doubtful).filter(Boolean).length
     const doubtMsg = doubtCount > 0 ? `\nPerhatian: Ada ${doubtCount} soal yang masih ditandai ragu-ragu.` : ''
-    if (!automatic && !window.confirm(`Yakin ingin mengumpulkan ujian? Jawaban tidak dapat diubah setelah dikumpulkan.${doubtMsg}`)) return
+    if (!automatic) {
+      const confirmResult = await Swal.fire({
+        title: 'Kumpulkan Ujian?',
+        text: `Jawaban tidak dapat diubah setelah dikumpulkan.${doubtMsg}`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Kumpulkan Ujian',
+        cancelButtonText: 'Kembali Periksa',
+        confirmButtonColor: '#059669',
+      })
+      if (!confirmResult.isConfirmed) return
+    }
     finishLock.current = true
     setSubmitting(true)
     try {
@@ -324,7 +336,24 @@ function ExamWorkspace({ session, onClose, onFinished }) {
           {index < session.soal.length - 1 ? <button onClick={() => setIndex((value) => value + 1)} className="flex h-10 items-center gap-1 rounded-xl bg-slate-900 px-4 text-xs font-bold text-white dark:bg-white dark:text-slate-900">Berikutnya<ChevronRight className="h-4 w-4" /></button> : <button onClick={() => finish(false)} disabled={submitting} className="flex h-10 items-center gap-2 rounded-xl bg-[#0E5C44] px-4 text-xs font-bold text-white disabled:opacity-60">{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Kumpulkan</button>}
         </div>
       </footer>
-      <button onClick={() => { if (window.confirm('Keluar dari tampilan ujian? Sesi dan waktu tetap berjalan.')) onClose() }} className="absolute right-2 top-[70px] rounded-full bg-white p-2 text-slate-500 shadow lg:right-5" title="Tutup ruang ujian"><X className="h-4 w-4" /></button>
+      <button
+        onClick={async () => {
+          const res = await Swal.fire({
+            title: 'Tutup Ruang Ujian?',
+            text: 'Keluar dari tampilan ujian? Sesi dan sisa waktu tetap berjalan di server.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Keluar Sementara',
+            cancelButtonText: 'Lanjutkan Ujian',
+            confirmButtonColor: '#e11d48',
+          })
+          if (res.isConfirmed) onClose()
+        }}
+        className="absolute right-2 top-[70px] rounded-full bg-white p-2 text-slate-500 shadow lg:right-5 cursor-pointer hover:bg-slate-100 transition-colors"
+        title="Tutup ruang ujian"
+      >
+        <X className="h-4 w-4" />
+      </button>
     </div>
   )
 }
@@ -517,7 +546,13 @@ export default function UnifiedPortalPage() {
       const res = await studentLmsService.startExam(exam.id)
       setExamSession(res.data)
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal memulai ujian CBT. Pastikan jadwal ujian telah dibuka.')
+      Swal.fire({
+        title: 'Ujian Belum Dapat Dimulai',
+        text: err.response?.data?.message || 'Gagal memulai ujian CBT. Pastikan jadwal ujian telah dibuka oleh pengawas.',
+        icon: 'warning',
+        confirmButtonText: 'Mengerti',
+        confirmButtonColor: '#059669',
+      })
     } finally {
       setStartingExamId(null)
     }

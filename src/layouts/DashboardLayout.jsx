@@ -45,7 +45,7 @@ import {
   Receipt,
   UserRound,
 } from 'lucide-react'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { authService } from '../services/authService'
 import { api } from '../services/api'
 import { educationUnitService } from '../services/educationUnitService'
@@ -60,16 +60,6 @@ import GlobalSearchModal from '../components/GlobalSearchModal'
 import NotificationCenter from '../components/app/NotificationCenter'
 import AppBottomNavigation from '../components/app/AppBottomNavigation'
 import { isMusyrifRole, isParentRole, isStudentRole, isTeacherRole, isTuOrKepsek, resolveDefaultPortal, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuHeader,
-  DropdownMenuItem,
-  DropdownMenuSection,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '../components/tailgrids/core/dropdown'
-import { UserCircle1, Gear1, Exit, Bell1 } from '@tailgrids/icons'
 import AuthToast, { showAuthToast } from '../components/ui/AuthToast'
 import AuthPopup from '../components/ui/AuthPopup'
 import AcademicCalendarModal from '../components/calendar/AcademicCalendarModal'
@@ -529,6 +519,21 @@ export default function DashboardLayout() {
   const shouldHideSubmenu = (mod, sub) => {
     const to = sub?.to || sub?.path || ''
 
+    // 0. Sembunyikan seluruh modul dan menu Pengaturan untuk role Kepala Sekolah
+    if (
+      isKepalaSekolah &&
+      (mod?.id === 'pengaturan' ||
+        to === '/dashboard/pengaturan' ||
+        to.startsWith('/dashboard/pengaturan') ||
+        to === '/dashboard/master-opsi-bisnis' ||
+        to === '/dashboard/koneksi-api-mobile' ||
+        sub?.id?.startsWith('pengaturan') ||
+        sub?.id?.startsWith('set-') ||
+        sub?.id === 'master-opsi-bisnis')
+    ) {
+      return true
+    }
+
     // 1. Kontekstual Asrama vs Non-Pesantren (Presentational Filter)
     // Unit non-pesantren tidak memiliki asrama/ibadah santri, sehingga tautan ibadah santri asrama disembunyikan
     if (!isPesantrenUnit && !hasFullMenuAccess && (to === '/dashboard/absensi-ibadah' || to.startsWith('/dashboard/absensi-ibadah/')) && !to.startsWith('/dashboard/absensi-ibadah-siswa')) {
@@ -877,6 +882,9 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
     const result = []
 
     for (const mod of navData.modules) {
+      if (isKepalaSekolah && mod.id === 'pengaturan') {
+        continue
+      }
       const ModIcon = resolveSidebarIcon(mod.icon) || LayoutDashboard
       const rawItems = mod.items || []
 
@@ -933,6 +941,7 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
     hasFullMenuAccess,
     isPesantrenUnit,
     isGuruUser,
+    isKepalaSekolah,
   ])
 
   const sidebarMenu = dynamicSidebarMenu
@@ -1456,7 +1465,7 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
             {/* RIGHT CONTROLS: Tanggal (geser dekat notifikasi), Akses Role (Super Admin/Admin only, samping notifikasi), Notification Bell, Cache Reset, Dark Mode, Profile Avatar */}
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               {/* 3. Tanggal Hari Ini & Button Kalender Akademik (Soft Pastel Cyan/Teal, posisi dekat button notifikasi) */}
-              <div className="group relative hidden lg:flex items-center gap-1.5">
+              <div className="group relative hidden xl:flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setIsAcademicCalendarOpen(true)}
@@ -1730,7 +1739,7 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
           </header>
 
           {/* Main Page Workspace Container (Light Gray bg-slate-50) */}
-          <main className="min-w-0 flex-1 overflow-x-hidden px-3 py-3.5 sm:px-5 sm:py-5 lg:p-6 space-y-4 sm:space-y-6 max-w-none lg:max-w-7xl w-full mx-auto pb-24 lg:pb-10">
+          <main className="min-w-0 flex-1 overflow-x-hidden px-3 py-3.5 sm:px-5 sm:py-5 lg:p-6 space-y-4 sm:space-y-6 max-w-none lg:max-w-7xl w-full mx-auto pb-28 lg:pb-24">
             {impersonating && !hasFullMenuAccess && (
               <div className="auth-impersonating-banner flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
                 <div>

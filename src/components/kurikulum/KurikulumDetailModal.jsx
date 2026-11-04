@@ -13,7 +13,7 @@ import {
   ShieldAlert,
 } from 'lucide-react'
 import AppModal from '../app/AppModal'
-import { Button } from '@/components/tailgrids/core/button'
+import { Button } from '@/components/ui/button'
 
 export default function KurikulumDetailModal({ isOpen, onClose, data }) {
   if (!isOpen || !data) return null

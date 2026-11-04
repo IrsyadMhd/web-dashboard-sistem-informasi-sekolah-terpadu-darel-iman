@@ -78,4 +78,11 @@ export const lmsUjianService = {
     const response = await api.get('/lms/ujian/options')
     return response.data
   },
+
+  import: async (formData) => {
+    const response = await api.post('/lms/ujian/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
 }

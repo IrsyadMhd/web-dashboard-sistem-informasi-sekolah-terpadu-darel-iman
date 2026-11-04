@@ -1,6 +1,6 @@
 import React from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/tailgrids/core/card'
-import { TableRoot, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/tailgrids/core/table'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { TableRoot, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 
 export function ReportRecapTable({
   title = 'Rekapitulasi per Unit Pendidikan',

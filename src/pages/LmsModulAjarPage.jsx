@@ -1,5 +1,5 @@
 import { useToast } from '../components/app/ToastProvider'
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -27,6 +27,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   ArrowLeft,
   ArrowRight,
   Save,
@@ -41,7 +42,15 @@ import {
   Compass,
   FileCheck,
   ArrowUpDown,
+  Image as ImageIcon,
+  Video as VideoIcon,
+  Link as LinkIcon,
+  ExternalLink,
+  Check,
+  Loader2,
+  Paperclip,
 } from 'lucide-react'
+import api from '../services/api'
 import { lmsModulAjarService } from '../services/lmsModulAjarService'
 import { codeGeneratorService } from '../services/codeGeneratorService'
 import PageContainer from '../components/app/PageContainer'
@@ -51,6 +60,14 @@ import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { useDebounce } from '../hooks/useDebounce'
 import { PrintOptionModal } from '../components/master-data'
 import { downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
+import {
+  TableRoot,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table'
 
 // ── 1. DEFINISI TONE WARNA KARTU KPI MODERN ──
 const MODERN_CARD_TONES = {
@@ -171,6 +188,179 @@ const JENJANG_FASE_OPTIONS = [
 const getJenjangShortLabel = (fase) => {
   const match = JENJANG_FASE_OPTIONS.find((item) => item.value === fase)
   return match ? `${match.shortLabel}` : (fase || '-')
+}
+
+const formatFileSize = (bytes) => {
+  if (!bytes || isNaN(bytes)) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+// ── HEROUI SELECT DROPDOWN COMPONENT (CLEAN, ACCESSIBLE & ANIMATED) ──
+function HeroUiModalSelect({
+  label,
+  value,
+  onChange,
+  options = [],
+  placeholder = '-- Pilih Opsi --',
+  disabled = false,
+  required = false,
+  helperText = '',
+  icon: IconComponent = null,
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      {label && (
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+            : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[90] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {/* Search Input jika searchable */}
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* List options */}
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div>{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 font-normal">{opt.subtext}</div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {helperText && (
+        <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          {helperText}
+        </p>
+      )}
+    </div>
+  )
 }
 
 const STATUS_LIST = ['Draft', 'Review', 'Publish', 'Arsip']
@@ -430,9 +620,17 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     versi: '1.0',
     naikkan_versi: false,
     catatan_revisi: '',
+    lampiran: [],
   })
 
   const [formData, setFormData] = useState(initialFormState)
+
+  // Media & Attachment Manager States (Tab 2)
+  const [mediaTab, setMediaTab] = useState('dokumen') // 'dokumen' | 'gambar' | 'video' | 'link_dokumen' | 'link_video'
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false)
+  const [linkInputTitle, setLinkInputTitle] = useState('')
+  const [linkInputUrl, setLinkInputUrl] = useState('')
+  const mediaFileInputRef = useRef(null)
 
   // Queries
   const { data: optionsData } = useQuery({
@@ -609,20 +807,31 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
 
   // Handlers Modals
   const handleOpenAddModal = () => {
-    setSelectedModul(null)
-    const defaultUnitId = options.education_units?.[0]?.id || ''
+    const unitWithSubjects = options.education_units?.find((u) =>
+      (options.subjects || []).some((s) => s.unit_pendidikan_id === u.id || s.unit_pendidikan?.id === u.id)
+    )
+    const defaultUnitId = selectedUnitFilter || unitWithSubjects?.id || options.education_units?.[0]?.id || ''
+    const initialMapel = (options.subjects || []).find(
+      (s) => s.unit_pendidikan_id === defaultUnitId || s.unit_pendidikan?.id === defaultUnitId
+    )
+
     setFormData({
       ...initialFormState(),
       unit_pendidikan_id: defaultUnitId,
       tahun_ajaran_id: options.academic_years?.[0]?.id || '',
       semester_id: options.semesters?.[0]?.id || '',
       kurikulum_id: options.kurikulums?.[0]?.id || '',
-      mata_pelajaran_id: options.subjects?.[0]?.id || '',
+      mata_pelajaran_id: initialMapel?.id || '',
       guru_id: options.teachers?.[0]?.id || '',
       kelas_id: options.classes?.[0]?.id || '',
       cp_id: options.capaian_pembelajaran?.[0]?.id || '',
       tp_id: options.tujuan_pembelajaran?.[0]?.id || '',
+      lampiran: [],
     })
+    setLinkInputTitle('')
+    setLinkInputUrl('')
+    setMediaTab('dokumen')
+
     codeGeneratorService.preview('modul_code', {
       unit_id: defaultUnitId || null,
       academic_year_id: options.academic_years?.[0]?.id || null,
@@ -673,9 +882,117 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
       versi: item.versi || '1.0',
       naikkan_versi: false,
       catatan_revisi: '',
+      lampiran: Array.isArray(item.lampiran) ? item.lampiran : [],
     })
+    setLinkInputTitle('')
+    setLinkInputUrl('')
+    setMediaTab('dokumen')
     setFormStep(1)
     setIsFormModalOpen(true)
+  }
+
+  // Media Attachment Upload & Link Handlers (Tab 2)
+  const handleUploadMediaFile = async (e, type) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Limit ukuran: 50MB
+    if (file.size > 50 * 1024 * 1024) {
+      pushToast('Ukuran Terlalu Besar', 'Maksimal ukuran file lampiran adalah 50MB.', 'warning')
+      return
+    }
+
+    try {
+      setIsUploadingMedia(true)
+      const uploadData = new FormData()
+      uploadData.append('file', file)
+      uploadData.append('folder', 'lms/modul_ajar')
+
+      const res = await api.post('/upload', uploadData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+
+      const rawUrl = res.data?.url || res.data?.data?.url || ''
+      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+
+      const newAttachment = {
+        id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        tipe: type, // 'dokumen' | 'gambar' | 'video'
+        nama: file.name,
+        url: rawUrl,
+        ukuran: file.size,
+        ekstensi: ext,
+        uploaded_at: new Date().toISOString(),
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        lampiran: [...(prev.lampiran || []), newAttachment],
+      }))
+
+      pushToast('Berkas Terlampir', `Berkas "${file.name}" berhasil diunggah dan dilampirkan.`, 'success')
+    } catch (err) {
+      console.warn('Upload endpoint error, fallback to data url preview:', err)
+      const reader = new FileReader()
+      reader.onload = (uploadEvt) => {
+        const ext = file.name.split('.').pop()?.toLowerCase() || ''
+        const newAttachment = {
+          id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          tipe: type,
+          nama: file.name,
+          url: uploadEvt.target.result,
+          ukuran: file.size,
+          ekstensi: ext,
+          uploaded_at: new Date().toISOString(),
+        }
+        setFormData((prev) => ({
+          ...prev,
+          lampiran: [...(prev.lampiran || []), newAttachment],
+        }))
+        pushToast('Berkas Ditambahkan', `Berkas "${file.name}" tersimpan dalam draft modul.`, 'success')
+      }
+      reader.readAsDataURL(file)
+    } finally {
+      setIsUploadingMedia(false)
+      if (mediaFileInputRef.current) mediaFileInputRef.current.value = ''
+    }
+  }
+
+  const handleAddMediaLink = (type) => {
+    if (!linkInputUrl.trim()) {
+      pushToast('Tautan Diperlukan', 'Harap masukkan tautan / URL yang valid!', 'warning')
+      return
+    }
+
+    const defaultTitle = type === 'link_video' ? 'Tautan Video Pembelajaran' : 'Tautan Dokumen / Modul Online'
+    const title = linkInputTitle.trim() || defaultTitle
+
+    const newAttachment = {
+      id: `att_link_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      tipe: type, // 'link_video' | 'link_dokumen'
+      nama: title,
+      url: linkInputUrl.trim(),
+      ukuran: null,
+      ekstensi: 'link',
+      uploaded_at: new Date().toISOString(),
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      lampiran: [...(prev.lampiran || []), newAttachment],
+    }))
+
+    setLinkInputTitle('')
+    setLinkInputUrl('')
+    pushToast('Tautan Ditambahkan', `Tautan "${title}" berhasil disematkan.`, 'success')
+  }
+
+  const handleRemoveAttachment = (id) => {
+    setFormData((prev) => ({
+      ...prev,
+      lampiran: (prev.lampiran || []).filter((item) => item.id !== id),
+    }))
+    pushToast('Lampiran Dihapus', 'Berkas / tautan lampiran telah dihapus dari modul ini.', 'info')
   }
 
   const handleTriggerSave = (e) => {
@@ -1383,31 +1700,31 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
 
             {/* ── LEMBAR DATA TABLE UTAMA ── */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm" aria-label="Daftar Modul Ajar">
-                <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-                  <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
-                    <th className="w-10 sm:w-12 px-2.5 sm:px-3.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
+              <TableRoot className="w-full text-left text-sm" aria-label="Daftar Modul Ajar">
+                <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                  <TableRow className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+                    <TableHead className="w-10 sm:w-12 px-2.5 sm:px-3.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
                       No
-                    </th>
-                    <th className="w-auto sm:w-[38%] md:w-[42%] px-3.5 sm:px-6 md:px-8 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="w-auto sm:w-[38%] md:w-[42%] px-3.5 sm:px-6 md:px-8 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">
                       Kode &amp; Judul Modul
-                    </th>
-                    <th className="hidden sm:table-cell w-[24%] px-3.5 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="hidden sm:table-cell w-[24%] px-3.5 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">
                       Mata Pelajaran &amp; Guru
-                    </th>
-                    <th className="hidden md:table-cell w-[14%] px-3.5 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell w-[14%] px-3.5 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">
                       Kelas &amp; Fase
-                    </th>
-                    <th className="hidden lg:table-cell w-[10%] px-2.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="hidden lg:table-cell w-[10%] px-2.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
                       Alokasi
-                    </th>
-                    <th className="hidden xl:table-cell w-[8%] px-2.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="hidden xl:table-cell w-[8%] px-2.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
                       Versi
-                    </th>
-                    <th className="hidden sm:table-cell w-[12%] px-3.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="hidden sm:table-cell w-[12%] px-3.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
                       Status
-                    </th>
-                    <th
+                    </TableHead>
+                    <TableHead
                       onClick={() => {
                         setSortDateOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))
                         setPage(1)
@@ -1419,45 +1736,45 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                         <span>Tanggal</span>
                         <ArrowUpDown className="size-3 text-emerald-700 dark:text-emerald-300" />
                       </div>
-                    </th>
-                    <th className="w-14 sm:w-20 px-2 sm:px-3.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="w-14 sm:w-20 px-2 sm:px-3.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
                       Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-slate-700 dark:text-slate-200">
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-slate-700 dark:text-slate-200">
                   {isLoading ? (
-                    <tr>
-                      <td colSpan="9" className="px-6 py-14 text-center text-slate-400">
+                    <TableRow>
+                      <TableCell colSpan="9" className="px-6 py-14 text-center text-slate-400">
                         <div className="flex flex-col justify-center items-center gap-2">
                           <RefreshCw className="h-6 w-6 animate-spin text-[#0E5C44]" />
                           <span className="text-xs font-semibold">Memuat data Modul Ajar...</span>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : moduls.length === 0 ? (
-                    <tr>
-                      <td colSpan="9" className="px-6 py-14 text-center text-slate-400">
+                    <TableRow>
+                      <TableCell colSpan="9" className="px-6 py-14 text-center text-slate-400">
                         <div className="flex flex-col justify-center items-center gap-2">
                           <BookOpen className="h-8 w-8 text-slate-300 dark:text-slate-600" />
                           <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Tidak ada data Modul Ajar ditemukan</p>
                           <p className="text-xs text-slate-400">Coba ubah kriteria pencarian atau tambahkan modul ajar baru.</p>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     moduls.map((item, idx) => (
-                      <tr
+                      <TableRow
                         key={item.id}
                         className="group border-b border-emerald-100/90 dark:border-emerald-900/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all duration-150"
                       >
                         {/* No */}
-                        <td className="px-2.5 sm:px-3.5 py-3.5 text-center text-xs font-bold text-slate-400">
+                        <TableCell className="px-2.5 sm:px-3.5 py-3.5 text-center text-xs font-bold text-slate-400">
                           {(meta.from || 1) + idx}
-                        </td>
+                        </TableCell>
 
                         {/* Kode & Judul Modul */}
-                        <td className="px-3.5 sm:px-6 md:px-8 py-3.5">
+                        <TableCell className="px-3.5 sm:px-6 md:px-8 py-3.5">
                           <div
                             onClick={() => {
                               setSelectedModul(item)
@@ -1500,10 +1817,10 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                               </span>
                             </div>
                           </div>
-                        </td>
+                        </TableCell>
 
                         {/* Mapel & Guru */}
-                        <td className="hidden sm:table-cell px-3.5 py-3.5">
+                        <TableCell className="hidden sm:table-cell px-3.5 py-3.5">
                           <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
                             {item.subject?.nama_mapel || item.subject?.name || '-'}
                           </div>
@@ -1515,30 +1832,30 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                               {item.user?.nama_lengkap || item.teacher?.nama_lengkap || item.teacher?.name || item.guru?.nama_lengkap || 'Guru Pengampu'}
                             </span>
                           </div>
-                        </td>
+                        </TableCell>
 
                         {/* Kelas & Fase */}
-                        <td className="hidden md:table-cell px-3.5 py-3.5">
+                        <TableCell className="hidden md:table-cell px-3.5 py-3.5">
                           <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
                             {item.kelas?.nama_kelas || item.school_class?.name || '-'}
                           </div>
                           <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
                             {getJenjangShortLabel(item.fase)}
                           </span>
-                        </td>
+                        </TableCell>
 
                         {/* Alokasi Jam */}
-                        <td className="hidden lg:table-cell px-2.5 py-3.5 text-center text-xs font-bold tabular-nums text-slate-700 dark:text-slate-300">
+                        <TableCell className="hidden lg:table-cell px-2.5 py-3.5 text-center text-xs font-bold tabular-nums text-slate-700 dark:text-slate-300">
                           {item.alokasi_jam || item.alokasi_waktu_jp || 2} JP
-                        </td>
+                        </TableCell>
 
                         {/* Versi */}
-                        <td className="hidden xl:table-cell px-2.5 py-3.5 text-center font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                        <TableCell className="hidden xl:table-cell px-2.5 py-3.5 text-center font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">
                           v{item.versi || '1.0'}
-                        </td>
+                        </TableCell>
 
                         {/* Status */}
-                        <td className="hidden sm:table-cell px-3.5 py-3.5 text-center">
+                        <TableCell className="hidden sm:table-cell px-3.5 py-3.5 text-center">
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold border ${
                               item.status === 'Publish'
@@ -1552,10 +1869,10 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                           >
                             {item.status}
                           </span>
-                        </td>
+                        </TableCell>
 
                         {/* Tanggal */}
-                        <td className="hidden xl:table-cell px-3.5 py-3.5 text-center">
+                        <TableCell className="hidden xl:table-cell px-3.5 py-3.5 text-center">
                           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                             {item.created_at
                               ? new Date(item.created_at).toLocaleDateString('id-ID', {
@@ -1565,10 +1882,10 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                                 })
                               : '-'}
                           </span>
-                        </td>
+                        </TableCell>
 
                         {/* Aksi Baris */}
-                        <td className="px-2 sm:px-3.5 py-3.5 text-center">
+                        <TableCell className="px-2 sm:px-3.5 py-3.5 text-center">
                           <div className="flex items-center justify-center">
                             <ActionDropdown
                               onView={() => {
@@ -1608,12 +1925,12 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                               ]}
                             />
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </TableRoot>
             </div>
 
             {/* ── PAGINATION BAR EMERALD SQUIRCLE ── */}
@@ -1836,107 +2153,91 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                            Jenjang Pendidikan (Fase)
-                          </label>
-                          <select
+                          <HeroUiModalSelect
+                            label="Jenjang Pendidikan (Fase)"
                             value={formData.fase}
-                            onChange={(e) => setFormData({ ...formData, fase: e.target.value })}
-                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
-                          >
-                            {JENJANG_FASE_OPTIONS.map((j) => (
-                              <option key={j.value} value={j.value}>{j.label}</option>
-                            ))}
-                          </select>
+                            onChange={(val) => setFormData({ ...formData, fase: val })}
+                            options={JENJANG_FASE_OPTIONS.map((j) => ({ value: j.value, label: j.label }))}
+                            icon={GraduationCap}
+                          />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                            Unit Pendidikan
-                          </label>
-                          <select
+                          <HeroUiModalSelect
+                            label="Unit Pendidikan"
                             value={formData.unit_pendidikan_id || (options.education_units?.length === 1 ? options.education_units[0].id : '')}
-                            onChange={(e) => {
-                              const newUnit = e.target.value
+                            onChange={(newUnit) => {
+                              const newMapels = (options.subjects || []).filter(
+                                (s) => s.unit_pendidikan_id === newUnit || s.unit_pendidikan?.id === newUnit
+                              )
                               setFormData((prev) => ({
                                 ...prev,
                                 unit_pendidikan_id: newUnit,
-                                mata_pelajaran_id: '',
+                                mata_pelajaran_id: newMapels[0]?.id || '',
                               }))
                             }}
+                            options={(options.education_units || []).map((u) => ({
+                              value: u.id,
+                              label: u.name || u.nama,
+                            }))}
+                            placeholder="-- Pilih Unit Pendidikan --"
                             disabled={options.education_units?.length === 1}
-                            className={`w-full rounded-xl border border-slate-200/90 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:text-slate-100 ${
-                              options.education_units?.length === 1
-                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed'
-                                : 'bg-slate-50/50 dark:bg-slate-900/50 cursor-pointer'
-                            }`}
-                          >
-                            <option value="">-- Pilih Unit Pendidikan --</option>
-                            {options.education_units?.map((u) => (
-                              <option key={u.id} value={u.id}>
-                                {u.name || u.nama}
-                              </option>
-                            ))}
-                          </select>
-                          {options.education_units?.length === 1 && (
-                            <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                              Unit otomatis disesuaikan dengan penugasan mengajar Anda.
+                            helperText={options.education_units?.length === 1 ? 'Unit otomatis disesuaikan dengan penugasan mengajar Anda.' : ''}
+                            icon={Building2}
+                          />
+                        </div>
+
+                        <div>
+                          <HeroUiModalSelect
+                            label="Mata Pelajaran"
+                            value={formData.mata_pelajaran_id}
+                            onChange={(val) => setFormData({ ...formData, mata_pelajaran_id: val })}
+                            options={formAvailableSubjects.map((s) => ({
+                              value: s.id,
+                              label: s.nama_mapel || s.name || s.kode_mapel || s.code,
+                              subtext: s.kode_mapel ? `Kode: ${s.kode_mapel}` : undefined,
+                            }))}
+                            placeholder={formAvailableSubjects.length === 0 ? '-- Tidak Ada Mapel di Unit Ini --' : '-- Pilih Mata Pelajaran --'}
+                            searchable={formAvailableSubjects.length > 5}
+                            icon={BookOpen}
+                          />
+                          {formAvailableSubjects.length === 0 && (
+                            <p className="mt-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                              Unit ini belum memiliki mata pelajaran. Silakan pilih unit <strong>SDIT 1</strong> atau <strong>SMAIT</strong>, atau inputkan mapel di Master Mata Pelajaran.
                             </p>
                           )}
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                            Mata Pelajaran
-                          </label>
-                          <select
-                            value={formData.mata_pelajaran_id}
-                            onChange={(e) => setFormData({ ...formData, mata_pelajaran_id: e.target.value })}
-                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
-                          >
-                            <option value="">-- Pilih Mata Pelajaran --</option>
-                            {formAvailableSubjects.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.nama_mapel || s.name || s.kode_mapel || s.code}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                            Guru Pengampu
-                          </label>
-                          <select
+                          <HeroUiModalSelect
+                            label="Guru Pengampu"
                             value={formData.guru_id}
-                            onChange={(e) => setFormData({ ...formData, guru_id: e.target.value })}
-                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
-                          >
-                            <option value="">-- Pilih Guru Pengampu --</option>
-                            {options.teachers?.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.nama_lengkap || t.nama || t.name || t.full_name}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(val) => setFormData({ ...formData, guru_id: val })}
+                            options={(options.teachers || []).map((t) => ({
+                              value: t.id,
+                              label: t.nama_lengkap || t.nama || t.name || t.full_name,
+                              subtext: t.nip ? `NIP: ${t.nip}` : undefined,
+                            }))}
+                            placeholder="-- Pilih Guru Pengampu --"
+                            searchable={(options.teachers || []).length > 5}
+                            icon={User}
+                          />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                            Kelas Target
-                          </label>
-                          <select
+                          <HeroUiModalSelect
+                            label="Kelas Target"
                             value={formData.kelas_id}
-                            onChange={(e) => setFormData({ ...formData, kelas_id: e.target.value })}
-                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
-                          >
-                            <option value="">-- Pilih Kelas Target --</option>
-                            {options.classes?.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.nama_kelas || c.name || c.kode_kelas}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(val) => setFormData({ ...formData, kelas_id: val })}
+                            options={(options.classes || []).map((c) => ({
+                              value: c.id,
+                              label: c.nama_kelas || c.name || c.kode_kelas,
+                              subtext: c.tingkat ? `Tingkat ${c.tingkat}` : undefined,
+                            }))}
+                            placeholder="-- Pilih Kelas Target --"
+                            searchable={(options.classes || []).length > 5}
+                            icon={Layers}
+                          />
                         </div>
 
                         <div>
@@ -2024,15 +2325,252 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
 
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                            Media &amp; Sumber Belajar
+                            Ringkasan Media &amp; Sumber Belajar
                           </label>
                           <input
                             type="text"
                             value={formData.media_pembelajaran}
                             onChange={(e) => setFormData({ ...formData, media_pembelajaran: e.target.value })}
-                            placeholder="Slide PPT Interaktif, Video Pembelajaran, Canva, LKPD..."
+                            placeholder="Contoh: Slide PPT Interaktif, Video Pembelajaran YouTube, Canva, LKPD..."
                             className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100"
                           />
+                        </div>
+
+                        {/* ── SEKSI BERKAS LAMPIRAN & TAUTAN MEDIA (HEROUI STYLE) ── */}
+                        <div className="rounded-2xl border-2 border-emerald-500/25 bg-gradient-to-br from-emerald-500/5 via-teal-500/5 to-transparent p-4 sm:p-5 dark:border-emerald-700/40 dark:bg-slate-900/40 space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-emerald-200/60 dark:border-emerald-900/50 pb-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xs">
+                                <Paperclip className="size-4.5" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                  <span>Media Ajar &amp; Berkas Pendukung</span>
+                                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                    {(formData.lampiran || []).length} Terpasang
+                                  </span>
+                                </h4>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                  Unggah dokumen, gambar, video langsung atau tautkan link media daring.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Media Type Tabs (HeroUI Segmented Switcher) */}
+                          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800">
+                            {[
+                              { id: 'dokumen', label: 'Upload Dokumen', icon: FileText, accept: '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx' },
+                              { id: 'gambar', label: 'Upload Foto/Gambar', icon: ImageIcon, accept: 'image/*' },
+                              { id: 'video', label: 'Upload Video', icon: VideoIcon, accept: 'video/*' },
+                              { id: 'link_dokumen', label: 'Link Dokumen', icon: LinkIcon },
+                              { id: 'link_video', label: 'Link Video', icon: ExternalLink },
+                            ].map((tab) => {
+                              const isCurrent = mediaTab === tab.id
+                              const Icon = tab.icon
+                              return (
+                                <button
+                                  key={tab.id}
+                                  type="button"
+                                  onClick={() => setMediaTab(tab.id)}
+                                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                                    isCurrent
+                                      ? 'bg-white text-emerald-800 shadow-xs dark:bg-[#182232] dark:text-emerald-300'
+                                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                                  }`}
+                                >
+                                  <Icon className="size-3.5" />
+                                  <span>{tab.label}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+
+                          {/* Tab Content 1: Upload File (Dokumen / Gambar / Video) */}
+                          {['dokumen', 'gambar', 'video'].includes(mediaTab) && (
+                            <div className="rounded-xl border border-dashed border-emerald-400/80 dark:border-emerald-600/60 bg-white/60 dark:bg-slate-900/60 p-4 sm:p-5 text-center transition-all hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20">
+                              <input
+                                ref={mediaFileInputRef}
+                                type="file"
+                                id="media-file-upload-input"
+                                className="hidden"
+                                accept={
+                                  mediaTab === 'dokumen'
+                                    ? '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx'
+                                    : mediaTab === 'gambar'
+                                    ? 'image/*'
+                                    : 'video/*'
+                                }
+                                onChange={(e) => handleUploadMediaFile(e, mediaTab)}
+                                disabled={isUploadingMedia}
+                              />
+                              <label
+                                htmlFor="media-file-upload-input"
+                                className="flex flex-col items-center justify-center cursor-pointer group"
+                              >
+                                {isUploadingMedia ? (
+                                  <div className="flex flex-col items-center py-2">
+                                    <Loader2 className="size-8 text-emerald-600 animate-spin mb-2" />
+                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                      Sedang mengunggah berkas ke server...
+                                    </p>
+                                    <p className="text-[11px] text-slate-400">Mohon tunggu sebentar</p>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="flex size-11 items-center justify-center rounded-2xl bg-emerald-100/80 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 group-hover:scale-110 transition-transform mb-2">
+                                      <Upload className="size-5" />
+                                    </div>
+                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                      Klik di sini untuk memilih{' '}
+                                      {mediaTab === 'dokumen'
+                                        ? 'Berkas Dokumen (PDF, Word, PPT, Excel)'
+                                        : mediaTab === 'gambar'
+                                        ? 'Foto / Gambar (JPG, PNG, WebP)'
+                                        : 'Video Pembelajaran (MP4, WebM)'}
+                                    </p>
+                                    <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                                      Maksimal ukuran 50MB per berkas. Berkas otomatis tersimpan di penyimpanan modul ajar.
+                                    </p>
+                                  </>
+                                )}
+                              </label>
+                            </div>
+                          )}
+
+                          {/* Tab Content 2: Input Tautan Link (Link Dokumen / Link Video) */}
+                          {['link_dokumen', 'link_video'].includes(mediaTab) && (
+                            <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 p-4 space-y-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    Judul / Nama Materi Tautan
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={linkInputTitle}
+                                    onChange={(e) => setLinkInputTitle(e.target.value)}
+                                    placeholder={
+                                      mediaTab === 'link_video'
+                                        ? 'Contoh: Video Eksperimen Sains di YouTube'
+                                        : 'Contoh: Modul Canva / Google Docs Ringkasan'
+                                    }
+                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                    URL / Tautan Website <span className="text-rose-500">*</span>
+                                  </label>
+                                  <div className="relative">
+                                    <LinkIcon className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                      type="url"
+                                      value={linkInputUrl}
+                                      onChange={(e) => setLinkInputUrl(e.target.value)}
+                                      placeholder={
+                                        mediaTab === 'link_video'
+                                          ? 'https://youtube.com/watch?v=...'
+                                          : 'https://docs.google.com/document/d/...'
+                                      }
+                                      className="w-full rounded-xl border border-slate-200 bg-white pl-8 pr-3 py-2 text-xs font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddMediaLink(mediaTab)}
+                                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3.5 py-2 text-xs font-bold text-white transition active:scale-95 cursor-pointer shadow-xs"
+                                >
+                                  <Plus className="size-3.5" />
+                                  <span>Sematkan Tautan</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Live Attachment List (HeroUI Cards) */}
+                          <div className="space-y-2 pt-1">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                              Daftar Lampiran Terpasang:
+                            </p>
+                            {(!formData.lampiran || formData.lampiran.length === 0) ? (
+                              <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 p-4 text-center text-xs text-slate-400">
+                                Belum ada berkas atau tautan media yang dilampirkan pada modul ini.
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                {formData.lampiran.map((att) => {
+                                  const isLink = att.tipe === 'link_video' || att.tipe === 'link_dokumen'
+                                  const isVideo = att.tipe === 'video' || att.tipe === 'link_video'
+                                  const isImg = att.tipe === 'gambar'
+
+                                  return (
+                                    <div
+                                      key={att.id}
+                                      className="flex items-center justify-between gap-2.5 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#182232] p-2.5 shadow-xs hover:border-emerald-300 transition-colors"
+                                    >
+                                      <div className="flex items-center gap-2.5 min-w-0">
+                                        <div
+                                          className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-white font-bold text-[10px] ${
+                                            isVideo
+                                              ? 'bg-rose-500'
+                                              : isImg
+                                              ? 'bg-teal-500'
+                                              : isLink
+                                              ? 'bg-sky-500'
+                                              : 'bg-indigo-500'
+                                          }`}
+                                        >
+                                          {isVideo ? (
+                                            <VideoIcon className="size-4" />
+                                          ) : isImg ? (
+                                            <ImageIcon className="size-4" />
+                                          ) : isLink ? (
+                                            <LinkIcon className="size-4" />
+                                          ) : (
+                                            <FileText className="size-4" />
+                                          )}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                                            {att.nama}
+                                          </p>
+                                          <p className="text-[10px] text-slate-400 truncate">
+                                            {isLink ? 'Tautan Web Eksternal' : formatFileSize(att.ukuran) || att.ekstensi?.toUpperCase()}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {att.url && (
+                                          <a
+                                            href={att.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            title="Buka / Pratinjau"
+                                            className="flex size-7 items-center justify-center rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 dark:bg-slate-800 dark:hover:bg-emerald-950/50 dark:text-slate-300 dark:hover:text-emerald-300 transition"
+                                          >
+                                            <ExternalLink className="size-3.5" />
+                                          </a>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveAttachment(att.id)}
+                                          title="Hapus Lampiran"
+                                          className="flex size-7 items-center justify-center rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 dark:text-rose-400 transition cursor-pointer"
+                                        >
+                                          <Trash2 className="size-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -2118,18 +2656,13 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                            Status Publikasi Modul
-                          </label>
-                          <select
+                          <HeroUiModalSelect
+                            label="Status Publikasi Modul"
                             value={formData.status}
-                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
-                          >
-                            {STATUS_LIST.map((st) => (
-                              <option key={st} value={st}>{st}</option>
-                            ))}
-                          </select>
+                            onChange={(val) => setFormData({ ...formData, status: val })}
+                            options={STATUS_LIST.map((st) => ({ value: st, label: st }))}
+                            icon={FileCheck}
+                          />
                         </div>
 
                         {selectedModul && (
@@ -2524,6 +3057,74 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                       <p className="whitespace-pre-line leading-relaxed">{selectedModul.kegiatan_penutup || '-'}</p>
                     </div>
                   </div>
+
+                  {/* Lampiran Media Pembelajaran */}
+                  {Array.isArray(selectedModul.lampiran) && selectedModul.lampiran.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-bold text-[#0E5C44] dark:text-emerald-400 uppercase text-[11px] tracking-wider flex items-center gap-1.5">
+                        <Paperclip className="size-3.5" />
+                        <span>Lampiran Media Pembelajaran ({selectedModul.lampiran.length})</span>
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {selectedModul.lampiran.map((att, idx) => {
+                          const isLink = att.tipe === 'link_video' || att.tipe === 'link_dokumen'
+                          const isVideo = att.tipe === 'video' || att.tipe === 'link_video'
+                          const isImg = att.tipe === 'gambar'
+
+                          return (
+                            <div
+                              key={att.id || idx}
+                              className="flex items-center justify-between gap-2.5 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#182232] p-2.5 shadow-xs"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div
+                                  className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-white font-bold text-[10px] ${
+                                    isVideo
+                                      ? 'bg-rose-500'
+                                      : isImg
+                                      ? 'bg-teal-500'
+                                      : isLink
+                                      ? 'bg-sky-500'
+                                      : 'bg-indigo-500'
+                                  }`}
+                                >
+                                  {isVideo ? (
+                                    <VideoIcon className="size-4" />
+                                  ) : isImg ? (
+                                    <ImageIcon className="size-4" />
+                                  ) : isLink ? (
+                                    <LinkIcon className="size-4" />
+                                  ) : (
+                                    <FileText className="size-4" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                                    {att.nama}
+                                  </p>
+                                  <p className="text-[10px] text-slate-400 truncate">
+                                    {isLink ? 'Tautan Eksternal' : formatFileSize(att.ukuran) || att.ekstensi?.toUpperCase()}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {att.url && (
+                                <a
+                                  href={att.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 shrink-0"
+                                >
+                                  <span>Buka</span>
+                                  <ExternalLink className="size-3" />
+                                </a>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end">
@@ -2652,26 +3253,26 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                     <div className="space-y-2">
                       <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pratinjau Data Impor (5 baris pertama):</p>
                       <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                        <table className="w-full text-left text-[11px]">
-                          <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
-                            <tr>
-                              <th className="p-2">Kode</th>
-                              <th className="p-2">Judul Modul</th>
-                              <th className="p-2">Fase</th>
-                              <th className="p-2">Mapel</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        <TableRoot className="w-full text-left text-[11px]">
+                          <TableHeader>
+                            <TableRow className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                              <TableHead className="p-2">Kode</TableHead>
+                              <TableHead className="p-2">Judul Modul</TableHead>
+                              <TableHead className="p-2">Fase</TableHead>
+                              <TableHead className="p-2">Mapel</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {importPreviewData.map((row, i) => (
-                              <tr key={i}>
-                                <td className="p-2 font-mono">{row.kode}</td>
-                                <td className="p-2 font-semibold">{row.judul}</td>
-                                <td className="p-2">{row.fase}</td>
-                                <td className="p-2">{row.mapel}</td>
-                              </tr>
+                              <TableRow key={i}>
+                                <TableCell className="p-2 font-mono">{row.kode}</TableCell>
+                                <TableCell className="p-2 font-semibold">{row.judul}</TableCell>
+                                <TableCell className="p-2">{row.fase}</TableCell>
+                                <TableCell className="p-2">{row.mapel}</TableCell>
+                              </TableRow>
                             ))}
-                          </tbody>
-                        </table>
+                          </TableBody>
+                        </TableRoot>
                       </div>
                     </div>
                   )}

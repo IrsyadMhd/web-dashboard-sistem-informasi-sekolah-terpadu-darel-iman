@@ -41,6 +41,7 @@ import {
   Modal as HeroModal,
 } from '@heroui/react'
 import { cn } from '../../lib/utils'
+import { DatePicker } from '@/components/ui/date-picker'
 import api from '../../services/api'
 
 const formatDate = (val) => {
@@ -1623,13 +1624,13 @@ export default function TahfizhWorkspace({
                           <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                             Tanggal Muroja'ah
                           </label>
-                          <input
-                            type="date"
+                          <DatePicker
                             value={recordDate}
                             onChange={(e) => setRecordDate(e.target.value)}
                             disabled={submittingMurajaah}
                             required
-                            className="h-9.5 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                            inputClassName="h-9.5 text-xs font-semibold"
+                            placeholder="Pilih tanggal..."
                           />
                         </div>
                         <div className="space-y-1">

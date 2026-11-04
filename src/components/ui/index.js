@@ -61,5 +61,7 @@ export { Accordion, AccordionItem } from './accordion'
 export { FAB } from './fab'
 export { default as PersonAvatar } from './PersonAvatar'
 export { default as PersonIdentityCell } from './PersonIdentityCell'
+export { DatePicker, default as UIDatePicker } from './date-picker'
+export { TimePicker, default as UITimePicker } from './time-picker'
 export { Breadcrumbs, default as UIBreadcrumbs } from './breadcrumbs'
-
+export { HeroUiHeader, default as PageHeroHeader } from './HeroUiHeader'

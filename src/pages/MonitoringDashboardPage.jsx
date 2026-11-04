@@ -9,10 +9,10 @@ import { useAuthStore } from '../stores/authStore'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 
-import { Alert, AlertContent, AlertDescription, AlertIndicator, AlertTitle } from '@/components/tailgrids/core/alert'
-import { Button } from '@/components/tailgrids/core/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/tailgrids/core/card'
-import { Badge } from '@/components/tailgrids/core/badge'
+import { Alert, AlertContent, AlertDescription, AlertIndicator, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { SquircleActionButton } from '../components/master-data'
 
 const cards = [

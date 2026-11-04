@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 import {
   Calculator,
   CheckCircle2,

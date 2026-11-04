@@ -33,15 +33,15 @@ import {
   UsersRound,
 } from 'lucide-react'
 import {
-  ArrowBothDirectionHorizontal2,
-  CheckCircle1,
+  ArrowRightLeft as ArrowBothDirectionHorizontal2,
+  CheckCircle2 as CheckCircle1,
   ChevronDown,
-  Download1,
-  InfoCircle,
+  Download as Download1,
+  Info as InfoCircle,
   Plus,
-  Upload1,
-  Xmark2x,
-} from '@tailgrids/icons'
+  Upload as Upload1,
+  X as Xmark2x,
+} from 'lucide-react'
 import { lmsPresensiService } from '../../services/lmsPresensiService'
 import { studentService } from '../../services/studentService'
 import { subjectService } from '../../services/subjectService'
@@ -54,12 +54,13 @@ import { useToast } from '../../components/app'
 import ActionDropdown from '../../components/app/ActionDropdown'
 import { SquircleActionButton, PrintOptionModal } from '../../components/master-data'
 import { downloadPdfTable, printCleanTable } from '../../utils/printHelper'
-import { Button } from '@/components/tailgrids/core/button'
-import { Input } from '@/components/tailgrids/core/input'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Pagination } from '@/components/tailgrids/core/pagination'
-import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/tailgrids/core/table'
-import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { DatePicker } from '@/components/ui/date-picker'
+import { Pagination } from '@/components/ui/pagination'
+import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/ui/table'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   Card,
   CardAction,
@@ -67,7 +68,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/tailgrids/core/card'
+} from '@/components/ui/card'
 import {
   Dialog,
   DialogBody,
@@ -76,8 +77,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
-import { Backdrop } from '@/components/tailgrids/core/overlay'
+} from '@/components/ui/dialog'
+import { Backdrop } from '@/components/ui/dialog'
 
 
 
@@ -1087,11 +1088,11 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
                   </select>
 
                   {/* Date Filter */}
-                  <input
-                    type="date"
+                  <DatePicker
                     value={selectedSessionDate}
                     onChange={(e) => setSelectedSessionDate(e.target.value)}
-                    className="w-full sm:w-auto min-w-[130px] rounded-xl border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    className="w-full sm:w-auto min-w-[140px]"
+                    inputClassName="h-8 text-xs font-semibold"
                   />
                 </>
               )}
@@ -1825,12 +1826,11 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Tanggal Pelaksanaan <span className="text-rose-500">*</span>
                 </label>
-                <input
-                  type="date"
+                <DatePicker
                   required
                   value={followUpForm.follow_up_date}
                   onChange={(e) => setFollowUpForm({ ...followUpForm, follow_up_date: e.target.value })}
-                  className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs text-slate-900 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  inputClassName="p-2.5 text-xs"
                 />
               </div>
 

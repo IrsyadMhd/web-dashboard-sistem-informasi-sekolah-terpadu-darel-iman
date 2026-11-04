@@ -1,5 +1,5 @@
 import { globalToast as toast } from '../components/app/ToastProvider'
-import { Swal } from '../components/tailgrids/compat/swal-tailgrids'
+import Swal, { Swal as NamedSwal } from '../components/ui/compat/swal-heroui'
 import { api } from '../services/api'
 
 /**

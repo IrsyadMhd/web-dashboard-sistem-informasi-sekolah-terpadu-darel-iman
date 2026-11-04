@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 import AppTabs from '../components/app/AppTabs'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   ShieldCheck,
   Home,
@@ -1214,23 +1215,21 @@ export default function WorshipAssessmentSettingPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300">Tanggal Mulai *</label>
-                  <input
+                  <DatePicker
                     required
-                    type="date"
                     value={periodForm.start_date}
                     onChange={(e) => setPeriodForm({ ...periodForm, start_date: e.target.value })}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800"
+                    inputClassName="mt-1 p-2.5"
                   />
                 </div>
 
                 <div>
                   <label className="font-bold text-slate-700 dark:text-slate-300">Tanggal Selesai *</label>
-                  <input
+                  <DatePicker
                     required
-                    type="date"
                     value={periodForm.end_date}
                     onChange={(e) => setPeriodForm({ ...periodForm, end_date: e.target.value })}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-800"
+                    inputClassName="mt-1 p-2.5"
                   />
                 </div>
               </div>

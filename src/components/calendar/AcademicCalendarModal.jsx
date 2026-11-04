@@ -48,6 +48,8 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { academicCalendarService } from '../../services/academicCalendarService'
+import Swal from '@/components/ui/compat/swal-heroui'
+import { DatePicker } from '@/components/ui/date-picker'
 import { printCleanTable } from '../../utils/printHelper'
 import { usePengaturanStore, resolveFoundationName } from '../../stores/pengaturanStore'
 
@@ -614,7 +616,16 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
   }
 
   const handleDeleteClick = async (id) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus agenda kalender ini?')) {
+    const confirmResult = await Swal.fire({
+      title: 'Hapus Agenda Kalender?',
+      text: 'Apakah Anda yakin ingin menghapus agenda kalender ini? Agenda yang dihapus tidak dapat dipulihkan.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus Agenda',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48',
+    })
+    if (confirmResult.isConfirmed) {
       const updated = await academicCalendarService.hapusEvent(id)
       setEvents(updated)
       if (selectedEventDetail?.id === id) {
@@ -624,7 +635,16 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
   }
 
   const handleClearAllUserEvents = async () => {
-    if (window.confirm('Bersihkan seluruh agenda buatan lokal dan muat data terbaru murni dari API backend?')) {
+    const confirmResult = await Swal.fire({
+      title: 'Sinkronisasi Ulang Kalender?',
+      text: 'Bersihkan seluruh agenda buatan lokal dan muat data terbaru murni dari API backend yayasan?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Muat Ulang',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#059669',
+    })
+    if (confirmResult.isConfirmed) {
       const updated = await academicCalendarService.clearUserEvents()
       setEvents(updated)
       setSelectedEventDetail(null)
@@ -1295,8 +1315,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Tanggal Mulai <span className="text-rose-500">*</span>
                       </label>
-                      <input
-                        type="date"
+                      <DatePicker
                         required
                         value={formData.startDate}
                         onChange={(e) => {
@@ -1307,7 +1326,8 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                             endDate: prev.endDate < val ? val : prev.endDate
                           }))
                         }}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                        inputClassName="px-3.5 py-2 text-xs font-semibold"
+                        placeholder="Pilih tanggal mulai..."
                       />
                     </div>
 
@@ -1316,12 +1336,12 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Tanggal Selesai <span className="text-rose-500">*</span>
                       </label>
-                      <input
-                        type="date"
+                      <DatePicker
                         required
                         value={formData.endDate}
                         onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                        inputClassName="px-3.5 py-2 text-xs font-semibold"
+                        placeholder="Pilih tanggal selesai..."
                       />
                     </div>
 

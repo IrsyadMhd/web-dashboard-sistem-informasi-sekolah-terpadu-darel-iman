@@ -70,10 +70,13 @@ import { api } from '../services/api'
 import { downloadFileFromApi } from '../utils/exportUtils'
 import { PersonIdentityCell } from '../components/ui/PersonIdentityCell'
 import ActionDropdown from '../components/app/ActionDropdown'
+import { isFoundationUser } from '../auth/portalResolver'
+import { SmartScrollFab } from '../components/common'
 import { useAuthStore } from '../stores/authStore'
 import { usePengaturanStore } from '../stores/pengaturanStore'
 import AppPageHeader from '../components/app/AppPageHeader'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { HeroUiHeader } from '../components/ui/HeroUiHeader'
 import KpiCard from '../components/app/KpiCard'
 import AppDataTable from '../components/app/AppDataTable'
 import AppBadge from '../components/app/AppBadge'
@@ -85,6 +88,7 @@ import PageContainer from '../components/app/PageContainer'
 import { useToast } from '../components/app'
 import { MasterStatusBadge, MasterErrorState, MasterEmptyState, MasterStatsGrid, MasterStatCard, SquircleActionButton, PrintOptionModal } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+import { TableRoot, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table'
 
 // Animation Variants
 const containerVariants = {
@@ -128,17 +132,17 @@ import {
  DialogFooter,
  DialogHeader,
  DialogTitle,
-} from '@/components/tailgrids/core/dialog'
-import { Backdrop } from '@/components/tailgrids/core/overlay'
-import { FieldDescription, FieldError, FieldLabel } from '@/components/tailgrids/core/field'
-import { Input } from '@/components/tailgrids/core/input'
-import { TextArea } from '@/components/tailgrids/core/text-area'
-import { TextField } from '@/components/tailgrids/core/text-field'
+} from '@/components/ui/dialog'
+import { Backdrop } from '@/components/ui/dialog'
+import { FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import { TextArea } from '@/components/ui/text-area'
+import { TextField } from '@/components/ui/text-field'
 import {
  HoverCard,
  HoverCardContent,
  HoverCardTrigger,
-} from '@/components/tailgrids/core/hover-card'
+} from '@/components/ui/hover-card'
 
 // ── Color Map per Unit Type ──────────────────────────────────────────────────
 const UNIT_COLORS = {
@@ -425,9 +429,10 @@ export default function EducationUnitsPage() {
  const roles = Array.isArray(user?.roles) ? user.roles : []
  const permissions = Array.isArray(user?.permissions) ? user.permissions : []
  const isSuperAdmin = Boolean(user) && (Boolean(user?.is_superadmin) || roles.some(r => String(r).toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin'))
- const canCreate = Boolean(user) && (isSuperAdmin || permissions.includes('unit.create') || permissions.includes('sistem.master_data'))
- const canUpdate = Boolean(user) && (isSuperAdmin || permissions.includes('unit.update') || permissions.includes('sistem.master_data'))
- const canDelete = Boolean(user) && (isSuperAdmin || permissions.includes('unit.delete') || permissions.includes('sistem.master_data'))
+ const isFoundationRole = isFoundationUser(user)
+ const canCreate = !isFoundationRole && Boolean(user) && (isSuperAdmin || permissions.includes('unit.create'))
+ const canUpdate = !isFoundationRole && Boolean(user) && (isSuperAdmin || permissions.includes('unit.update'))
+ const canDelete = !isFoundationRole && Boolean(user) && (isSuperAdmin || permissions.includes('unit.delete'))
 
  // ── Filter & Pagination State ───────────────────────────────────────────
  const [search, setSearch] = useState('')
@@ -1231,41 +1236,15 @@ export default function EducationUnitsPage() {
  />
  </motion.div>
 
- {/* Header Halaman Modern Hero Card */}
- <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
- {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
- <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
- <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
-
- <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
- <div className="flex items-start gap-4 min-w-0">
- <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
- <Building2 className="h-6 w-6" />
- </div>
- <div className="min-w-0">
- <div className="flex items-center gap-2.5 flex-wrap">
- <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
- Master Data Unit Pendidikan
- </h1>
- <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
- <ShieldCheck className="h-3.5 w-3.5" />
- Manajemen Unit
- </span>
- </div>
- <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
- Pengelolaan terpadu master data unit pendidikan (TK, SD, SMP, SMA, Ponpes, Ma'had), statistik kesiswaan, dan struktur pendidik.
- </p>
- </div>
- </div>
-
- <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
- <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
- <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
- <span>Master Unit SIT</span>
- </div>
- </div>
- </div>
- </motion.div>
+ {/* Header Halaman Modern Hero Card HeroUI */}
+ <HeroUiHeader
+   variants={itemVariants}
+   icon={Building2}
+   title="Master Data Unit Pendidikan"
+   tag={{ text: 'Manajemen Unit', icon: ShieldCheck }}
+   description="Pengelolaan terpadu master data unit pendidikan (TK, SD, SMP, SMA, Ponpes, Ma'had), statistik kesiswaan, dan struktur pendidik."
+   badge={{ text: 'Master Unit SIT', icon: Sparkles }}
+ />
 
       {/* ── KPI Summary Cards (ModernKpiCard with MODERN_CARD_TONES) ── */}
       <motion.div variants={itemVariants}>
@@ -1443,7 +1422,7 @@ export default function EducationUnitsPage() {
  </motion.div>
 
  {/* ── AppDataTable with Toolbar ── */}
- <motion.div variants={itemVariants}>
+ <motion.div variants={itemVariants} id="tabel-unit-pendidikan" className="scroll-mt-6">
  <AppDataTable
  title="Data Unit Pendidikan"
  icon={Building2}
@@ -1469,21 +1448,23 @@ export default function EducationUnitsPage() {
   </HeroTooltip>
 
   {/* Import Button (Vivid Sky Blue Squircle) */}
-  <HeroTooltip>
-   <HeroTooltip.Trigger>
-    <HeroButton
-     isIconOnly
-     aria-label="Import Data Unit"
-     onPress={() => setShowImportModal(true)}
-     className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-xs"
-    >
-     <Upload className="size-5 text-white" strokeWidth={2.2} />
-    </HeroButton>
-   </HeroTooltip.Trigger>
-   <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-    Import Data
-   </HeroTooltip.Content>
-  </HeroTooltip>
+  {canCreate && (
+    <HeroTooltip>
+     <HeroTooltip.Trigger>
+      <HeroButton
+       isIconOnly
+       aria-label="Import Data Unit"
+       onPress={() => setShowImportModal(true)}
+       className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-xs"
+      >
+       <Upload className="size-5 text-white" strokeWidth={2.2} />
+      </HeroButton>
+     </HeroTooltip.Trigger>
+     <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+      Import Data
+     </HeroTooltip.Content>
+    </HeroTooltip>
+  )}
 
   {/* Export / Download Button (Vivid Amber / Orange Squircle) */}
   <HeroTooltip>
@@ -1503,21 +1484,23 @@ export default function EducationUnitsPage() {
   </HeroTooltip>
 
   {/* Tambah Unit Button (HeroUI v3 Emerald Primary #065F46) */}
-  <HeroTooltip>
-   <HeroTooltip.Trigger>
-    <HeroButton
-     isIconOnly
-     aria-label="Tambah Unit Baru"
-     onPress={openAddModal}
-     className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#065F46] via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-md shadow-emerald-950/20"
-    >
-     <Plus className="size-5 text-white" strokeWidth={2.5} />
-    </HeroButton>
-   </HeroTooltip.Trigger>
-   <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-    Tambah Unit
-   </HeroTooltip.Content>
-  </HeroTooltip>
+  {canCreate && (
+    <HeroTooltip>
+     <HeroTooltip.Trigger>
+      <HeroButton
+       isIconOnly
+       aria-label="Tambah Unit Baru"
+       onPress={openAddModal}
+       className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#065F46] via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-md shadow-emerald-950/20"
+      >
+       <Plus className="size-5 text-white" strokeWidth={2.5} />
+      </HeroButton>
+     </HeroTooltip.Trigger>
+     <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+      Tambah Unit
+     </HeroTooltip.Content>
+    </HeroTooltip>
+  )}
  </div>
  }
  columns={columns}
@@ -3286,7 +3269,7 @@ export default function EducationUnitsPage() {
  </AnimatePresence>
 
       {/* ══════════════════════════════════════════════════════════════════
-      SAVE / UPDATE CONFIRMATION DIALOG — Harmonized with Modal Tambah/Edit UI/UX
+      SAVE / UPDATE CONFIRMATION DIALOG — Harmonized with HeroUI & Full Responsive
       ══════════════════════════════════════════════════════════════════ */}
       <HeroModal
         isOpen={showSaveConfirmDialog}
@@ -3294,8 +3277,8 @@ export default function EducationUnitsPage() {
           if (!open && !isMutating) setShowSaveConfirmDialog(false)
         }}
       >
-        <HeroModal.Backdrop isDismissable={!isMutating} className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md">
-          <HeroModal.Container placement="center" className="w-full max-w-md">
+        <HeroModal.Backdrop isDismissable={!isMutating} className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
+          <HeroModal.Container placement="center" className="w-full max-w-md my-auto">
             <HeroModal.Dialog className="modal-dialog font-sans my-auto w-full max-w-md flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60 outline-hidden">
               {/* Top Accent Gradient Bar */}
               <div
@@ -3308,41 +3291,46 @@ export default function EducationUnitsPage() {
               />
 
               {/* Header */}
-              <HeroModal.Header className="modal-header flex !flex-row items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
-                <div className="flex items-center gap-3">
+              <HeroModal.Header className="modal-header flex flex-row items-start sm:items-center justify-between border-b border-slate-100 bg-white px-4.5 sm:px-6 py-4 dark:border-slate-800 dark:bg-slate-950 gap-3">
+                <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
                   <div
                     className={cn(
-                      "rounded-2xl text-white p-2.5 shadow-md shrink-0 border",
+                      "size-10 sm:size-11 flex items-center justify-center rounded-2xl text-white shadow-md shrink-0 border",
                       isEditMode
                         ? "bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 shadow-amber-500/30 border-amber-300/30"
                         : "bg-gradient-to-br from-[#065F46] via-emerald-600 to-teal-700 shadow-emerald-500/30 border-emerald-300/30"
                     )}
                   >
                     {isEditMode ? (
-                      <Pencil className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      <Pencil className="size-5 text-white" strokeWidth={2.25} />
                     ) : (
-                      <School className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      <School className="size-5 text-white" strokeWidth={2.25} />
                     )}
                   </div>
-                  <div>
-                    <h3
-                      id="edu-unit-save-confirm-title"
-                      className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2"
-                    >
-                      <span>{isEditMode ? "Konfirmasi Perubahan Data" : "Konfirmasi Penyimpanan Data"}</span>
-                      <span
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <h3
+                        id="edu-unit-save-confirm-title"
+                        className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white leading-tight"
+                      >
+                        {isEditMode ? "Konfirmasi Perubahan Data" : "Konfirmasi Penyimpanan Data"}
+                      </h3>
+                      <HeroChip
+                        size="sm"
+                        variant="soft"
+                        color={isEditMode ? "warning" : "success"}
                         className={cn(
-                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border",
+                          "font-bold text-[10px] shrink-0 border inline-flex items-center gap-1 px-2 py-0.5",
                           isEditMode
                             ? "bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60"
                             : "bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60"
                         )}
                       >
                         <Sparkles className="size-3" />
-                        {isEditMode ? "Update Data" : "Unit Baru"}
-                      </span>
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        <HeroChip.Label>{isEditMode ? "Update Data" : "Unit Baru"}</HeroChip.Label>
+                      </HeroChip>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1 leading-snug">
                       {isEditMode
                         ? "Verifikasi data unit sebelum pembaruan diterapkan ke sistem."
                         : "Verifikasi data unit baru sebelum disimpan ke sistem."}
@@ -3357,82 +3345,82 @@ export default function EducationUnitsPage() {
                   disabled={isMutating}
                   onPress={() => setShowSaveConfirmDialog(false)}
                   aria-label="Tutup dialog konfirmasi"
-                  className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50"
+                  className="size-8 sm:size-9 shrink-0 flex items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50"
                 >
                   <X className="size-4 text-white" strokeWidth={2.25} />
                 </HeroButton>
               </HeroModal.Header>
 
               {/* Body */}
-              <HeroModal.Body className="modal-body p-6 space-y-4 text-slate-700 dark:text-slate-200">
-                {/* Target Info Summary Card */}
-                <div className="rounded-2xl border border-slate-200/90 bg-slate-50/70 p-3.5 dark:border-slate-800/80 dark:bg-slate-900/50 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Unit Pendidikan</span>
-                    <span className="text-xs font-extrabold text-slate-900 dark:text-white text-right max-w-[220px] truncate">
+              <HeroModal.Body className="modal-body p-4 sm:p-6 space-y-3.5 sm:space-y-4 text-slate-700 dark:text-slate-200 overflow-y-auto">
+                {/* Target Info Summary Card using HeroCard */}
+                <HeroCard className="rounded-2xl border border-slate-200/90 bg-slate-50/70 p-3.5 sm:p-4 dark:border-slate-800/80 dark:bg-slate-900/50 space-y-2.5 shadow-none">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Unit Pendidikan</span>
+                    <span className="text-xs font-extrabold text-slate-900 dark:text-white sm:text-right break-words min-w-0">
                       {formData.name || "-"}
                     </span>
                   </div>
                   {formData.code && (
-                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
-                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Kode Unit</span>
-                      <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Kode Unit</span>
+                      <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 sm:text-right">
                         {formData.code}
                       </span>
                     </div>
                   )}
                   {formData.unit_type && (
-                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
-                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Jenjang / Jenis</span>
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Jenjang / Jenis</span>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 sm:text-right">
                         {formData.unit_type}
                       </span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Model Program</span>
-                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 capitalize">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Model Program</span>
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 capitalize sm:text-right">
                       {formData.program_type === "boarding" ? "Boarding / Pesantren (24 Jam)" : "Fullday School"}
                     </span>
                   </div>
                   {formData.jam_pulang && (
-                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
-                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Jam Pulang / Selesai</span>
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        {formData.jam_pulang} WIB {formData.jam_masuk ? `(Mulai: ${formData.jam_masuk})` : ""}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Jam Operasional</span>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 sm:text-right">
+                        {formData.jam_masuk ? `${formData.jam_masuk} - ` : ""}{formData.jam_pulang} WIB
                       </span>
                     </div>
                   )}
                   {formData.latitude && formData.longitude && (
-                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
-                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Titik Peta & Radius</span>
-                      <span className="text-xs font-mono font-bold text-teal-700 dark:text-teal-400">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Titik Koordinat & Radius</span>
+                      <span className="text-xs font-mono font-bold text-teal-700 dark:text-teal-400 sm:text-right break-all">
                         {formData.latitude}, {formData.longitude} (R: {formData.radius_meter || 100}m)
                       </span>
                     </div>
                   )}
-                </div>
+                </HeroCard>
 
                 {/* Callout Notice Box */}
                 <div
                   className={cn(
-                    "rounded-2xl border p-3.5 text-xs font-semibold leading-relaxed flex items-start gap-2.5",
+                    "rounded-2xl border p-3.5 text-xs font-medium leading-relaxed flex items-start gap-2.5 sm:gap-3",
                     isEditMode
-                      ? "border-amber-200 bg-amber-50/70 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300"
-                      : "border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                      ? "border-amber-200/80 bg-amber-50/70 text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200"
+                      : "border-emerald-200/80 bg-emerald-50/70 text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200"
                   )}
                 >
                   <div
                     className={cn(
-                      "flex size-5 shrink-0 items-center justify-center rounded-lg text-white mt-0.5",
+                      "flex size-6 shrink-0 items-center justify-center rounded-xl text-white mt-0.5 shadow-xs",
                       isEditMode
-                        ? "bg-gradient-to-br from-amber-500 to-orange-600"
-                        : "bg-gradient-to-br from-[#065F46] to-teal-600"
+                        ? "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/20"
+                        : "bg-gradient-to-br from-[#065F46] to-teal-600 shadow-emerald-500/20"
                     )}
                   >
-                    <Sparkles className="size-3 text-white" />
+                    <Sparkles className="size-3.5 text-white" />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 leading-relaxed">
                     {isEditMode
                       ? "Data unit pendidikan yang sudah ada akan segera diperbarui di database server dengan informasi terbaru yang Anda masukkan."
                       : "Data unit pendidikan baru akan tersimpan dan langsung aktif sesuai konfigurasi sistem."}
@@ -3441,16 +3429,16 @@ export default function EducationUnitsPage() {
               </HeroModal.Body>
 
               {/* Footer */}
-              <HeroModal.Footer className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+              <HeroModal.Footer className="modal-footer flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5 border-t border-slate-100 bg-white px-4.5 sm:px-6 py-3.5 sm:py-4 dark:border-slate-800 dark:bg-slate-950">
                 <HeroButton
                   variant="outline"
                   size="sm"
                   isDisabled={isMutating}
                   disabled={isMutating}
                   onPress={() => setShowSaveConfirmDialog(false)}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer disabled:opacity-50 shadow-md shadow-rose-900/20"
                 >
-                  <div className="flex size-4 items-center justify-center rounded-md bg-white/20 text-white">
+                  <div className="flex size-4 shrink-0 items-center justify-center rounded-md bg-white/20 text-white">
                     <X className="size-3" strokeWidth={2.2} />
                   </div>
                   <span>Batal</span>
@@ -3462,12 +3450,17 @@ export default function EducationUnitsPage() {
                   isDisabled={isMutating}
                   disabled={isMutating}
                   onPress={handleConfirmSave}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-[#065F46] via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-emerald-500/20"
+                  className={cn(
+                    "w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl text-white px-5 py-2.5 text-xs font-extrabold transition-all duration-200 hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer shadow-md",
+                    isEditMode
+                      ? "bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 border border-amber-300/40 shadow-amber-500/20"
+                      : "bg-gradient-to-br from-[#065F46] via-emerald-600 to-teal-700 border border-emerald-300/40 shadow-emerald-500/20"
+                  )}
                 >
                   {isMutating ? (
                     <HeroSpinner size="sm" className="size-3.5 text-white" />
                   ) : (
-                    <div className="flex size-4 items-center justify-center rounded-md bg-white/20 text-white">
+                    <div className="flex size-4 shrink-0 items-center justify-center rounded-md bg-white/20 text-white">
                       <Save className="size-3 text-white" strokeWidth={2.2} />
                     </div>
                   )}
@@ -3484,7 +3477,7 @@ export default function EducationUnitsPage() {
       </HeroModal>
 
       {/* ══════════════════════════════════════════════════════════════════
-      DELETE CONFIRM DIALOG — Harmonized with Modal Tambah/Edit UI/UX
+      DELETE CONFIRM DIALOG — Harmonized with HeroUI & Full Responsive
       ══════════════════════════════════════════════════════════════════ */}
       <HeroModal
         isOpen={!!deleteTarget}
@@ -3492,31 +3485,38 @@ export default function EducationUnitsPage() {
           if (!open && !deleteMutation.isPending) setDeleteTarget(null)
         }}
       >
-        <HeroModal.Backdrop isDismissable={!deleteMutation.isPending} className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md">
-          <HeroModal.Container placement="center" className="w-full max-w-md">
+        <HeroModal.Backdrop isDismissable={!deleteMutation.isPending} className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
+          <HeroModal.Container placement="center" className="w-full max-w-md my-auto">
             {deleteTarget && (
               <HeroModal.Dialog className="modal-dialog font-sans my-auto w-full max-w-md flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-rose-200/60 bg-white shadow-2xl shadow-rose-950/20 dark:border-rose-900/50 dark:bg-[#182232] dark:shadow-black/60 outline-hidden">
                 {/* Top Accent Gradient Bar */}
                 <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 shrink-0" />
 
                 {/* Header */}
-                <HeroModal.Header className="modal-header flex !flex-row items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-2xl text-white p-2.5 shadow-md shrink-0 border bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 shadow-rose-500/30 border-rose-300/30">
-                      <Trash2 className="h-5 w-5 text-white" strokeWidth={2.25} />
+                <HeroModal.Header className="modal-header flex flex-row items-start sm:items-center justify-between border-b border-slate-100 bg-white px-4.5 sm:px-6 py-4 dark:border-slate-800 dark:bg-slate-950 gap-3">
+                  <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                    <div className="size-10 sm:size-11 flex items-center justify-center rounded-2xl text-white shadow-md shrink-0 border bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 shadow-rose-500/30 border-rose-300/30">
+                      <Trash2 className="size-5 text-white" strokeWidth={2.25} />
                     </div>
-                    <div>
-                      <h3
-                        id="edu-unit-delete-confirm-title"
-                        className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2"
-                      >
-                        <span>Hapus Unit Pendidikan</span>
-                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <h3
+                          id="edu-unit-delete-confirm-title"
+                          className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white leading-tight"
+                        >
+                          Hapus Unit Pendidikan
+                        </h3>
+                        <HeroChip
+                          size="sm"
+                          variant="soft"
+                          color="danger"
+                          className="font-bold text-[10px] shrink-0 border inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60"
+                        >
                           <AlertTriangle className="size-3" />
-                          Hapus Permanen
-                        </span>
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          <HeroChip.Label>Hapus Permanen</HeroChip.Label>
+                        </HeroChip>
+                      </div>
+                      <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1 leading-snug">
                         Tindakan ini permanen dan tidak dapat dibatalkan.
                       </p>
                     </div>
@@ -3529,62 +3529,62 @@ export default function EducationUnitsPage() {
                     disabled={deleteMutation.isPending}
                     onPress={() => setDeleteTarget(null)}
                     aria-label="Tutup dialog konfirmasi"
-                    className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50"
+                    className="size-8 sm:size-9 shrink-0 flex items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50"
                   >
                     <X className="size-4 text-white" strokeWidth={2.25} />
                   </HeroButton>
                 </HeroModal.Header>
 
                 {/* Body */}
-                <HeroModal.Body className="modal-body p-6 space-y-4 text-slate-700 dark:text-slate-200">
+                <HeroModal.Body className="modal-body p-4 sm:p-6 space-y-3.5 sm:space-y-4 text-slate-700 dark:text-slate-200 overflow-y-auto">
                   {/* Target Info Summary Card */}
-                  <div className="rounded-2xl border border-rose-100/90 bg-rose-50/40 p-3.5 dark:border-rose-900/40 dark:bg-rose-950/20 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Unit Pendidikan</span>
-                      <span className="text-xs font-extrabold text-slate-900 dark:text-white text-right max-w-[220px] truncate">
+                  <HeroCard className="rounded-2xl border border-rose-100/90 bg-rose-50/40 p-3.5 sm:p-4 dark:border-rose-900/40 dark:bg-rose-950/20 space-y-2.5 shadow-none">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Unit Pendidikan</span>
+                      <span className="text-xs font-extrabold text-slate-900 dark:text-white sm:text-right break-words min-w-0">
                         {deleteTarget.name || "-"}
                       </span>
                     </div>
                     {deleteTarget.code && (
-                      <div className="flex items-center justify-between border-t border-rose-100 dark:border-rose-900/40 pt-2">
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Kode Unit</span>
-                        <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 border-t border-rose-100 dark:border-rose-900/40 pt-2">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Kode Unit</span>
+                        <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 sm:text-right">
                           {deleteTarget.code}
                         </span>
                       </div>
                     )}
                     {deleteTarget.unit_type && (
-                      <div className="flex items-center justify-between border-t border-rose-100 dark:border-rose-900/40 pt-2">
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Jenjang / Jenis</span>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 border-t border-rose-100 dark:border-rose-900/40 pt-2">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Jenjang / Jenis</span>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 sm:text-right">
                           {deleteTarget.unit_type}
                         </span>
                       </div>
                     )}
-                  </div>
+                  </HeroCard>
 
                   {/* Danger Notice Box */}
-                  <div className="rounded-2xl border border-rose-200/80 bg-rose-50/70 p-3.5 text-xs font-semibold text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 leading-relaxed flex items-start gap-2.5">
-                    <div className="flex size-5 shrink-0 items-center justify-center rounded-lg text-white bg-gradient-to-br from-rose-500 to-red-600 mt-0.5">
-                      <AlertTriangle className="size-3 text-white" />
+                  <div className="rounded-2xl border border-rose-200/80 bg-rose-50/70 p-3.5 text-xs font-medium text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 leading-relaxed flex items-start gap-2.5 sm:gap-3">
+                    <div className="flex size-6 shrink-0 items-center justify-center rounded-xl text-white bg-gradient-to-br from-rose-500 to-red-600 mt-0.5 shadow-xs">
+                      <AlertTriangle className="size-3.5 text-white" />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 leading-relaxed">
                       Data unit <strong>"{deleteTarget.name}"</strong> akan dihapus secara permanen dari server. Semua data kelas, siswa, dan relasi terkait akan terpengaruh.
                     </div>
                   </div>
                 </HeroModal.Body>
 
                 {/* Footer */}
-                <HeroModal.Footer className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                <HeroModal.Footer className="modal-footer flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-2.5 border-t border-slate-100 bg-white px-4.5 sm:px-6 py-3.5 sm:py-4 dark:border-slate-800 dark:bg-slate-950">
                   <HeroButton
                     variant="outline"
                     size="sm"
                     isDisabled={deleteMutation.isPending}
                     disabled={deleteMutation.isPending}
                     onPress={() => setDeleteTarget(null)}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 px-4 py-2.5 text-xs font-extrabold transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 px-4 py-2.5 text-xs font-extrabold transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer disabled:opacity-50"
                   >
-                    <div className="flex size-4 items-center justify-center rounded-md bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                    <div className="flex size-4 shrink-0 items-center justify-center rounded-md bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                       <X className="size-3" strokeWidth={2.2} />
                     </div>
                     <span>Batal</span>
@@ -3599,12 +3599,12 @@ export default function EducationUnitsPage() {
                       if (deleteMutation.isPending) return
                       deleteMutation.mutate(deleteTarget.id)
                     }}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-5 py-2.5 text-xs font-extrabold border border-rose-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-rose-500/25"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-5 py-2.5 text-xs font-extrabold border border-rose-300/40 hover:scale-[1.02] transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-rose-500/25"
                   >
                     {deleteMutation.isPending ? (
                       <HeroSpinner size="sm" className="size-3.5 text-white" />
                     ) : (
-                      <div className="flex size-4 items-center justify-center rounded-md bg-white/20 text-white">
+                      <div className="flex size-4 shrink-0 items-center justify-center rounded-md bg-white/20 text-white">
                         <Trash2 className="size-3 text-white" strokeWidth={2.2} />
                       </div>
                     )}
@@ -3856,37 +3856,37 @@ export default function EducationUnitsPage() {
  </span>
  </p>
  </div>
- <div className="max-h-44 overflow-auto rounded-2xl border border-emerald-200/80 bg-white shadow-2xs dark:border-emerald-900/50 dark:bg-[#182232]">
- <table className="w-full text-left text-[11px]">
- <thead className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 font-bold text-slate-700 dark:text-slate-200">
- <tr>
- {['Kode', 'Nama Unit', 'Jenis / Jenjang', 'Status'].map(h => (
- <th key={h} className="px-3 py-2.5">{h}</th>
- ))}
- </tr>
- </thead>
- <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
- {importPreviewData.map((r, i) => (
- <tr key={i} className="hover:bg-emerald-50/30 dark:hover:bg-slate-800/40 transition-colors">
- <td className="px-3 py-2 font-mono font-semibold text-slate-700 dark:text-slate-300">{r.kode}</td>
- <td className="px-3 py-2 font-medium text-slate-900 dark:text-white">{r.nama}</td>
- <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{r.tingkat}</td>
- <td className="px-3 py-2">
- <span className={cn(
- "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold",
- r.status === 'Valid' || r.status === 'Siap Impor'
- ? "bg-emerald-50 text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60"
- : "bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60"
- )}>
- {r.status}
- </span>
- </td>
- </tr>
- ))}
- </tbody>
- </table>
- </div>
- </div>
+                      <div className="max-h-44 overflow-auto rounded-2xl border border-emerald-200/80 bg-white shadow-2xs dark:border-emerald-900/50 dark:bg-[#182232]">
+                        <TableRoot className="w-full text-left text-[11px]">
+                          <TableHeader className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 font-bold text-slate-700 dark:text-slate-200">
+                            <TableRow>
+                              {['Kode', 'Nama Unit', 'Jenis / Jenjang', 'Status'].map(h => (
+                                <TableHead key={h} className="px-3 py-2.5">{h}</TableHead>
+                              ))}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                            {importPreviewData.map((r, i) => (
+                              <TableRow key={i} className="hover:bg-emerald-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                                <TableCell className="px-3 py-2 font-mono font-semibold text-slate-700 dark:text-slate-300">{r.kode}</TableCell>
+                                <TableCell className="px-3 py-2 font-medium text-slate-900 dark:text-white">{r.nama}</TableCell>
+                                <TableCell className="px-3 py-2 text-slate-600 dark:text-slate-300">{r.tingkat}</TableCell>
+                                <TableCell className="px-3 py-2">
+                                  <span className={cn(
+                                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                    r.status === 'Valid' || r.status === 'Siap Impor'
+                                      ? "bg-emerald-50 text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60"
+                                      : "bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60"
+                                  )}>
+                                    {r.status}
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </TableRoot>
+                      </div>
+                    </div>
  )}
 
  {/* Imported Data Summary */}
@@ -4355,6 +4355,9 @@ export default function EducationUnitsPage() {
  </div>
  )}
  </AnimatePresence>
+
+  {/* Smart Floating Scroll Navigator (Option A) */}
+  <SmartScrollFab targetId="tabel-unit-pendidikan" downTooltip="Langsung ke Tabel Unit" />
 
  </PageContainer>
  )

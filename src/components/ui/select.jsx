@@ -38,6 +38,15 @@ SelectTrigger.displayName = 'SelectTrigger'
 
 export const SelectValue = HeroSelect.Value
 
+export const SelectLabel = React.forwardRef(({ className, ...props }, ref) => (
+  <label
+    ref={ref}
+    className={cn('block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5', className)}
+    {...props}
+  />
+))
+SelectLabel.displayName = 'SelectLabel'
+
 export const SelectContent = React.forwardRef(({ className, children, ...props }, ref) => {
   return (
     <HeroSelect.Popover

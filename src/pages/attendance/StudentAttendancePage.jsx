@@ -15,8 +15,8 @@ import {
 import { attendanceDashboardService } from '../../services/attendance/attendanceDashboardService'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import { MasterEmptyState, MasterErrorState } from '../../components/master-data'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Button } from '@/components/tailgrids/core/button'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 const today = new Date().toISOString().slice(0, 10)
 const unwrap = (response) => response?.data?.data || response?.data || []

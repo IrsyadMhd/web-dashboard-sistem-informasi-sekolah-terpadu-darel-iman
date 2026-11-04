@@ -18,6 +18,7 @@ import { BookOpen, CalendarDays, Camera, Droplets, IdCard, LoaderCircle, RotateC
 import { studentService } from '../../services/studentService'
 import { usePengaturanStore } from '../../stores/pengaturanStore'
 import PersonAvatar from '../ui/PersonAvatar'
+import Swal from '@/components/ui/compat/swal-heroui'
 
 function getStudentUnitAddress(data, pengaturan) {
   const unitObj = data?.raw?.unit || (typeof data?.unit === 'object' && data?.unit !== null ? data.unit : null)
@@ -132,7 +133,12 @@ export default function CetakKartuSiswaModal({ student, onClose, showSettings = 
     const file = e.target.files?.[0]
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      alert('Format file tidak didukung. Silakan pilih gambar (JPG/PNG).')
+      Swal.fire({
+        title: 'Format Berkas Tidak Didukung',
+        text: 'Silakan pilih gambar dengan format JPG atau PNG untuk foto kartu pelajar.',
+        icon: 'warning',
+        confirmButtonColor: '#059669',
+      })
       return
     }
     const reader = new FileReader()

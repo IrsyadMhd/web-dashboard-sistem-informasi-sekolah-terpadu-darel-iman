@@ -58,6 +58,8 @@ export function DataTable({
   )
 }
 
+export default DataTable
+
 DataTable.propTypes = {
   columns: PropTypes.array,
   data: PropTypes.array,

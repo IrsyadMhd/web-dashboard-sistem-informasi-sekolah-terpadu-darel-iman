@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { DatePicker } from '@/components/ui/date-picker'
 import { useDebounce } from '../hooks/useDebounce'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   Building2,
+  CalendarCheck,
+  CalendarDays,
+  Check,
   ChevronDown,
   Download,
   Eye,
@@ -21,17 +25,16 @@ import {
   CheckCircle2,
   Sparkles,
   Trophy,
-  CalendarCheck,
   ArrowRightLeft,
   Award,
   Compass,
   School,
 } from 'lucide-react'
 import {
-  ArrowBothDirectionHorizontal2,
-  Download1,
-  Upload1,
-} from '@tailgrids/icons'
+  ArrowRightLeft as ArrowBothDirectionHorizontal2,
+  Download as Download1,
+  Upload as Upload1,
+} from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -77,9 +80,9 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
-} from '@/components/tailgrids/core/card'
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   TableRoot,
   TableHeader,
@@ -87,14 +90,14 @@ import {
   TableBody,
   TableRow,
   TableCell,
-} from '@/components/tailgrids/core/table'
-import { Pagination } from '@/components/tailgrids/core/pagination'
-import { Input } from '@/components/tailgrids/core/input'
+} from '@/components/ui/table'
+import { Pagination } from '@/components/ui/pagination'
+import { Input } from '@/components/ui/input'
 import {
   HoverCard,
   HoverCardTrigger,
   HoverCardContent,
-} from '@/components/tailgrids/core/hover-card'
+} from '@/components/ui/hover-card'
 import {
   Dialog,
   DialogBody,
@@ -103,8 +106,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
-import { Backdrop } from '@/components/tailgrids/core/overlay'
+} from '@/components/ui/dialog'
+import { Backdrop } from '@/components/ui/dialog'
 
 const angka = (nilai) => new Intl.NumberFormat('id-ID').format(Number(nilai || 0))
 const warnaPie = ['#059669', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
@@ -160,6 +163,168 @@ const MODERN_CARD_TONES = {
     sub: 'text-rose-600/80 dark:text-rose-400/80',
     cta: 'text-rose-600 dark:text-rose-400',
   },
+}
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'w-full',
+  searchable = false,
+  ariaLabel = '',
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [openUpwards, setOpenUpwards] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const handleToggle = () => {
+    if (disabled) return
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const spaceAbove = rect.top
+      setOpenUpwards(spaceBelow < 240 && spaceAbove > spaceBelow)
+      setSearch('')
+    }
+    setIsOpen((prev) => !prev)
+  }
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+      (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  const hasValue = value !== '' && value !== 'semua' && value !== 'all' && value !== undefined && value !== null
+
+  return (
+    <div className={`relative ${isOpen ? 'z-[60]' : 'z-10'} ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={handleToggle}
+        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+          isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+            : hasValue
+            ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
+            : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: openUpwards ? 6 : -6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: openUpwards ? 6 : -6 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 ${
+              openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+            } z-[100] ${popoverWidth} min-w-[200px] overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/60 dark:shadow-black/60`}
+          >
+            {(searchable || options.length > 5) && (
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div className="truncate">{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
 }
 
 export default function LaporanSiswaPage() {
@@ -358,6 +523,40 @@ export default function LaporanSiswaPage() {
     () => [...new Set(siswa.map((item) => item.unit).filter((item) => item && item !== '-'))],
     [siswa]
   )
+
+  const unitOptions = useMemo(() => [
+    { value: 'semua', label: 'Semua Unit Pendidikan' },
+    ...daftarUnit.map((item) => ({ value: item, label: item })),
+  ], [daftarUnit])
+
+  const kelasOptions = useMemo(() => [
+    { value: 'semua', label: 'Semua Kelas & Rombel' },
+    ...daftarKelas.map((item) => ({ value: item, label: item })),
+  ], [daftarKelas])
+
+  const genderOptions = useMemo(() => [
+    { value: 'semua', label: 'Semua Gender' },
+    { value: 'L', label: 'Laki-laki (L)' },
+    { value: 'P', label: 'Perempuan (P)' },
+  ], [])
+
+  const statusOptions = useMemo(() => [
+    { value: 'semua', label: 'Semua Status' },
+    { value: 'aktif', label: 'Siswa Aktif' },
+    { value: 'alumni', label: 'Siswa Alumni' },
+    { value: 'mutasi_keluar', label: 'Mutasi Keluar' },
+    { value: 'nonaktif', label: 'Siswa Non-aktif' },
+  ], [])
+
+  const periodOptions = useMemo(() => [
+    { value: 'semua', label: 'Semua Periode Data' },
+    { value: 'hari', label: 'Hari Ini (Per Hari)' },
+    { value: 'minggu', label: '7 Hari Terakhir (Per Minggu)' },
+    { value: 'bulan', label: 'Bulan Ini (Per Bulan)' },
+    { value: 'semester', label: '6 Bulan Terakhir (Per Semester)' },
+    { value: 'tahun', label: 'Tahun Ini (Per Tahun)' },
+    { value: 'custom', label: 'Rentang Tanggal Kustom' },
+  ], [])
 
   const handleSort = (key) => {
     if (sortKey === key) {
@@ -1219,7 +1418,7 @@ export default function LaporanSiswaPage() {
       {/* ── 3-Column Equal Grid: Filter Laporan, Grafik Siswa per Jenjang, & Distribusi Unit (Style persis LaporanAbsensiPage) ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
         {/* Col 1: Panel Filter Laporan (Sama seperti LaporanAbsensiPage) */}
-        <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 flex flex-col justify-between h-full">
+        <article className="relative rounded-[22px] border-2 border-emerald-500/25 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 flex flex-col justify-between h-full">
           <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
           <div className="relative z-10 flex flex-col h-full justify-between">
             <div>
@@ -1253,21 +1452,18 @@ export default function LaporanSiswaPage() {
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
                       Unit Pendidikan
                     </label>
-                    <select
+                    <HeroUiFilterSelect
                       value={unit}
-                      onChange={(e) => {
-                        setUnit(e.target.value)
+                      onChange={(val) => {
+                        setUnit(val)
                         setHalaman(1)
                       }}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="semua">Semua Unit Pendidikan</option>
-                      {daftarUnit.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                    </select>
+                      options={unitOptions}
+                      placeholder="Semua Unit Pendidikan"
+                      icon={Building2}
+                      ariaLabel="Unit Pendidikan"
+                      searchable
+                    />
                   </div>
                 )}
 
@@ -1275,69 +1471,61 @@ export default function LaporanSiswaPage() {
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
                     Kelas / Rombel
                   </label>
-                  <select
+                  <HeroUiFilterSelect
                     value={kelas}
-                    onChange={(e) => {
-                      setKelas(e.target.value)
+                    onChange={(val) => {
+                      setKelas(val)
                       setHalaman(1)
                     }}
-                    className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="semua">Semua Kelas & Rombel</option>
-                    {daftarKelas.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
+                    options={kelasOptions}
+                    placeholder="Semua Kelas & Rombel"
+                    icon={GraduationCap}
+                    ariaLabel="Kelas & Rombel"
+                    searchable
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
                     Jenis Kelamin
                   </label>
-                  <select
+                  <HeroUiFilterSelect
                     value={jenisKelamin}
-                    onChange={(e) => {
-                      setJenisKelamin(e.target.value)
+                    onChange={(val) => {
+                      setJenisKelamin(val)
                       setHalaman(1)
                     }}
-                    className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="semua">Semua Gender</option>
-                    <option value="L">Laki-laki (L)</option>
-                    <option value="P">Perempuan (P)</option>
-                  </select>
+                    options={genderOptions}
+                    placeholder="Semua Gender"
+                    icon={Users}
+                    ariaLabel="Jenis Kelamin"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
                     Status Siswa
                   </label>
-                  <select
+                  <HeroUiFilterSelect
                     value={status}
-                    onChange={(e) => {
-                      setStatus(e.target.value)
+                    onChange={(val) => {
+                      setStatus(val)
                       setHalaman(1)
                     }}
-                    className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="semua">Semua Status</option>
-                    <option value="aktif">Siswa Aktif</option>
-                    <option value="alumni">Siswa Alumni</option>
-                    <option value="mutasi_keluar">Mutasi Keluar</option>
-                    <option value="nonaktif">Siswa Non-aktif</option>
-                  </select>
+                    options={statusOptions}
+                    placeholder="Semua Status"
+                    icon={UserCheck}
+                    ariaLabel="Status Siswa"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
                     Periode Waktu
                   </label>
-                  <select
+                  <HeroUiFilterSelect
                     value={period}
-                    onChange={(e) => {
-                      const nextPeriod = e.target.value
+                    onChange={(nextPeriod) => {
                       setPeriod(nextPeriod)
                       if (nextPeriod !== 'custom' && nextPeriod !== 'semua') {
                         const { from, to } = getPeriodDateRange(nextPeriod)
@@ -1349,43 +1537,38 @@ export default function LaporanSiswaPage() {
                       }
                       setHalaman(1)
                     }}
-                    className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="semua">Semua Periode Data</option>
-                    <option value="hari">Hari Ini (Per Hari)</option>
-                    <option value="minggu">7 Hari Terakhir (Per Minggu)</option>
-                    <option value="bulan">Bulan Ini (Per Bulan)</option>
-                    <option value="semester">6 Bulan Terakhir (Per Semester)</option>
-                    <option value="tahun">Tahun Ini (Per Tahun)</option>
-                    <option value="custom">Rentang Tanggal Kustom</option>
-                  </select>
+                    options={periodOptions}
+                    placeholder="Semua Periode Data"
+                    icon={CalendarDays}
+                    ariaLabel="Periode Waktu"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div>
                     <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Mulai</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={dateFrom}
                       onChange={(e) => {
                         setDateFrom(e.target.value)
                         setPeriod('custom')
                         setHalaman(1)
                       }}
-                      className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                      placeholder="Mulai..."
+                      inputClassName="h-8 text-[11px]"
                     />
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Selesai</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={dateTo}
                       onChange={(e) => {
                         setDateTo(e.target.value)
                         setPeriod('custom')
                         setHalaman(1)
                       }}
-                      className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                      placeholder="Selesai..."
+                      inputClassName="h-8 text-[11px]"
                     />
                   </div>
                 </div>
@@ -1544,30 +1727,31 @@ export default function LaporanSiswaPage() {
             {/* Per Page Select */}
             <div className="relative flex items-center gap-1.5">
               <span className="text-xs font-medium text-slate-500">Per Halaman:</span>
-              <div className="relative">
-                <select
-                  value={perHalaman}
-                  onChange={(e) => {
-                    setPerHalaman(Number(e.target.value))
-                    setHalaman(1)
-                  }}
-                  className="h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={15}>15</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              </div>
+              <HeroUiFilterSelect
+                value={perHalaman}
+                onChange={(val) => {
+                  setPerHalaman(Number(val))
+                  setHalaman(1)
+                }}
+                options={[
+                  { value: 5, label: '5' },
+                  { value: 10, label: '10' },
+                  { value: 15, label: '15' },
+                  { value: 25, label: '25' },
+                  { value: 50, label: '50' },
+                  { value: 100, label: '100' },
+                ]}
+                placeholder="10"
+                popoverWidth="w-24"
+                className="w-20"
+                ariaLabel="Jumlah baris per halaman"
+              />
             </div>
           </div>
         </div>
 
-        {/* ── Datatable Viewport dengan Horizontal Padding ───────────────────── */}
-        <div className="px-4 sm:px-6 md:px-8 overflow-x-auto">
+        {/* ── Datatable Viewport ─────────────────────────────────────────────── */}
+        <div className="overflow-x-auto">
           {hasilFilter.length === 0 ? (
             <div className="py-8">
               <MasterEmptyState
@@ -1575,23 +1759,23 @@ export default function LaporanSiswaPage() {
               />
             </div>
           ) : (
-            <TableRoot fullBleed={false}>
+            <TableRoot className="w-full text-left border-collapse text-xs min-w-[940px]">
               <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-                <TableRow>
-                  <TableHead className="w-12 text-center">#</TableHead>
+                <TableRow className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 font-bold tracking-wider uppercase text-[11px]">
+                  <TableHead className="py-3.5 px-3 w-12 text-center bg-transparent">NO</TableHead>
 
                   <TableHead
-                    className="cursor-pointer select-none hover:text-emerald-600 transition-colors"
+                    className="py-3.5 px-3 cursor-pointer select-none hover:text-emerald-700 transition-colors"
                     onClick={() => handleSort('nama')}
                   >
                     <div className="flex items-center gap-1.5">
-                      <span>Nama Siswa</span>
+                      <span>NAMA SISWA</span>
                       <ArrowBothDirectionHorizontal2 className="size-3.5 text-slate-400" />
                     </div>
                   </TableHead>
 
                   <TableHead
-                    className="text-center cursor-pointer select-none hover:text-emerald-600 transition-colors"
+                    className="py-3.5 px-3 text-center cursor-pointer select-none hover:text-emerald-700 transition-colors"
                     onClick={() => handleSort('nis')}
                   >
                     <div className="flex items-center justify-center gap-1.5">
@@ -1601,46 +1785,46 @@ export default function LaporanSiswaPage() {
                   </TableHead>
 
                   <TableHead
-                    className="text-center cursor-pointer select-none hover:text-emerald-600 transition-colors"
+                    className="py-3.5 px-3 text-center cursor-pointer select-none hover:text-emerald-700 transition-colors"
                     onClick={() => handleSort('unit')}
                   >
                     <div className="flex items-center justify-center gap-1.5">
-                      <span>Unit Pendidikan</span>
+                      <span>UNIT PENDIDIKAN</span>
                       <ArrowBothDirectionHorizontal2 className="size-3.5 text-slate-400" />
                     </div>
                   </TableHead>
 
                   <TableHead
-                    className="text-center cursor-pointer select-none hover:text-emerald-600 transition-colors"
+                    className="py-3.5 px-3 text-center cursor-pointer select-none hover:text-emerald-700 transition-colors"
                     onClick={() => handleSort('kelas')}
                   >
                     <div className="flex items-center justify-center gap-1.5">
-                      <span>Kelas / Rombel</span>
+                      <span>KELAS / ROMBEL</span>
                       <ArrowBothDirectionHorizontal2 className="size-3.5 text-slate-400" />
                     </div>
                   </TableHead>
 
-                  <TableHead className="text-center">Gender</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
+                  <TableHead className="py-3.5 px-3 text-center">GENDER</TableHead>
+                  <TableHead className="py-3.5 px-3 text-center">STATUS</TableHead>
+                  <TableHead className="py-3.5 px-3 text-right pr-4">AKSI</TableHead>
                 </TableRow>
               </TableHeader>
 
-              <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+              <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-xs">
                 {baris.map((item, index) => {
                   const itemStatus = item.status || (item.aktif ? 'aktif' : 'nonaktif')
 
                   return (
                     <TableRow
                       key={item.id || item.nis || index}
-                      className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-colors"
+                      className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors"
                     >
-                      <TableCell className="text-center font-bold text-slate-400 text-xs">
+                      <TableCell className="py-3.5 px-3 text-center font-bold text-slate-500 text-xs">
                         {(halaman - 1) * perHalaman + index + 1}
                       </TableCell>
 
                       {/* Cell Identitas Siswa dengan HoverCard */}
-                      <TableCell>
+                      <TableCell className="py-3.5 px-3">
                         <HoverCard>
                           <HoverCardTrigger
                             onClick={(e) => {
@@ -1707,23 +1891,23 @@ export default function LaporanSiswaPage() {
                         </HoverCard>
                       </TableCell>
 
-                      <TableCell className="text-center font-mono font-semibold text-slate-600 dark:text-slate-400 text-xs">
+                      <TableCell className="py-3.5 px-3 text-center font-mono font-semibold text-slate-600 dark:text-slate-400 text-xs">
                         {item.nis || '-'}
                       </TableCell>
 
-                      <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300">
+                      <TableCell className="py-3.5 px-3 text-center font-medium text-slate-700 dark:text-slate-300">
                         {item.unit || '-'}
                       </TableCell>
 
-                      <TableCell className="text-center font-semibold text-slate-800 dark:text-slate-200">
+                      <TableCell className="py-3.5 px-3 text-center font-semibold text-slate-800 dark:text-slate-200">
                         {item.kelas || '-'}
                       </TableCell>
 
-                      <TableCell className="text-center text-xs font-semibold text-slate-600 dark:text-slate-400">
+                      <TableCell className="py-3.5 px-3 text-center text-xs font-semibold text-slate-600 dark:text-slate-400">
                         {item.jenis_kelamin || item.jk || '-'}
                       </TableCell>
 
-                      <TableCell className="text-center">
+                      <TableCell className="py-3.5 px-3 text-center">
                         <MasterStatusBadge
                           status={itemStatus}
                           className="hover:scale-105 transition-transform cursor-pointer"
@@ -1731,7 +1915,7 @@ export default function LaporanSiswaPage() {
                         />
                       </TableCell>
 
-                      <TableCell className="text-right">
+                      <TableCell className="py-3.5 px-3 text-right pr-4">
                         <button
                           type="button"
                           title="Cetak Laporan Perkembangan Pekanan"
@@ -1750,12 +1934,12 @@ export default function LaporanSiswaPage() {
         </div>
 
         {/* ── Footer Pagination ────────────────────────────────────────────── */}
-        <div className="w-full border-t border-slate-100 px-4 py-3.5 sm:px-6 md:px-8 dark:border-slate-800">
+        <div className="w-full border-t border-emerald-100/80 px-4 py-3.5 sm:px-6 md:px-8 dark:border-emerald-900/40 bg-slate-50/50 dark:bg-slate-900/30">
           <Pagination
             currentPage={halaman}
             totalPages={totalHalaman}
             onPageChange={(page) => setHalaman(page)}
-            sideLayout="icon"
+            sideLayout="full"
           />
         </div>
       </div>
@@ -1827,7 +2011,7 @@ export default function LaporanSiswaPage() {
           {/* 3-Column Equal Grid Prestasi */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
             {/* Filter Panel */}
-            <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 flex flex-col justify-between h-full">
+            <article className="relative rounded-[22px] border-2 border-emerald-500/25 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 flex flex-col justify-between h-full">
               <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
               <div className="relative z-10 flex flex-col h-full justify-between">
                 <div>
@@ -1866,16 +2050,19 @@ export default function LaporanSiswaPage() {
                       <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
                         Tingkat Kompetisi
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={prestasiTingkatFilter}
-                        onChange={(e) => setPrestasiTingkatFilter(e.target.value)}
-                        className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                      >
-                        <option value="semua">Semua Tingkat</option>
-                        <option value="nasional">Tingkat Nasional</option>
-                        <option value="provinsi">Tingkat Provinsi</option>
-                        <option value="kota">Tingkat Kota / Kabupaten</option>
-                      </select>
+                        onChange={(val) => setPrestasiTingkatFilter(val)}
+                        options={[
+                          { value: 'semua', label: 'Semua Tingkat' },
+                          { value: 'nasional', label: 'Tingkat Nasional' },
+                          { value: 'provinsi', label: 'Tingkat Provinsi' },
+                          { value: 'kota', label: 'Tingkat Kota / Kabupaten' },
+                        ]}
+                        placeholder="Semua Tingkat"
+                        icon={Trophy}
+                        ariaLabel="Tingkat Kompetisi"
+                      />
                     </div>
                   </div>
                 </div>
@@ -2126,7 +2313,7 @@ export default function LaporanSiswaPage() {
           {/* 3-Column Equal Grid for Kelulusan */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
             {/* Filter Panel Kelulusan */}
-            <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
+            <article className="relative rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
               <div>
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
                   <h2 className="text-base font-bold text-slate-900 dark:text-white">Filter Kelulusan & Alumni</h2>
@@ -2165,35 +2352,37 @@ export default function LaporanSiswaPage() {
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
                       Tahun Kelulusan
                     </label>
-                    <select
+                    <HeroUiFilterSelect
                       value={alumniYearFilter}
-                      onChange={(e) => setAlumniYearFilter(e.target.value)}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="semua">Semua Angkatan Kelulusan</option>
-                      {alumniYears.map((yr) => (
-                        <option key={yr} value={yr}>
-                          Angkatan Lulus {yr}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setAlumniYearFilter(val)}
+                      options={[
+                        { value: 'semua', label: 'Semua Angkatan Kelulusan' },
+                        ...alumniYears.map((yr) => ({ value: yr, label: `Angkatan Lulus ${yr}` })),
+                      ]}
+                      placeholder="Semua Angkatan Kelulusan"
+                      icon={CalendarDays}
+                      ariaLabel="Tahun Kelulusan"
+                    />
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
                       Kategori Tracer Study
                     </label>
-                    <select
+                    <HeroUiFilterSelect
                       value={alumniCategoryFilter}
-                      onChange={(e) => setAlumniCategoryFilter(e.target.value)}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="semua">Semua Kategori Tujuan</option>
-                      <option value="ptn">PTN (Kampus Negeri)</option>
-                      <option value="pts">PTS (Perguruan Tinggi Swasta)</option>
-                      <option value="mahad">Ma'had / Pondok Pesantren</option>
-                      <option value="karir">Bekerja / Wirausaha</option>
-                    </select>
+                      onChange={(val) => setAlumniCategoryFilter(val)}
+                      options={[
+                        { value: 'semua', label: 'Semua Kategori Tujuan' },
+                        { value: 'ptn', label: 'PTN (Kampus Negeri)' },
+                        { value: 'pts', label: 'PTS (Perguruan Tinggi Swasta)' },
+                        { value: 'mahad', label: "Ma'had / Pondok Pesantren" },
+                        { value: 'karir', label: 'Bekerja / Wirausaha' },
+                      ]}
+                      placeholder="Semua Kategori Tujuan"
+                      icon={GraduationCap}
+                      ariaLabel="Kategori Tracer Study"
+                    />
                   </div>
                 </div>
               </div>

@@ -15,6 +15,7 @@ import {
 import { reportService } from '../services/reportService'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { useDebounce } from '../hooks/useDebounce'
 import {
   MasterStatsGrid,
   MasterStatCard,
@@ -26,9 +27,9 @@ import {
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { exportCsv } from '../components/reports/ReportKit'
 
-import { Button } from '@/components/tailgrids/core/button'
-import { Input } from '@/components/tailgrids/core/input'
-import { Pagination } from '@/components/tailgrids/core/pagination'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Pagination } from '@/components/ui/pagination'
 import {
   TableRoot,
   TableHeader,
@@ -36,7 +37,7 @@ import {
   TableBody,
   TableRow,
   TableCell,
-} from '@/components/tailgrids/core/table'
+} from '@/components/ui/table'
 
 const columns = [
   { key: 'siswa', label: 'Siswa', render: (row) => row.siswa?.full_name || row.student?.full_name || '-', export: (row) => row.siswa?.full_name || row.student?.full_name },
@@ -56,6 +57,7 @@ export default function LaporanLmsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const perPage = 10
@@ -95,15 +97,15 @@ export default function LaporanLmsPage() {
       })
     }
 
-    if (!search.trim()) return result
-    const q = search.toLowerCase()
+    if (!debouncedSearch.trim()) return result
+    const q = debouncedSearch.toLowerCase()
     return result.filter((r) => {
       const siswaName = (r.siswa?.full_name || r.student?.full_name || '').toLowerCase()
       const tugasTitle = (r.penugasan?.judul || r.assignment?.title || '').toLowerCase()
       const statusStr = (r.status || '').toLowerCase()
       return siswaName.includes(q) || tugasTitle.includes(q) || statusStr.includes(q)
     })
-  }, [data.rows, search, statusFilter])
+  }, [data.rows, debouncedSearch, statusFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / perPage))
   const paginatedRows = useMemo(() => {

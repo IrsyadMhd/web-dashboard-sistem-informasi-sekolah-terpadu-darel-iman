@@ -17,10 +17,11 @@ import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
 
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
-import { Breadcrumbs } from '@/components/tailgrids/core/breadcrumbs'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { printCleanTable } from '../../../utils/printHelper'
 import { usePengaturanStore } from '../../../stores/pengaturanStore'
+import { SmartScrollFab } from '../../../components/common'
 
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
 
@@ -316,7 +317,7 @@ export const LaporanSdmPage = () => {
       </motion.div>
 
       {/* 6. Rekap Per Unit */}
-      <motion.div variants={itemVariants}>
+      <motion.div variants={itemVariants} id="tabel-rekap-sdm" className="scroll-mt-6">
         <ReportRecapTable
           title="Rekapitulasi SDM per Unit Pendidikan"
           columns={recapColumns}
@@ -366,6 +367,9 @@ export const LaporanSdmPage = () => {
         title="Detail Data SDM Pegawai"
         data={detailModalData}
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-rekap-sdm" downTooltip="Langsung ke Tabel SDM" />
     </motion.div>
   )
 }

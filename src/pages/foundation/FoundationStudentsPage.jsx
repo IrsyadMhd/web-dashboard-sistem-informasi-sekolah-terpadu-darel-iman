@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ActionDropdown from '../../components/app/ActionDropdown'
 import { Award, FileSpreadsheet, FileText, GraduationCap, Printer, RefreshCcw, ShieldAlert, ShieldCheck, Sparkles, UserCheck, UserMinus, UserRound, UsersRound } from 'lucide-react'
-import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
+import { ArrowRightLeft as ArrowBothDirectionHorizontal2 } from 'lucide-react'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import api from '../../services/api'
 import useDebounce from '../../hooks/useDebounce'
@@ -26,6 +26,7 @@ import { PersonIdentityCell } from '../../components/ui/PersonIdentityCell'
 import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 import { FoundationExportModal } from '../../components/foundation/FoundationExportModal'
 import { FoundationUnitKpiModal } from '../../components/foundation/FoundationUnitKpiModal'
+import { SmartScrollFab } from '../../components/common'
 
 const GENDER_LABEL = {
   male: 'Laki-Laki',
@@ -386,7 +387,7 @@ export function FoundationStudentsPage() {
         }
       />
 
-      <MasterDataTable className="foundation-table">
+      <MasterDataTable id="tabel-yayasan-siswa" className="foundation-table scroll-mt-6">
         <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-700">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Siswa Aktif</h2>
@@ -567,6 +568,9 @@ export function FoundationStudentsPage() {
         rows={exportRows}
         filename="Data_Siswa_Yayasan"
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-yayasan-siswa" downTooltip="Langsung ke Tabel Siswa" />
         </motion.div>
       </motion.div>
     </MasterDataPage>

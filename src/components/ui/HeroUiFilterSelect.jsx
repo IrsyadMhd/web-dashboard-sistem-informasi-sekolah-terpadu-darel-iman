@@ -1,0 +1,236 @@
+import React, { useState, useRef, useEffect, useMemo } from 'react'
+import PropTypes from 'prop-types'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronDown, Search, Check, X } from 'lucide-react'
+
+/**
+ * HeroUiFilterSelect - Canonical Hero UI dropdown filter component.
+ * Provides custom interactive select styling matching TailGrids & Hero UI standards.
+ */
+export default function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'w-full',
+  searchable = false,
+  allowClear = false,
+  ariaLabel = '',
+  disabled = false,
+  size = 'md', // 'sm' (h-9), 'md' (h-10), 'lg' (h-11)
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const normalizedOptions = useMemo(() => {
+    return options.map((opt) => {
+      if (typeof opt === 'string' || typeof opt === 'number') {
+        return { value: String(opt), label: String(opt) }
+      }
+      return {
+        value: String(opt.value ?? opt.id ?? ''),
+        label: String(opt.label ?? opt.name ?? opt.nama_kelas ?? opt.nama_lengkap ?? opt.value ?? ''),
+        subtext: opt.subtext,
+        badge: opt.badge,
+        badgeColor: opt.badgeColor,
+      }
+    })
+  }, [options])
+
+  const selectedOption = useMemo(() => {
+    return normalizedOptions.find((opt) => String(opt.value) === String(value))
+  }, [normalizedOptions, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return normalizedOptions
+    const q = search.toLowerCase()
+    return normalizedOptions.filter((opt) =>
+      (opt.label && opt.label.toLowerCase().includes(q)) ||
+      (opt.subtext && opt.subtext.toLowerCase().includes(q)) ||
+      (opt.badge && opt.badge.toLowerCase().includes(q))
+    )
+  }, [normalizedOptions, search, searchable])
+
+  const hasValue = value !== '' && value !== 'semua' && value !== 'all' && value !== undefined && value !== null
+
+  const sizeClasses = {
+    sm: 'h-9 text-xs',
+    md: 'h-10 text-xs sm:text-[13px]',
+    lg: 'h-11 text-xs sm:text-sm',
+  }
+
+  const handleClear = (e) => {
+    e.stopPropagation()
+    onChange('')
+    setIsOpen(false)
+    setSearch('')
+  }
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        aria-label={ariaLabel || placeholder}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`${sizeClasses[size] || sizeClasses.md} w-full flex items-center justify-between gap-2 rounded-xl border px-3 font-bold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 shadow-2xs ${
+          isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/25 dark:border-emerald-400 dark:bg-slate-900 dark:ring-emerald-400/25 text-slate-900 dark:text-white shadow-xs'
+            : hasValue
+            ? 'border-emerald-500/80 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50 text-emerald-950 dark:border-emerald-600/80 dark:bg-gradient-to-r dark:from-emerald-950/60 dark:via-teal-950/40 dark:to-emerald-950/60 dark:text-emerald-200 font-extrabold shadow-emerald-500/10'
+            : 'border-slate-200 dark:border-slate-800 bg-white text-slate-700 hover:border-emerald-400 dark:bg-[#111827] dark:text-slate-200 dark:hover:border-emerald-600'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className={`size-3.5 shrink-0 ${hasValue ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`} />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+          {selectedOption?.badge && (
+            <span className="shrink-0 text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-100/90 text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-700/60">
+              {selectedOption.badge}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {allowClear && hasValue && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={handleClear}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') handleClear(e)
+              }}
+              title="Reset Filter Ini"
+              className="p-1 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+            >
+              <X className="size-3" />
+            </span>
+          )}
+          <ChevronDown
+            className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+              isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+            }`}
+          />
+        </div>
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[100] ${popoverWidth} min-w-[220px] overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/50 dark:shadow-black/60`}
+          >
+            {searchable && normalizedOptions.length > 5 && (
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-800 mb-1">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/80 pl-8 pr-2.5 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-2xs"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-60 overflow-y-auto space-y-0.5 pr-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+                  Tidak ada opsi yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt, idx) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={`${String(opt.value)}-${idx}`}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-bold transition-all text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/70 dark:text-emerald-300 font-black'
+                          : 'text-slate-700 hover:bg-emerald-50/50 hover:text-emerald-800 dark:text-slate-200 dark:hover:bg-slate-800/80 dark:hover:text-emerald-300'
+                      }`}
+                    >
+                      <div className="truncate pr-2 flex-1">
+                        <div className="truncate flex items-center gap-1.5">
+                          <span className="truncate">{opt.label}</span>
+                          {opt.badge && (
+                            <span className="shrink-0 text-[9.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/40">
+                              {opt.badge}
+                            </span>
+                          )}
+                        </div>
+                        {opt.subtext && (
+                          <div className="text-[10.5px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <div className="size-5 rounded-md bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                          <Check className="size-3.5" strokeWidth={3} />
+                        </div>
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+HeroUiFilterSelect.propTypes = {
+  value: PropTypes.any,
+  onChange: PropTypes.func.isRequired,
+  options: PropTypes.array,
+  placeholder: PropTypes.string,
+  icon: PropTypes.elementType,
+  className: PropTypes.string,
+  popoverWidth: PropTypes.string,
+  searchable: PropTypes.bool,
+  allowClear: PropTypes.bool,
+  ariaLabel: PropTypes.string,
+  disabled: PropTypes.bool,
+  size: PropTypes.oneOf(['sm', 'md', 'lg']),
+}

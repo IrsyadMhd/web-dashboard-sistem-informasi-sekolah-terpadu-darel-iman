@@ -29,11 +29,13 @@ import {
 import { modulSemesterService } from '../services/modulSemesterService'
 import { codeGeneratorService } from '../services/codeGeneratorService'
 import { useToast } from '../components/app'
+import { useDebounce } from '../hooks/useDebounce'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { ActionDropdown, AppBadge, AppDrawer, AppModal, PersonIdentityCell } from '../components/app'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppTabs from '../components/app/AppTabs'
+import { DatePicker } from '@/components/ui/date-picker'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import { useAuthStore } from '../stores/authStore'
 import { getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
@@ -279,6 +281,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
 
   // State Filters
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [filterTahun, setFilterTahun] = useState('')
   const [filterUnit, setFilterUnit] = useState('')
   const [filterSemester, setFilterSemester] = useState('')
@@ -316,7 +319,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
       'modul-semester',
       page,
       perPage,
-      search,
+      debouncedSearch,
       filterTahun,
       filterUnit,
       filterSemester,
@@ -328,7 +331,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
       modulSemesterService.getDaftar({
         page,
         per_page: perPage,
-        search,
+        search: debouncedSearch,
         tahun_ajaran_id: filterTahun,
         unit_pendidikan_id: filterUnit,
         semester_id: filterSemester,
@@ -951,13 +954,36 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
       {!shouldHideBreadcrumb && <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Modul Semester' }]} />}
       <MasterDataPage hideBreadcrumb>
       {!shouldHideHeader && (
-        <MasterPageHeader
-          tone="brand"
-          icon={BookOpen}
-          title="Data Modul Semester"
-          description="Kelola seluruh modul semester di lingkungan Yayasan sebagai acuan pembelajaran terpadu."
-          actions={pageActions}
-        />
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 mb-6">
+          <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <BookOpen className="size-6 sm:size-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                    <BookOpenCheck className="size-3 text-amber-300" />
+                    Manajemen Modul Semester
+                  </span>
+                </div>
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Data Modul Semester
+                </h1>
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  Kelola seluruh modul semester di lingkungan Yayasan sebagai acuan pembelajaran terpadu.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0">
+              {pageActions}
+            </div>
+          </div>
+        </div>
       )}
 
       <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} title="Modul Semester" onImport={handleImportRows} columns={[
@@ -1725,11 +1751,10 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                         <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
                           Berlaku Mulai
                         </label>
-                        <input
-                          type="date"
+                        <DatePicker
                           value={formData.berlaku_mulai}
                           onChange={(e) => setFormData({ ...formData, berlaku_mulai: e.target.value })}
-                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                          inputClassName="p-2.5"
                         />
                       </div>
 
@@ -1737,11 +1762,10 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                         <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
                           Berlaku Sampai
                         </label>
-                        <input
-                          type="date"
+                        <DatePicker
                           value={formData.berlaku_sampai}
                           onChange={(e) => setFormData({ ...formData, berlaku_sampai: e.target.value })}
-                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                          inputClassName="p-2.5"
                         />
                       </div>
                     </div>

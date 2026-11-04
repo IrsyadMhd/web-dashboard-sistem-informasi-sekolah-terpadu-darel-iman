@@ -69,9 +69,9 @@ import { tahfizhService } from '../services/tahfizhService'
 import { mutabaahService } from '../services/mutabaahService'
 import { useAuthStore } from '../stores/authStore'
 
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   Dialog,
   DialogBody,
@@ -80,17 +80,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
-import { AlertDialog } from '@/components/tailgrids/core/alert-dialog'
-import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
+} from '@/components/ui/dialog'
+import { AlertDialog } from '@/components/ui/alert-dialog'
+import { Backdrop, OverlayWrapper } from '@/components/ui/dialog'
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from '@/components/tailgrids/core/hover-card'
-import { TableRoot, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/tailgrids/core/table'
-import { Pagination } from '@/components/tailgrids/core/pagination'
-import { Alert, AlertTitle, AlertDescription } from '@/components/tailgrids/core/alert'
+} from '@/components/ui/hover-card'
+import { TableRoot, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
+import { Pagination } from '@/components/ui/pagination'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 
 
 

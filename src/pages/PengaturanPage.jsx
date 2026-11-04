@@ -64,9 +64,9 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from '../components/tailgrids/core/select'
-import { Checkbox } from '../components/tailgrids/core/checkbox'
-import { Label } from '../components/tailgrids/core/label'
+} from '../components/ui/select'
+import { Checkbox } from '../components/ui/checkbox'
+import { Label } from '../components/ui/label'
 import { Button } from '../components/ui/button'
 
 const colorFields = [
@@ -236,6 +236,7 @@ export default function PengaturanPage() {
     return [
       { id: 'identitas', label: 'Identitas Sekolah & Aplikasi', icon: Image },
       { id: 'tema', label: 'Style & Tema Website', icon: Palette },
+      { id: 'sipdei', label: 'Integrasi SIPDEI & VA', icon: CreditCard },
       { id: 'labels', label: 'Kustomisasi Label (JSON)', icon: Languages },
       { id: 'bantuan_faq', label: 'Kelola Bantuan & FAQ', icon: LifeBuoy },
       { id: 'operasional', label: 'Operasional & Kebijakan', icon: Sliders },
@@ -248,6 +249,7 @@ export default function PengaturanPage() {
   const [previews, setPreviews] = useState({})
   const [saving, setSaving] = useState(false)
   const [showMapboxToken, setShowMapboxToken] = useState(false)
+  const [showSipdeiKey, setShowSipdeiKey] = useState(false)
   const [statusModal, setStatusModal] = useState({
     isOpen: false,
     type: 'success',
@@ -1009,17 +1011,19 @@ export default function PengaturanPage() {
                     placeholder="Contoh: 9023 (Kode Kerjasama BSI)"
                   />
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Format Formula Nomor VA BSI Siswa
-                    </label>
-                    <select
+                    <Select
                       value={form.bsi_va_format || '{PREFIX}{NIS}'}
-                      onChange={(e) => update('bsi_va_format', e.target.value)}
-                      className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                      onValueChange={(val) => update('bsi_va_format', val)}
                     >
-                      <option value="{PREFIX}{NIS}">Kode Biller + NIS Siswa (Contoh: 9023 + NIS)</option>
-                      <option value="{PREFIX}{UNIT_CODE}{NIS}">Kode Biller + Kode Unit + NIS Siswa (Contoh: 9023 + 01 + NIS)</option>
-                    </select>
+                      <SelectLabel>Format Formula Nomor VA BSI Siswa</SelectLabel>
+                      <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                        <SelectValue placeholder="Pilih format formula VA..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem id="{PREFIX}{NIS}">Kode Biller + NIS Siswa (Contoh: 9023 + NIS)</SelectItem>
+                        <SelectItem id="{PREFIX}{UNIT_CODE}{NIS}">Kode Biller + Kode Unit + NIS Siswa (Contoh: 9023 + 01 + NIS)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Konfigurasi Cetak Kartu Pelajar & Pegawai */}
@@ -1920,6 +1924,167 @@ export default function PengaturanPage() {
               </div>
             )}
 
+            {/* TAB INTEGRASI SIPDEI & VIRTUAL ACCOUNT */}
+            {activeTab === 'sipdei' && (
+              <div className="space-y-6">
+                {/* Hero Card Status */}
+                <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex items-start gap-3.5">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30">
+                        <CreditCard className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/20 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:bg-emerald-500/30 dark:text-emerald-300">
+                            <Sparkles className="h-3 w-3" />
+                            Integrasi Ekosistem Keuangan
+                          </span>
+                          {form.sipdei_api_key ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Token Aktif di Database
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-extrabold text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">
+                              <AlertCircle className="h-3 w-3" />
+                              Token Belum Diisi
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="mt-1 text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                          Konfigurasi API SIPDEI & Virtual Account (Nagari & BSI)
+                        </h3>
+                        <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
+                          Kredensial disimpan langsung di database (<code className="font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/60 px-1 rounded">site_settings</code>) dan digunakan oleh server untuk memanggil <b>API Riwayat Tagihan Siswa</b> serta <b>API Pembuatan Virtual Account</b>. Super Admin dan Admin dapat memperbarui token sewaktu-waktu di form bawah ini.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Fields */}
+                <div className="rounded-[20px] border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-5">
+                  <div className="border-b border-slate-100 pb-3 dark:border-slate-800">
+                    <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                      Parameter Koneksi Server-to-Server
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Pastikan URL dan API Key sesuai dengan kredensial yang diterbitkan oleh administrator pusat SIPDEI Yayasan.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Base URL Server SIPDEI *
+                      </label>
+                      <div className="relative">
+                        <Globe className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                        <input
+                          type="url"
+                          required
+                          value={form.sipdei_base_url || 'https://sipdei.dareliman.tech'}
+                          onChange={(e) => update('sipdei_base_url', e.target.value)}
+                          placeholder="https://sipdei.dareliman.tech"
+                          className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs font-medium text-slate-800 outline-none transition focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-emerald-500"
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        URL dasar API partner SIPDEI (standar: <code className="font-mono text-emerald-600">https://sipdei.dareliman.tech</code>).
+                      </p>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                        X-API-Key SIPDEI (Partner Secret Token) *
+                      </label>
+                      <div className="relative flex items-center">
+                        <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                        <input
+                          type={showSipdeiKey ? 'text' : 'password'}
+                          required
+                          value={form.sipdei_api_key || ''}
+                          onChange={(e) => update('sipdei_api_key', e.target.value)}
+                          placeholder="Masukkan token API Key dari SIPDEI..."
+                          className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-24 font-mono text-xs font-bold text-slate-800 outline-none transition focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100 dark:focus:border-emerald-500"
+                        />
+                        <div className="absolute right-2 flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowSipdeiKey(!showSipdeiKey)}
+                            title={showSipdeiKey ? 'Sembunyikan Token' : 'Lihat Token'}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200/70 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 cursor-pointer"
+                          >
+                            {showSipdeiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                          {form.sipdei_api_key && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(form.sipdei_api_key)
+                                setStatusModal({
+                                  isOpen: true,
+                                  type: 'success',
+                                  title: 'Token Tersalin',
+                                  message: 'API Key SIPDEI berhasil disalin ke clipboard.',
+                                })
+                              }}
+                              title="Salin Token"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200/70 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 cursor-pointer"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        Kunci otentikasi rahasia. Token ini hanya dapat diakses & diubah oleh akun <b>Super Admin</b> dan <b>Admin</b>.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Cache TTL Riwayat Tagihan (Detik)
+                      </label>
+                      <div className="relative">
+                        <Clock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                        <input
+                          type="number"
+                          min={60}
+                          max={86400}
+                          value={form.sipdei_cache_ttl || 600}
+                          onChange={(e) => update('sipdei_cache_ttl', Number(e.target.value))}
+                          placeholder="600"
+                          className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-3 text-xs font-medium text-slate-800 outline-none transition focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-100"
+                        />
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        Standar: 600 detik (10 menit). Mencegah pembatasan <i>rate limit</i> SIPDEI (20 req/menit per NIS).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Informational Box */}
+                  <div className="rounded-xl border border-emerald-200/90 bg-emerald-50/60 p-4 text-xs dark:border-emerald-900/60 dark:bg-emerald-950/30">
+                    <div className="flex items-start gap-2.5">
+                      <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-bold text-emerald-900 dark:text-emerald-200">
+                          Endpoint yang Terhubung Otomatis:
+                        </p>
+                        <ul className="list-disc list-inside space-y-0.5 text-[11px] text-emerald-800 dark:text-emerald-300">
+                          <li><b>Inquiry Tagihan:</b> <code className="font-mono">GET /api/partner/tagihan-siswa/{'{nis_pembayaran}'}/riwayat</code></li>
+                          <li><b>Penerbitan VA:</b> <code className="font-mono">POST /api/partner/tagihan-siswa/{'{nis_pembayaran}'}/pembayaran-va</code> (Bank Nagari & BSI)</li>
+                          <li><b>Portal Terpadu:</b> Terintegrasi langsung untuk role <b>Orang Tua</b> dan <b>Siswa</b> di Web Dashboard & Mobile App.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* TAB 4: OPERASIONAL & KEBIJAKAN SISTEM */}
             {activeTab === 'operasional' && (
               <div className="space-y-6">
@@ -2081,21 +2246,23 @@ export default function PengaturanPage() {
       >
         <form onSubmit={handleSaveFaq} className="space-y-4 pt-1">
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Kategori Modul FAQ *
-            </label>
-            <select
-              value={faqForm.category}
-              onChange={(e) => setFaqForm({ ...faqForm, category: e.target.value })}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            <Select
+              value={faqForm.category || 'Akademik & LMS'}
+              onValueChange={(val) => setFaqForm({ ...faqForm, category: val })}
             >
-              <option value="Akademik & LMS">Akademik & LMS</option>
-              <option value="Absensi Digital">Absensi Digital & Gerbang</option>
-              <option value="Tahfizh & Mutabaah">Tahfizh & Mutabaah</option>
-              <option value="Kesiswaan">Kesiswaan & Murid</option>
-              <option value="Kepegawaian">SDM & Kepegawaian</option>
-              <option value="Keamanan & Akun">Keamanan & Akun</option>
-            </select>
+              <SelectLabel>Kategori Modul FAQ *</SelectLabel>
+              <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                <SelectValue placeholder="Pilih kategori FAQ..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem id="Akademik & LMS">Akademik & LMS</SelectItem>
+                <SelectItem id="Absensi Digital">Absensi Digital & Gerbang</SelectItem>
+                <SelectItem id="Tahfizh & Mutabaah">Tahfizh & Mutabaah</SelectItem>
+                <SelectItem id="Kesiswaan">Kesiswaan & Murid</SelectItem>
+                <SelectItem id="Kepegawaian">SDM & Kepegawaian</SelectItem>
+                <SelectItem id="Keamanan & Akun">Keamanan & Akun</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>

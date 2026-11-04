@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -52,13 +53,13 @@ import {
   SquircleActionButton,
   PrintOptionModal,
 } from '../../components/master-data'
-import { Input } from '@/components/tailgrids/core/input'
-import { Button } from '@/components/tailgrids/core/button'
-import { Pagination } from '@/components/tailgrids/core/pagination'
-import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/tailgrids/core/table'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/tailgrids/core/hover-card'
-import { Dialog, DialogBody, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/tailgrids/core/dialog'
-import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Pagination } from '@/components/ui/pagination'
+import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/ui/table'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
+import { Dialog, DialogBody, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Backdrop, OverlayWrapper } from '@/components/ui/dialog'
 import { printCleanTable, downloadPdfTable } from '../../utils/printHelper'
 import { cn } from '../../lib/utils'
 
@@ -795,28 +796,28 @@ export default function AttendanceReportPage() {
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <div>
                   <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Mulai</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={dateFrom}
                     onChange={(e) => {
                       setDateFrom(e.target.value)
                       setPeriod('custom')
                       setCurrentPage(1)
                     }}
-                    className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                    placeholder="Mulai..."
+                    inputClassName="h-8 text-[11px]"
                   />
                 </div>
                 <div>
                   <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Selesai</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={dateTo}
                     onChange={(e) => {
                       setDateTo(e.target.value)
                       setPeriod('custom')
                       setCurrentPage(1)
                     }}
-                    className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                    placeholder="Selesai..."
+                    inputClassName="h-8 text-[11px]"
                   />
                 </div>
               </div>

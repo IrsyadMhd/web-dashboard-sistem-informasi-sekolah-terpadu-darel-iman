@@ -6,6 +6,7 @@ import {
   searchAddressGeocoding,
   reverseGeocodeCoords,
 } from '../../utils/mapboxHelper'
+import Swal from '@/components/ui/compat/swal-heroui'
 
 /**
  * AddressMap — Interactive map for address location selection using Mapbox (with OpenStreetMap fallback).
@@ -192,7 +193,12 @@ export default function AddressMap({ latitude, longitude, onLocationChange, onAd
 
   const handleUseMyLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      alert('Geolocation tidak didukung oleh browser Anda.')
+      Swal.fire({
+        title: 'Geolocation Tidak Didukung',
+        text: 'Fitur Geolocation tidak didukung atau tidak diizinkan oleh peramban Anda.',
+        icon: 'warning',
+        confirmButtonColor: '#059669',
+      })
       return
     }
     navigator.geolocation.getCurrentPosition(
@@ -205,7 +211,12 @@ export default function AddressMap({ latitude, longitude, onLocationChange, onAd
         performReverseGeocode(lat, lng)
       },
       (err) => {
-        alert('Gagal mendapatkan lokasi. Pastikan izin lokasi diaktifkan pada peramban Anda.')
+        Swal.fire({
+          title: 'Gagal Mengambil Lokasi GPS',
+          text: 'Gagal mendapatkan lokasi. Pastikan izin akses lokasi telah diaktifkan pada peramban Anda.',
+          icon: 'error',
+          confirmButtonColor: '#059669',
+        })
         console.error('Geolocation error:', err)
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -226,11 +237,21 @@ export default function AddressMap({ latitude, longitude, onLocationChange, onAd
         }
         performReverseGeocode(parsedLat, parsedLng)
       } else {
-        alert('Lokasi tidak ditemukan. Silakan masukkan kata kunci lokasi lain.')
+        Swal.fire({
+          title: 'Lokasi Tidak Ditemukan',
+          text: 'Lokasi tidak ditemukan. Silakan masukkan kata kunci nama jalan, kelurahan, atau kota lain.',
+          icon: 'info',
+          confirmButtonColor: '#059669',
+        })
       }
     } catch (err) {
       console.error('Search error:', err)
-      alert('Gagal mencari lokasi.')
+      Swal.fire({
+        title: 'Gagal Mencari Lokasi',
+        text: 'Terjadi kesalahan jaringan saat mencari lokasi geocoding.',
+        icon: 'error',
+        confirmButtonColor: '#059669',
+      })
     } finally {
       setIsSearching(false)
     }

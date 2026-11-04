@@ -21,7 +21,7 @@ import {
 } from '../components/app'
 import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
 import ErrorState from '../components/dashboard/ErrorState'
-import { Button } from '@/components/tailgrids/core/button'
+import { Button } from '@/components/ui/button'
 import { managementDashboardService } from '../services/managementDashboardService'
 
 const containerVariants = {

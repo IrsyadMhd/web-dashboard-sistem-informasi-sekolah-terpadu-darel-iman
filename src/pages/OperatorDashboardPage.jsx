@@ -38,7 +38,7 @@ import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
 import ErrorState from '../components/dashboard/ErrorState'
 import KpiQuickViewModal from '../components/KpiQuickViewModal'
 import ModalErrorBoundary from '../components/common/ModalErrorBoundary'
-import { Button } from '@/components/tailgrids/core/button'
+import { Button } from '@/components/ui/button'
 import { managementDashboardService } from '../services/managementDashboardService'
 
 const containerVariants = {

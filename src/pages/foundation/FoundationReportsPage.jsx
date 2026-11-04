@@ -17,6 +17,7 @@ import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import {
   MasterDataPage,
 } from '../../components/master-data'
+import { SmartScrollFab } from '../../components/common'
 
 const containerVariants = {
   hidden: { opacity: 0, y: 15 },
@@ -185,7 +186,7 @@ export function FoundationReportsPage() {
         </motion.div>
 
         {/* Grid Laporan */}
-        <motion.div variants={itemVariants} className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <motion.div variants={itemVariants} id="katalog-laporan-yayasan" className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 scroll-mt-6">
           {reports.map((item) => {
             const Icon = item.icon
             return (
@@ -224,6 +225,9 @@ export function FoundationReportsPage() {
             )
           })}
         </motion.div>
+
+        {/* Smart Floating Scroll Navigator */}
+        <SmartScrollFab targetId="katalog-laporan-yayasan" downTooltip="Langsung ke Katalog Laporan" />
       </motion.div>
     </MasterDataPage>
   )

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { KeyRound, Eye, EyeOff, Loader2, ShieldCheck, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react'
 import { familyPortalService } from '../../services/familyPortalService'
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/tailgrids/core/alert'
-import { Card } from '@/components/tailgrids/core/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/ui/alert'
+import { Card } from '@/components/ui/card'
 
 export default function ChildPasswordManagementCard() {
   const [children, setChildren] = useState([])

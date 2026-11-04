@@ -9,7 +9,9 @@ import {
   ChevronDown,
   Sparkles,
   Users,
-  HeartHandshake
+  HeartHandshake,
+  ChevronRight,
+  PanelRightClose
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { familyPortalService } from '../../services/familyPortalService'
@@ -73,8 +75,26 @@ export default function FloatingChatWidget() {
 
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
+  const [isDocked, setIsDocked] = useState(() => {
+    try {
+      return localStorage.getItem('school_erp_chat_fab_docked') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [childId, setChildId] = useState('')
   const [unreadCount, setUnreadCount] = useState(0)
+
+  const toggleDock = (e) => {
+    e.stopPropagation()
+    setIsDocked((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('school_erp_chat_fab_docked', String(next))
+      } catch {}
+      return next
+    })
+  }
 
   // Widget Mode: 'employee' | 'parent' | 'teacher'
   const defaultMode = isParent && !isStaffOrTeacher ? 'parent' : isTeacher ? 'teacher' : 'employee'
@@ -281,34 +301,66 @@ export default function FloatingChatWidget() {
         </div>
       )}
 
-      {/* Floating Action Button (FAB) Bottom Right - Positioned above mobile bottom bar */}
+      {/* Floating Action Button (FAB) Bottom Right or Docked Edge Tab */}
       {!isMinimized && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40">
-          <button
-            type="button"
-            onClick={toggleOpen}
-            className="group relative flex items-center justify-center p-3.5 sm:p-4 rounded-full bg-gradient-to-r from-[#0E5C44] via-[#187154] to-[#3FBF75] text-white shadow-xl shadow-emerald-950/25 hover:shadow-2xl hover:shadow-emerald-700/40 hover:scale-108 active:scale-95 transition-all duration-300 cursor-pointer"
-            title={isOpen ? 'Tutup Chat' : 'Buka Chat'}
-          >
-            {/* Animated Glow Halo */}
-            <span className="absolute -inset-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 opacity-30 blur group-hover:opacity-60 transition duration-300" />
-
-            <div className="relative flex items-center justify-center">
-              {isOpen ? (
-                <X className="h-6 w-6 transition-transform duration-300 rotate-90 group-hover:rotate-0" />
-              ) : (
-                <div className="relative">
-                  <MessageCircle className="h-6 w-6 animate-pulse" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-2 -right-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white ring-2 ring-white dark:ring-slate-900 animate-bounce">
-                      {unreadCount}
-                    </span>
-                  )}
-                </div>
+        isDocked ? (
+          <div className="fixed bottom-28 sm:bottom-24 right-0 z-40 transition-transform duration-300">
+            <button
+              type="button"
+              onClick={() => {
+                setIsDocked(false)
+                setIsOpen(true)
+              }}
+              className="group flex items-center gap-1.5 pl-3 pr-2 py-2.5 rounded-l-2xl bg-gradient-to-r from-[#0E5C44] via-[#147B5B] to-[#1E8E5A] text-white shadow-xl shadow-emerald-950/30 hover:pl-4 transition-all duration-200 cursor-pointer border-y border-l border-emerald-400/40"
+              title="Buka Chat Terpadu (Klik untuk membuka)"
+            >
+              <MessageCircle className="h-4.5 w-4.5 text-emerald-200 group-hover:scale-110 transition-transform" />
+              <span className="text-[11px] font-black tracking-wide pr-1 hidden xs:inline">Chat</span>
+              {unreadCount > 0 && (
+                <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white">
+                  {unreadCount}
+                </span>
               )}
-            </div>
-          </button>
-        </div>
+            </button>
+          </div>
+        ) : (
+          <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 group/fab">
+            {/* Dock to Edge Button (Visible on FAB hover) */}
+            <button
+              type="button"
+              onClick={toggleDock}
+              className="absolute -top-2 -left-2 z-50 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900/90 text-slate-300 hover:text-white hover:bg-slate-950 border border-slate-700/80 shadow-md opacity-0 group-hover/fab:opacity-100 transition-all duration-200 cursor-pointer scale-75 group-hover/fab:scale-100"
+              title="Sematkan ke tepi layar (agar tidak menghalangi)"
+            >
+              <PanelRightClose className="h-3 w-3" />
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleOpen}
+              className="group relative flex items-center justify-center p-3.5 sm:p-4 rounded-full bg-gradient-to-r from-[#0E5C44] via-[#187154] to-[#3FBF75] text-white shadow-xl shadow-emerald-950/25 hover:shadow-2xl hover:shadow-emerald-700/40 hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer"
+              title={isOpen ? 'Tutup Chat' : 'Buka Chat'}
+            >
+              {/* Animated Glow Halo */}
+              <span className="absolute -inset-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 opacity-30 blur group-hover:opacity-60 transition duration-300" />
+
+              <div className="relative flex items-center justify-center">
+                {isOpen ? (
+                  <X className="h-6 w-6 transition-transform duration-300 rotate-90 group-hover:rotate-0" />
+                ) : (
+                  <div className="relative">
+                    <MessageCircle className="h-6 w-6 animate-pulse" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-2 -right-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white ring-2 ring-white dark:ring-slate-900 animate-bounce">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </button>
+          </div>
+        )
       )}
     </>
   )

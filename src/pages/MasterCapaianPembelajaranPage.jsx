@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import ActionDropdown from '../components/app/ActionDropdown'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { capaianPembelajaranService } from '../services/capaianPembelajaranService'
 import { educationUnitService } from '../services/educationUnitService'
 import { tahunAjaranService } from '../services/tahunAjaranService'
@@ -261,7 +262,13 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
 
   const handleExportCSV = () => {
     if (!dataCp || dataCp.length === 0) {
-      alert('Tidak ada data Capaian Pembelajaran untuk diekspor.')
+      Swal.fire({
+        title: 'Data Masih Kosong',
+        text: 'Tidak ada data Capaian Pembelajaran untuk diekspor pada filter yang dipilih.',
+        icon: 'info',
+        confirmButtonText: 'Tutup',
+        confirmButtonColor: '#059669',
+      })
       return
     }
     const headers = ['NO', 'KODE CP', 'NAMA CP', 'FASE & KELAS', 'MATA PELAJARAN', 'STATUS']
@@ -1095,9 +1102,9 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
 
       {/* Modal Form */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-[#1B2433] w-full max-w-xl rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-            <div className="bg-gradient-to-r from-[#0E5C44] to-[#1E8E5A] p-5 text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-5 bg-slate-900/60 backdrop-blur-sm animate-fadeIn overflow-y-auto">
+          <div className="bg-white dark:bg-[#1B2433] w-full max-w-xl my-auto max-h-[calc(100dvh-2rem)] flex flex-col rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#0E5C44] to-[#1E8E5A] p-5 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <BookOpen className="w-6 h-6 text-emerald-200" />
                 <h3 className="text-lg font-bold">
@@ -1109,7 +1116,7 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
               </button>
             </div>
 
-            <form onSubmit={handleSubmitForm} className="p-6 space-y-4">
+            <form onSubmit={handleSubmitForm} className="p-6 space-y-4 overflow-y-auto min-h-0 flex-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
@@ -1301,7 +1308,7 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
                 </div>
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="sticky bottom-0 bg-white dark:bg-[#1B2433] pt-3 pb-1 -mx-6 px-6 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={handleCloseModal}

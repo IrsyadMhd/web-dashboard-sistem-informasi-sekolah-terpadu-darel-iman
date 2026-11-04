@@ -3,7 +3,8 @@ import {
   BookOpenCheck, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCopy,
   Download, Loader2, Printer, RotateCcw, Save, Search, Send, Users, X, XCircle,
 } from 'lucide-react'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
+import { DatePicker } from '@/components/ui'
 import { mutabaahService } from '../services/mutabaahService'
 import { printCleanTable } from '../utils/printHelper'
 import './MutabaahDailySpreadsheet.css'
@@ -202,7 +203,10 @@ export default function MutabaahDailySpreadsheet() {
     </section>
 
     <section className="daily-toolbar">
-      <label><span>Tanggal</span><div><CalendarDays size={17} /><input type="date" value={date} onChange={(e) => { setAssignmentId(''); setDate(e.target.value) }} /></div></label>
+      <div className="w-52">
+        <span className="block text-xs font-semibold text-slate-500 mb-1">Tanggal</span>
+        <DatePicker value={date} onChange={(e) => { setAssignmentId(''); setDate(e.target.value) }} />
+      </div>
       <label className="assignment-select"><span>Scope Pembimbing</span><select value={assignmentId} onChange={(e) => setAssignmentId(e.target.value)}><option value="">Pilih assignment</option>{context?.assignments?.map((a) => <option key={a.id} value={a.id}>{a.unit_name} · {a.kelas_name || a.rombel_name || a.mentoring_group || a.type}</option>)}</select></label>
       <label className="search-student"><span>Cari siswa</span><div><Search size={17} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nama atau NIS..." /></div></label>
       <button className="outline" onClick={copyPrevious} disabled={!students.length}><ClipboardCopy size={17} /> Salin Kemarin</button>

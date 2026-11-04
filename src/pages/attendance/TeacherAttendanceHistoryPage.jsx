@@ -20,10 +20,10 @@ import AppBadge from '../../components/app/AppBadge'
 import AppDataTable from '../../components/app/AppDataTable'
 import AppEmptyState from '../../components/app/AppEmptyState'
 import AppSkeleton from '../../components/app/AppSkeleton'
-import { Button } from '@/components/tailgrids/core/button'
-import { Input } from '@/components/tailgrids/core/input'
-import { Pagination } from '@/components/tailgrids/core/pagination'
-import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/tailgrids/core/table'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Pagination } from '@/components/ui/pagination'
+import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/ui/table'
 
 export default function TeacherAttendanceHistoryPage() {
   const navigate = useNavigate()

@@ -127,7 +127,25 @@ export function AlertDescription({ className, children, ...props }) {
   )
 }
 
+export function AlertContent({ className, children, ...props }) {
+  return (
+    <div className={cn('flex-1 min-w-0 text-sm leading-relaxed', className)} {...props}>
+      {children}
+    </div>
+  )
+}
+
+export function AlertIndicator({ className, children, ...props }) {
+  return (
+    <div className={cn('shrink-0 mt-0.5', className)} {...props}>
+      {children}
+    </div>
+  )
+}
+
 AlertDescription.propTypes = { className: PropTypes.string, children: PropTypes.node }
+AlertContent.propTypes = { className: PropTypes.string, children: PropTypes.node }
+AlertIndicator.propTypes = { className: PropTypes.string, children: PropTypes.node }
 
 export function CRUDNotificationAlerts({ className = 'space-y-3' }) {
   return (

@@ -54,8 +54,9 @@ import { PersonIdentityCell } from '../../components/ui/PersonIdentityCell'
 import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 import { FoundationExportModal } from '../../components/foundation/FoundationExportModal'
 import { FoundationUnitKpiModal } from '../../components/foundation/FoundationUnitKpiModal'
+import { SmartScrollFab } from '../../components/common'
 
-import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
+import { ArrowRightLeft as ArrowBothDirectionHorizontal2 } from 'lucide-react'
 
 const LEVEL_OPTIONS = ['TKIT', 'TAUD', 'SDIT', 'MIT', 'SMPIT', 'SMAIT', 'PONPES', 'Mahad']
 
@@ -512,7 +513,7 @@ export function FoundationUnitsPage() {
         }
       />
 
-      <MasterDataTable className="foundation-table">
+      <MasterDataTable id="tabel-unit-pendidikan" className="foundation-table scroll-mt-6">
         <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-700">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Unit Pendidikan</h2>
@@ -677,6 +678,9 @@ export function FoundationUnitsPage() {
         rows={exportRows}
         filename="Unit_Pendidikan_Yayasan"
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-unit-pendidikan" downTooltip="Langsung ke Tabel Unit" />
         </motion.div>
       </motion.div>
     </MasterDataPage>

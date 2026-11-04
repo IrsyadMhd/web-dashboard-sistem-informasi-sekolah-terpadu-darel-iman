@@ -39,7 +39,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { useAuthStore } from '../stores/authStore'
-import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
+import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS, ROLES } from '../auth/portalResolver'
 import { scheduleService } from '../services/scheduleService'
 import { educationUnitService } from '../services/educationUnitService'
 import { tahunAjaranService } from '../services/tahunAjaranService'
@@ -50,7 +50,7 @@ import {
   AppBadge,
   useToast,
   AppButton,
-  AppDrawer,
+  AppModal,
   AppEmptyState,
   AppErrorState,
   AppSearch,
@@ -58,8 +58,10 @@ import {
   AppTabs,
   MobileDataCard,
   PersonIdentityCell,
+  AppBreadcrumb,
 } from '../components/app'
-import { Pagination } from '../components/tailgrids/core/pagination'
+import { Pagination } from '../components/ui/pagination'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import {
   MasterDataPage,
   MasterActionButton,
@@ -184,7 +186,7 @@ function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, item, isSubmitting 
         initial={{ opacity: 0, scale: 0.94 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.94 }}
-        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+        className="relative my-auto w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
       >
         <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
         <div className="p-6">
@@ -302,6 +304,19 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   }, [authUser])
 
   const authLevel = useMemo(() => getUserRoleLevel(authUser), [authUser])
+  const isSuperAdminOrYayasan = authLevel <= ROLE_LEVELS.YAYASAN // Level 1-2
+  const isDivisiPendidikan = useMemo(() => {
+    if (isSuperAdminOrYayasan) return false
+    return (
+      authLevel === ROLE_LEVELS.DIVISI_PENDIDIKAN ||
+      hasAnyRole(userRoles, ROLES.DIVISI) ||
+      userRoles.some((r) => /divisi|bidang[\s_]*pendidikan|pengawasan[\s_]*akademik/i.test(r))
+    )
+  }, [authLevel, userRoles, isSuperAdminOrYayasan])
+
+  // Multi-unit supervision: Super Admin, Yayasan, and Divisi Pendidikan
+  const canSelectUnit = isSuperAdminOrYayasan || isDivisiPendidikan
+
   const isGuru = useMemo(() => {
     if (authLevel === ROLE_LEVELS.GURU) return true
     const hasGuru = userRoles.some((r) => /guru|pendidik|pengajar|walas|wali[\s_]*kelas/i.test(r))
@@ -309,6 +324,11 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     return hasGuru && !hasAdminOrKepsek
   }, [authLevel, userRoles])
   const isTu = useMemo(() => authLevel === ROLE_LEVELS.OPERATOR || authLevel === ROLE_LEVELS.TATA_USAHA || userRoles.some(r => /tata[\s_]*usaha|tu|staf[\s_]*tu|admin[\s_]*tu/i.test(r)), [authLevel, userRoles])
+  const isKepsek = useMemo(() => {
+    if (canSelectUnit) return false
+    return authLevel === ROLE_LEVELS.KEPALA_SEKOLAH || userRoles.some((r) => /kepala[\s_]*sekolah|kepsek/i.test(r))
+  }, [authLevel, userRoles, canSelectUnit])
+
   const canManage = useMemo(() => !isGuru && (authLevel <= ROLE_LEVELS.KEPALA_SEKOLAH || isTu), [isGuru, authLevel, isTu]) // Level <= 4 & TU (Level 3)
 
   // Guru dilarang mengakses halaman Master Jadwal Pelajaran (dialihkan ke Portal Guru)
@@ -316,7 +336,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     return <Navigate to="/portal-guru/workspace?tab=jadwal" replace />
   }
 
-  // Resolusi unit_id guru / TU dari profil user
+  // Resolusi unit_id guru / TU / Kepala Sekolah dari profil user
   const userUnitId = useMemo(() => {
     if (!authUser) return null
     const candidates = [
@@ -345,7 +365,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   }, [authUser])
 
   // Filters
-  const [unitFilter, setUnitFilter] = useState('')
+  const [unitFilter, setUnitFilter] = useState(() => (!canSelectUnit && userUnitId ? String(userUnitId) : ''))
+  const [programTypeFilter, setProgramTypeFilter] = useState('') // '' | 'fullday' | 'boarding'
   const [yearFilter, setYearFilter] = useState('')
   const [semesterFilter, setSemesterFilter] = useState('')
   const [subjectFilter, setSubjectFilter] = useState('')
@@ -370,6 +391,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const [importPreviewData, setImportPreviewData] = useState([])
   const [isImporting, setIsImporting] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
+  const [exportFormat, setExportFormat] = useState('xlsx')
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
   const [printFormatMode, setPrintFormatMode] = useState('matrix') // 'matrix' (Matriks Mingguan A4 Landscape) | 'table' (Rekap Log Baris)
   const [printTeacherFilter, setPrintTeacherFilter] = useState('')
@@ -499,15 +521,15 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     queryFn: scheduleService.getOptions,
   })
 
-  // Inisialisasi filter scope guru atau TU saat role sudah diketahui
+  // Inisialisasi filter scope guru, TU, atau Kepala Sekolah saat role sudah diketahui
   useEffect(() => {
     if (isGuru) {
       if (guruUnitId) setUnitFilter(guruUnitId)
       if (guruEmployeeId) setTeacherFilter(guruEmployeeId)
-    } else if (isTu) {
-      if (userUnitId) setUnitFilter(userUnitId)
+    } else if (!canSelectUnit && userUnitId) {
+      setUnitFilter(String(userUnitId))
     }
-  }, [isGuru, isTu, guruUnitId, userUnitId, guruEmployeeId])
+  }, [isGuru, canSelectUnit, guruUnitId, userUnitId, guruEmployeeId])
 
 
   // Fetch Units for dropdown filter & dependent form
@@ -548,6 +570,18 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     return Array.from(map.values())
   }, [unitsList, options.kelas])
 
+  // Filtered unit options berdasarkan pilihan programTypeFilter (Fullday vs Boarding)
+  const filteredUnitOptions = useMemo(() => {
+    if (!programTypeFilter) return unitOptions
+    return unitOptions.filter((u) => {
+      const isBoarding =
+        u.program_type === 'boarding' ||
+        u.metadata?.is_boarding === true ||
+        String(u.level || '').toLowerCase().includes('ponpes')
+      return programTypeFilter === 'boarding' ? isBoarding : !isBoarding
+    })
+  }, [unitOptions, programTypeFilter])
+
   // Active unit object for print modal, branding, and academic configuration
   const activeUnitObj = useMemo(() => {
     const targetId = (isGuru || isTu) && userUnitId ? userUnitId : unitFilter
@@ -568,6 +602,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
       page,
       search,
       unitFilter,
+      programTypeFilter,
       yearFilter,
       semesterFilter,
       subjectFilter,
@@ -584,6 +619,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         per_page: viewMode === 'weekly' ? 24 : 10,
         search,
         unit_pendidikan_id: unitFilter || undefined,
+        program_type: programTypeFilter || undefined,
         academic_year_id: yearFilter || undefined,
         semester_id: semesterFilter || undefined,
         subject_id: subjectFilter || undefined,
@@ -693,6 +729,184 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     }
     return list
   }, [options.guru, unitFilter, subjectFilter])
+
+  // ── HERO UI FILTER DROPDOWN OPTIONS ──
+  const heroUnitFilterOptions = useMemo(() => {
+    return [
+      { value: '', label: 'Semua Unit' },
+      ...filteredUnitOptions.map((u) => {
+        const isBoarding =
+          u.program_type === 'boarding' ||
+          u.metadata?.is_boarding === true ||
+          String(u.level || '').toLowerCase().includes('ponpes')
+        return {
+          value: String(u.id),
+          label: u.name || u.nama,
+          badge: isBoarding ? 'Boarding' : 'Full Day',
+          subtext: isBoarding ? 'Boarding School (Pesantren)' : 'Full Day School',
+        }
+      }),
+    ]
+  }, [filteredUnitOptions])
+
+  const heroProgramTypeOptions = useMemo(
+    () => [
+      { value: '', label: 'Semua Program' },
+      { value: 'fullday', label: 'Full Day School', badge: 'Full Day' },
+      { value: 'boarding', label: 'Boarding School (Pesantren)', badge: 'Boarding' },
+    ],
+    []
+  )
+
+  const heroDayOptions = useMemo(
+    () => [
+      { value: '', label: 'Semua Hari' },
+      ...DAYS_MAP.map((item) => ({
+        value: String(item.id),
+        label: item.name,
+      })),
+    ],
+    []
+  )
+
+  const heroTeacherOptions = useMemo(() => {
+    return [
+      { value: '', label: subjectFilter ? 'Semua Guru Mapel Ini' : 'Semua Guru' },
+      ...filterTeacherOptions.map((item) => ({
+        value: String(item.id),
+        label: item.nama_lengkap,
+        subtext: item.nip ? `NIP: ${item.nip}` : (item.niy ? `NIY: ${item.niy}` : undefined),
+      })),
+    ]
+  }, [filterTeacherOptions, subjectFilter])
+
+  const heroSubjectOptions = useMemo(() => {
+    return [
+      { value: '', label: teacherFilter ? 'Semua Mapel Guru Ini' : 'Semua Mata Pelajaran' },
+      ...filterSubjectOptions.map((item) => ({
+        value: String(item.id),
+        label: item.nama_mapel || item.nama || item.name,
+        subtext: item.kode_mapel || item.code ? `Kode: ${item.kode_mapel || item.code}` : undefined,
+      })),
+    ]
+  }, [filterSubjectOptions, teacherFilter])
+
+  const heroStatusOptions = useMemo(
+    () => [
+      { value: '', label: 'Semua Status' },
+      { value: '1', label: 'Jadwal Aktif', badge: 'Aktif' },
+      { value: '0', label: 'Jadwal Nonaktif', badge: 'Nonaktif' },
+    ],
+    []
+  )
+
+  const printKelasOptions = useMemo(
+    () => [
+      { value: '', label: 'Kelas Aktif / Paling Atas di Unit' },
+      ...(options.kelas || []).map((k) => ({
+        value: String(k.id),
+        label: `${k.nama_kelas || k.kode_kelas || 'Kelas'} ${k.jenjang ? `(${k.jenjang})` : ''}`,
+      })),
+    ],
+    [options.kelas]
+  )
+
+  const printTeacherOptions = useMemo(
+    () => [
+      { value: '', label: 'Semua Guru (Seluruh Jadwal Terfilter)' },
+      ...filterTeacherOptions.map((g) => ({
+        value: String(g.id),
+        label: `${g.nama_lengkap || g.nama} ${g.niy ? `(NIY ${g.niy})` : ''}`,
+      })),
+    ],
+    [filterTeacherOptions]
+  )
+
+  const formUnitOptions = useMemo(() => {
+    const list = unitOptions.filter(
+      (item) => !(isGuru || isTu) || !userUnitId || String(item.id) === String(userUnitId)
+    )
+    const res = []
+    if (!(isGuru || isTu)) {
+      res.push({ value: '', label: 'Semua Unit (Lintas Unit)' })
+    }
+    list.forEach((item) => {
+      res.push({
+        value: String(item.id),
+        label: item.name || item.nama,
+      })
+    })
+    return res
+  }, [unitOptions, isGuru, isTu, userUnitId])
+
+  const formAcademicYearOptions = useMemo(() => {
+    return [
+      { value: '', label: 'Pilih Tahun Ajaran' },
+      ...(tahunAjaranList || []).map((item) => ({
+        value: String(item.id),
+        label: `${item.name || item.tahun_ajaran || item.nama} ${item.is_active ? '(Aktif)' : ''}`.trim(),
+        badge: item.is_active ? 'Aktif' : undefined,
+      })),
+    ]
+  }, [tahunAjaranList])
+
+  const formSemesterOptions = useMemo(() => {
+    if (!form.academic_year_id) {
+      return [{ value: '', label: 'Pilih Thn Ajaran Dulu' }]
+    }
+    return [
+      { value: '', label: 'Pilih Semester' },
+      ...filteredSemesters.map((item) => ({
+        value: String(item.id),
+        label: `${item.name} ${item.is_active ? '(Aktif)' : ''}`.trim(),
+        badge: item.is_active ? 'Aktif' : undefined,
+      })),
+    ]
+  }, [form.academic_year_id, filteredSemesters])
+
+  const formKelasOptions = useMemo(() => {
+    return [
+      { value: '', label: filteredKelas.length === 0 ? 'Tidak ada kelas sesuai filter' : 'Pilih Kelas / Rombel' },
+      ...filteredKelas.map((item) => ({
+        value: String(item.id),
+        label: item.nama_kelas,
+        subtext: item.unitPendidikan?.name || item.unit_pendidikan?.name || undefined,
+      })),
+    ]
+  }, [filteredKelas])
+
+  const formGuruOptions = useMemo(() => {
+    return [
+      { value: '', label: filteredGuru.length === 0 ? 'Tidak ada guru sesuai unit' : 'Pilih Guru Pengampu' },
+      ...filteredGuru.map((item) => ({
+        value: String(item.id),
+        label: item.nama_lengkap,
+        subtext: item.niy ? `NIY: ${item.niy}` : (item.nip ? `NIP: ${item.nip}` : undefined),
+      })),
+    ]
+  }, [filteredGuru])
+
+  const formSubjectOptions = useMemo(() => {
+    return [
+      { value: '', label: filteredSubjects.length === 0 ? 'Tidak ada mapel sesuai unit' : 'Pilih Mata Pelajaran' },
+      ...filteredSubjects.map((item) => ({
+        value: String(item.id),
+        label: subjectName(item),
+        subtext: item.kode_mapel || item.code ? `Kode: ${item.kode_mapel || item.code}` : undefined,
+      })),
+    ]
+  }, [filteredSubjects])
+
+  const formPembinaOptions = useMemo(() => {
+    return [
+      { value: '', label: '-- Tanpa Guru Khusus (Umum / Mandiri) --' },
+      ...filteredGuru.map((item) => ({
+        value: String(item.id),
+        label: item.nama_lengkap,
+        subtext: item.niy ? `NIY: ${item.niy}` : undefined,
+      })),
+    ]
+  }, [filteredGuru])
 
   // Save Mutation
   const saveMutation = useMutation({
@@ -909,8 +1123,9 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
   const resetFilters = () => {
     setSearch('')
-    // Untuk role guru atau TU: kembalikan ke scope unit & teacher-nya sendiri
-    setUnitFilter((isGuru || isTu) && userUnitId ? userUnitId : '')
+    // Untuk role non-global (Kepala Sekolah, TU, Guru): kembalikan ke scope unit-nya sendiri
+    setUnitFilter(!canSelectUnit && userUnitId ? String(userUnitId) : '')
+    setProgramTypeFilter('')
     setYearFilter('')
     setSemesterFilter('')
     setSubjectFilter('')
@@ -925,6 +1140,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const activeFilterCount = [
     // Untuk Guru & TU: unitFilter adalah scope wajib institusi tempat bertugas, bukan filter aktif yang bisa direset
     !(isGuru || isTu) ? unitFilter : null,
+    !(isGuru || isTu) ? programTypeFilter : null,
     yearFilter,
     semesterFilter,
     subjectFilter,
@@ -1239,7 +1455,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   return (
     <MasterDataPage
       className="schedule-master-page space-y-6"
-      hideBreadcrumb={embedded || hideBreadcrumb}
+      hideBreadcrumb={true}
     >
       {/* ══════════════════════════════════════════════════════════════════
           1. HARMONIZED PRINT OPTION MODAL (CETAK & PDF)
@@ -1261,7 +1477,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 12 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              className="modal-dialog font-sans w-full max-w-lg"
+              className="modal-dialog font-sans my-auto w-full max-w-lg"
             >
               <div className="modal-content relative flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
                 {/* Top Accent Gradient Bar */}
@@ -1347,18 +1563,19 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                             {activeUnitObj?.program_type === 'boarding' ? 'Boarding School' : 'Full Day School'}
                           </span>
                         </div>
-                        <select
+                        <HeroUiFilterSelect
+                          ariaLabel="Pilih Rombel / Kelas Target"
                           value={printKelasFilter}
-                          onChange={(e) => setPrintKelasFilter(e.target.value)}
-                          className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20"
-                        >
-                          <option value="">Kelas Aktif / Paling Atas di Unit</option>
-                          {(options.kelas || []).map((k) => (
-                            <option key={k.id} value={k.id}>
-                              {k.nama_kelas || k.kode_kelas || 'Kelas'} {k.jenjang ? `(${k.jenjang})` : ''}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => setPrintKelasFilter(val)}
+                          options={printKelasOptions}
+                          placeholder="Kelas Aktif / Paling Atas di Unit"
+                          icon={GraduationCap}
+                          searchable
+                          allowClear
+                          className="w-full"
+                          popoverWidth="w-full"
+                          size="md"
+                        />
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                           Mencetak tabel jadwal matriks mingguan (Senin s/d Sabtu) dengan Kop Surat Resmi Lembaga, identitas wali kelas, kepala sekolah, serta pembedaan otomatis Full Day vs Boarding School.
                         </p>
@@ -1406,18 +1623,19 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                           Filter Guru Pengampu (Opsional)
                         </label>
-                        <select
+                        <HeroUiFilterSelect
+                          ariaLabel="Filter Guru Pengampu"
                           value={printTeacherFilter}
-                          onChange={(e) => setPrintTeacherFilter(e.target.value)}
-                          className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20"
-                        >
-                          <option value="">Semua Guru (Seluruh Jadwal Terfilter)</option>
-                          {filterTeacherOptions.map((g) => (
-                            <option key={g.id} value={g.id}>
-                              {g.nama_lengkap || g.nama} {g.niy ? `(NIY ${g.niy})` : ''}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => setPrintTeacherFilter(val)}
+                          options={printTeacherOptions}
+                          placeholder="Semua Guru (Seluruh Jadwal Terfilter)"
+                          icon={Users}
+                          searchable
+                          allowClear
+                          className="w-full"
+                          popoverWidth="w-full"
+                          size="md"
+                        />
                         <p className="text-[11px] text-slate-400">
                           {printTeacherFilter
                             ? 'Mencetak jadwal khusus untuk guru terpilih.'
@@ -1793,6 +2011,14 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── Breadcrumb Navigation ── */}
+      {!(embedded || hideBreadcrumb) && (
+        <div className="print:hidden">
+          <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Jadwal Pelajaran' }]} />
+        </div>
+      )}
+
       {/* ── Modern Hero Header (TailGrids Standard) ── */}
       {!shouldHideHeader && (
         <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
@@ -2023,63 +2249,91 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
           {/* Baris 3: Filter Controls Horizontal */}
           <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full pt-3">
-            {/* Filter Unit: Terkunci untuk Guru & Tata Usaha, dropdown untuk manajemen yayasan/divisi */}
-            {(isGuru || isTu) ? (
-              /* Badge unit terkunci (read-only) untuk role Guru & Tata Usaha */
-              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-3 py-2 text-xs font-bold text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-300 shrink-0" title={isTu ? 'Unit Kerja Tata Usaha' : 'Unit Pendidik'}>
+            {/* Filter Unit: Terkunci untuk Kepala Sekolah, Guru & TU; Dropdown untuk Divisi Pendidikan, Super Admin & Yayasan */}
+            {!canSelectUnit ? (
+              /* Badge unit terkunci (read-only) untuk role unit (Kepala Sekolah, Guru, TU) */
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-3 py-2 text-xs font-bold text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-300 shrink-0" title={isKepsek ? 'Unit Pendidikan Kepala Sekolah' : (isTu ? 'Unit Kerja Tata Usaha' : 'Unit Anda')}>
                 <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>
                   {unitOptions.find((u) => String(u.id) === String(unitFilter))?.name ||
                     unitOptions.find((u) => String(u.id) === String(unitFilter))?.nama ||
-                    (isTu ? 'Unit Kerja TU' : 'Unit Anda')}
+                    (isKepsek ? 'Unit Sekolah Anda' : (isTu ? 'Unit Kerja TU' : 'Unit Anda'))}
                 </span>
               </div>
             ) : (
-              <MasterFilterSelect
-                aria-label="Filter Unit Pendidikan"
+              <HeroUiFilterSelect
+                ariaLabel="Filter Unit Pendidikan"
                 value={unitFilter}
-                onChange={(e) => {
-                  setUnitFilter(e.target.value)
+                onChange={(val) => {
+                  setUnitFilter(val)
                   setClassFilter('')
                   setTeacherFilter('')
                   setSubjectFilter('')
                   setPage(1)
                 }}
-                className="w-full sm:w-auto min-w-[140px]"
-              >
-                <option value="">Semua Unit</option>
-                {unitOptions.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name || u.nama}
-                  </option>
-                ))}
-              </MasterFilterSelect>
+                options={heroUnitFilterOptions}
+                placeholder="Semua Unit"
+                icon={Building2}
+                searchable
+                allowClear
+                className="w-full sm:w-auto min-w-[170px]"
+                popoverWidth="w-72"
+              />
             )}
 
-            <MasterFilterSelect
-              aria-label="Filter Hari Mengajar"
+            {/* Filter Pembeda Program (Full Day vs Boarding) di sebelah Semua Unit */}
+            {canSelectUnit && (
+              <HeroUiFilterSelect
+                ariaLabel="Filter Tipe Program"
+                value={programTypeFilter}
+                onChange={(val) => {
+                  const newVal = val
+                  setProgramTypeFilter(newVal)
+                  if (newVal && unitFilter) {
+                    const selUnit = unitOptions.find((u) => String(u.id) === String(unitFilter))
+                    const isBoarding =
+                      selUnit?.program_type === 'boarding' ||
+                      selUnit?.metadata?.is_boarding === true ||
+                      String(selUnit?.level || '').toLowerCase().includes('ponpes')
+                    if ((newVal === 'boarding' && !isBoarding) || (newVal === 'fullday' && isBoarding)) {
+                      setUnitFilter('')
+                    }
+                  }
+                  setClassFilter('')
+                  setTeacherFilter('')
+                  setSubjectFilter('')
+                  setPage(1)
+                }}
+                options={heroProgramTypeOptions}
+                placeholder="Semua Program"
+                icon={GraduationCap}
+                allowClear
+                className="w-full sm:w-auto min-w-[155px]"
+                popoverWidth="w-64"
+              />
+            )}
+
+            <HeroUiFilterSelect
+              ariaLabel="Filter Hari Mengajar"
               value={dayFilter}
-              onChange={(e) => {
-                setDayFilter(e.target.value)
+              onChange={(val) => {
+                setDayFilter(val)
                 setPage(1)
               }}
+              options={heroDayOptions}
+              placeholder="Semua Hari"
+              icon={Calendar}
+              allowClear
               className="w-full sm:w-auto min-w-[140px]"
-            >
-              <option value="">Semua Hari</option>
-              {DAYS_MAP.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </MasterFilterSelect>
+              popoverWidth="w-48"
+            />
 
             {/* Filter Guru: DISEMBUNYIKAN untuk role Guru (mereka hanya bisa lihat jadwal mereka sendiri) */}
             {!isGuru && (
-              <MasterFilterSelect
-                aria-label="Filter Guru"
+              <HeroUiFilterSelect
+                ariaLabel="Filter Guru"
                 value={teacherFilter}
-                onChange={(e) => {
-                  const newTeacherId = e.target.value
+                onChange={(newTeacherId) => {
                   setTeacherFilter(newTeacherId)
                   if (newTeacherId && subjectFilter) {
                     const targetSubj = (options.mata_pelajaran || []).find((m) => String(m.id) === String(subjectFilter))
@@ -2089,24 +2343,20 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                   }
                   setPage(1)
                 }}
-                className="w-full sm:w-auto min-w-[140px]"
-              >
-                <option value="">
-                  {subjectFilter ? 'Semua Guru Mapel Ini' : 'Semua Guru'}
-                </option>
-                {filterTeacherOptions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.nama_lengkap}
-                  </option>
-                ))}
-              </MasterFilterSelect>
+                options={heroTeacherOptions}
+                placeholder={subjectFilter ? 'Semua Guru Mapel Ini' : 'Semua Guru'}
+                icon={Users}
+                searchable
+                allowClear
+                className="w-full sm:w-auto min-w-[170px]"
+                popoverWidth="w-72"
+              />
             )}
 
-            <MasterFilterSelect
-              aria-label="Filter Mata Pelajaran"
+            <HeroUiFilterSelect
+              ariaLabel="Filter Mata Pelajaran"
               value={subjectFilter}
-              onChange={(e) => {
-                const newSubjectId = e.target.value
+              onChange={(newSubjectId) => {
                 setSubjectFilter(newSubjectId)
                 if (newSubjectId && teacherFilter) {
                   const targetGuru = (options.guru || []).find((g) => String(g.id) === String(teacherFilter))
@@ -2116,31 +2366,29 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                 }
                 setPage(1)
               }}
-              className="w-full sm:w-auto min-w-[150px]"
-            >
-              <option value="">
-                {teacherFilter ? 'Semua Mapel Guru Ini' : 'Semua Mata Pelajaran'}
-              </option>
-              {filterSubjectOptions.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nama_mapel || item.nama || item.name}
-                </option>
-              ))}
-            </MasterFilterSelect>
+              options={heroSubjectOptions}
+              placeholder={teacherFilter ? 'Semua Mapel Guru Ini' : 'Semua Mata Pelajaran'}
+              icon={BookOpen}
+              searchable
+              allowClear
+              className="w-full sm:w-auto min-w-[180px]"
+              popoverWidth="w-72"
+            />
 
-            <MasterFilterSelect
-              aria-label="Filter Status"
+            <HeroUiFilterSelect
+              ariaLabel="Filter Status"
               value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value)
+              onChange={(val) => {
+                setStatusFilter(val)
                 setPage(1)
               }}
-              className="w-full sm:w-auto min-w-[140px]"
-            >
-              <option value="">Semua Status</option>
-              <option value="1">Aktif</option>
-              <option value="0">Nonaktif</option>
-            </MasterFilterSelect>
+              options={heroStatusOptions}
+              placeholder="Semua Status"
+              icon={Layers}
+              allowClear
+              className="w-full sm:w-auto min-w-[145px]"
+              popoverWidth="w-48"
+            />
 
             {/* Quick Toggle: Hanya Bentrok */}
             <button
@@ -2502,15 +2750,16 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         </div>
       </div>
 
-      {/* DETAIL DRAWER */}
-      <AppDrawer
+      {/* DETAIL MODAL (CENTERED) */}
+      <AppModal
         isOpen={Boolean(detailDrawerItem)}
         onClose={() => setDetailDrawerItem(null)}
         icon={CalendarDays}
         title="Detail Jadwal Pelajaran"
         description="Informasi lengkap alokasi waktu dan penugasan guru."
+        maxWidth="max-w-xl"
         footer={
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-2 w-full">
             <AppButton
               variant="secondary"
               size="sm"
@@ -2546,7 +2795,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         }
       >
         {detailDrawerItem && (
-          <div className="space-y-5 p-1">
+          <div className="space-y-4 p-1">
             {/* Header Highlight Card */}
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
               <div className="flex items-center justify-between">
@@ -2645,7 +2894,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
             </div>
           </div>
         )}
-      </AppDrawer>
+      </AppModal>
 
       {/* FORM MODAL (TAMBAH / EDIT) - HERO UI STYLE 2-COLUMN */}
       <MasterFormModal
@@ -2787,23 +3036,19 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                   <School className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>Unit Pendidikan</span>
                 </label>
-                <select
-                  disabled={Boolean((isGuru || isTu) && userUnitId)}
+                <HeroUiFilterSelect
+                  ariaLabel="Unit Pendidikan"
                   value={form.unit_pendidikan_id}
-                  onChange={(e) => handleFormChange('unit_pendidikan_id', e.target.value)}
-                  className={`h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                    (isGuru || isTu) && userUnitId ? 'opacity-75 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''
-                  }`}
-                >
-                  {!(isGuru || isTu) && <option value="">Semua Unit (Lintas Unit)</option>}
-                  {unitOptions
-                    .filter((item) => !(isGuru || isTu) || !userUnitId || String(item.id) === String(userUnitId))
-                    .map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name || item.nama}
-                      </option>
-                    ))}
-                </select>
+                  onChange={(val) => handleFormChange('unit_pendidikan_id', val)}
+                  options={formUnitOptions}
+                  placeholder="Pilih Unit Pendidikan"
+                  icon={School}
+                  searchable
+                  disabled={Boolean((isGuru || isTu) && userUnitId)}
+                  className="w-full"
+                  popoverWidth="w-full"
+                  size="md"
+                />
               </div>
 
               {/* Tahun Ajaran */}
@@ -2812,21 +3057,20 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                   <Calendar className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>Tahun Ajaran *</span>
                 </label>
-                <select
-                  required
+                <HeroUiFilterSelect
+                  ariaLabel="Tahun Ajaran"
                   value={form.academic_year_id}
-                  onChange={(e) => handleFormChange('academic_year_id', e.target.value)}
-                  className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                    formErrors.academic_year_id ? 'border-rose-500' : 'border-slate-200'
-                  }`}
-                >
-                  <option value="">Pilih Tahun Ajaran</option>
-                  {(tahunAjaranList || []).map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name || item.tahun_ajaran || item.nama} {item.is_active ? '(Aktif)' : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => handleFormChange('academic_year_id', val)}
+                  options={formAcademicYearOptions}
+                  placeholder="Pilih Tahun Ajaran"
+                  icon={Calendar}
+                  searchable
+                  required
+                  error={Boolean(formErrors.academic_year_id)}
+                  className="w-full"
+                  popoverWidth="w-full"
+                  size="md"
+                />
                 {formErrors.academic_year_id && (
                   <p className="mt-1.5 text-[11px] font-medium text-rose-500">
                     {formErrors.academic_year_id}
@@ -2840,24 +3084,20 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                   <Bookmark className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>Semester *</span>
                 </label>
-                <select
-                  required
+                <HeroUiFilterSelect
+                  ariaLabel="Semester"
                   value={form.semester_id}
-                  onChange={(e) => handleFormChange('semester_id', e.target.value)}
+                  onChange={(val) => handleFormChange('semester_id', val)}
+                  options={formSemesterOptions}
+                  placeholder={!form.academic_year_id ? 'Pilih Thn Ajaran Dulu' : 'Pilih Semester'}
+                  icon={Bookmark}
                   disabled={!form.academic_year_id}
-                  className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-emerald-700 disabled:opacity-50 dark:border-slate-700 dark:bg-[#111827] ${
-                    formErrors.semester_id ? 'border-rose-500' : 'border-slate-200'
-                  }`}
-                >
-                  <option value="">
-                    {!form.academic_year_id ? 'Pilih Thn Ajaran Dulu' : 'Pilih Semester'}
-                  </option>
-                  {filteredSemesters.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} {item.is_active ? '(Aktif)' : ''}
-                    </option>
-                  ))}
-                </select>
+                  required
+                  error={Boolean(formErrors.semester_id)}
+                  className="w-full"
+                  popoverWidth="w-full"
+                  size="md"
+                />
                 {formErrors.semester_id && (
                   <p className="mt-1.5 text-[11px] font-medium text-rose-500">
                     {formErrors.semester_id}
@@ -2915,28 +3155,20 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                   <GraduationCap className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>Kelas / Rombel Target *</span>
                 </label>
-                <select
-                  required
+                <HeroUiFilterSelect
+                  ariaLabel="Kelas / Rombel Target"
                   value={form.kelas_id}
-                  onChange={(e) => handleFormChange('kelas_id', e.target.value)}
-                  className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                    formErrors.kelas_id ? 'border-rose-500' : 'border-slate-200'
-                  }`}
-                >
-                  <option value="">
-                    {filteredKelas.length === 0
-                      ? 'Tidak ada kelas sesuai filter'
-                      : 'Pilih Kelas / Rombel'}
-                  </option>
-                  {filteredKelas.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nama_kelas}
-                      {item.unitPendidikan?.name || item.unit_pendidikan?.name
-                        ? ` · ${item.unitPendidikan?.name || item.unit_pendidikan?.name}`
-                        : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => handleFormChange('kelas_id', val)}
+                  options={formKelasOptions}
+                  placeholder={filteredKelas.length === 0 ? 'Tidak ada kelas sesuai filter' : 'Pilih Kelas / Rombel'}
+                  icon={GraduationCap}
+                  searchable
+                  required
+                  error={Boolean(formErrors.kelas_id)}
+                  className="w-full"
+                  popoverWidth="w-full"
+                  size="md"
+                />
                 {formErrors.kelas_id && (
                   <p className="mt-1.5 text-[11px] font-medium text-rose-500">
                     {formErrors.kelas_id}
@@ -2987,25 +3219,20 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                       <span>Cari & Pilih Guru</span>
                     </button>
                   </div>
-                  <select
-                    required
+                  <HeroUiFilterSelect
+                    ariaLabel="Guru Pengampu"
                     value={form.employee_id}
-                    onChange={(e) => handleFormChange('employee_id', e.target.value)}
-                    className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                      formErrors.employee_id ? 'border-rose-500' : 'border-slate-200'
-                    }`}
-                  >
-                    <option value="">
-                      {filteredGuru.length === 0
-                        ? 'Tidak ada guru sesuai unit'
-                        : 'Pilih Guru Pengampu'}
-                    </option>
-                    {filteredGuru.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.nama_lengkap} {item.niy ? `(NIY ${item.niy})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => handleFormChange('employee_id', val)}
+                    options={formGuruOptions}
+                    placeholder={filteredGuru.length === 0 ? 'Tidak ada guru sesuai unit' : 'Pilih Guru Pengampu'}
+                    icon={UserCheck}
+                    searchable
+                    required
+                    error={Boolean(formErrors.employee_id)}
+                    className="w-full"
+                    popoverWidth="w-full"
+                    size="md"
+                  />
                   {formErrors.employee_id && (
                     <p className="mt-1.5 text-[11px] font-medium text-rose-500">
                       {formErrors.employee_id}
@@ -3021,25 +3248,20 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                     <BookOpen className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Mata Pelajaran *</span>
                   </label>
-                  <select
-                    required
+                  <HeroUiFilterSelect
+                    ariaLabel="Mata Pelajaran"
                     value={form.subject_id}
-                    onChange={(e) => handleFormChange('subject_id', e.target.value)}
-                    className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                      formErrors.subject_id ? 'border-rose-500' : 'border-slate-200'
-                    }`}
-                  >
-                    <option value="">
-                      {filteredSubjects.length === 0
-                        ? 'Tidak ada mapel sesuai unit'
-                        : 'Pilih Mata Pelajaran'}
-                    </option>
-                    {filteredSubjects.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {subjectName(item)} {item.kode_mapel || item.code ? `(${item.kode_mapel || item.code})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => handleFormChange('subject_id', val)}
+                    options={formSubjectOptions}
+                    placeholder={filteredSubjects.length === 0 ? 'Tidak ada mapel sesuai unit' : 'Pilih Mata Pelajaran'}
+                    icon={BookOpen}
+                    searchable
+                    required
+                    error={Boolean(formErrors.subject_id)}
+                    className="w-full"
+                    popoverWidth="w-full"
+                    size="md"
+                  />
                   {formErrors.subject_id && (
                     <p className="mt-1.5 text-[11px] font-medium text-rose-500">
                       {formErrors.subject_id}
@@ -3065,18 +3287,19 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                       <span>Cari Guru</span>
                     </button>
                   </div>
-                  <select
+                  <HeroUiFilterSelect
+                    ariaLabel="Guru Pembina / Pendamping"
                     value={form.employee_id || ''}
-                    onChange={(e) => handleFormChange('employee_id', e.target.value)}
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-slate-600 dark:border-slate-700 dark:bg-[#111827]"
-                  >
-                    <option value="">-- Tanpa Guru Khusus (Umum / Mandiri) --</option>
-                    {filteredGuru.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.nama_lengkap} {item.niy ? `(NIY ${item.niy})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => handleFormChange('employee_id', val)}
+                    options={formPembinaOptions}
+                    placeholder="-- Tanpa Guru Khusus (Umum / Mandiri) --"
+                    icon={UserCheck}
+                    searchable
+                    allowClear
+                    className="w-full"
+                    popoverWidth="w-full"
+                    size="md"
+                  />
                 </div>
               )}
             </div>
@@ -3431,25 +3654,35 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
       {/* Modal Interactive Picker Guru Pengampu */}
       {guruPickerOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl dark:border dark:border-slate-800 dark:bg-[#111827]">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md animate-in fade-in duration-200"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setGuruPickerOpen(false)
+          }}
+        >
+          <div className="relative my-auto w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#182232]">
+            {/* Top Accent Gradient Bar */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
             {/* Header Modal */}
-            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/50">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                <div className="rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white p-2.5 shadow-md shadow-emerald-500/30 border border-emerald-300/30 shrink-0">
                   <Users className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Pilih Guru Pengampu</h3>
-                  <p className="text-xs text-slate-500">Cari & pilih guru pengajar jadwal ini</p>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">Pilih Guru Pengampu</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Cari & pilih guru pengajar jadwal ini</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setGuruPickerOpen(false)}
-                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                className="rounded-xl p-2 bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 cursor-pointer"
               >
-                <X className="h-5 w-5" />
+                <X className="size-4" />
               </button>
             </div>
 

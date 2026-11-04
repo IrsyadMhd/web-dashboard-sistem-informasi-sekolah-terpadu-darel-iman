@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { ChevronRight, X, Search } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '@/components/tailgrids/core/dialog'
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '@/components/ui/dialog'
 
 export function ReportKpiGrid({ items = [], details = [] }) {
   const [activeKpi, setActiveKpi] = useState(null)

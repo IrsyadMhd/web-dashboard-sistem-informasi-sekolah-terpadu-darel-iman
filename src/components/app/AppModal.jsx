@@ -33,9 +33,9 @@ export default function AppModal({
         if (!open && onClose) onClose()
       }}
     >
-      <HeroModal.Backdrop className="bg-slate-950/70 backdrop-blur-md fixed inset-0 z-50 flex items-center justify-center p-4">
-        <HeroModal.Container className="w-full flex items-center justify-center min-h-full">
-          <HeroModal.Dialog className={cn('relative w-full overflow-hidden rounded-[24px] border-2 border-emerald-500/20 bg-white shadow-2xl dark:border-emerald-600/30 dark:bg-[#1B2433] max-h-[90vh] flex flex-col', maxWidth, className)}>
+      <HeroModal.Backdrop className="bg-slate-950/70 backdrop-blur-md fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+        <HeroModal.Container className="w-full flex items-center justify-center min-h-full my-auto">
+          <HeroModal.Dialog className={cn('relative w-full overflow-hidden rounded-[24px] border-2 border-emerald-500/20 bg-white shadow-2xl dark:border-emerald-600/30 dark:bg-[#1B2433] max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2.5rem)] flex flex-col', maxWidth, className)}>
             {/* Top accent gradient line */}
             <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
 
@@ -79,7 +79,7 @@ export default function AppModal({
             </HeroModal.Body>
 
             {footer && (
-              <HeroModal.Footer className="border-t border-slate-100 p-4 sm:p-5 dark:border-slate-800/80 shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
+              <HeroModal.Footer className="border-t border-slate-100 p-4 sm:p-5 dark:border-slate-800/80 shrink-0 bg-slate-50/50 dark:bg-slate-900/50 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
                 {footer}
               </HeroModal.Footer>
             )}

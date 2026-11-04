@@ -1,8 +1,8 @@
 import React from 'react'
 import { ShieldCheck, Info } from 'lucide-react'
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from '@/components/tailgrids/core/dialog'
-import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
-import { Button } from '@/components/tailgrids/core/button'
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from '@/components/ui/dialog'
+import { Backdrop, OverlayWrapper } from '@/components/ui/overlay'
+import { Button } from '@/components/ui/button'
 
 export function ReadOnlyDetailModal({ isOpen, onClose, title = 'Rincian Detail Data', data = null }) {
   if (!isOpen || !data) return null

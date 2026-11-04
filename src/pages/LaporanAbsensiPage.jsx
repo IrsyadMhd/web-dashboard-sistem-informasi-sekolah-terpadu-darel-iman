@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { DatePicker } from '@/components/ui/date-picker'
 import { useToast } from '../components/app/ToastProvider'
 import ActionDropdown from '../components/app/ActionDropdown'
 import {
   BookOpen,
   Building2,
   CalendarDays,
+  Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
@@ -27,8 +30,8 @@ import {
   X,
   Sparkles,
 } from 'lucide-react'
-import { motion } from 'framer-motion'
-import { Download1, Upload1 } from '@tailgrids/icons'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Download as Download1, Upload as Upload1 } from 'lucide-react'
 import { PrintOptionModal } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -37,7 +40,7 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from '../components/tailgrids/core/hover-card'
+} from '../components/ui/hover-card'
 import {
   Area,
   AreaChart,
@@ -58,7 +61,7 @@ import { educationUnitService } from '../services/educationUnitService'
 import { kelasService } from '../services/kelasService'
 import { studentService } from '../services/studentService'
 import PersonIdentityCell from '../components/ui/PersonIdentityCell'
-import { Avatar, AvatarFallback, AvatarImage } from '../components/tailgrids/core/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar'
 import {
   Dialog,
   DialogBody,
@@ -66,11 +69,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../components/tailgrids/core/dialog'
-import { Badge } from '../components/tailgrids/core/badge'
-import { Button } from '../components/tailgrids/core/button'
-import { Pagination } from '../components/tailgrids/core/pagination'
-import { Backdrop, OverlayWrapper } from '../components/tailgrids/core/overlay'
+} from '../components/ui/dialog'
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
+import { Pagination } from '../components/ui/pagination'
+import { TableRoot, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table'
+import { Backdrop, OverlayWrapper } from '../components/ui/dialog'
 
 const PAGE_SIZE = 5
 const MODAL_PAGE_SIZE = 6
@@ -267,6 +271,158 @@ function rentangPeriode(period, current) {
   return { ...current, date_from: iso(awal), date_to: iso(akhir), period }
 }
 
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'w-full',
+  searchable = false,
+  ariaLabel = '',
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+      (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  const hasValue = value !== '' && value !== 'semua' && value !== 'all' && value !== undefined && value !== null
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+          isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+            : hasValue
+            ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
+            : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} min-w-[200px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div className="truncate">{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 // Simulated rows removed: pure database report
 const buildSimulatedAttendanceRows = () => []
 
@@ -459,6 +615,42 @@ export default function LaporanAbsensiPage() {
     })
     return [...subjects.entries()]
   }, [rawRows])
+
+  const unitOptions = useMemo(() => [
+    { value: '', label: 'Semua Unit Pendidikan' },
+    ...unitList.map((unit) => ({
+      value: String(unit.id),
+      label: `${unit.name || unit.nama_unit || unit.code}${unit.level ? ` (${unit.level})` : ''}`,
+    })),
+  ], [unitList])
+
+  const classOptions = useMemo(() => [
+    { value: '', label: 'Semua Kelas' },
+    ...classList.map((kelas) => {
+      const uName = kelas.unit_pendidikan?.name || kelas.unit_pendidikan?.level || kelas.jenjang || ''
+      const labelStr = uName ? `${kelas.nama_kelas || kelas.kode_kelas} (${uName})` : (kelas.nama_kelas || kelas.kode_kelas)
+      return {
+        value: String(kelas.id),
+        label: labelStr,
+      }
+    }),
+  ], [classList])
+
+  const subjectFilterOptions = useMemo(() => [
+    { value: '', label: 'Semua Mata Pelajaran' },
+    ...subjectOptions.map(([id, name]) => ({
+      value: String(id),
+      label: String(name),
+    })),
+  ], [subjectOptions])
+
+  const periodOptions = useMemo(() => [
+    ...(draft.period === 'custom' ? [{ value: 'custom', label: 'Rentang Kustom' }] : []),
+    { value: 'semua', label: 'Semua Data' },
+    { value: 'minggu', label: '7 Hari Terakhir' },
+    { value: 'bulan', label: 'Bulan Ini' },
+    { value: 'semester', label: '6 Bulan Terakhir' },
+  ], [draft.period])
 
   const cards = useMemo(() => [
     { label: 'Hadir', statusKey: 'hadir', value: summary.present, icon: UserCheck, tone: 'emerald', percent: total ? (Number(summary.present || 0) / total) * 100 : 0 },
@@ -916,90 +1108,77 @@ export default function LaporanAbsensiPage() {
                 {unitList.length > 0 && (
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Unit Pendidikan</label>
-                    <select
+                    <HeroUiFilterSelect
                       value={draft.unit_id}
-                      onChange={(e) => updateDraftAndFilter({ ...draft, unit_id: e.target.value, class_id: '' })}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="">Semua Unit Pendidikan</option>
-                      {unitList.map((unit) => (
-                        <option key={unit.id} value={unit.id}>
-                          {unit.name || unit.nama_unit || unit.code} {unit.level ? `(${unit.level})` : ''}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => updateDraftAndFilter({ ...draft, unit_id: val, class_id: '' })}
+                      options={unitOptions}
+                      placeholder="Semua Unit Pendidikan"
+                      icon={Building2}
+                      ariaLabel="Unit Pendidikan"
+                      searchable
+                    />
                   </div>
                 )}
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Kelas / Rombel</label>
-                  <select
+                  <HeroUiFilterSelect
                     value={draft.class_id}
-                    onChange={(e) => {
-                      const selectedClassId = e.target.value
+                    onChange={(selectedClassId) => {
                       const selectedClassObj = classList.find((c) => String(c.id) === String(selectedClassId))
                       const targetUnitId = selectedClassObj?.unit_pendidikan_id || selectedClassObj?.unit_id || draft.unit_id
                       updateDraftAndFilter({ ...draft, class_id: selectedClassId, unit_id: draft.unit_id || targetUnitId || '' })
                     }}
-                    className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="">Semua Kelas</option>
-                    {classList.map((kelas) => {
-                      const uName = kelas.unit_pendidikan?.name || kelas.unit_pendidikan?.level || kelas.jenjang || ''
-                      const labelStr = uName ? `${kelas.nama_kelas || kelas.kode_kelas} (${uName})` : (kelas.nama_kelas || kelas.kode_kelas)
-                      return (
-                        <option key={kelas.id} value={kelas.id}>{labelStr}</option>
-                      )
-                    })}
-                  </select>
+                    options={classOptions}
+                    placeholder="Semua Kelas"
+                    icon={GraduationCap}
+                    ariaLabel="Kelas / Rombel"
+                    searchable
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Mata Pelajaran</label>
-                  <select
+                  <HeroUiFilterSelect
                     value={draft.subject_id}
-                    onChange={(e) => updateDraftAndFilter({ ...draft, subject_id: e.target.value })}
-                    className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="">Semua Mata Pelajaran</option>
-                    {subjectOptions.map(([id, name]) => (
-                      <option key={id} value={id}>{name}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => updateDraftAndFilter({ ...draft, subject_id: val })}
+                    options={subjectFilterOptions}
+                    placeholder="Semua Mata Pelajaran"
+                    icon={BookOpen}
+                    ariaLabel="Mata Pelajaran"
+                    searchable
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Periode</label>
-                  <select
+                  <HeroUiFilterSelect
                     value={draft.period}
-                    onChange={(e) => changePeriod(e.target.value)}
-                    className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    {draft.period === 'custom' && <option value="custom">Rentang Kustom</option>}
-                    <option value="semua">Semua Data</option>
-                    <option value="minggu">7 Hari Terakhir</option>
-                    <option value="bulan">Bulan Ini</option>
-                    <option value="semester">6 Bulan Terakhir</option>
-                  </select>
+                    onChange={(val) => changePeriod(val)}
+                    options={periodOptions}
+                    placeholder="Pilih Periode"
+                    icon={CalendarDays}
+                    ariaLabel="Periode"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div>
                     <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Mulai</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={draft.date_from}
                       onChange={(e) => updateDraftAndFilter({ ...draft, date_from: e.target.value, period: 'custom' })}
-                      className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                      placeholder="Mulai..."
+                      inputClassName="h-8 text-[11px]"
                     />
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Selesai</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={draft.date_to}
                       onChange={(e) => updateDraftAndFilter({ ...draft, date_to: e.target.value, period: 'custom' })}
-                      className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                      placeholder="Selesai..."
+                      inputClassName="h-8 text-[11px]"
                     />
                   </div>
                 </div>
@@ -1198,46 +1377,46 @@ export default function LaporanAbsensiPage() {
           </div>
         </div>
 
-        <div className="px-4 sm:px-6 md:px-8 py-2 overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-              <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 font-bold tracking-wider uppercase text-[11px]">
-                <th className="py-3.5 px-3 w-12 text-center bg-transparent">NO</th>
+        <div className="overflow-x-auto">
+          <TableRoot className="w-full text-left border-collapse text-xs min-w-[940px]">
+            <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+              <TableRow className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 font-bold tracking-wider uppercase text-[11px]">
+                <TableHead className="py-3.5 px-3 w-12 text-center bg-transparent">NO</TableHead>
                 {groupByMode === 'siswa' ? (
                   <>
-                    <th className="py-3.5 px-3">SISWA</th>
-                    <th className="py-3.5 px-3">NIS</th>
-                    <th className="py-3.5 px-3">UNIT PENDIDIKAN</th>
-                    <th className="py-3.5 px-3">KELAS & ROMBEL</th>
-                    <th className="py-3.5 px-3 text-center">TOTAL MAPEL</th>
-                    <th className="py-3.5 px-3">REKAP STATISTIK PRESENSI</th>
-                    <th className="py-3.5 px-3 text-center">% KEHADIRAN</th>
-                    <th className="py-3.5 px-3 text-center w-28">AKSI</th>
+                    <TableHead className="py-3.5 px-3">SISWA</TableHead>
+                    <TableHead className="py-3.5 px-3">NIS</TableHead>
+                    <TableHead className="py-3.5 px-3">UNIT PENDIDIKAN</TableHead>
+                    <TableHead className="py-3.5 px-3">KELAS & ROMBEL</TableHead>
+                    <TableHead className="py-3.5 px-3 text-center">TOTAL MAPEL</TableHead>
+                    <TableHead className="py-3.5 px-3">REKAP STATISTIK PRESENSI</TableHead>
+                    <TableHead className="py-3.5 px-3 text-center">% KEHADIRAN</TableHead>
+                    <TableHead className="py-3.5 px-3 text-center w-24 whitespace-nowrap">AKSI</TableHead>
                   </>
                 ) : (
                   <>
-                    <th className="py-3.5 px-3">MATA PELAJARAN</th>
-                    <th className="py-3.5 px-3">UNIT PENDIDIKAN</th>
-                    <th className="py-3.5 px-3">KELAS & ROMBEL</th>
-                    <th className="py-3.5 px-3 text-center">TOTAL PRESENSI</th>
-                    <th className="py-3.5 px-3">REKAP STATISTIK PRESENSI</th>
-                    <th className="py-3.5 px-3 text-center">% KEHADIRAN</th>
-                    <th className="py-3.5 px-3 text-center w-28">AKSI</th>
+                    <TableHead className="py-3.5 px-3">MATA PELAJARAN</TableHead>
+                    <TableHead className="py-3.5 px-3">UNIT PENDIDIKAN</TableHead>
+                    <TableHead className="py-3.5 px-3">KELAS & ROMBEL</TableHead>
+                    <TableHead className="py-3.5 px-3 text-center">TOTAL PRESENSI</TableHead>
+                    <TableHead className="py-3.5 px-3">REKAP STATISTIK PRESENSI</TableHead>
+                    <TableHead className="py-3.5 px-3 text-center">% KEHADIRAN</TableHead>
+                    <TableHead className="py-3.5 px-3 text-center w-24 whitespace-nowrap">AKSI</TableHead>
                   </>
                 )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
               {!loading && paginatedRows.length ? paginatedRows.map((group, index) => {
                 if (groupByMode === 'siswa') {
                   return (
-                    <tr
+                    <TableRow
                       key={group.id || index}
                       onClick={() => setSelectedStudentGroup(group)}
                       className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
                     >
-                      <td className="py-3.5 px-3 text-center text-slate-400 font-semibold">{(page - 1) * PAGE_SIZE + index + 1}</td>
-                      <td className="py-3.5 px-3">
+                      <TableCell className="py-3.5 px-3 text-center text-slate-400 font-semibold">{(page - 1) * PAGE_SIZE + index + 1}</TableCell>
+                      <TableCell className="py-3.5 px-3">
                         <HoverCard>
                           <HoverCardTrigger className="cursor-pointer text-left focus:outline-none block">
                             <div
@@ -1307,20 +1486,20 @@ export default function LaporanAbsensiPage() {
                             </div>
                           </HoverCardContent>
                         </HoverCard>
-                      </td>
-                      <td className="py-3.5 px-3 font-mono text-slate-600 dark:text-slate-300">{group.nis}</td>
-                      <td className="py-3.5 px-3">
+                      </TableCell>
+                      <TableCell className="py-3.5 px-3 font-mono text-slate-600 dark:text-slate-300">{group.nis}</TableCell>
+                      <TableCell className="py-3.5 px-3">
                         <Badge color="emerald" size="sm">
                           {group.unitName}
                         </Badge>
-                      </td>
-                      <td className="py-3.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{group.kelasName}</td>
-                      <td className="py-3.5 px-3 text-center font-bold text-slate-900 dark:text-white">
+                      </TableCell>
+                      <TableCell className="py-3.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{group.kelasName}</TableCell>
+                      <TableCell className="py-3.5 px-3 text-center font-bold text-slate-900 dark:text-white">
                         <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs">
                           {group.subjects.size} Mapel
                         </span>
-                      </td>
-                      <td className="py-3.5 px-3">
+                      </TableCell>
+                      <TableCell className="py-3.5 px-3">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300" title="Hadir">{group.hadir} H</span>
                           {group.terlambat > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-100 text-violet-800 dark:bg-violet-950/80 dark:text-violet-300" title="Terlambat">{group.terlambat} T</span>}
@@ -1328,60 +1507,63 @@ export default function LaporanAbsensiPage() {
                           {group.sakit > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300" title="Sakit">{group.sakit} S</span>}
                           {group.alpa > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300" title="Alpha">{group.alpa} A</span>}
                         </div>
-                      </td>
-                      <td className="py-3.5 px-3 text-center">
+                      </TableCell>
+                      <TableCell className="py-3.5 px-3 text-center">
                         <Badge color={group.percentHadir >= 80 ? 'success' : group.percentHadir >= 60 ? 'warning' : 'error'} size="sm">
                           {group.percentHadir}% Hadir
                         </Badge>
-                      </td>
-                      <td className="py-3.5 px-3 text-center">
+                      </TableCell>
+                      <TableCell className="py-3.5 px-3 text-center whitespace-nowrap w-24">
                         <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          <div className="group relative inline-flex">
-                            <button
-                              type="button"
-                              title="Cetak Rincian Siswa"
-                              aria-label="Cetak Rincian Siswa"
-                              onClick={() => {
-                                const headers = ['No', 'Mata Pelajaran', 'Unit', 'Kelas', 'Tanggal', 'Status', 'Catatan']
-                                const printRows = group.subjectRows.map((r, i) => [
-                                  i + 1,
-                                  r.jadwal_pelajaran?.subject?.name || '-',
-                                  getUnitName(r),
-                                  getNamaKelas(r),
-                                  formatTanggal(r.tanggal),
-                                  statusLabel[normalisasiStatus(r.status_hadir)] || r.status_hadir || '-',
-                                  r.catatan || r.keterangan || '-'
-                                ])
-                                printCleanTable({
-                                  title: `Rincian Presensi Pembelajaran — ${group.studentName}`,
-                                  subtitle: `NIS: ${group.nis} | Unit: ${group.unitName} | Kelas: ${group.kelasName}`,
-                                  headers,
-                                  rows: printRows,
-                                })
-                              }}
-                              className="flex size-9 items-center justify-center rounded-2xl bg-indigo-100/90 text-indigo-600 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-indigo-600/30 cursor-pointer shadow-2xs"
-                            >
-                              <Printer className="size-4 transition-colors" />
-                            </button>
-                            <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                              <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                              Cetak Rincian
-                            </div>
-                          </div>
+                          <button
+                            type="button"
+                            title={`Lihat Detail Presensi ${group.studentName}`}
+                            aria-label={`Lihat Detail Presensi ${group.studentName}`}
+                            onClick={() => setSelectedStudentGroup(group)}
+                            className="flex size-8.5 items-center justify-center rounded-xl bg-sky-100/90 text-sky-700 hover:bg-sky-600 hover:text-white dark:bg-sky-950/70 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white transition-all duration-200 active:scale-95 cursor-pointer shadow-2xs"
+                          >
+                            <Eye className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            title={`Cetak Rincian ${group.studentName}`}
+                            aria-label={`Cetak Rincian ${group.studentName}`}
+                            onClick={() => {
+                              const headers = ['No', 'Mata Pelajaran', 'Unit', 'Kelas', 'Tanggal', 'Status', 'Catatan']
+                              const printRows = group.subjectRows.map((r, i) => [
+                                i + 1,
+                                r.jadwal_pelajaran?.subject?.name || '-',
+                                getUnitName(r),
+                                getNamaKelas(r),
+                                formatTanggal(r.tanggal),
+                                statusLabel[normalisasiStatus(r.status_hadir)] || r.status_hadir || '-',
+                                r.catatan || r.keterangan || '-'
+                              ])
+                              printCleanTable({
+                                title: `Rincian Presensi Pembelajaran — ${group.studentName}`,
+                                subtitle: `NIS: ${group.nis} | Unit: ${group.unitName} | Kelas: ${group.kelasName}`,
+                                headers,
+                                rows: printRows,
+                              })
+                            }}
+                            className="flex size-8.5 items-center justify-center rounded-xl bg-indigo-100/90 text-indigo-700 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/70 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white transition-all duration-200 active:scale-95 cursor-pointer shadow-2xs"
+                          >
+                            <Printer className="size-4" />
+                          </button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 }
 
                 return (
-                  <tr
+                  <TableRow
                     key={group.subjectName || index}
                     onClick={() => setSelectedSubjectGroup(group)}
                     className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
                   >
-                    <td className="py-3.5 px-3 text-center text-slate-400 font-semibold">{(page - 1) * PAGE_SIZE + index + 1}</td>
-                    <td className="py-3.5 px-3">
+                    <TableCell className="py-3.5 px-3 text-center text-slate-400 font-semibold">{(page - 1) * PAGE_SIZE + index + 1}</TableCell>
+                    <TableCell className="py-3.5 px-3">
                       <HoverCard>
                         <HoverCardTrigger className="cursor-pointer text-left focus:outline-none block">
                           <div className="flex items-center gap-2.5 group/mapel">
@@ -1446,19 +1628,19 @@ export default function LaporanAbsensiPage() {
                           </div>
                         </HoverCardContent>
                       </HoverCard>
-                    </td>
-                    <td className="py-3.5 px-3">
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
                       <Badge color="emerald" size="sm">
                         {group.unitListStr}
                       </Badge>
-                    </td>
-                    <td className="py-3.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{group.kelasListStr}</td>
-                    <td className="py-3.5 px-3 text-center font-bold text-slate-900 dark:text-white">
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{group.kelasListStr}</TableCell>
+                    <TableCell className="py-3.5 px-3 text-center font-bold text-slate-900 dark:text-white">
                       <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs">
                         {group.total} Siswa
                       </span>
-                    </td>
-                    <td className="py-3.5 px-3">
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300" title="Hadir">{group.hadir} H</span>
                         {group.terlambat > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-100 text-violet-800 dark:bg-violet-950/80 dark:text-violet-300" title="Terlambat">{group.terlambat} T</span>}
@@ -1466,60 +1648,63 @@ export default function LaporanAbsensiPage() {
                         {group.sakit > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300" title="Sakit">{group.sakit} S</span>}
                         {group.alpa > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300" title="Alpha">{group.alpa} A</span>}
                       </div>
-                    </td>
-                    <td className="py-3.5 px-3 text-center">
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3 text-center">
                       <Badge color={group.percentHadir >= 80 ? 'success' : group.percentHadir >= 60 ? 'warning' : 'error'} size="sm">
                         {group.percentHadir}% Hadir
                       </Badge>
-                    </td>
-                    <td className="py-3.5 px-3 text-center">
+                    </TableCell>
+                    <TableCell className="py-3.5 px-3 text-center whitespace-nowrap w-24">
                       <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <div className="group relative inline-flex">
-                          <button
-                            type="button"
-                            title="Cetak Rincian Mapel"
-                            aria-label="Cetak Rincian Mapel"
-                            onClick={() => {
-                              const headers = ['No', 'Siswa', 'NIS', 'Unit', 'Kelas', 'Tanggal', 'Status', 'Catatan']
-                              const printRows = group.studentRows.map((r, i) => [
-                                i + 1,
-                                r.siswa?.full_name || '-',
-                                r.siswa?.nis || '-',
-                                getUnitName(r),
-                                getNamaKelas(r),
-                                formatTanggal(r.tanggal),
-                                statusLabel[normalisasiStatus(r.status_hadir)] || r.status_hadir || '-',
-                                r.catatan || r.keterangan || '-'
-                              ])
-                              printCleanTable({
-                                title: `Rincian Presensi Siswa — ${group.subjectName}`,
-                                subtitle: `Unit: ${group.unitListStr} | Kelas: ${group.kelasListStr}`,
-                                headers,
-                                rows: printRows,
-                              })
-                            }}
-                            className="flex size-9 items-center justify-center rounded-2xl bg-indigo-100/90 text-indigo-600 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-indigo-600/30 cursor-pointer shadow-2xs"
-                          >
-                            <Printer className="size-4 transition-colors" />
-                          </button>
-                          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                            Cetak Rincian
-                          </div>
-                        </div>
+                        <button
+                          type="button"
+                          title={`Lihat Detail Siswa ${group.subjectName}`}
+                          aria-label={`Lihat Detail Siswa ${group.subjectName}`}
+                          onClick={() => setSelectedSubjectGroup(group)}
+                          className="flex size-8.5 items-center justify-center rounded-xl bg-sky-100/90 text-sky-700 hover:bg-sky-600 hover:text-white dark:bg-sky-950/70 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white transition-all duration-200 active:scale-95 cursor-pointer shadow-2xs"
+                        >
+                          <Eye className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          title={`Cetak Rincian ${group.subjectName}`}
+                          aria-label={`Cetak Rincian ${group.subjectName}`}
+                          onClick={() => {
+                            const headers = ['No', 'Siswa', 'NIS', 'Unit', 'Kelas', 'Tanggal', 'Status', 'Catatan']
+                            const printRows = group.studentRows.map((r, i) => [
+                              i + 1,
+                              r.siswa?.full_name || '-',
+                              r.siswa?.nis || '-',
+                              getUnitName(r),
+                              getNamaKelas(r),
+                              formatTanggal(r.tanggal),
+                              statusLabel[normalisasiStatus(r.status_hadir)] || r.status_hadir || '-',
+                              r.catatan || r.keterangan || '-'
+                            ])
+                            printCleanTable({
+                              title: `Rincian Presensi Siswa — ${group.subjectName}`,
+                              subtitle: `Unit: ${group.unitListStr} | Kelas: ${group.kelasListStr}`,
+                              headers,
+                              rows: printRows,
+                            })
+                          }}
+                          className="flex size-8.5 items-center justify-center rounded-xl bg-indigo-100/90 text-indigo-700 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/70 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white transition-all duration-200 active:scale-95 cursor-pointer shadow-2xs"
+                        >
+                          <Printer className="size-4" />
+                        </button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )
               }) : (
-                <tr>
-                  <td colSpan={groupByMode === 'siswa' ? '9' : '8'} className="py-12 text-center text-slate-400 font-medium">
+                <TableRow>
+                  <TableCell colSpan={groupByMode === 'siswa' ? '9' : '8'} className="py-12 text-center text-slate-400 font-medium">
                     {loading ? 'Memuat data absensi...' : `Belum ada data ${groupByMode === 'siswa' ? 'siswa' : 'mata pelajaran'} pada filter ini.`}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </TableRoot>
         </div>
 
         <div className="w-full border-t border-slate-100 dark:border-slate-800 px-4 py-3.5 sm:px-6 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -1589,7 +1774,7 @@ export default function LaporanAbsensiPage() {
 
           <DialogBody className="py-4 space-y-4 max-h-[65vh] overflow-y-auto">
             {/* Stats Header Bar inside Modal */}
-            <div className="grid grid-cols-5 gap-2 text-center text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
               <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
                 <span className="text-[10px] font-bold text-emerald-600 uppercase block">Hadir</span>
                 <strong className="text-base font-black text-emerald-700 dark:text-emerald-300">{selectedSubjectGroup.hadir}</strong>
@@ -1614,25 +1799,25 @@ export default function LaporanAbsensiPage() {
 
             {/* Table of Students inside Modal */}
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
-                    <th className="py-2.5 px-3 w-10 text-center">NO</th>
-                    <th className="py-2.5 px-3">SISWA</th>
-                    <th className="py-2.5 px-3">NIS</th>
-                    <th className="py-2.5 px-3">KELAS</th>
-                    <th className="py-2.5 px-3">TANGGAL</th>
-                    <th className="py-2.5 px-3 text-center">STATUS</th>
-                    <th className="py-2.5 px-3">CATATAN</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <TableRoot className="w-full text-left text-xs border-collapse">
+                <TableHeader>
+                  <TableRow className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
+                    <TableHead className="py-2.5 px-3 w-10 text-center">NO</TableHead>
+                    <TableHead className="py-2.5 px-3">SISWA</TableHead>
+                    <TableHead className="py-2.5 px-3">NIS</TableHead>
+                    <TableHead className="py-2.5 px-3">KELAS</TableHead>
+                    <TableHead className="py-2.5 px-3">TANGGAL</TableHead>
+                    <TableHead className="py-2.5 px-3 text-center">STATUS</TableHead>
+                    <TableHead className="py-2.5 px-3">CATATAN</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {selectedSubjectGroup.studentRows.map((sRow, idx) => {
                     const st = normalisasiStatus(sRow.status_hadir)
                     return (
-                      <tr key={sRow.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <td className="py-2.5 px-3 text-center text-slate-400 font-semibold">{idx + 1}</td>
-                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
+                      <TableRow key={sRow.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <TableCell className="py-2.5 px-3 text-center text-slate-400 font-semibold">{idx + 1}</TableCell>
+                        <TableCell className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
                           <HoverCard>
                             <HoverCardTrigger className="cursor-pointer text-left focus:outline-none block">
                               <span
@@ -1661,21 +1846,21 @@ export default function LaporanAbsensiPage() {
                               </div>
                             </HoverCardContent>
                           </HoverCard>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-slate-600 dark:text-slate-300">{sRow.siswa?.nis || '-'}</td>
-                        <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{getNamaKelas(sRow)}</td>
-                        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{formatTanggal(sRow.tanggal)}</td>
-                        <td className="py-2.5 px-3 text-center">
+                        </TableCell>
+                        <TableCell className="py-2.5 px-3 font-mono text-slate-600 dark:text-slate-300">{sRow.siswa?.nis || '-'}</TableCell>
+                        <TableCell className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{getNamaKelas(sRow)}</TableCell>
+                        <TableCell className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{formatTanggal(sRow.tanggal)}</TableCell>
+                        <TableCell className="py-2.5 px-3 text-center">
                           <Badge color={getBadgeColor(st)} size="sm">
                             {statusLabel[st] || sRow.status_hadir || '-'}
                           </Badge>
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400">{sRow.catatan || sRow.keterangan || '-'}</td>
-                      </tr>
+                        </TableCell>
+                        <TableCell className="py-2.5 px-3 text-slate-500 dark:text-slate-400">{sRow.catatan || sRow.keterangan || '-'}</TableCell>
+                      </TableRow>
                     )
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </TableRoot>
             </div>
           </DialogBody>
 
@@ -1748,7 +1933,7 @@ export default function LaporanAbsensiPage() {
             </DialogHeader>
 
             <DialogBody className="py-4 space-y-4 max-h-[65vh] overflow-y-auto">
-              <div className="grid grid-cols-5 gap-2 text-center text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
                 <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
                   <span className="text-[10px] font-bold text-emerald-600 uppercase block">Hadir</span>
                   <strong className="text-base font-black text-emerald-700 dark:text-emerald-300">{selectedStudentGroup.hadir}</strong>
@@ -1772,39 +1957,39 @@ export default function LaporanAbsensiPage() {
               </div>
 
               <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-emerald-950 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200 font-extrabold border-b-2 border-emerald-200/90 uppercase tracking-wider text-[10px]">
-                      <th className="py-2.5 px-3 w-10 text-center">NO</th>
-                      <th className="py-2.5 px-3">MATA PELAJARAN</th>
-                      <th className="py-2.5 px-3">KELAS</th>
-                      <th className="py-2.5 px-3">TANGGAL</th>
-                      <th className="py-2.5 px-3 text-center">STATUS</th>
-                      <th className="py-2.5 px-3">CATATAN</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                <TableRoot className="w-full text-left text-xs border-collapse">
+                  <TableHeader>
+                    <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-emerald-950 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200 font-extrabold border-b-2 border-emerald-200/90 uppercase tracking-wider text-[10px]">
+                      <TableHead className="py-2.5 px-3 w-10 text-center">NO</TableHead>
+                      <TableHead className="py-2.5 px-3">MATA PELAJARAN</TableHead>
+                      <TableHead className="py-2.5 px-3">KELAS</TableHead>
+                      <TableHead className="py-2.5 px-3">TANGGAL</TableHead>
+                      <TableHead className="py-2.5 px-3 text-center">STATUS</TableHead>
+                      <TableHead className="py-2.5 px-3">CATATAN</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                     {selectedStudentGroup.subjectRows.map((sRow, idx) => {
                       const st = normalisasiStatus(sRow.status_hadir)
                       return (
-                        <tr key={sRow.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          <td className="py-2.5 px-3 text-center text-slate-400 font-semibold">{idx + 1}</td>
-                          <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
+                        <TableRow key={sRow.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          <TableCell className="py-2.5 px-3 text-center text-slate-400 font-semibold">{idx + 1}</TableCell>
+                          <TableCell className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
                             {sRow.jadwal_pelajaran?.subject?.name || '-'}
-                          </td>
-                          <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{getNamaKelas(sRow)}</td>
-                          <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{formatTanggal(sRow.tanggal)}</td>
-                          <td className="py-2.5 px-3 text-center">
+                          </TableCell>
+                          <TableCell className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{getNamaKelas(sRow)}</TableCell>
+                          <TableCell className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{formatTanggal(sRow.tanggal)}</TableCell>
+                          <TableCell className="py-2.5 px-3 text-center">
                             <Badge color={getBadgeColor(st)} size="sm">
                               {statusLabel[st] || sRow.status_hadir || '-'}
                             </Badge>
-                          </td>
-                          <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400">{sRow.catatan || sRow.keterangan || '-'}</td>
-                        </tr>
+                          </TableCell>
+                          <TableCell className="py-2.5 px-3 text-slate-500 dark:text-slate-400">{sRow.catatan || sRow.keterangan || '-'}</TableCell>
+                        </TableRow>
                       )
                     })}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </TableRoot>
               </div>
             </DialogBody>
 
@@ -1912,20 +2097,20 @@ export default function LaporanAbsensiPage() {
 
             {/* Modal Datatable */}
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
-                  <tr>
-                    <th className="py-3 px-4">No</th>
-                    <th className="py-3 px-4">Siswa</th>
-                    <th className="py-3 px-4">Unit Pendidikan</th>
-                    <th className="py-3 px-4">Kelas</th>
-                    <th className="py-3 px-4">Tanggal</th>
-                    <th className="py-3 px-4">Mata Pelajaran</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Catatan</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <TableRoot className="w-full text-left text-xs">
+                <TableHeader className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
+                  <TableRow>
+                    <TableHead className="py-3 px-4">No</TableHead>
+                    <TableHead className="py-3 px-4">Siswa</TableHead>
+                    <TableHead className="py-3 px-4">Unit Pendidikan</TableHead>
+                    <TableHead className="py-3 px-4">Kelas</TableHead>
+                    <TableHead className="py-3 px-4">Tanggal</TableHead>
+                    <TableHead className="py-3 px-4">Mata Pelajaran</TableHead>
+                    <TableHead className="py-3 px-4">Status</TableHead>
+                    <TableHead className="py-3 px-4">Catatan</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {paginatedModalRows.length > 0 ? (
                     paginatedModalRows.map((row, idx) => {
                       const status = normalisasiStatus(row.status_hadir)
@@ -1936,11 +2121,11 @@ export default function LaporanAbsensiPage() {
                       const unitName = getUnitName(row)
 
                       return (
-                        <tr key={row.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="py-3 px-4 font-medium text-slate-500">
+                        <TableRow key={row.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                          <TableCell className="py-3 px-4 font-medium text-slate-500">
                             {(cardModal.page - 1) * MODAL_PAGE_SIZE + idx + 1}
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell className="py-3 px-4">
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1957,41 +2142,41 @@ export default function LaporanAbsensiPage() {
                                 className="group-hover:opacity-80 transition-opacity"
                               />
                             </button>
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell className="py-3 px-4">
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60">
                               {unitName}
                             </span>
-                          </td>
-                          <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">
                             {kelasName}
-                          </td>
-                          <td className="py-3 px-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
                             {formatTanggal(row.tanggal)}
-                          </td>
-                          <td className="py-3 px-4 text-slate-700 dark:text-slate-300">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-slate-700 dark:text-slate-300">
                             {row.jadwal_pelajaran?.subject?.name || '-'}
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell className="py-3 px-4">
                             <Badge color={getBadgeColor(status)} size="sm">
                               {statusLabel[status] || row.status_hadir || '-'}
                             </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-slate-500 max-w-xs truncate">
                             {row.catatan || row.keterangan || '-'}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       )
                     })
                   ) : (
-                    <tr>
-                      <td colSpan="8" className="py-8 text-center text-slate-400 font-medium">
+                    <TableRow>
+                      <TableCell colSpan="8" className="py-8 text-center text-slate-400 font-medium">
                         {cardModal.searchQuery ? 'Tidak ada data siswa yang cocok dengan pencarian.' : 'Belum ada data pada kategori ini.'}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </TableRoot>
             </div>
           </DialogBody>
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   HelpCircle,
@@ -37,6 +37,7 @@ import { resolveFoundationName } from '../utils/printHelper'
 import AppModal from '../components/app/AppModal'
 import { useToast } from '../components/app/ToastProvider'
 import { usePengaturanStore, INITIAL_FAQS, INITIAL_MANUALS } from '../stores/pengaturanStore'
+import { helpService } from '../services/helpService'
 
 // CATEGORY TOPICS CONFIG
 const BASE_CATEGORIES = [
@@ -95,16 +96,34 @@ export default function BantuanPage() {
   const navigate = useNavigate()
   const toast = useToast()
 
-  // Get Custom FAQs & Manuals from Pengaturan Store
+  // Settings and dynamic state
   const settings = usePengaturanStore((state) => state.pengaturan)
   const foundationName = resolveFoundationName(settings)
-  const activeFaqs = useMemo(() => {
-    return settings.custom_faqs || INITIAL_FAQS
-  }, [settings.custom_faqs])
+  const [dbFaqs, setDbFaqs] = useState([])
+  const [loadingFaqs, setLoadingFaqs] = useState(true)
 
   const activeManuals = useMemo(() => {
     return settings.custom_manuals || INITIAL_MANUALS
   }, [settings.custom_manuals])
+
+  const loadFaqs = useCallback(async () => {
+    try {
+      setLoadingFaqs(true)
+      const res = await helpService.getFaqs()
+      const list = Array.isArray(res?.faqs) ? res.faqs : []
+      setDbFaqs(list.length > 0 ? list : (settings.custom_faqs || INITIAL_FAQS))
+    } catch (_err) {
+      setDbFaqs(settings.custom_faqs || INITIAL_FAQS)
+    } finally {
+      setLoadingFaqs(false)
+    }
+  }, [settings.custom_faqs])
+
+  useEffect(() => {
+    loadFaqs()
+  }, [loadFaqs])
+
+  const activeFaqs = dbFaqs
 
   // Dynamic Categories with Counts
   const categories = useMemo(() => {
@@ -122,7 +141,7 @@ export default function BantuanPage() {
   // State Management
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [openFaqId, setOpenFaqId] = useState(activeFaqs[0]?.id || 'faq-1')
+  const [openFaqId, setOpenFaqId] = useState('faq-1')
   const [helpfulVotes, setHelpfulVotes] = useState({})
 
   // Modal Ticket State
@@ -147,8 +166,8 @@ export default function BantuanPage() {
       const query = searchQuery.trim().toLowerCase()
       if (!query) return matchCategory
 
-      const matchTitle = faq.question.toLowerCase().includes(query)
-      const matchAnswer = faq.answer.toLowerCase().includes(query)
+      const matchTitle = (faq.question || '').toLowerCase().includes(query)
+      const matchAnswer = (faq.answer || '').toLowerCase().includes(query)
       const tagsList = Array.isArray(faq.tags) ? faq.tags : (faq.tags || '').split(',')
       const matchTags = tagsList.some((tag) => String(tag).toLowerCase().includes(query))
 
@@ -157,32 +176,38 @@ export default function BantuanPage() {
   }, [activeFaqs, searchQuery, selectedCategory])
 
   // Voting handler
-  const handleVote = (faqId, voteType) => {
+  const handleVote = async (faqId, voteType) => {
     if (helpfulVotes[faqId]) {
       toast.info('Anda sudah memberikan penilaian untuk panduan ini.')
       return
     }
     setHelpfulVotes((prev) => ({ ...prev, [faqId]: voteType }))
-    if (voteType === 'up') {
-      toast.success('Terima kasih! Umpan balik Anda sangat berharga untuk kami.')
-    } else {
-      toast.warning('Terima kasih. Kami akan terus memperbarui kejelasan panduan ini.')
+    try {
+      await helpService.voteFaq(faqId, voteType)
+      if (voteType === 'up') {
+        toast.success('Terima kasih! Umpan balik Anda telah tersimpan.')
+      } else {
+        toast.warning('Terima kasih. Masukan Anda akan kami evaluasi untuk pembaruan panduan.')
+      }
+    } catch (_err) {
+      // silent fallback
     }
   }
 
   // Handle Ticket Form Submit
-  const handleTicketSubmit = (e) => {
+  const handleTicketSubmit = async (e) => {
     e.preventDefault()
     if (!ticketForm.subject.trim() || !ticketForm.description.trim()) {
       toast.error('Mohon lengkapi Judul Kendala dan Deskripsi Tiket Bantuan.')
       return
     }
 
-    setIsSubmittingTicket(true)
-    setTimeout(() => {
-      setIsSubmittingTicket(false)
+    try {
+      setIsSubmittingTicket(true)
+      const res = await helpService.submitTicket(ticketForm)
+      const ticketNum = res?.data?.ticket_number || 'TKT-SEKOLAH'
       setIsTicketModalOpen(false)
-      toast.success(`Tiket Bantuan Anda berhasil dikirim! Tim Helpdesk IT ${foundationName} akan menghubungi Anda via WhatsApp/Email.`)
+      toast.success(`Tiket Bantuan #${ticketNum} berhasil dibuat! Tim Helpdesk IT ${foundationName} akan menghubungi Anda via WhatsApp/Email.`)
       setTicketForm({
         name: '',
         email: '',
@@ -193,12 +218,16 @@ export default function BantuanPage() {
         subject: '',
         description: '',
       })
-    }, 1200)
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Gagal mengirimkan tiket bantuan.')
+    } finally {
+      setIsSubmittingTicket(false)
+    }
   }
 
-  // Handle Download PDF Simulation
+  // Handle Download PDF
   const handleDownloadPdf = (title) => {
-    toast.success(`Memulai pengunduhan ${title}...`)
+    toast.success(`Mengunduh ${title}...`)
   }
 
   return (

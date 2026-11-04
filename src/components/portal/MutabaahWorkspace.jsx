@@ -33,6 +33,8 @@ import {
 } from '@heroui/react'
 import { cn } from '../../lib/utils'
 import api from '../../services/api'
+import Swal from '@/components/ui/compat/swal-heroui'
+import { DatePicker } from '@/components/ui/date-picker'
 
 const formatDateLong = (val) => {
   if (!val) return '-'
@@ -446,7 +448,12 @@ export default function MutabaahWorkspace({
   const handleExportWeeklyPdf = async () => {
     const sId = studentId || student?.id || data?.student_id || effectiveRecap?.student_id
     if (!sId) {
-      alert('ID santri/siswa tidak ditemukan untuk cetak laporan.')
+      Swal.fire({
+        title: 'ID Siswa Tidak Ditemukan',
+        text: 'Data identitas santri/siswa tidak ditemukan untuk cetak laporan.',
+        icon: 'warning',
+        confirmButtonColor: '#059669',
+      })
       return
     }
     setDownloadingPdf(true)
@@ -465,7 +472,12 @@ export default function MutabaahWorkspace({
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal mengunduh dokumen PDF mutabaah pekanan.')
+      Swal.fire({
+        title: 'Gagal Mengunduh Laporan',
+        text: err.response?.data?.message || 'Gagal mengunduh dokumen PDF mutabaah pekanan.',
+        icon: 'error',
+        confirmButtonColor: '#059669',
+      })
     } finally {
       setDownloadingPdf(false)
     }
@@ -571,13 +583,13 @@ export default function MutabaahWorkspace({
           {/* Action Tools: Date Picker (untuk mode Harian) & Save Button */}
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             {recapPeriod === 'daily' && (
-              <div className="flex items-center gap-2 rounded-2xl border-2 border-violet-200/80 bg-white/90 px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs dark:border-violet-800/60 dark:bg-slate-800 dark:text-slate-200">
-                <Calendar className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0" />
-                <input
-                  type="date"
+              <div className="flex items-center gap-2">
+                <DatePicker
                   value={selectedDate}
                   onChange={(e) => handleDateChange(e.target.value)}
-                  className="bg-transparent font-bold focus:outline-none cursor-pointer"
+                  className="w-40"
+                  inputClassName="py-2 text-xs font-bold"
+                  placeholder="Pilih tanggal..."
                 />
                 {fetchingDate && (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-600" />

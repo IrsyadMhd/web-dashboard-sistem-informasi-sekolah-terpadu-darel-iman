@@ -313,7 +313,6 @@ export function SquircleActionButton({
       onClick={onClick}
       isDisabled={isDisabled}
       aria-label={effectiveLabel}
-      title={effectiveLabel}
       aria-busy={loading || undefined}
       className={`
         flex size-10 items-center justify-center rounded-2xl
@@ -620,9 +619,9 @@ export function MasterDataSection({
   )
 }
 
-export function MasterDataTable({ children, className = '' }) {
+export function MasterDataTable({ children, className = '', id, ...props }) {
   return (
-    <AppCard noPadding className={`master-table ui-enter relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] ${className}`}>
+    <AppCard id={id} noPadding className={`master-table ui-enter relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] ${className}`} {...props}>
       <div className="overflow-x-auto">{children}</div>
     </AppCard>
   )

@@ -25,10 +25,11 @@ import {
 } from 'lucide-react'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import api from '../../services/api'
-import { Card } from '../../components/tailgrids/core/card'
-import { Badge } from '../../components/tailgrids/core/badge'
-import { Button } from '../../components/tailgrids/core/button'
-import { Pagination } from '../../components/tailgrids/core/pagination'
+import { Card } from '../../components/ui/card'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
+import { Pagination } from '../../components/ui/pagination'
+import { DatePicker } from '@/components/ui/date-picker'
 import { printCleanTable, resolveFoundationName } from '../../utils/printHelper'
 import { usePengaturanStore } from '../../stores/pengaturanStore'
 
@@ -942,12 +943,11 @@ export default function StudentBillsManagementPage() {
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                       Jatuh Tempo <span className="text-rose-500">*</span>
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={createForm.due_date}
                       onChange={(e) => setCreateForm((prev) => ({ ...prev, due_date: e.target.value }))}
                       required
-                      className="mt-1 h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800"
+                      inputClassName="mt-1 h-9 text-xs"
                     />
                   </div>
                 </div>
@@ -1049,12 +1049,11 @@ export default function StudentBillsManagementPage() {
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                     Tanggal Transaksi
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={payForm.paid_at}
                     onChange={(e) => setPayForm((prev) => ({ ...prev, paid_at: e.target.value }))}
                     required
-                    className="mt-1 h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800"
+                    inputClassName="mt-1 h-9 text-xs"
                   />
                 </div>
 

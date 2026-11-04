@@ -36,7 +36,11 @@ import {
   User,
   ShieldCheck,
   FileText,
+  ChevronDown,
+  Check,
+  School,
 } from 'lucide-react'
+import { useAuthStore } from '../stores/authStore'
 import { lmsDiskusiService } from '../services/lmsDiskusiService'
 import { lmsModulAjarService } from '../services/lmsModulAjarService'
 import PageContainer from '../components/app/PageContainer'
@@ -47,6 +51,14 @@ import {
   SquircleActionButton,
   PrintOptionModal,
 } from '../components/master-data'
+import {
+  TableRoot,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/table'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { useDebounce } from '../hooks/useDebounce'
 import { downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
@@ -156,6 +168,306 @@ function useNotifications() {
   return { items: [], push, dismiss }
 }
 
+// ── HEROUI MODAL SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  label,
+  value,
+  onChange,
+  options = [],
+  placeholder = '-- Pilih Opsi --',
+  disabled = false,
+  required = false,
+  helperText = '',
+  icon: IconComponent = null,
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      {label && (
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+            : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[90] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {/* Search Input jika searchable */}
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* List options */}
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div>{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 font-normal">{opt.subtext}</div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {helperText && (
+        <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          {helperText}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen((prev) => !prev)
+          setSearch('')
+        }}
+        className={`h-9 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== undefined && value !== null
+            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 // ── 3. HARMONIZED BATCH IMPORT MODAL ──
 function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }) {
@@ -236,12 +548,14 @@ function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }
     }
     setIsSubmitting(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      notify('Impor Berhasil', `Berkas ${selectedFile.name} berhasil diimpor ke sistem.`, 'success')
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      const res = await lmsDiskusiService.import(formData)
+      notify('Impor Berhasil', res?.message || `Berkas ${selectedFile.name} berhasil diimpor ke sistem.`, 'success')
       onImportSuccess?.()
       onClose()
     } catch (err) {
-      notify('Impor Gagal', err?.message || 'Terjadi kendala saat memproses berkas impor.', 'error')
+      notify('Impor Gagal', err?.response?.data?.message || err?.message || 'Terjadi kendala saat memproses berkas impor.', 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -329,26 +643,26 @@ function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }
                 Pratinjau Data (5 Baris Pertama)
               </p>
               <div className="overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold border-b border-emerald-200/80">
-                    <tr>
-                      <th className="py-2 px-3">No</th>
-                      <th className="py-2 px-3">Judul Topik</th>
-                      <th className="py-2 px-3">Kategori</th>
-                      <th className="py-2 px-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-100/70 dark:divide-emerald-900/40">
+                <TableRoot className="w-full text-left text-xs">
+                  <TableHeader className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold border-b border-emerald-200/80">
+                    <TableRow>
+                      <TableHead className="py-2 px-3">No</TableHead>
+                      <TableHead className="py-2 px-3">Judul Topik</TableHead>
+                      <TableHead className="py-2 px-3">Kategori</TableHead>
+                      <TableHead className="py-2 px-3">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-emerald-100/70 dark:divide-emerald-900/40">
                     {previewRows.map((r, i) => (
-                      <tr key={i} className="hover:bg-emerald-50/30">
-                        <td className="py-2 px-3 font-semibold text-slate-500">{i + 1}</td>
-                        <td className="py-2 px-3 font-bold text-slate-800 dark:text-slate-100 truncate max-w-[200px]">{r.judul || '-'}</td>
-                        <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{r.kategori}</td>
-                        <td className="py-2 px-3 font-semibold text-emerald-700 dark:text-emerald-400">{r.status}</td>
-                      </tr>
+                      <TableRow key={i} className="hover:bg-emerald-50/30">
+                        <TableCell className="py-2 px-3 font-semibold text-slate-500">{i + 1}</TableCell>
+                        <TableCell className="py-2 px-3 font-bold text-slate-800 dark:text-slate-100 truncate max-w-[200px]">{r.judul || '-'}</TableCell>
+                        <TableCell className="py-2 px-3 text-slate-600 dark:text-slate-300">{r.kategori}</TableCell>
+                        <TableCell className="py-2 px-3 font-semibold text-emerald-700 dark:text-emerald-400">{r.status}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </TableRoot>
               </div>
             </div>
           )}
@@ -669,7 +983,23 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
 
   const [loading, setLoading] = useState(true)
 
+  // User Auth & Multi-unit Scoping
+  const user = useAuthStore((state) => state.user)
+  const isSuperAdminOrYayasan = useMemo(() => {
+    const roles = (user?.roles || []).map((r) => (typeof r === 'string' ? r : r.name || ''))
+    return roles.some((r) => ['super_admin', 'Super Admin', 'super-admin', 'yayasan', 'Yayasan', 'pengurus_yayasan', 'ketua_yayasan'].includes(r))
+  }, [user])
+  const isDivisiPendidikan = useMemo(() => {
+    const roles = (user?.roles || []).map((r) => (typeof r === 'string' ? r : r.name || ''))
+    return roles.some((r) => ['Divisi Pendidikan', 'divisi_pendidikan', 'divisi-pendidikan', 'Kepala Bidang Pendidikan', 'kepala_bidang_pendidikan', 'Divisi Kurikulum', 'Divisi Kesiswaan'].includes(r))
+  }, [user])
+  const canSelectUnit = isSuperAdminOrYayasan || isDivisiPendidikan
+  const userUnitId = user?.unit_id || user?.employee?.unit_id || user?.unit_pendidikan_id || ''
+  const userUnitName = user?.unit_name || user?.employee?.unit?.nama_unit || user?.employee?.unit?.name || 'Unit Anda'
+
   // Filters & Pagination
+  const [selectedUnit, setSelectedUnit] = useState(canSelectUnit ? '' : (userUnitId ? String(userUnitId) : ''))
+  const [optionsUnits, setOptionsUnits] = useState([])
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 350)
   const [selectedModulAjar, setSelectedModulAjar] = useState('')
@@ -683,6 +1013,63 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
     total: 0,
     per_page: 10,
   })
+
+  // Options for HeroUI Selects
+  const filterModulAjarOptions = useMemo(() => [
+    { value: '', label: 'Semua Modul Ajar' },
+    ...optionsModulAjar.map((opt) => ({
+      value: String(opt.value || opt.id),
+      label: opt.label || opt.judul_modul || opt.judul,
+    })),
+  ], [optionsModulAjar])
+
+  const filterKategoriOptions = useMemo(() => [
+    { value: '', label: 'Semua Kategori' },
+    ...optionsKategori.map((kat) => ({
+      value: kat,
+      label: kat,
+    })),
+  ], [optionsKategori])
+
+  const filterStatusOptions = useMemo(() => [
+    { value: '', label: 'Semua Status' },
+    { value: 'aktif', label: 'Aktif' },
+    { value: 'draft', label: 'Draft' },
+    { value: 'ditutup', label: 'Ditutup' },
+  ], [])
+
+  const modalModulAjarOptions = useMemo(() => [
+    { value: '', label: '-- Tanpa Modul (Diskusi Umum) --' },
+    ...optionsModulAjar.map((opt) => ({
+      value: String(opt.value || opt.id),
+      label: opt.label || opt.judul_modul || opt.judul,
+    })),
+  ], [optionsModulAjar])
+
+  const modalKategoriOptions = useMemo(() => [
+    ...optionsKategori.map((kat) => ({
+      value: kat,
+      label: kat,
+    })),
+  ], [optionsKategori])
+
+  const modalStatusOptions = useMemo(() => [
+    { value: 'aktif', label: 'Aktif (Terbuka untuk Komentar)' },
+    { value: 'draft', label: 'Draft (Disimpan Sementara)' },
+    { value: 'ditutup', label: 'Ditutup (Hanya Baca)' },
+  ], [])
+
+  const perPageOptions = useMemo(() => [
+    { value: '10', label: '10 Baris' },
+    { value: '25', label: '25 Baris' },
+    { value: '50', label: '50 Baris' },
+  ], [])
+
+  const peranPengirimOptions = useMemo(() => [
+    { value: 'Guru', label: 'Guru (Pengajar)' },
+    { value: 'Siswa', label: 'Siswa (Peserta)' },
+    { value: 'Admin', label: 'Admin' },
+  ], [])
 
   // Modal Form State (Create / Edit Diskusi)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -732,12 +1119,12 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
 
   useEffect(() => {
     fetchOptions()
-    fetchStats()
-  }, [])
+  }, [selectedUnit])
 
   useEffect(() => {
     fetchData()
-  }, [page, perPage, debouncedSearch, selectedModulAjar, selectedKategori, selectedStatus])
+    fetchStats()
+  }, [page, perPage, debouncedSearch, selectedUnit, selectedModulAjar, selectedKategori, selectedStatus])
 
   const fetchStats = async () => {
     try {
@@ -790,7 +1177,10 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
 
   const fetchOptions = async () => {
     try {
-      const res = await lmsDiskusiService.getOptions()
+      const res = await lmsDiskusiService.getOptions(selectedUnit ? { unit_pendidikan_id: selectedUnit } : {})
+      if (res?.data?.units) {
+        setOptionsUnits(res.data.units)
+      }
       let modulList = []
 
       const rawModul = res?.data?.modul_ajar || res?.data?.modul_ajar_options || res?.modul_ajar
@@ -847,6 +1237,7 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
         page,
         per_page: perPage,
         search: debouncedSearch,
+        unit_pendidikan_id: canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined),
         modul_ajar_id: selectedModulAjar,
         kategori: selectedKategori,
         status: selectedStatus,
@@ -1099,7 +1490,9 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
     <PageContainer maxW="7xl">
 
       {!(embedded || hideBreadcrumb) && (
-        <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Forum Diskusi Kelas' }]} />
+        <div className="mb-4">
+          <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Forum Diskusi Kelas' }]} />
+        </div>
       )}
 
       <div className="lms-diskusi-page space-y-6 pb-12">
@@ -1279,59 +1672,78 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                 Filter:
               </span>
 
+              {/* Unit Dropdown (Divisi Pendidikan / Global) atau Locked Unit Badge */}
+              {canSelectUnit ? (
+                <HeroUiFilterSelect
+                  value={selectedUnit}
+                  onChange={(val) => {
+                    setSelectedUnit(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    { value: '', label: `Semua Unit (${optionsUnits.length || 'SIT'})` },
+                    ...optionsUnits.map((u) => ({ value: String(u.id), label: u.name || u.nama_unit })),
+                  ]}
+                  placeholder={`Semua Unit (${optionsUnits.length || 'SIT'})`}
+                  searchable={optionsUnits.length > 5}
+                  icon={School}
+                  popoverWidth="min-w-[220px]"
+                />
+              ) : (
+                <div
+                  title="Terkunci: Menampilkan data khusus unit wewenang Anda"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300/80 bg-emerald-50 text-[11px] font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
+                >
+                  <School className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>{userUnitName}</span>
+                  <Lock className="size-3 text-emerald-500 ml-0.5 opacity-80" />
+                </div>
+              )}
+
               {/* Filter Modul Ajar */}
-              <select
+              <HeroUiFilterSelect
                 value={selectedModulAjar}
-                onChange={(e) => {
-                  setSelectedModulAjar(e.target.value)
+                onChange={(val) => {
+                  setSelectedModulAjar(val)
                   setPage(1)
                 }}
-                className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="">Semua Modul Ajar</option>
-                {optionsModulAjar.map((opt) => (
-                  <option key={opt.value || opt.id} value={opt.value || opt.id}>
-                    {opt.label || opt.judul_modul || opt.judul}
-                  </option>
-                ))}
-              </select>
+                options={filterModulAjarOptions}
+                placeholder="Semua Modul Ajar"
+                icon={BookOpen}
+                popoverWidth="min-w-[240px]"
+                searchable
+              />
 
               {/* Filter Kategori */}
-              <select
+              <HeroUiFilterSelect
                 value={selectedKategori}
-                onChange={(e) => {
-                  setSelectedKategori(e.target.value)
+                onChange={(val) => {
+                  setSelectedKategori(val)
                   setPage(1)
                 }}
-                className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="">Semua Kategori</option>
-                {optionsKategori.map((kat) => (
-                  <option key={kat} value={kat}>
-                    {kat}
-                  </option>
-                ))}
-              </select>
+                options={filterKategoriOptions}
+                placeholder="Semua Kategori"
+                icon={Tag}
+                popoverWidth="min-w-[180px]"
+              />
 
               {/* Filter Status */}
-              <select
+              <HeroUiFilterSelect
                 value={selectedStatus}
-                onChange={(e) => {
-                  setSelectedStatus(e.target.value)
+                onChange={(val) => {
+                  setSelectedStatus(val)
                   setPage(1)
                 }}
-                className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="">Semua Status</option>
-                <option value="aktif">Aktif</option>
-                <option value="draft">Draft</option>
-                <option value="ditutup">Ditutup</option>
-              </select>
+                options={filterStatusOptions}
+                placeholder="Semua Status"
+                popoverWidth="min-w-[160px]"
+              />
 
               {/* Reset Filter Button */}
               <button
                 type="button"
                 onClick={() => {
+                  if (canSelectUnit) setSelectedUnit('')
                   setSearchInput('')
                   setSelectedModulAjar('')
                   setSelectedKategori('')
@@ -1349,37 +1761,37 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
 
           {/* Master Datatable Body */}
           <MasterDataTable className="!rounded-none !border-0 !shadow-none">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-                <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
-                  <th className="w-auto sm:w-[38%] bg-transparent px-3.5 sm:px-6 md:px-8 py-3.5 font-black text-[11px] uppercase tracking-wider">
+            <TableRoot className="w-full text-left text-sm border-collapse">
+              <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                <TableRow className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+                  <TableHead className="w-auto sm:w-[38%] bg-transparent px-3.5 sm:px-6 md:px-8 py-3.5 font-black text-[11px] uppercase tracking-wider">
                     Topik &amp; Modul Ajar
-                  </th>
-                  <th className="hidden w-[16%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider sm:table-cell">
+                  </TableHead>
+                  <TableHead className="hidden w-[16%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider sm:table-cell">
                     Kategori
-                  </th>
-                  <th className="hidden w-[16%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider md:table-cell">
+                  </TableHead>
+                  <TableHead className="hidden w-[16%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider md:table-cell">
                     Status &amp; Akses
-                  </th>
-                  <th className="hidden w-[16%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider sm:table-cell">
+                  </TableHead>
+                  <TableHead className="hidden w-[16%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider sm:table-cell">
                     Tanggapan
-                  </th>
-                  <th className="w-14 sm:w-[14%] bg-transparent px-2 sm:px-3.5 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="w-14 sm:w-[14%] bg-transparent px-2 sm:px-3.5 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
                     Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
                 {loading ? (
-                  <tr>
-                    <td colSpan="5" className="py-14 text-center text-slate-400">
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-14 text-center text-slate-400">
                       <RefreshCw className="h-7 w-7 animate-spin mx-auto mb-2 text-[#0E5C44]" />
                       <p className="text-xs font-semibold">Memuat data forum diskusi...</p>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : dataDiskusi.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="py-16 text-center text-slate-400">
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-16 text-center text-slate-400">
                       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 mb-3">
                         <MessageSquare className="h-7 w-7" />
                       </div>
@@ -1394,17 +1806,17 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                       >
                         <Plus className="h-4 w-4" /> Buat Topik Pertama
                       </button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   dataDiskusi.map((item) => (
-                    <tr
+                    <TableRow
                       key={item.id}
                       onClick={() => handleOpenThread(item.id)}
                       className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer group"
                     >
                       {/* Topik & Modul Ajar */}
-                      <td className="py-3.5 px-3.5 sm:px-6 md:px-8">
+                      <TableCell className="py-3.5 px-3.5 sm:px-6 md:px-8">
                         <div className="flex items-start gap-3">
                           <button
                             type="button"
@@ -1464,17 +1876,17 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                             </div>
                           </div>
                         </div>
-                      </td>
+                      </TableCell>
 
                       {/* Kategori */}
-                      <td className="hidden py-3.5 px-3 text-center sm:table-cell">
+                      <TableCell className="hidden py-3.5 px-3 text-center sm:table-cell">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-[#0E5C44] dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 shadow-2xs">
                           <Tag className="w-3 h-3" /> {item.kategori || 'Umum'}
                         </span>
-                      </td>
+                      </TableCell>
 
                       {/* Status & Akses */}
-                      <td className="hidden py-3.5 px-3 text-center md:table-cell">
+                      <TableCell className="hidden py-3.5 px-3 text-center md:table-cell">
                         <div className="space-y-1">
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
@@ -1493,10 +1905,10 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                             </p>
                           )}
                         </div>
-                      </td>
+                      </TableCell>
 
                       {/* Tanggapan Komentar */}
-                      <td className="hidden py-3.5 px-3 text-center sm:table-cell">
+                      <TableCell className="hidden py-3.5 px-3 text-center sm:table-cell">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1508,10 +1920,10 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                           <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                           <span>{item.total_komentar || item.komentar_count || 0} Tanggapan</span>
                         </button>
-                      </td>
+                      </TableCell>
 
                       {/* Aksi Dropdown */}
-                      <td className="py-3.5 px-2 sm:px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="py-3.5 px-2 sm:px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <ActionDropdown
                           onView={() => handleOpenThread(item.id)}
                           onEdit={() => handleOpenEditModal(item)}
@@ -1529,12 +1941,12 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                             },
                           ]}
                         />
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </TableRoot>
           </MasterDataTable>
 
           {/* Pagination Toolbar Squircle Icon-Only */}
@@ -1550,18 +1962,17 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
             </div>
 
             <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
-              <select
-                value={perPage}
-                onChange={(e) => {
-                  setPerPage(Number(e.target.value))
+              <HeroUiFilterSelect
+                value={String(perPage)}
+                onChange={(val) => {
+                  setPerPage(Number(val))
                   setPage(1)
                 }}
-                className="h-9 rounded-xl border border-emerald-200/80 bg-white px-2.5 text-xs font-bold text-slate-700 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value={10}>10 Baris</option>
-                <option value={25}>25 Baris</option>
-                <option value={50}>50 Baris</option>
-              </select>
+                options={perPageOptions}
+                placeholder="10 Baris"
+                className="w-auto"
+                popoverWidth="min-w-[130px]"
+              />
 
               <div className="flex items-center gap-1.5">
                 <button
@@ -1670,29 +2081,29 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200/80 dark:border-emerald-800 text-[11px] font-black text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
-                          <th className="py-3 px-4 text-center w-12">No</th>
-                          <th className="py-3 px-4">Judul Diskusi</th>
-                          <th className="py-3 px-4">Kategori</th>
-                          <th className="py-3 px-4">Modul Ajar</th>
-                          <th className="py-3 px-4 text-center">Status</th>
-                          <th className="py-3 px-4 text-right">Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <TableRoot className="w-full text-left border-collapse text-xs">
+                      <TableHeader>
+                        <TableRow className="bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200/80 dark:border-emerald-800 text-[11px] font-black text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
+                          <TableHead className="py-3 px-4 text-center w-12">No</TableHead>
+                          <TableHead className="py-3 px-4">Judul Diskusi</TableHead>
+                          <TableHead className="py-3 px-4">Kategori</TableHead>
+                          <TableHead className="py-3 px-4">Modul Ajar</TableHead>
+                          <TableHead className="py-3 px-4 text-center">Status</TableHead>
+                          <TableHead className="py-3 px-4 text-right">Aksi</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {kpiModalCategory.items.map((item, idx) => (
-                          <tr key={item.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                            <td className="py-3 px-4 text-center text-slate-400 font-semibold">{idx + 1}</td>
-                            <td className="py-3 px-4 font-bold text-slate-900 dark:text-slate-100">{item.judul_diskusi || item.judul}</td>
-                            <td className="py-3 px-4 font-semibold text-slate-600 dark:text-slate-300">
+                          <TableRow key={item.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                            <TableCell className="py-3 px-4 text-center text-slate-400 font-semibold">{idx + 1}</TableCell>
+                            <TableCell className="py-3 px-4 font-bold text-slate-900 dark:text-slate-100">{item.judul_diskusi || item.judul}</TableCell>
+                            <TableCell className="py-3 px-4 font-semibold text-slate-600 dark:text-slate-300">
                               {item.kategori || 'Umum'}
-                            </td>
-                            <td className="py-3 px-4 text-slate-600 dark:text-slate-300">
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-slate-600 dark:text-slate-300">
                               {item.modul_ajar?.judul_modul || item.modul_ajar?.judul || '-'}
-                            </td>
-                            <td className="py-3 px-4 text-center">
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-center">
                               <span
                                 className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
                                   item.status === 'aktif'
@@ -1702,8 +2113,8 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                               >
                                 {item.status || 'aktif'}
                               </span>
-                            </td>
-                            <td className="py-3 px-4 text-right">
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-right">
                               <button
                                 onClick={() => {
                                   setKpiModalOpen(false)
@@ -1713,11 +2124,11 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                               >
                                 Buka Thread
                               </button>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </TableRoot>
                   </div>
                 )}
               </div>
@@ -1779,21 +2190,15 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
               <form onSubmit={handleTriggerSave} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                 {/* Modul Ajar Relasi */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                    Modul Ajar Terkait
-                  </label>
-                  <select
+                  <HeroUiModalSelect
+                    label="Modul Ajar Terkait"
                     value={formData.modul_ajar_id}
-                    onChange={(e) => setFormData({ ...formData, modul_ajar_id: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 outline-none"
-                  >
-                    <option value="">-- Tanpa Modul (Diskusi Umum) --</option>
-                    {optionsModulAjar.map((opt) => (
-                      <option key={opt.value || opt.id} value={opt.value || opt.id}>
-                        {opt.label || opt.judul_modul || opt.judul}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, modul_ajar_id: val })}
+                    options={modalModulAjarOptions}
+                    placeholder="-- Tanpa Modul (Diskusi Umum) --"
+                    icon={BookOpen}
+                    searchable
+                  />
                 </div>
 
                 {/* Judul Diskusi */}
@@ -1813,20 +2218,14 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
 
                 {/* Kategori Diskusi */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                    Kategori Diskusi
-                  </label>
-                  <select
+                  <HeroUiModalSelect
+                    label="Kategori Diskusi"
                     value={formData.kategori}
-                    onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 outline-none"
-                  >
-                    {optionsKategori.map((kat) => (
-                      <option key={kat} value={kat}>
-                        {kat}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, kategori: val })}
+                    options={modalKategoriOptions}
+                    placeholder="Pilih Kategori Diskusi"
+                    icon={Tag}
+                  />
                 </div>
 
                 {/* Deskripsi / Pertanyaan Pemicu */}
@@ -1871,18 +2270,13 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
 
                 {/* Status Diskusi */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                    Status Topik Diskusi
-                  </label>
-                  <select
+                  <HeroUiModalSelect
+                    label="Status Topik Diskusi"
                     value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 outline-none"
-                  >
-                    <option value="aktif">Aktif (Terbuka untuk Komentar)</option>
-                    <option value="draft">Draft (Disimpan Sementara)</option>
-                    <option value="ditutup">Ditutup (Hanya Baca)</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, status: val })}
+                    options={modalStatusOptions}
+                    placeholder="Pilih Status"
+                  />
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
@@ -2115,17 +2509,17 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                         <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
                           Kirim Sebagai:
                         </span>
-                        <select
-                          value={komentarForm.peran_pengirim}
-                          onChange={(e) =>
-                            setKomentarForm({ ...komentarForm, peran_pengirim: e.target.value })
-                          }
-                          className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold focus:outline-none"
-                        >
-                          <option value="Guru">Guru (Pengajar)</option>
-                          <option value="Siswa">Siswa (Peserta)</option>
-                          <option value="Admin">Admin</option>
-                        </select>
+                        <div className="w-48">
+                          <HeroUiFilterSelect
+                            value={komentarForm.peran_pengirim}
+                            onChange={(val) =>
+                              setKomentarForm({ ...komentarForm, peran_pengirim: val })
+                            }
+                            options={peranPengirimOptions}
+                            placeholder="Kirim Sebagai"
+                            popoverWidth="min-w-[170px]"
+                          />
+                        </div>
                       </div>
                     </div>
 

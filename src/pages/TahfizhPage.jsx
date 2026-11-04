@@ -40,7 +40,7 @@ import {
   ArrowUpDown,
   Plus,
 } from 'lucide-react'
-import { Pagination } from '../components/tailgrids/core/pagination'
+import { Pagination } from '../components/ui/pagination'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import PrintOptionModal from '../components/master-data/PrintOptionModal'
 import { SquircleActionButton, MasterActionButton, MasterActionIconButton } from '../components/master-data'
@@ -60,9 +60,9 @@ import { useToast } from '../components/app'
 import TahfizhSubNav from '../components/tahfizh/TahfizhSubNav'
 
 // TailGrids Core Components
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   Card,
   CardHeader,
@@ -71,7 +71,7 @@ import {
   CardContent,
   CardFooter,
   CardAction,
-} from '@/components/tailgrids/core/card'
+} from '@/components/ui/card'
 import {
   TableRoot,
   TableHeader,
@@ -79,7 +79,7 @@ import {
   TableBody,
   TableRow,
   TableCell,
-} from '@/components/tailgrids/core/table'
+} from '@/components/ui/table'
 import {
   Dialog,
   DialogBody,
@@ -88,8 +88,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
-import { Backdrop } from '@/components/tailgrids/core/overlay'
+} from '@/components/ui/dialog'
+import { Backdrop } from '@/components/ui/dialog'
 
 // ── MODERN CARD TONES (§C Tailgrids_Pengaturan_Halaman) ──
 const MODERN_CARD_TONES = {
@@ -194,6 +194,310 @@ function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', ta
         </p>
       )}
     </motion.div>
+  )
+}
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`h-10 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-bold transition-all duration-200 cursor-pointer ${
+          disabled
+            ? 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-800/60 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== undefined && value !== null
+            ? 'border-emerald-300/80 bg-white text-emerald-950 dark:border-emerald-800/80 dark:bg-slate-900 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-500/15 text-emerald-900 font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ── HEROUI MODAL FORM SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  label = null,
+  required = false,
+  icon: IconComponent = null,
+  disabled = false,
+  searchable = false,
+  className = '',
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative w-full ${className}`} ref={containerRef}>
+      {label && (
+        <label className="block text-[11px] font-extrabold text-slate-700 dark:text-slate-300 mb-1">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 h-10 text-xs font-bold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+            : 'border-emerald-300 bg-white hover:border-emerald-400 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[95] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {/* Search Input jika searchable */}
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* List options */}
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#0E5C44]/10 text-[#0E5C44] font-bold dark:bg-[#3FBF75]/15 dark:text-[#3FBF75]'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div className="truncate">{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 truncate font-normal">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-[#0E5C44] dark:text-[#3FBF75] shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -1139,6 +1443,68 @@ export default function TahfizhPage() {
     return list
   }, [quranSurahs, quranSearch, selectedJuzFilter])
 
+  // Memoized Options for HeroUI Dropdowns
+  const kelasOptions = useMemo(() => {
+    return kelases.map((k) => ({
+      value: String(k.id),
+      label: k.nama_kelas || k.nama || `Kelas ${k.id}`,
+    }))
+  }, [kelases])
+
+  const studentSortOptions = [
+    { value: 'hafalan_desc', label: '🏆 Hafalan Terbanyak → Terendah' },
+    { value: 'hafalan_asc', label: '📉 Hafalan Terendah → Terbanyak' },
+    { value: 'name_asc', label: '🔤 Nama Siswa (A - Z)' },
+    { value: 'name_desc', label: '🔤 Nama Siswa (Z - A)' },
+  ]
+
+  const studentPerPageOptions = [
+    { value: 5, label: '5 Data' },
+    { value: 10, label: '10 Data' },
+    { value: 15, label: '15 Data' },
+    { value: 25, label: '25 Data' },
+    { value: 50, label: '50 Data' },
+    { value: 100, label: '100 Data' },
+    { value: 'all', label: 'Semua Data' },
+  ]
+
+  const juzFilterOptions = useMemo(() => {
+    const opts = [{ value: 'all', label: 'Semua Juz (Juz 1 s/d 30)' }]
+    for (let j = 1; j <= 30; j++) {
+      opts.push({
+        value: String(j),
+        label: `Juz ${j} ${j === 30 ? '(Amma)' : j === 29 ? '(Tabarak)' : ''}`,
+      })
+    }
+    return opts
+  }, [])
+
+  const manualSurahOptions = useMemo(() => {
+    return filteredQuranSurahs.map((s) => ({
+      value: String(s.nomor),
+      label: `Surah ${s.nomor}. ${s.nama_latin} (${s.nama}) — ${s.jumlah_ayat} Ayat (${getJuzDisplayForSurah(s.nomor, s.jumlah_ayat)})`,
+      subtext: `${s.arti || ''}`,
+    }))
+  }, [filteredQuranSurahs])
+
+  const ayahStartOptions = useMemo(() => {
+    if (!modalSurah?.jumlah_ayat) return []
+    return Array.from({ length: modalSurah.jumlah_ayat }, (_, i) => ({
+      value: i + 1,
+      label: `Ayat ${i + 1}`,
+    }))
+  }, [modalSurah?.jumlah_ayat])
+
+  const ayahEndOptions = useMemo(() => {
+    if (!modalSurah?.jumlah_ayat) return []
+    const start = Number(modalAyahStart) || 1
+    const count = modalSurah.jumlah_ayat - start + 1
+    return Array.from({ length: Math.max(0, count) }, (_, i) => ({
+      value: start + i,
+      label: `Ayat ${start + i}`,
+    }))
+  }, [modalSurah?.jumlah_ayat, modalAyahStart])
+
   // Fetch detail ayat Al-Qur'an untuk pratinjau teks Arab & Latin saat surah terpilih
   useEffect(() => {
     if (!modalSurah) {
@@ -1789,20 +2155,16 @@ export default function TahfizhPage() {
                 <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider dark:text-slate-300">
                   1. Pilih Kelas / Rombel:
                 </label>
-                <div className="relative">
-                  <select
-                    value={selectedClassId}
-                    onChange={(e) => setSelectedClassId(e.target.value)}
-                    className="w-full h-10 appearance-none px-3.5 pr-9 bg-white border border-emerald-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 transition-all cursor-pointer dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700"
-                  >
-                    {kelases.map((k) => (
-                      <option key={k.id} value={k.id}>
-                        {k.nama_kelas || k.nama || `Kelas ${k.id}`}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={selectedClassId}
+                  onChange={(val) => setSelectedClassId(val)}
+                  options={kelasOptions}
+                  placeholder="Pilih Kelas / Rombel..."
+                  icon={BookOpen}
+                  searchable={true}
+                  className="w-full"
+                  popoverWidth="w-full min-w-[240px]"
+                />
               </div>
 
               {/* 2. Pilih Siswa / Santri */}
@@ -1903,47 +2265,34 @@ export default function TahfizhPage() {
               {/* Dropdown Sortir Hafalan */}
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">Urutkan:</span>
-                <div className="relative">
-                  <select
-                    value={studentSortOrder}
-                    onChange={(e) => {
-                      setStudentSortOrder(e.target.value)
-                      setStudentCurrentPage(1)
-                    }}
-                    className="h-9 px-3 pr-8 appearance-none bg-white border border-emerald-200/80 rounded-xl text-xs font-bold text-slate-800 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 cursor-pointer dark:bg-slate-900 dark:text-slate-200 dark:border-emerald-800/70"
-                  >
-                    <option value="hafalan_desc">🏆 Hafalan Terbanyak → Terendah</option>
-                    <option value="hafalan_asc">📉 Hafalan Terendah → Terbanyak</option>
-                    <option value="name_asc">🔤 Nama Siswa (A - Z)</option>
-                    <option value="name_desc">🔤 Nama Siswa (Z - A)</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={studentSortOrder}
+                  onChange={(val) => {
+                    setStudentSortOrder(val)
+                    setStudentCurrentPage(1)
+                  }}
+                  options={studentSortOptions}
+                  placeholder="Urutkan..."
+                  icon={ArrowUpDown}
+                  popoverWidth="min-w-[220px]"
+                />
               </div>
 
               {/* Dropdown PerPage Limit (5, 10, 15, 25, 50, 100, All) */}
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">Tampilkan:</span>
-                <div className="relative">
-                  <select
-                    value={studentPerPage}
-                    onChange={(e) => {
-                      const val = e.target.value === 'all' ? 'all' : Number(e.target.value)
-                      setStudentPerPage(val)
-                      setStudentCurrentPage(1)
-                    }}
-                    className="h-9 px-3 pr-8 appearance-none bg-white border border-emerald-200/80 rounded-xl text-xs font-bold text-slate-800 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 cursor-pointer dark:bg-slate-900 dark:text-slate-200 dark:border-emerald-800/70"
-                  >
-                    <option value={5}>5 Data</option>
-                    <option value={10}>10 Data</option>
-                    <option value={15}>15 Data</option>
-                    <option value={25}>25 Data</option>
-                    <option value={50}>50 Data</option>
-                    <option value={100}>100 Data</option>
-                    <option value="all">Semua Data</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={studentPerPage}
+                  onChange={(val) => {
+                    const v = val === 'all' ? 'all' : Number(val)
+                    setStudentPerPage(v)
+                    setStudentCurrentPage(1)
+                  }}
+                  options={studentPerPageOptions}
+                  placeholder="Tampilkan..."
+                  icon={ListFilter}
+                  popoverWidth="min-w-[140px]"
+                />
               </div>
             </div>
           </div>
@@ -2586,24 +2935,14 @@ export default function TahfizhPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* 1. Filter Pilih Juz */}
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1 dark:text-slate-300">
-                        Filter Pilih Juz Al-Qur'an:
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={selectedJuzFilter}
-                          onChange={(e) => setSelectedJuzFilter(e.target.value)}
-                          className="w-full h-9 px-3 pr-8 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 cursor-pointer dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700"
-                        >
-                          <option value="all">Semua Juz (Juz 1 s/d 30)</option>
-                          {Array.from({ length: 30 }, (_, i) => i + 1).map((j) => (
-                            <option key={j} value={j}>
-                              Juz {j} {j === 30 ? '(Amma)' : j === 29 ? '(Tabarak)' : ''}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                      </div>
+                      <HeroUiModalSelect
+                        label="Filter Pilih Juz Al-Qur'an:"
+                        value={selectedJuzFilter}
+                        onChange={(val) => setSelectedJuzFilter(val)}
+                        options={juzFilterOptions}
+                        placeholder="Semua Juz..."
+                        searchable={true}
+                      />
                     </div>
 
                     {/* 2. Cari Surah */}
@@ -2618,7 +2957,7 @@ export default function TahfizhPage() {
                           value={quranSearch}
                           onChange={(e) => setQuranSearch(e.target.value)}
                           placeholder="Misal: An-Naba, Yasin, 78..."
-                          className="w-full pl-9 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700"
+                          className="w-full pl-9 pr-4 py-2 h-10 bg-white border border-emerald-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700"
                         />
                       </div>
                     </div>
@@ -2665,32 +3004,22 @@ export default function TahfizhPage() {
                   ) : (
                     /* Mode Input Manual (Dropdown Surah Manual dengan Nama Arab) */
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5 dark:text-slate-300">
-                        Pilih Surah (Manual Dropdown):
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={modalSurah?.nomor || ''}
-                          onChange={(e) => {
-                            const surahObj = quranSurahs.find((s) => Number(s.nomor) === Number(e.target.value))
-                            if (surahObj) {
-                              setModalSurah(surahObj)
-                              setModalAyahStart(1)
-                              setModalAyahEnd(Math.min(10, surahObj.jumlah_ayat))
-                              setModalBarisCount(5)
-                            }
-                          }}
-                          className="w-full h-10 px-3.5 pr-9 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
-                        >
-                          <option value="">-- Pilih Surah Al-Qur'an --</option>
-                          {filteredQuranSurahs.map((s) => (
-                            <option key={s.nomor} value={s.nomor}>
-                              Surah {s.nomor}. {s.nama_latin} ({s.nama}) — {s.jumlah_ayat} Ayat ({getJuzDisplayForSurah(s.nomor, s.jumlah_ayat)})
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      </div>
+                      <HeroUiModalSelect
+                        label="Pilih Surah (Manual Dropdown):"
+                        value={modalSurah?.nomor || ''}
+                        onChange={(val) => {
+                          const surahObj = quranSurahs.find((s) => Number(s.nomor) === Number(val))
+                          if (surahObj) {
+                            setModalSurah(surahObj)
+                            setModalAyahStart(1)
+                            setModalAyahEnd(Math.min(10, surahObj.jumlah_ayat))
+                            setModalBarisCount(5)
+                          }
+                        }}
+                        options={manualSurahOptions}
+                        placeholder="-- Pilih Surah Al-Qur'an --"
+                        searchable={true}
+                      />
                     </div>
                   )}
 
@@ -2710,63 +3039,41 @@ export default function TahfizhPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {/* Dropdown Ayat Awal */}
                         <div>
-                          <label className="block text-[11px] font-extrabold text-slate-700 mb-1 dark:text-slate-300">
-                            Pilih Ayat Awal:
-                          </label>
-                          <div className="relative">
-                            <select
-                              value={modalAyahStart}
-                              disabled={isAyahStartLocked}
-                              onChange={(e) => {
-                                const start = Number(e.target.value)
-                                setModalAyahStart(start)
-                                if (Number(modalAyahEnd) < start) {
-                                  const end = Math.min(start + 9, modalSurah.jumlah_ayat)
-                                  setModalAyahEnd(end)
-                                  setModalBarisCount(Math.max(1, Math.ceil((end - start + 1) * 0.75)))
-                                } else {
-                                  setModalBarisCount(Math.max(1, Math.ceil((Number(modalAyahEnd) - start + 1) * 0.75)))
-                                }
-                              }}
-                              className={`w-full h-10 px-3 pr-8 rounded-xl text-xs font-bold ${
-                                isAyahStartLocked
-                                  ? 'bg-slate-100 border border-slate-300 text-slate-500 cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400'
-                                  : 'bg-white border border-emerald-300 text-slate-800 focus:ring-2 focus:ring-emerald-500 cursor-pointer dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200'
-                              }`}
-                            >
-                              {Array.from({ length: modalSurah.jumlah_ayat }, (_, i) => i + 1).map((a) => (
-                                <option key={a} value={a}>
-                                  Ayat {a}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                          </div>
+                          <HeroUiModalSelect
+                            label="Pilih Ayat Awal:"
+                            value={modalAyahStart}
+                            disabled={isAyahStartLocked}
+                            onChange={(val) => {
+                              const start = Number(val)
+                              setModalAyahStart(start)
+                              if (Number(modalAyahEnd) < start) {
+                                const end = Math.min(start + 9, modalSurah.jumlah_ayat)
+                                setModalAyahEnd(end)
+                                setModalBarisCount(Math.max(1, Math.ceil((end - start + 1) * 0.75)))
+                              } else {
+                                setModalBarisCount(Math.max(1, Math.ceil((Number(modalAyahEnd) - start + 1) * 0.75)))
+                              }
+                            }}
+                            options={ayahStartOptions}
+                            placeholder="Pilih Ayat..."
+                            searchable={ayahStartOptions.length > 10}
+                          />
                         </div>
 
                         {/* Dropdown Ayat Akhir */}
                         <div>
-                          <label className="block text-[11px] font-extrabold text-slate-700 mb-1 dark:text-slate-300">
-                            Pilih Ayat Akhir:
-                          </label>
-                          <div className="relative">
-                            <select
-                              value={modalAyahEnd}
-                              onChange={(e) => {
-                                const end = Number(e.target.value)
-                                setModalAyahEnd(end)
-                                setModalBarisCount(Math.max(1, Math.ceil((end - Number(modalAyahStart) + 1) * 0.75)))
-                              }}
-                              className="w-full h-10 px-3 pr-8 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 cursor-pointer dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
-                            >
-                              {Array.from({ length: modalSurah.jumlah_ayat - Number(modalAyahStart) + 1 }, (_, i) => Number(modalAyahStart) + i).map((a) => (
-                                <option key={a} value={a}>
-                                  Ayat {a}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                          </div>
+                          <HeroUiModalSelect
+                            label="Pilih Ayat Akhir:"
+                            value={modalAyahEnd}
+                            onChange={(val) => {
+                              const end = Number(val)
+                              setModalAyahEnd(end)
+                              setModalBarisCount(Math.max(1, Math.ceil((end - Number(modalAyahStart) + 1) * 0.75)))
+                            }}
+                            options={ayahEndOptions}
+                            placeholder="Pilih Ayat..."
+                            searchable={ayahEndOptions.length > 10}
+                          />
                         </div>
 
                         {/* Jumlah Baris */}

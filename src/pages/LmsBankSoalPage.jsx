@@ -36,6 +36,8 @@ import {
   Table,
   ChevronDown,
   ChevronUp,
+  School,
+  Lock,
 } from 'lucide-react'
 import { lmsBankSoalService } from '../services/lmsBankSoalService'
 import { subjectService } from '../services/subjectService'
@@ -50,6 +52,14 @@ import {
   SquircleActionButton,
   PrintOptionModal,
 } from '../components/master-data'
+import {
+  TableRoot,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/table'
 import { useDebounce } from '../hooks/useDebounce'
 import { downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
 
@@ -168,6 +178,306 @@ function useNotifications() {
   return { items: [], push, dismiss }
 }
 
+// ── HEROUI MODAL SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  label,
+  value,
+  onChange,
+  options = [],
+  placeholder = '-- Pilih Opsi --',
+  disabled = false,
+  required = false,
+  helperText = '',
+  icon: IconComponent = null,
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      {label && (
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+            : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[90] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {/* Search Input jika searchable */}
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* List options */}
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div>{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 font-normal">{opt.subtext}</div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {helperText && (
+        <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          {helperText}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen((prev) => !prev)
+          setSearch('')
+        }}
+        className={`h-9 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== undefined && value !== null
+            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 // ── 3. HARMONIZED BATCH IMPORT MODAL ──
 function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }) {
@@ -249,12 +559,14 @@ function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }
     }
     setIsSubmitting(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      notify('Impor Berhasil', `Berkas ${selectedFile.name} berhasil diimpor ke Bank Soal.`, 'success')
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      const res = await lmsBankSoalService.import(formData)
+      notify('Impor Berhasil', res?.message || `Berkas ${selectedFile.name} berhasil diimpor ke Bank Soal.`, 'success')
       onImportSuccess?.()
       onClose()
     } catch (err) {
-      notify('Impor Gagal', err?.message || 'Terjadi kendala saat memproses berkas impor.', 'error')
+      notify('Impor Gagal', err?.response?.data?.message || err?.message || 'Terjadi kendala saat memproses berkas impor.', 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -342,28 +654,28 @@ function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }
                 Pratinjau Butir Soal (5 Baris Pertama)
               </p>
               <div className="overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold border-b border-emerald-200/80">
-                    <tr>
-                      <th className="py-2 px-3">No</th>
-                      <th className="py-2 px-3">Kode</th>
-                      <th className="py-2 px-3">Pertanyaan</th>
-                      <th className="py-2 px-3">Tipe</th>
-                      <th className="py-2 px-3">Kunci</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-100/70 dark:divide-emerald-900/40">
+                <TableRoot className="w-full text-left text-xs">
+                  <TableHeader className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold border-b border-emerald-200/80">
+                    <TableRow>
+                      <TableHead className="py-2 px-3">No</TableHead>
+                      <TableHead className="py-2 px-3">Kode</TableHead>
+                      <TableHead className="py-2 px-3">Pertanyaan</TableHead>
+                      <TableHead className="py-2 px-3">Tipe</TableHead>
+                      <TableHead className="py-2 px-3">Kunci</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-emerald-100/70 dark:divide-emerald-900/40">
                     {previewRows.map((r, i) => (
-                      <tr key={i} className="hover:bg-emerald-50/30">
-                        <td className="py-2 px-3 font-semibold text-slate-500">{i + 1}</td>
-                        <td className="py-2 px-3 font-mono font-bold text-emerald-700 dark:text-emerald-400">{r.kode_soal || '-'}</td>
-                        <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-100 truncate max-w-[200px]">{r.pertanyaan || '-'}</td>
-                        <td className="py-2 px-3 text-slate-600 dark:text-slate-300 uppercase">{r.tipe_soal}</td>
-                        <td className="py-2 px-3 font-bold text-emerald-700">{r.kunci_jawaban}</td>
-                      </tr>
+                      <TableRow key={i} className="hover:bg-emerald-50/30">
+                        <TableCell className="py-2 px-3 font-semibold text-slate-500">{i + 1}</TableCell>
+                        <TableCell className="py-2 px-3 font-mono font-bold text-emerald-700 dark:text-emerald-400">{r.kode_soal || '-'}</TableCell>
+                        <TableCell className="py-2 px-3 font-medium text-slate-800 dark:text-slate-100 truncate max-w-[200px]">{r.pertanyaan || '-'}</TableCell>
+                        <TableCell className="py-2 px-3 text-slate-600 dark:text-slate-300 uppercase">{r.tipe_soal}</TableCell>
+                        <TableCell className="py-2 px-3 font-bold text-emerald-700">{r.kunci_jawaban}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </TableRoot>
               </div>
             </div>
           )}
@@ -693,6 +1005,20 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
     return candidateIds.length > 0 ? String(candidateIds[0]) : null
   }, [user])
 
+  const isSuperAdminOrYayasan = useMemo(() => {
+    const roles = (user?.roles || []).map((r) => (typeof r === 'string' ? r : r.name || ''))
+    return roles.some((r) => ['super_admin', 'Super Admin', 'super-admin', 'yayasan', 'Yayasan', 'pengurus_yayasan', 'ketua_yayasan'].includes(r))
+  }, [user])
+
+  const isDivisiPendidikan = useMemo(() => {
+    const roles = (user?.roles || []).map((r) => (typeof r === 'string' ? r : r.name || ''))
+    return roles.some((r) => ['Divisi Pendidikan', 'divisi_pendidikan', 'divisi-pendidikan', 'Kepala Bidang Pendidikan', 'kepala_bidang_pendidikan', 'Divisi Kurikulum', 'Divisi Kesiswaan'].includes(r))
+  }, [user])
+
+  const canSelectUnit = isSuperAdminOrYayasan || isDivisiPendidikan
+  const userUnitName = user?.unit_name || user?.employee?.unit?.nama_unit || user?.employee?.unit?.name || 'Unit Anda'
+  const [selectedUnit, setSelectedUnit] = useState(canSelectUnit ? '' : (userUnitId ? String(userUnitId) : ''))
+
   const [dataList, setDataList] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -899,11 +1225,11 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
   useEffect(() => {
     fetchStats()
     fetchOptions()
-  }, [userUnitId, activeUnit])
+  }, [userUnitId, activeUnit, selectedUnit])
 
   useEffect(() => {
     fetchData(page)
-  }, [page, perPage, debouncedSearch, filters, userUnitId, activeUnit])
+  }, [page, perPage, debouncedSearch, filters, userUnitId, activeUnit, selectedUnit])
 
   // Handle URL or Session storage prefill
   useEffect(() => {
@@ -947,7 +1273,8 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
         search: debouncedSearch,
         ...filters,
       }
-      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
+      if (effectiveUnit) params.unit_pendidikan_id = effectiveUnit
       if (activeUnit) params.jenjang = activeUnit
 
       const response = await lmsBankSoalService.getDaftar(params)
@@ -956,7 +1283,8 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
         let filteredData = rawData.filter((item) => {
           if (!item) return false
           const itemUnitId = item.unit_pendidikan_id || item.unit_id || item.kisi_kisi?.unit_pendidikan_id || item.kisi_kisi?.mata_pelajaran?.unit_pendidikan_id || item.mata_pelajaran?.unit_pendidikan_id
-          if (userUnitId && itemUnitId) return String(itemUnitId) === String(userUnitId)
+          if (!canSelectUnit && userUnitId && itemUnitId) return String(itemUnitId) === String(userUnitId)
+          if (canSelectUnit && selectedUnit && itemUnitId) return String(itemUnitId) === String(selectedUnit)
           return true
         })
         setDataList(filteredData)
@@ -977,7 +1305,8 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
   const fetchStats = async () => {
     try {
       const params = {}
-      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
+      if (effectiveUnit) params.unit_pendidikan_id = effectiveUnit
       if (activeUnit) params.jenjang = activeUnit
       const response = await lmsBankSoalService.getStats(params)
       if (response && response.data) {
@@ -991,7 +1320,8 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
   const fetchOptions = async () => {
     try {
       const params = {}
-      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
+      if (effectiveUnit) params.unit_pendidikan_id = effectiveUnit
       if (activeUnit) params.jenjang = activeUnit
 
       const [resOptions, resSubjects] = await Promise.allSettled([
@@ -1006,7 +1336,8 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
       let dbSubjects = Array.isArray(dbSubjectsRaw) ? dbSubjectsRaw.filter((s) => {
         if (!s) return false
         const sUnitId = s.unit_pendidikan_id || s.unit_id || s.education_unit_id
-        if (userUnitId && sUnitId) return String(sUnitId) === String(userUnitId)
+        if (!canSelectUnit && userUnitId && sUnitId) return String(sUnitId) === String(userUnitId)
+        if (canSelectUnit && selectedUnit && sUnitId) return String(sUnitId) === String(selectedUnit)
         if (activeUnit && s.jenjang) return s.jenjang === activeUnit || s.jenjang === 'All'
         return true
       }) : []
@@ -1014,14 +1345,16 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
       const kisiList = (bankSoalOptions.kisi_kisi || []).filter((k) => {
         if (!k) return false
         const kUnitId = k.unit_pendidikan_id || k.unit_id || k.mata_pelajaran?.unit_pendidikan_id
-        if (userUnitId && kUnitId) return String(kUnitId) === String(userUnitId)
+        if (!canSelectUnit && userUnitId && kUnitId) return String(kUnitId) === String(userUnitId)
+        if (canSelectUnit && selectedUnit && kUnitId) return String(kUnitId) === String(selectedUnit)
         return true
       })
 
       const kelasList = (bankSoalOptions.kelas || []).filter((c) => {
         if (!c) return false
         const cUnitId = c.unit_pendidikan_id || c.unit_id
-        if (userUnitId && cUnitId) return String(cUnitId) === String(userUnitId)
+        if (!canSelectUnit && userUnitId && cUnitId) return String(cUnitId) === String(userUnitId)
+        if (canSelectUnit && selectedUnit && cUnitId) return String(cUnitId) === String(selectedUnit)
         return true
       })
 
@@ -1501,12 +1834,14 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
     <PageContainer maxW="7xl">
 
       {!(embedded || hideBreadcrumb) && (
-        <AppBreadcrumb
-          items={[
-            { label: 'LMS & Akademik', href: '/dashboard' },
-            { label: 'Bank Soal Ujian' },
-          ]}
-        />
+        <div className="mb-4">
+          <AppBreadcrumb
+            items={[
+              { label: 'LMS & Akademik', href: '/dashboard' },
+              { label: 'Bank Soal Ujian' },
+            ]}
+          />
+        </div>
       )}
 
       <div className="lms-bank-soal-page space-y-6 pb-12">
@@ -1731,106 +2066,148 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                 Filter:
               </span>
 
+              {/* Unit Dropdown (Divisi Pendidikan / Global) atau Locked Unit Badge */}
+              {canSelectUnit ? (
+                <HeroUiFilterSelect
+                  value={selectedUnit}
+                  onChange={(val) => {
+                    setSelectedUnit(val)
+                    setPage(1)
+                  }}
+                  placeholder={`Semua Unit (${options.units?.length || 'SIT'})`}
+                  icon={School}
+                  popoverWidth="min-w-[220px]"
+                  searchable={(options.units?.length || 0) > 5}
+                  options={[
+                    { value: '', label: `Semua Unit (${options.units?.length || 'SIT'})` },
+                    ...(options.units || []).map((u) => ({ value: String(u.id), label: u.name || u.nama_unit })),
+                  ]}
+                />
+              ) : (
+                <div
+                  title="Terkunci: Menampilkan data khusus unit wewenang Anda"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300/80 bg-emerald-50 text-[11px] font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
+                >
+                  <School className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>{userUnitName}</span>
+                  <Lock className="size-3 text-emerald-500 ml-0.5 opacity-80" />
+                </div>
+              )}
+
               {/* Filter Mata Pelajaran */}
-              <select
+              <HeroUiFilterSelect
                 value={filters.mata_pelajaran_id || ''}
-                onChange={(e) => {
-                  setFilters((prev) => ({ ...prev, mata_pelajaran_id: e.target.value }))
+                onChange={(val) => {
+                  setFilters((prev) => ({ ...prev, mata_pelajaran_id: val }))
                   setPage(1)
                 }}
-                className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="">Semua Mata Pelajaran</option>
-                {((options.subjects || options.mata_pelajaran) && (options.subjects || options.mata_pelajaran).length > 0
-                  ? (options.subjects || options.mata_pelajaran)
-                  : Array.from(
-                      new Map(
-                        (options.kisi_kisi || [])
-                          .filter((k) => k.mata_pelajaran_id || k.mata_pelajaran)
-                          .map((k) => {
-                            const id = k.mata_pelajaran_id || k.mata_pelajaran?.id || (typeof k.mata_pelajaran === 'string' ? k.mata_pelajaran : k.id)
-                            const name = typeof k.mata_pelajaran === 'object' ? (k.mata_pelajaran.name || k.mata_pelajaran.nama) : (k.mata_pelajaran || k.judul_kisi)
-                            return [id, { id, name }]
-                          })
-                      ).values()
-                    )
-                ).map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name || m.nama_mapel || m.nama || m.label}
-                  </option>
-                ))}
-              </select>
+                placeholder="Semua Mata Pelajaran"
+                icon={BookOpen}
+                popoverWidth="min-w-[240px]"
+                searchable
+                options={[
+                  { value: '', label: 'Semua Mata Pelajaran' },
+                  ...(((options.subjects || options.mata_pelajaran) && (options.subjects || options.mata_pelajaran).length > 0
+                    ? (options.subjects || options.mata_pelajaran)
+                    : Array.from(
+                        new Map(
+                          (options.kisi_kisi || [])
+                            .filter((k) => k.mata_pelajaran_id || k.mata_pelajaran)
+                            .map((k) => {
+                              const id = k.mata_pelajaran_id || k.mata_pelajaran?.id || (typeof k.mata_pelajaran === 'string' ? k.mata_pelajaran : k.id)
+                              const name = typeof k.mata_pelajaran === 'object' ? (k.mata_pelajaran.name || k.mata_pelajaran.nama) : (k.mata_pelajaran || k.judul_kisi)
+                              return [id, { id, name }]
+                            })
+                        ).values()
+                      )
+                  ).map((m) => ({
+                    value: m.id,
+                    label: m.name || m.nama_mapel || m.nama || m.label,
+                  }))),
+                ]}
+              />
 
               {/* Filter Rombel / Kelas */}
-              <select
+              <HeroUiFilterSelect
                 value={filters.kelas_id || ''}
-                onChange={(e) => {
-                  setFilters((prev) => ({ ...prev, kelas_id: e.target.value }))
+                onChange={(val) => {
+                  setFilters((prev) => ({ ...prev, kelas_id: val }))
                   setPage(1)
                 }}
-                className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="">Semua Rombel / Kelas</option>
-                {(options.kelas || []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nama_kelas || c.name}
-                  </option>
-                ))}
-              </select>
+                placeholder="Semua Rombel / Kelas"
+                icon={Layers}
+                popoverWidth="min-w-[170px]"
+                options={[
+                  { value: '', label: 'Semua Rombel / Kelas' },
+                  ...(options.kelas || []).map((c) => ({
+                    value: c.id,
+                    label: c.nama_kelas || c.name,
+                  })),
+                ]}
+              />
 
               {/* Filter Kisi-kisi */}
-              <select
-                value={filters.kisi_kisi_id}
-                onChange={(e) => {
-                  setFilters((prev) => ({ ...prev, kisi_kisi_id: e.target.value }))
+              <HeroUiFilterSelect
+                value={filters.kisi_kisi_id || ''}
+                onChange={(val) => {
+                  setFilters((prev) => ({ ...prev, kisi_kisi_id: val }))
                   setPage(1)
                 }}
-                className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="">Semua Kisi-kisi Ujian</option>
-                {options.kisi_kisi.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.judul_kisi} ({k.jenis_ujian})
-                  </option>
-                ))}
-              </select>
+                placeholder="Semua Kisi-kisi Ujian"
+                icon={FileText}
+                popoverWidth="min-w-[260px]"
+                searchable
+                options={[
+                  { value: '', label: 'Semua Kisi-kisi Ujian' },
+                  ...(options.kisi_kisi || []).map((k) => ({
+                    value: k.id,
+                    label: `${k.judul_kisi} (${k.jenis_ujian})`,
+                  })),
+                ]}
+              />
 
               {/* Filter Tipe Soal */}
-              <select
-                value={filters.tipe_soal}
-                onChange={(e) => {
-                  setFilters((prev) => ({ ...prev, tipe_soal: e.target.value }))
+              <HeroUiFilterSelect
+                value={filters.tipe_soal || ''}
+                onChange={(val) => {
+                  setFilters((prev) => ({ ...prev, tipe_soal: val }))
                   setPage(1)
                 }}
-                className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="">Semua Tipe Soal</option>
-                <option value="pg">Pilihan Ganda</option>
-                <option value="esai">Essay / Esai</option>
-                <option value="benar_salah">Benar / Salah</option>
-                <option value="menjodohkan">Menjodohkan</option>
-              </select>
+                placeholder="Semua Tipe Soal"
+                icon={CheckSquare}
+                popoverWidth="min-w-[160px]"
+                options={[
+                  { value: '', label: 'Semua Tipe Soal' },
+                  { value: 'pg', label: 'Pilihan Ganda' },
+                  { value: 'esai', label: 'Essay / Esai' },
+                  { value: 'benar_salah', label: 'Benar / Salah' },
+                  { value: 'menjodohkan', label: 'Menjodohkan' },
+                ]}
+              />
 
               {/* Filter Tingkat Kesulitan */}
-              <select
-                value={filters.tingkat_kesulitan}
-                onChange={(e) => {
-                  setFilters((prev) => ({ ...prev, tingkat_kesulitan: e.target.value }))
+              <HeroUiFilterSelect
+                value={filters.tingkat_kesulitan || ''}
+                onChange={(val) => {
+                  setFilters((prev) => ({ ...prev, tingkat_kesulitan: val }))
                   setPage(1)
                 }}
-                className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="">Semua Tingkat Kesulitan</option>
-                <option value="mudah">Mudah</option>
-                <option value="sedang">Sedang</option>
-                <option value="sulit">Sulit</option>
-              </select>
+                placeholder="Semua Tingkat Kesulitan"
+                popoverWidth="min-w-[170px]"
+                options={[
+                  { value: '', label: 'Semua Tingkat Kesulitan' },
+                  { value: 'mudah', label: 'Mudah' },
+                  { value: 'sedang', label: 'Sedang' },
+                  { value: 'sulit', label: 'Sulit' },
+                ]}
+              />
 
               {/* Reset Filter Button */}
-              {(searchInput || filters.mata_pelajaran_id || filters.kisi_kisi_id || filters.kelas_id || filters.tipe_soal || filters.tingkat_kesulitan) && (
+              {((canSelectUnit && selectedUnit) || searchInput || filters.mata_pelajaran_id || filters.kisi_kisi_id || filters.kelas_id || filters.tipe_soal || filters.tingkat_kesulitan) && (
                 <button
                   type="button"
                   onClick={() => {
+                    if (canSelectUnit) setSelectedUnit('')
                     setSearchInput('')
                     setFilters({ mata_pelajaran_id: '', kisi_kisi_id: '', kelas_id: '', tipe_soal: '', tingkat_kesulitan: '', status: '' })
                     setPage(1)
@@ -1848,40 +2225,40 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
           {/* Master Datatable / Grouped View Conditional Body */}
           {viewLayout === 'flat' ? (
             <MasterDataTable className="!rounded-none !border-0 !shadow-none">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-                  <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 text-xs font-black uppercase tracking-wider">
-                    <th className="hidden sm:table-cell w-[16%] bg-transparent px-4 py-3.5 font-black text-[11px] uppercase tracking-wider">
+              <TableRoot className="w-full text-left text-sm border-collapse">
+                <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                  <TableRow className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 text-xs font-black uppercase tracking-wider">
+                    <TableHead className="hidden sm:table-cell w-[16%] bg-transparent px-4 py-3.5 font-black text-[11px] uppercase tracking-wider">
                       Kode &amp; Tipe
-                    </th>
-                    <th className="w-auto sm:w-[38%] md:w-[42%] bg-transparent px-3.5 sm:px-6 md:px-8 py-3.5 font-black text-[11px] uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="w-auto sm:w-[38%] md:w-[42%] bg-transparent px-3.5 sm:px-6 md:px-8 py-3.5 font-black text-[11px] uppercase tracking-wider">
                       Pertanyaan / Butir Soal
-                    </th>
-                    <th className="hidden md:table-cell w-[18%] bg-transparent px-3 py-3.5 font-black text-[11px] uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell w-[18%] bg-transparent px-3 py-3.5 font-black text-[11px] uppercase tracking-wider">
                       Kisi-kisi &amp; Mapel
-                    </th>
-                    <th className="hidden sm:table-cell w-[10%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="hidden sm:table-cell w-[10%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
                       Poin &amp; Level
-                    </th>
-                    <th className="hidden lg:table-cell w-[8%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="hidden lg:table-cell w-[8%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
                       Status
-                    </th>
-                    <th className="w-14 sm:w-[8%] bg-transparent px-2 sm:px-3.5 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
+                    </TableHead>
+                    <TableHead className="w-14 sm:w-[8%] bg-transparent px-2 sm:px-3.5 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
                       Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
                   {loading ? (
-                    <tr>
-                      <td colSpan="6" className="py-14 text-center text-slate-400">
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-14 text-center text-slate-400">
                         <RefreshCw className="h-7 w-7 animate-spin mx-auto mb-2 text-[#0E5C44]" />
                         <p className="text-xs font-semibold">Memuat data butir bank soal...</p>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : dataList.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="py-16 text-center text-slate-400">
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-16 text-center text-slate-400">
                         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 mb-3">
                           <HelpCircle className="h-7 w-7" />
                         </div>
@@ -1896,11 +2273,11 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                         >
                           <Plus className="h-4 w-4" /> Tambah Soal Pertama
                         </button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     dataList.map((item) => (
-                      <tr
+                      <TableRow
                         key={item.id}
                         onClick={() => {
                           setRowDetailItem(item)
@@ -1909,15 +2286,15 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                         className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer group"
                       >
                         {/* Kode & Tipe */}
-                        <td className="hidden sm:table-cell py-3.5 px-4 align-top">
+                        <TableCell className="hidden sm:table-cell py-3.5 px-4 align-top">
                           <span className="font-mono text-xs font-extrabold text-emerald-800 dark:text-emerald-400 block mb-1">
                             {item.kode_soal || 'SOAL-SYS'}
                           </span>
                           <div>{getTipeBadge(item.tipe_soal)}</div>
-                        </td>
+                        </TableCell>
 
                         {/* Pertanyaan */}
-                        <td className="py-3.5 px-3.5 sm:px-6 md:px-8 align-top">
+                        <TableCell className="py-3.5 px-3.5 sm:px-6 md:px-8 align-top">
                           <p className="font-bold text-slate-900 dark:text-white line-clamp-2 leading-relaxed group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                             {item.pertanyaan}
                           </p>
@@ -1943,10 +2320,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                               {item.poin} Poin
                             </span>
                           </div>
-                        </td>
+                        </TableCell>
 
                         {/* Kisi-kisi & Mapel */}
-                        <td className="hidden md:table-cell py-3.5 px-3 align-top">
+                        <TableCell className="hidden md:table-cell py-3.5 px-3 align-top">
                           <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate max-w-xs flex items-center gap-1.5">
                             <span className="truncate">{item.kisi_kisi?.judul_kisi || 'Umum'}</span>
                             {item.kisi_kisi?.kelas && (
@@ -1958,20 +2335,20 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                           <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-xs">
                             {getMapelName(item)}
                           </div>
-                        </td>
+                        </TableCell>
 
                         {/* Poin & Level */}
-                        <td className="hidden sm:table-cell py-3.5 px-3 text-center align-top">
+                        <TableCell className="hidden sm:table-cell py-3.5 px-3 text-center align-top">
                           <div className="space-y-1">
                             <div>{getKesulitanBadge(item.tingkat_kesulitan)}</div>
                             <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 block tabular-nums">
                               {item.poin} Poin
                             </span>
                           </div>
-                        </td>
+                        </TableCell>
 
                         {/* Status */}
-                        <td className="hidden lg:table-cell py-3.5 px-3 text-center align-top" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="hidden lg:table-cell py-3.5 px-3 text-center align-top" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={() => handleToggleStatus(item)}
@@ -1984,10 +2361,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                             <span className={`w-1.5 h-1.5 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                             {item.status ? 'Aktif' : 'Non-Aktif'}
                           </button>
-                        </td>
+                        </TableCell>
 
                         {/* Aksi */}
-                        <td className="py-3.5 px-2 sm:px-3 text-center align-top" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="py-3.5 px-2 sm:px-3 text-center align-top" onClick={(e) => e.stopPropagation()}>
                           <ActionDropdown
                             onView={() => {
                               setViewingItem(item)
@@ -2003,12 +2380,12 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                               },
                             ]}
                           />
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </TableRoot>
             </MasterDataTable>
           ) : (
             <div className="p-4 sm:p-6 space-y-4">
@@ -2214,19 +2591,19 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                             </div>
                           ) : (
                             <div className="overflow-x-auto">
-                              <table className="w-full text-left text-sm border-collapse">
-                                <thead className="bg-emerald-100/60 dark:bg-emerald-950/60 border-b border-emerald-200/80 dark:border-emerald-800/60">
-                                  <tr className="text-emerald-950 dark:text-emerald-200 text-xs font-black uppercase tracking-wider">
-                                    <th className="w-[16%] px-4 py-2.5 text-[11px]">Kode &amp; Tipe</th>
-                                    <th className="w-auto px-4 py-2.5 text-[11px]">Pertanyaan / Butir Soal</th>
-                                    <th className="hidden sm:table-cell w-[14%] px-3 py-2.5 text-center text-[11px]">Poin &amp; Level</th>
-                                    <th className="hidden md:table-cell w-[10%] px-3 py-2.5 text-center text-[11px]">Status</th>
-                                    <th className="w-14 sm:w-[8%] px-3 py-2.5 text-center text-[11px]">Aksi</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-emerald-100/70 dark:divide-emerald-900/40 text-sm">
+                              <TableRoot className="w-full text-left text-sm border-collapse">
+                                <TableHeader className="bg-emerald-100/60 dark:bg-emerald-950/60 border-b border-emerald-200/80 dark:border-emerald-800/60">
+                                  <TableRow className="text-emerald-950 dark:text-emerald-200 text-xs font-black uppercase tracking-wider">
+                                    <TableHead className="w-[16%] px-4 py-2.5 text-[11px]">Kode &amp; Tipe</TableHead>
+                                    <TableHead className="w-auto px-4 py-2.5 text-[11px]">Pertanyaan / Butir Soal</TableHead>
+                                    <TableHead className="hidden sm:table-cell w-[14%] px-3 py-2.5 text-center text-[11px]">Poin &amp; Level</TableHead>
+                                    <TableHead className="hidden md:table-cell w-[10%] px-3 py-2.5 text-center text-[11px]">Status</TableHead>
+                                    <TableHead className="w-14 sm:w-[8%] px-3 py-2.5 text-center text-[11px]">Aksi</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody className="divide-y divide-emerald-100/70 dark:divide-emerald-900/40 text-sm">
                                   {group.items.map((item, itemIdx) => (
-                                    <tr
+                                    <TableRow
                                       key={item.id}
                                       onClick={() => {
                                         setRowDetailItem(item)
@@ -2235,7 +2612,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                                       className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer group"
                                     >
                                       {/* Kode & Tipe */}
-                                      <td className="py-3 px-4 align-top">
+                                      <TableCell className="py-3 px-4 align-top">
                                         <div className="flex items-center gap-1.5">
                                           <span className="text-[11px] font-black text-slate-400 dark:text-slate-500 w-5">
                                             #{itemIdx + 1}
@@ -2245,10 +2622,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                                           </span>
                                         </div>
                                         <div className="mt-1">{getTipeBadge(item.tipe_soal)}</div>
-                                      </td>
+                                      </TableCell>
 
                                       {/* Pertanyaan */}
-                                      <td className="py-3 px-4 align-top">
+                                      <TableCell className="py-3 px-4 align-top">
                                         <p className="font-bold text-slate-900 dark:text-white line-clamp-2 leading-relaxed group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                                           {item.pertanyaan}
                                         </p>
@@ -2257,20 +2634,20 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                                             Indikator: {item.indikator}
                                           </p>
                                         )}
-                                      </td>
+                                      </TableCell>
 
                                       {/* Poin & Level */}
-                                      <td className="hidden sm:table-cell py-3 px-3 text-center align-top">
+                                      <TableCell className="hidden sm:table-cell py-3 px-3 text-center align-top">
                                         <div className="space-y-1">
                                           <div>{getKesulitanBadge(item.tingkat_kesulitan)}</div>
                                           <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 block tabular-nums">
                                             {item.poin} Poin
                                           </span>
                                         </div>
-                                      </td>
+                                      </TableCell>
 
                                       {/* Status */}
-                                      <td
+                                      <TableCell
                                         className="hidden md:table-cell py-3 px-3 text-center align-top"
                                         onClick={(e) => e.stopPropagation()}
                                       >
@@ -2286,10 +2663,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                                           <span className={`w-1.5 h-1.5 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                                           {item.status ? 'Aktif' : 'Non-Aktif'}
                                         </button>
-                                      </td>
+                                      </TableCell>
 
                                       {/* Aksi */}
-                                      <td
+                                      <TableCell
                                         className="py-3 px-3 text-center align-top"
                                         onClick={(e) => e.stopPropagation()}
                                       >
@@ -2308,11 +2685,11 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                                             },
                                           ]}
                                         />
-                                      </td>
-                                    </tr>
+                                      </TableCell>
+                                    </TableRow>
                                   ))}
-                                </tbody>
-                              </table>
+                                </TableBody>
+                              </TableRoot>
 
                               {/* Footer of Kisi-kisi card */}
                               <div className="bg-gradient-to-r from-emerald-50/40 via-white to-emerald-50/40 dark:bg-slate-900/50 p-2.5 px-4 border-t border-emerald-100 dark:border-emerald-900/40 flex items-center justify-between">
@@ -2357,18 +2734,20 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
             </div>
 
             <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
-              <select
+              <HeroUiFilterSelect
                 value={perPage}
-                onChange={(e) => {
-                  setPerPage(Number(e.target.value))
+                onChange={(val) => {
+                  setPerPage(Number(val))
                   setPage(1)
                 }}
-                className="h-9 rounded-xl border border-emerald-200/80 bg-white px-2.5 text-xs font-bold text-slate-700 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value={10}>10 Baris</option>
-                <option value={25}>25 Baris</option>
-                <option value={50}>50 Baris</option>
-              </select>
+                className="w-auto"
+                popoverWidth="min-w-[120px]"
+                options={[
+                  { value: 10, label: '10 Baris' },
+                  { value: 25, label: '25 Baris' },
+                  { value: 50, label: '50 Baris' },
+                ]}
+              />
 
               <div className="flex items-center gap-1.5">
                 <button
@@ -2670,22 +3049,19 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                 {/* Select Kisi-kisi & Kode */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                      Kisi-kisi Ujian / Mapel <span className="text-rose-500">*</span>
-                    </label>
-                    <select
-                      value={formData.kisi_kisi_id}
-                      onChange={(e) => handleKisiChange(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-emerald-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 outline-none"
+                    <HeroUiModalSelect
+                      label="Kisi-kisi Ujian / Mapel"
                       required
-                    >
-                      <option value="">-- Pilih Kisi-kisi / Mapel Ujian --</option>
-                      {options.kisi_kisi.map((k) => (
-                        <option key={k.id} value={k.id}>
-                          {k.judul_kisi} ({k.jenis_ujian} - {k.subject_name || k.mata_pelajaran})
-                        </option>
-                      ))}
-                    </select>
+                      value={formData.kisi_kisi_id}
+                      onChange={(val) => handleKisiChange(val)}
+                      placeholder="-- Pilih Kisi-kisi / Mapel Ujian --"
+                      icon={FileText}
+                      searchable
+                      options={options.kisi_kisi.map((k) => ({
+                        value: k.id,
+                        label: `${k.judul_kisi} (${k.jenis_ujian} - ${k.subject_name || k.mata_pelajaran})`,
+                      }))}
+                    />
                   </div>
 
                   <div>
@@ -2910,18 +3286,17 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                      Tingkat Kesulitan
-                    </label>
-                    <select
+                    <HeroUiModalSelect
+                      label="Tingkat Kesulitan"
                       value={formData.tingkat_kesulitan}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, tingkat_kesulitan: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-emerald-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:border-[#0E5C44]"
-                    >
-                      <option value="mudah">Mudah</option>
-                      <option value="sedang">Sedang</option>
-                      <option value="sulit">Sulit</option>
-                    </select>
+                      onChange={(val) => setFormData((prev) => ({ ...prev, tingkat_kesulitan: val }))}
+                      placeholder="Pilih Tingkat Kesulitan"
+                      options={[
+                        { value: 'mudah', label: 'Mudah' },
+                        { value: 'sedang', label: 'Sedang' },
+                        { value: 'sulit', label: 'Sulit' },
+                      ]}
+                    />
                   </div>
                 </div>
 
@@ -3085,44 +3460,44 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                     </div>
                   ) : (
                     <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-                          <tr>
-                            <th className="py-2.5 px-3 w-10 text-center">#</th>
-                            <th className="py-2.5 px-3">Kode &amp; Pertanyaan</th>
-                            <th className="py-2.5 px-3">Tipe</th>
-                            <th className="py-2.5 px-3 text-center">Kunci</th>
-                            <th className="py-2.5 px-3 text-center">Poin</th>
-                            <th className="py-2.5 px-3 text-right">Aksi</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                      <TableRoot className="w-full text-left text-xs">
+                        <TableHeader className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                          <TableRow>
+                            <TableHead className="py-2.5 px-3 w-10 text-center">#</TableHead>
+                            <TableHead className="py-2.5 px-3">Kode &amp; Pertanyaan</TableHead>
+                            <TableHead className="py-2.5 px-3">Tipe</TableHead>
+                            <TableHead className="py-2.5 px-3 text-center">Kunci</TableHead>
+                            <TableHead className="py-2.5 px-3 text-center">Poin</TableHead>
+                            <TableHead className="py-2.5 px-3 text-right">Aksi</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                           {modalSessionQuestions.map((q, idx) => (
-                            <tr
+                            <TableRow
                               key={q.id || idx}
                               className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${
                                 editingModalQuestionId === q.id ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''
                               }`}
                             >
-                              <td className="py-2.5 px-3 text-center font-bold text-slate-500">{idx + 1}</td>
-                              <td className="py-2.5 px-3 max-w-xs">
+                              <TableCell className="py-2.5 px-3 text-center font-bold text-slate-500">{idx + 1}</TableCell>
+                              <TableCell className="py-2.5 px-3 max-w-xs">
                                 <span className="font-mono text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400 block">
                                   {q.kode_soal || `SOAL-${idx + 1}`}
                                 </span>
                                 <p className="text-slate-800 dark:text-slate-200 font-medium line-clamp-2">{q.pertanyaan}</p>
-                              </td>
-                              <td className="py-2.5 px-3">
+                              </TableCell>
+                              <TableCell className="py-2.5 px-3">
                                 {getTipeBadge(q.tipe_soal)}
-                              </td>
-                              <td className="py-2.5 px-3 text-center">
+                              </TableCell>
+                              <TableCell className="py-2.5 px-3 text-center">
                                 <span className="inline-block px-2 py-0.5 rounded font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px]">
                                   {q.kunci_jawaban || '-'}
                                 </span>
-                              </td>
-                              <td className="py-2.5 px-3 text-center font-bold text-slate-700 dark:text-slate-300">
+                              </TableCell>
+                              <TableCell className="py-2.5 px-3 text-center font-bold text-slate-700 dark:text-slate-300">
                                 {q.poin || 2.5} Poin
-                              </td>
-                              <td className="py-2.5 px-3 text-right">
+                              </TableCell>
+                              <TableCell className="py-2.5 px-3 text-right">
                                 <div className="flex items-center justify-end gap-1.5">
                                   <button
                                     type="button"
@@ -3143,11 +3518,11 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                                     <span>Hapus</span>
                                   </button>
                                 </div>
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           ))}
-                        </tbody>
-                      </table>
+                        </TableBody>
+                      </TableRoot>
                     </div>
                   )}
                 </div>

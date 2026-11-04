@@ -1,5 +1,5 @@
 import { useToast } from '../components/app/ToastProvider'
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CheckCircle2,
@@ -25,6 +25,7 @@ import {
   X,
   RotateCcw,
   ChevronRight,
+  ChevronDown,
   BookOpen,
   Award,
 } from 'lucide-react'
@@ -35,7 +36,7 @@ import { useUnitStore } from '../stores/unitStore'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { useDebounce } from '../hooks/useDebounce'
-import { Pagination } from '../components/tailgrids/core/pagination'
+import { Pagination } from '../components/ui/pagination'
 import { printCleanTable } from '../utils/printHelper'
 import {
   SquircleActionButton,
@@ -45,28 +46,44 @@ import AppTabs from '../components/app/AppTabs'
 
 const MODERN_CARD_TONES = {
   emerald: {
-    badgeBg: 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-500/20',
+    card: 'border-emerald-300/80 bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-white hover:border-emerald-400 hover:shadow-emerald-500/10 dark:border-emerald-700/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-[#1B2433]',
+    badgeBg: 'bg-emerald-500/10 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-500/30',
     iconGradient: 'from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-500/25',
-    glow: 'bg-emerald-500/15 group-hover:bg-emerald-500/25',
-    border: 'hover:border-emerald-400/60 dark:hover:border-emerald-500/40',
+    glow: 'bg-emerald-500/20 group-hover:bg-emerald-500/30',
+    title: 'text-emerald-800 dark:text-emerald-300',
+    value: 'text-emerald-950 dark:text-emerald-100',
+    subtext: 'text-emerald-700/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600 dark:text-emerald-400',
   },
   blue: {
-    badgeBg: 'bg-sky-500/10 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300 border-sky-500/20',
+    card: 'border-sky-300/80 bg-gradient-to-br from-sky-50/70 via-blue-50/40 to-white hover:border-sky-400 hover:shadow-sky-500/10 dark:border-sky-700/60 dark:from-sky-950/40 dark:via-blue-950/20 dark:to-[#1B2433]',
+    badgeBg: 'bg-sky-500/10 text-sky-800 dark:bg-sky-500/20 dark:text-sky-300 border-sky-500/30',
     iconGradient: 'from-sky-500 via-blue-600 to-indigo-700 shadow-sky-500/25',
-    glow: 'bg-sky-500/15 group-hover:bg-sky-500/25',
-    border: 'hover:border-sky-400/60 dark:hover:border-sky-500/40',
+    glow: 'bg-sky-500/20 group-hover:bg-sky-500/30',
+    title: 'text-sky-800 dark:text-sky-300',
+    value: 'text-sky-950 dark:text-sky-100',
+    subtext: 'text-sky-700/80 dark:text-sky-400/80',
+    cta: 'text-sky-600 dark:text-sky-400',
   },
   purple: {
-    badgeBg: 'bg-purple-500/10 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 border-purple-500/20',
+    card: 'border-purple-300/80 bg-gradient-to-br from-purple-50/70 via-violet-50/40 to-white hover:border-purple-400 hover:shadow-purple-500/10 dark:border-purple-700/60 dark:from-purple-950/40 dark:via-violet-950/20 dark:to-[#1B2433]',
+    badgeBg: 'bg-purple-500/10 text-purple-800 dark:bg-purple-500/20 dark:text-purple-300 border-purple-500/30',
     iconGradient: 'from-purple-500 via-violet-600 to-indigo-700 shadow-purple-500/25',
-    glow: 'bg-purple-500/15 group-hover:bg-purple-500/25',
-    border: 'hover:border-purple-400/60 dark:hover:border-purple-500/40',
+    glow: 'bg-purple-500/20 group-hover:bg-purple-500/30',
+    title: 'text-purple-800 dark:text-purple-300',
+    value: 'text-purple-950 dark:text-purple-100',
+    subtext: 'text-purple-700/80 dark:text-purple-400/80',
+    cta: 'text-purple-600 dark:text-purple-400',
   },
   amber: {
-    badgeBg: 'bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border-amber-500/20',
+    card: 'border-amber-300/80 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white hover:border-amber-400 hover:shadow-amber-500/10 dark:border-amber-700/60 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-[#1B2433]',
+    badgeBg: 'bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border-amber-500/30',
     iconGradient: 'from-amber-500 via-orange-600 to-amber-700 shadow-amber-500/25',
-    glow: 'bg-amber-500/15 group-hover:bg-amber-500/25',
-    border: 'hover:border-amber-400/60 dark:hover:border-amber-500/40',
+    glow: 'bg-amber-500/20 group-hover:bg-amber-500/30',
+    title: 'text-amber-800 dark:text-amber-300',
+    value: 'text-amber-950 dark:text-amber-100',
+    subtext: 'text-amber-700/80 dark:text-amber-400/80',
+    cta: 'text-amber-600 dark:text-amber-400',
   },
 }
 
@@ -76,7 +93,7 @@ function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', ta
     <motion.div
       whileHover={{ y: -3, transition: { duration: 0.2 } }}
       onClick={onClick}
-      className={`group relative overflow-hidden rounded-[20px] border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-300 hover:shadow-lg dark:border-slate-800/80 dark:bg-[#1B2433] ${t.border} ${onClick ? 'cursor-pointer' : ''}`}
+      className={`group relative overflow-hidden rounded-[20px] border-2 p-4.5 sm:p-5 shadow-xs transition-all duration-300 hover:shadow-lg ${t.card} ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all duration-500 ${t.glow}`} />
       <div className="relative z-10 flex items-start justify-between gap-3">
@@ -86,7 +103,7 @@ function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', ta
               {tag}
             </span>
           </div>
-          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 pt-0.5">{title}</p>
+          <p className={`text-xs font-bold pt-0.5 ${t.title}`}>{title}</p>
         </div>
         <div className={`flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-md transition-transform duration-300 group-hover:scale-105 ${t.iconGradient}`}>
           {Icon && <Icon className="size-5 text-white" />}
@@ -94,15 +111,15 @@ function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', ta
       </div>
       <div className="relative z-10 mt-3 flex items-baseline justify-between gap-2">
         <div>
-          <p className="text-3xl sm:text-4xl font-black tabular-nums tracking-tight text-slate-900 dark:text-white">
+          <p className={`text-3xl sm:text-4xl font-black tabular-nums tracking-tight ${t.value}`}>
             {value}
           </p>
           {subtext && (
-            <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{subtext}</p>
+            <p className={`mt-1 text-xs font-medium ${t.subtext}`}>{subtext}</p>
           )}
         </div>
         {onClick && (
-          <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className={`flex items-center gap-1 text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${t.cta}`}>
             <span>Detail</span>
             <ChevronRight className="size-3" />
           </div>
@@ -112,68 +129,172 @@ function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', ta
   )
 }
 
-function HarmonizedSaveScoresModal({ isOpen, onClose, onConfirm, studentName, classNameStr, totalEdited, isSubmitting }) {
-  if (!isOpen) return null
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  disabled = false,
+  searchable = false,
+  widthClass = 'min-w-[160px]',
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedOption = options.find((opt) => String(opt.value) === String(value))
+  const filteredOptions = searchable || options.length > 5
+    ? options.filter((opt) => String(opt.label).toLowerCase().includes(search.toLowerCase()))
+    : options
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.94 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.94 }}
-        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+    <div ref={containerRef} className={`relative ${widthClass}`}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`w-full flex items-center justify-between gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs transition-all hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer`}
       >
-        <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
-        <div className="p-6">
-          <div className="flex items-center gap-3.5 mb-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/30">
-              <CheckCircle2 className="h-6 w-6" />
+        <span className="truncate">
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
+            isOpen ? 'rotate-180 text-emerald-600' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 top-full z-[80] mt-1.5 w-full min-w-[220px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40"
+          >
+            {(searchable || options.length > 5) && (
+              <div className="mb-1.5 px-1 pt-1">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari..."
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  autoFocus
+                />
+              </div>
+            )}
+            <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="py-2 text-center text-xs text-slate-400">Tidak ada pilihan</div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-700 font-bold dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60 font-medium'
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && <Check className="size-3.5 text-emerald-600 shrink-0" />}
+                    </button>
+                  )
+                })
+              )}
             </div>
-            <div>
-              <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                Simpan Penilaian
-              </span>
-              <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
-                Simpan Nilai & Paraf Doa?
-              </h3>
-            </div>
-          </div>
-
-          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
-            Nilai poin capaian doa dan status paraf guru penguji untuk santri/siswa berikut akan disimpan secara permanen ke database akademik.
-          </p>
-
-          <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-3.5 dark:border-emerald-800/60 dark:bg-emerald-950/20 mb-5">
-            <p className="text-xs font-black text-emerald-950 dark:text-emerald-100">
-              {studentName || 'Nama Siswa'} ({classNameStr || 'Kelas'})
-            </p>
-            <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 mt-1">
-              {totalEdited} Butir Penilaian Siap Diperbarui
-            </p>
-          </div>
-
-          <div className="flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
-            >
-              {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Konfirmasi Simpan
-            </button>
-          </div>
-        </div>
-      </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+  )
+}
+
+function HarmonizedSaveScoresModal({ isOpen, onClose, onConfirm, studentName, classNameStr, totalEdited, isSubmitting }) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.94 }}
+            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+          >
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+            <div className="p-6">
+              <div className="flex items-center gap-3.5 mb-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/30">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+                <div>
+                  <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    Simpan Penilaian
+                  </span>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                    Simpan Nilai & Paraf Doa?
+                  </h3>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+                Nilai poin capaian doa dan status paraf guru penguji untuk santri/siswa berikut akan disimpan secara permanen ke database akademik.
+              </p>
+
+              <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-3.5 dark:border-emerald-800/60 dark:bg-emerald-950/20 mb-5">
+                <p className="text-xs font-black text-emerald-950 dark:text-emerald-100">
+                  {studentName || 'Nama Siswa'} ({classNameStr || 'Kelas'})
+                </p>
+                <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 mt-1">
+                  {totalEdited} Butir Penilaian Siap Diperbarui
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={onConfirm}
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Konfirmasi Simpan
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -236,6 +357,23 @@ export default function PoinPenilaianDoaPage() {
   // Pagination for Doa List
   const [currentPage, setCurrentPage] = useState(1)
   const perPage = 15
+
+  const classOptions = useMemo(() => {
+    return classes.map((c) => ({
+      value: c.id,
+      label: `Kelas ${c.nama_kelas} (${c.tingkat})`,
+    }))
+  }, [classes])
+
+  const studentOptions = useMemo(() => {
+    if (students.length === 0) {
+      return [{ value: '', label: 'Tidak ada siswa di kelas ini' }]
+    }
+    return students.map((s) => ({
+      value: s.id,
+      label: `${s.nama_lengkap || s.name} (NIS: ${s.nis})`,
+    }))
+  }, [students])
 
   // 1. Muat Master Items & Grade Rules
   const loadMasterData = async () => {
@@ -462,14 +600,15 @@ export default function PoinPenilaianDoaPage() {
   return (
     <PageContainer maxW="7xl">
       {/* Breadcrumb */}
-      <AppBreadcrumb
-        className="mb-6 print:hidden"
-        items={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Tahfizh & Mutabaah', href: '/mutabaah' },
-          { label: 'Poin Penilaian Doa' },
-        ]}
-      />
+      <div className="mb-4 print:hidden">
+        <AppBreadcrumb
+          items={[
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: 'Tahfizh & Mutabaah', href: '/mutabaah' },
+            { label: 'Poin Penilaian Doa' },
+          ]}
+        />
+      </div>
 
       {/* Modern Hero Header Card (TailGrids Standard) */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 mb-6 print:hidden">
@@ -607,7 +746,7 @@ export default function PoinPenilaianDoaPage() {
 
         {/* MODE 1: LEMBAR PENILAIAN SISWA */}
         {activeTab === 'scoring' && (
-          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
             {/* Toolbar Baris 1 */}
             <div className="p-5 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent flex flex-col md:flex-row md:items-center justify-between gap-4 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent print:hidden">
               <div className="flex items-center gap-3">
@@ -686,32 +825,25 @@ export default function PoinPenilaianDoaPage() {
                 </div>
 
                 {/* Pilih Kelas */}
-                <select
+                <HeroUiFilterSelect
                   value={selectedClassId}
-                  onChange={(e) => setSelectedClassId(e.target.value)}
-                  className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  {classes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      Kelas {c.nama_kelas} ({c.tingkat})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedClassId(val)}
+                  options={classOptions}
+                  placeholder="Pilih Kelas..."
+                  searchable={true}
+                  widthClass="min-w-[180px]"
+                />
 
                 {/* Pilih Siswa */}
-                <select
+                <HeroUiFilterSelect
                   value={selectedStudentId}
-                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  onChange={(val) => setSelectedStudentId(val)}
+                  options={studentOptions}
                   disabled={loadingStudents || students.length === 0}
-                  className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 max-w-xs"
-                >
-                  {students.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nama_lengkap || s.name} (NIS: {s.nis})
-                    </option>
-                  ))}
-                  {students.length === 0 && <option value="">Tidak ada siswa di kelas ini</option>}
-                </select>
+                  placeholder="Pilih Siswa..."
+                  searchable={true}
+                  widthClass="min-w-[240px]"
+                />
               </div>
 
               <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
@@ -849,7 +981,7 @@ export default function PoinPenilaianDoaPage() {
                     currentPage={currentPage}
                     totalPages={totalPages}
                     onPageChange={(page) => setCurrentPage(page)}
-                    sideLayout="icon"
+                    sideLayout="full"
                   />
                 </div>
               </div>

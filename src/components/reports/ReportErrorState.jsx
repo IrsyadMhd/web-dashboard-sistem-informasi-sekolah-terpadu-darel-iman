@@ -1,7 +1,7 @@
 import React from 'react'
 import { RefreshCw } from 'lucide-react'
-import { Alert, AlertIndicator, AlertContent, AlertTitle, AlertDescription } from '@/components/tailgrids/core/alert'
-import { Button } from '@/components/tailgrids/core/button'
+import { Alert, AlertIndicator, AlertContent, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 
 export function ReportErrorState({ onRetry, error, title, description }) {
   const status = error?.response?.status || error?.status || (typeof error === 'number' ? error : null)

@@ -39,6 +39,8 @@ import {
   ChevronRight,
   RotateCcw,
   FileSpreadsheet,
+  ChevronDown,
+  School,
 } from 'lucide-react'
 import { lmsUjianService } from '../services/lmsUjianService'
 import { useAuthStore } from '../stores/authStore'
@@ -53,6 +55,14 @@ import {
   SquircleActionButton,
   PrintOptionModal,
 } from '../components/master-data'
+import {
+  TableRoot,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/table'
 import { downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
 
 // ── PALET WARNA RESMI MODERN KPI CARDS (TAILGRIDS STANDARDS) ──
@@ -150,6 +160,306 @@ function useNotifications() {
   return { items: [], push, dismiss }
 }
 
+// ── HEROUI MODAL SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  label,
+  value,
+  onChange,
+  options = [],
+  placeholder = '-- Pilih Opsi --',
+  disabled = false,
+  required = false,
+  helperText = '',
+  icon: IconComponent = null,
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      {label && (
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+            : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[90] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {/* Search Input jika searchable */}
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* List options */}
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div>{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 font-normal">{opt.subtext}</div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {helperText && (
+        <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          {helperText}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen((prev) => !prev)
+          setSearch('')
+        }}
+        className={`h-9 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== undefined && value !== null
+            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 // ── HARMONIZED BATCH IMPORT MODAL ──
 function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }) {
@@ -231,12 +541,14 @@ function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }
     }
     setIsSubmitting(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      notify('Impor Berhasil', `Berkas ${selectedFile.name} berhasil diimpor ke jadwal Ujian CBT.`, 'success')
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      const res = await lmsUjianService.import(formData)
+      notify('Impor Berhasil', res?.message || `Berkas ${selectedFile.name} berhasil diimpor ke jadwal Ujian CBT.`, 'success')
       onImportSuccess?.()
       onClose()
     } catch (err) {
-      notify('Impor Gagal', err?.message || 'Terjadi kendala saat memproses berkas impor.', 'error')
+      notify('Impor Gagal', err?.response?.data?.message || err?.message || 'Terjadi kendala saat memproses berkas impor.', 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -323,28 +635,28 @@ function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }
                 Pratinjau Data Ujian (5 Baris Pertama)
               </p>
               <div className="overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold border-b border-emerald-200/80">
-                    <tr>
-                      <th className="py-2 px-3">No</th>
-                      <th className="py-2 px-3">Judul Ujian</th>
-                      <th className="py-2 px-3">Mapel</th>
-                      <th className="py-2 px-3">Kelas</th>
-                      <th className="py-2 px-3">Durasi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-100/70 dark:divide-emerald-900/40">
+                <TableRoot className="w-full text-left text-xs">
+                  <TableHeader className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold border-b border-emerald-200/80">
+                    <TableRow>
+                      <TableHead className="py-2 px-3">No</TableHead>
+                      <TableHead className="py-2 px-3">Judul Ujian</TableHead>
+                      <TableHead className="py-2 px-3">Mapel</TableHead>
+                      <TableHead className="py-2 px-3">Kelas</TableHead>
+                      <TableHead className="py-2 px-3">Durasi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-emerald-100/70 dark:divide-emerald-900/40">
                     {previewRows.map((r, i) => (
-                      <tr key={i} className="hover:bg-emerald-50/30">
-                        <td className="py-2 px-3 font-semibold text-slate-500">{i + 1}</td>
-                        <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-100 truncate max-w-[180px]">{r.nama_ujian || '-'}</td>
-                        <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{r.mapel || '-'}</td>
-                        <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{r.kelas || '-'}</td>
-                        <td className="py-2 px-3 font-bold text-emerald-700">{r.durasi} Menit</td>
-                      </tr>
+                      <TableRow key={i} className="hover:bg-emerald-50/30">
+                        <TableCell className="py-2 px-3 font-semibold text-slate-500">{i + 1}</TableCell>
+                        <TableCell className="py-2 px-3 font-medium text-slate-800 dark:text-slate-100 truncate max-w-[180px]">{r.nama_ujian || '-'}</TableCell>
+                        <TableCell className="py-2 px-3 text-slate-600 dark:text-slate-300">{r.mapel || '-'}</TableCell>
+                        <TableCell className="py-2 px-3 text-slate-600 dark:text-slate-300">{r.kelas || '-'}</TableCell>
+                        <TableCell className="py-2 px-3 font-bold text-emerald-700">{r.durasi} Menit</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </TableRoot>
               </div>
             </div>
           )}
@@ -672,6 +984,20 @@ export default function LmsUjianPage({
     return candidateIds.length > 0 ? String(candidateIds[0]) : null
   }, [user])
 
+  const isSuperAdminOrYayasan = useMemo(() => {
+    const roles = (user?.roles || []).map((r) => (typeof r === 'string' ? r : r.name || ''))
+    return roles.some((r) => ['super_admin', 'Super Admin', 'super-admin', 'yayasan', 'Yayasan', 'pengurus_yayasan', 'ketua_yayasan'].includes(r))
+  }, [user])
+
+  const isDivisiPendidikan = useMemo(() => {
+    const roles = (user?.roles || []).map((r) => (typeof r === 'string' ? r : r.name || ''))
+    return roles.some((r) => ['Divisi Pendidikan', 'divisi_pendidikan', 'divisi-pendidikan', 'Kepala Bidang Pendidikan', 'kepala_bidang_pendidikan', 'Divisi Kurikulum', 'Divisi Kesiswaan'].includes(r))
+  }, [user])
+
+  const canSelectUnit = isSuperAdminOrYayasan || isDivisiPendidikan
+  const userUnitName = user?.unit_name || user?.employee?.unit?.nama_unit || user?.employee?.unit?.name || 'Unit Anda'
+  const [selectedUnit, setSelectedUnit] = useState(canSelectUnit ? '' : (userUnitId ? String(userUnitId) : ''))
+
   // Data & State
   const [dataList, setDataList] = useState([])
   const [loading, setLoading] = useState(true)
@@ -685,6 +1011,7 @@ export default function LmsUjianPage({
     rata_nilai: 0,
   })
   const [options, setOptions] = useState({
+    units: [],
     kisi_kisi: [],
     kelas: [],
     semesters: [],
@@ -756,12 +1083,12 @@ export default function LmsUjianPage({
   useEffect(() => {
     fetchStats()
     fetchOptions()
-  }, [userUnitId, activeUnit])
+  }, [userUnitId, activeUnit, selectedUnit])
 
   // Fetch Data when Filters / Pagination / Debounced Search change
   useEffect(() => {
     fetchData(1)
-  }, [debouncedSearch, filters.kelas_id, filters.status, userUnitId, activeUnit])
+  }, [debouncedSearch, filters.kelas_id, filters.status, userUnitId, activeUnit, selectedUnit])
 
   // Timer Countdown Effect
   useEffect(() => {
@@ -794,7 +1121,8 @@ export default function LmsUjianPage({
         kelas_id: filters.kelas_id,
         status: filters.status,
       }
-      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
+      if (effectiveUnit) params.unit_pendidikan_id = effectiveUnit
       if (activeUnit) params.jenjang = activeUnit
 
       const response = await lmsUjianService.getDaftar(params)
@@ -807,7 +1135,8 @@ export default function LmsUjianPage({
             item.unit_id ||
             item.kisi_kisi?.unit_pendidikan_id ||
             item.kisi_kisi?.mata_pelajaran?.unit_pendidikan_id
-          if (userUnitId && itemUnitId) return String(itemUnitId) === String(userUnitId)
+          if (!canSelectUnit && userUnitId && itemUnitId) return String(itemUnitId) === String(userUnitId)
+          if (canSelectUnit && selectedUnit && itemUnitId) return String(itemUnitId) === String(selectedUnit)
           return true
         })
         setDataList(filteredData)
@@ -829,7 +1158,8 @@ export default function LmsUjianPage({
   const fetchStats = async () => {
     try {
       const params = {}
-      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
+      if (effectiveUnit) params.unit_pendidikan_id = effectiveUnit
       if (activeUnit) params.jenjang = activeUnit
       const response = await lmsUjianService.getStats(params)
       if (response && response.data) setStats(response.data)
@@ -841,7 +1171,8 @@ export default function LmsUjianPage({
   const fetchOptions = async () => {
     try {
       const params = {}
-      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
+      if (effectiveUnit) params.unit_pendidikan_id = effectiveUnit
       if (activeUnit) params.jenjang = activeUnit
 
       const response = await lmsUjianService.getOptions(params)
@@ -850,7 +1181,8 @@ export default function LmsUjianPage({
         const filteredKisi = (optData.kisi_kisi || []).filter((k) => {
           if (!k) return false
           const kUnitId = k.unit_pendidikan_id || k.unit_id || k.mata_pelajaran?.unit_pendidikan_id
-          if (userUnitId && kUnitId) return String(kUnitId) === String(userUnitId)
+          if (!canSelectUnit && userUnitId && kUnitId) return String(kUnitId) === String(userUnitId)
+          if (canSelectUnit && selectedUnit && kUnitId) return String(kUnitId) === String(selectedUnit)
           return true
         })
         setOptions({
@@ -1323,42 +1655,74 @@ export default function LmsUjianPage({
               Filter:
             </span>
 
+            {/* Unit Dropdown (Divisi Pendidikan / Global) atau Locked Unit Badge */}
+            {canSelectUnit ? (
+              <HeroUiFilterSelect
+                value={selectedUnit}
+                onChange={(val) => {
+                  setSelectedUnit(val)
+                }}
+                placeholder={`Semua Unit (${options.units?.length || 'SIT'})`}
+                icon={School}
+                popoverWidth="min-w-[220px]"
+                searchable={(options.units?.length || 0) > 5}
+                options={[
+                  { value: '', label: `Semua Unit (${options.units?.length || 'SIT'})` },
+                  ...(options.units || []).map((u) => ({ value: String(u.id), label: u.name || u.nama_unit })),
+                ]}
+              />
+            ) : (
+              <div
+                title="Terkunci: Menampilkan data khusus unit wewenang Anda"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300/80 bg-emerald-50 text-[11px] font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
+              >
+                <School className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>{userUnitName}</span>
+                <Lock className="size-3 text-emerald-500 ml-0.5 opacity-80" />
+              </div>
+            )}
+
             {/* Select Kelas */}
-            <select
+            <HeroUiFilterSelect
               value={filters.kelas_id}
-              onChange={(e) => {
-                setFilters((prev) => ({ ...prev, kelas_id: e.target.value }))
+              onChange={(val) => {
+                setFilters((prev) => ({ ...prev, kelas_id: val }))
               }}
-              className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-            >
-              <option value="">Semua Kelas Sasaran</option>
-              {options.kelas.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.nama_kelas}
-                </option>
-              ))}
-            </select>
+              placeholder="Semua Kelas Sasaran"
+              icon={Layers}
+              popoverWidth="min-w-[170px]"
+              options={[
+                { value: '', label: 'Semua Kelas Sasaran' },
+                ...options.kelas.map((k) => ({
+                  value: k.id,
+                  label: k.nama_kelas,
+                })),
+              ]}
+            />
 
             {/* Select Status */}
-            <select
+            <HeroUiFilterSelect
               value={filters.status}
-              onChange={(e) => {
-                setFilters((prev) => ({ ...prev, status: e.target.value }))
+              onChange={(val) => {
+                setFilters((prev) => ({ ...prev, status: val }))
               }}
-              className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-            >
-              <option value="">Semua Status Ujian</option>
-              <option value="draft">Draft</option>
-              <option value="published">Dipublikasikan</option>
-              <option value="berlangsung">Sedang Berlangsung</option>
-              <option value="selesai">Selesai</option>
-            </select>
+              placeholder="Semua Status Ujian"
+              popoverWidth="min-w-[170px]"
+              options={[
+                { value: '', label: 'Semua Status Ujian' },
+                { value: 'draft', label: 'Draft' },
+                { value: 'published', label: 'Dipublikasikan' },
+                { value: 'berlangsung', label: 'Sedang Berlangsung' },
+                { value: 'selesai', label: 'Selesai' },
+              ]}
+            />
 
             {/* Reset Button */}
-            {(filters.search || filters.kelas_id || filters.status) && (
+            {((canSelectUnit && selectedUnit) || filters.search || filters.kelas_id || filters.status) && (
               <button
                 type="button"
                 onClick={() => {
+                  if (canSelectUnit) setSelectedUnit('')
                   setFilters({ search: '', kelas_id: '', status: '' })
                 }}
                 className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 h-9.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
@@ -1399,32 +1763,32 @@ export default function LmsUjianPage({
           </div>
         ) : (
           <MasterDataTable className="!rounded-none !border-0 !shadow-none">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-                <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 text-[11px] font-black uppercase tracking-wider">
-                  <th className="w-auto sm:w-[32%] md:w-[30%] bg-transparent px-3.5 sm:px-6 md:px-8 py-3.5 font-black text-[11px] uppercase tracking-wider">
+            <TableRoot className="w-full text-left text-sm border-collapse">
+              <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                <TableRow className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 text-[11px] font-black uppercase tracking-wider">
+                  <TableHead className="w-auto sm:w-[32%] md:w-[30%] bg-transparent px-3.5 sm:px-6 md:px-8 py-3.5 font-black text-[11px] uppercase tracking-wider">
                     Judul &amp; Kisi-kisi Ujian
-                  </th>
-                  <th className="hidden sm:table-cell w-[20%] bg-transparent px-3 py-3.5 font-black text-[11px] uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell w-[20%] bg-transparent px-3 py-3.5 font-black text-[11px] uppercase tracking-wider">
                     Kelas &amp; Pengampu
-                  </th>
-                  <th className="hidden md:table-cell w-[14%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell w-[14%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
                     Durasi &amp; KKM
-                  </th>
-                  <th className="hidden lg:table-cell w-[14%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell w-[14%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
                     Pengaturan CBT
-                  </th>
-                  <th className="hidden sm:table-cell w-[10%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell w-[10%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
                     Status
-                  </th>
-                  <th className="w-14 sm:w-[10%] bg-transparent px-2 sm:px-3.5 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
+                  </TableHead>
+                  <TableHead className="w-14 sm:w-[10%] bg-transparent px-2 sm:px-3.5 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
                     Aksi CBT
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
                 {dataList.map((item) => (
-                  <tr
+                  <TableRow
                     key={item.id}
                     className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer group"
                     onClick={(e) => {
@@ -1434,7 +1798,7 @@ export default function LmsUjianPage({
                     }}
                   >
                     {/* Kolom 1: Judul Ujian & Kisi-kisi dengan HoverCard */}
-                    <td className="py-3.5 px-3.5 sm:px-6 md:px-8 align-middle max-w-sm relative">
+                    <TableCell className="py-3.5 px-3.5 sm:px-6 md:px-8 align-middle max-w-sm relative">
                       {/* HoverCard Preview */}
                       <div className="pointer-events-none absolute left-5 top-full mt-1 z-50 w-72 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out">
                         <div className="bg-white dark:bg-[#1B2433] rounded-2xl border border-emerald-300/80 dark:border-emerald-700 shadow-xl p-3.5 space-y-2">
@@ -1502,10 +1866,10 @@ export default function LmsUjianPage({
                           </div>
                         </div>
                       </div>
-                    </td>
+                    </TableCell>
 
                     {/* Kolom 2: Kelas & Guru */}
-                    <td className="hidden sm:table-cell py-3.5 px-3 align-middle">
+                    <TableCell className="hidden sm:table-cell py-3.5 px-3 align-middle">
                       <div className="font-bold text-slate-800 dark:text-slate-200">
                         {item.kelas?.nama_kelas || 'Semua Kelas'}
                       </div>
@@ -1515,10 +1879,10 @@ export default function LmsUjianPage({
                           {item.guru?.nama_lengkap || 'Guru Pengampu'}
                         </strong>
                       </div>
-                    </td>
+                    </TableCell>
 
                     {/* Kolom 3: Durasi & KKM */}
-                    <td className="hidden md:table-cell py-3.5 px-3 align-middle text-center">
+                    <TableCell className="hidden md:table-cell py-3.5 px-3 align-middle text-center">
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200 text-xs">
                         <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         <span>{item.durasi_menit || 60} Menit</span>
@@ -1526,10 +1890,10 @@ export default function LmsUjianPage({
                       <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
                         KKM: <span className="font-black text-emerald-600 dark:text-emerald-400">{item.nilai_kkm || 75}</span>
                       </div>
-                    </td>
+                    </TableCell>
 
                     {/* Kolom 4: Pengaturan CBT */}
-                    <td className="hidden lg:table-cell py-3.5 px-3 align-middle text-center">
+                    <TableCell className="hidden lg:table-cell py-3.5 px-3 align-middle text-center">
                       <div className="flex flex-wrap items-center justify-center gap-1.5">
                         {item.acak_soal && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800">
@@ -1542,15 +1906,15 @@ export default function LmsUjianPage({
                           </span>
                         )}
                       </div>
-                    </td>
+                    </TableCell>
 
                     {/* Kolom 5: Status */}
-                    <td className="hidden sm:table-cell py-3.5 px-3 align-middle text-center">
+                    <TableCell className="hidden sm:table-cell py-3.5 px-3 align-middle text-center">
                       {getStatusBadge(item.status)}
-                    </td>
+                    </TableCell>
 
                     {/* Kolom 6: ActionDropdown */}
-                    <td className="py-3.5 px-2 sm:px-3.5 align-middle text-center" data-no-rowclick>
+                    <TableCell className="py-3.5 px-2 sm:px-3.5 align-middle text-center" data-no-rowclick>
                       <ActionDropdown
                         onView={() => {
                           setRowDetailItem(item)
@@ -1582,11 +1946,11 @@ export default function LmsUjianPage({
                           },
                         ]}
                       />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </TableRoot>
           </MasterDataTable>
         )}
 
@@ -1604,19 +1968,21 @@ export default function LmsUjianPage({
             </div>
 
             <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
-              <select
+              <HeroUiFilterSelect
                 value={pagination.perPage || 10}
-                onChange={(e) => {
-                  const newPerPage = Number(e.target.value)
+                onChange={(val) => {
+                  const newPerPage = Number(val)
                   setPagination((prev) => ({ ...prev, perPage: newPerPage }))
                   fetchData(1)
                 }}
-                className="h-9 rounded-xl border border-emerald-200/80 bg-white px-2.5 text-xs font-bold text-slate-700 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value={10}>10 Baris</option>
-                <option value={25}>25 Baris</option>
-                <option value={50}>50 Baris</option>
-              </select>
+                className="w-auto"
+                popoverWidth="min-w-[120px]"
+                options={[
+                  { value: 10, label: '10 Baris' },
+                  { value: 25, label: '25 Baris' },
+                  { value: 50, label: '50 Baris' },
+                ]}
+              />
 
               <div className="flex items-center gap-1.5">
                 <button
@@ -1809,41 +2175,34 @@ export default function LmsUjianPage({
               {/* Grid: Kisi-kisi & Kelas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Kisi-kisi Ujian (Sumber Bank Soal) <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={formData.kisi_kisi_id}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, kisi_kisi_id: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#111827] focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+                  <HeroUiModalSelect
+                    label="Kisi-kisi Ujian (Sumber Bank Soal)"
                     required
-                  >
-                    <option value="">-- Pilih Kisi-kisi Bank Soal --</option>
-                    {options.kisi_kisi.map((k) => (
-                      <option key={k.id} value={k.id}>
-                        {k.judul_kisi} ({k.subject_name || k.mata_pelajaran})
-                      </option>
-                    ))}
-                  </select>
+                    value={formData.kisi_kisi_id}
+                    onChange={(val) => setFormData((prev) => ({ ...prev, kisi_kisi_id: val }))}
+                    placeholder="-- Pilih Kisi-kisi Bank Soal --"
+                    icon={FileText}
+                    searchable
+                    options={options.kisi_kisi.map((k) => ({
+                      value: k.id,
+                      label: `${k.judul_kisi} (${k.subject_name || k.mata_pelajaran})`,
+                    }))}
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Kelas Sasaran <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={formData.kelas_id}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, kelas_id: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#111827] focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+                  <HeroUiModalSelect
+                    label="Kelas Sasaran"
                     required
-                  >
-                    <option value="">-- Pilih Kelas --</option>
-                    {options.kelas.map((k) => (
-                      <option key={k.id} value={k.id}>
-                        {k.nama_kelas}
-                      </option>
-                    ))}
-                  </select>
+                    value={formData.kelas_id}
+                    onChange={(val) => setFormData((prev) => ({ ...prev, kelas_id: val }))}
+                    placeholder="-- Pilih Kelas --"
+                    icon={Layers}
+                    options={options.kelas.map((k) => ({
+                      value: k.id,
+                      label: k.nama_kelas,
+                    }))}
+                  />
                 </div>
               </div>
 
@@ -1878,19 +2237,18 @@ export default function LmsUjianPage({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Status Ujian
-                  </label>
-                  <select
+                  <HeroUiModalSelect
+                    label="Status Ujian"
                     value={formData.status}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
-                    className="w-full px-3.5 py-2 text-xs font-semibold rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#111827] focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="published">Dipublikasikan</option>
-                    <option value="berlangsung">Sedang Berlangsung</option>
-                    <option value="selesai">Selesai</option>
-                  </select>
+                    onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
+                    placeholder="Pilih Status"
+                    options={[
+                      { value: 'draft', label: 'Draft' },
+                      { value: 'published', label: 'Dipublikasikan' },
+                      { value: 'berlangsung', label: 'Sedang Berlangsung' },
+                      { value: 'selesai', label: 'Selesai' },
+                    ]}
+                  />
                 </div>
               </div>
 
@@ -2374,28 +2732,28 @@ export default function LmsUjianPage({
 
               {/* Student Score Table */}
               <div className="border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-emerald-50/80 dark:bg-emerald-950/50 text-emerald-950 dark:text-emerald-100 font-bold border-b border-emerald-200/80 dark:border-emerald-800/60">
-                    <tr>
-                      <th className="p-3.5">Nama Siswa</th>
-                      <th className="p-3.5 text-center">Durasi (m)</th>
-                      <th className="p-3.5 text-center">Benar</th>
-                      <th className="p-3.5 text-center">Salah</th>
-                      <th className="p-3.5 text-center">Kosong</th>
-                      <th className="p-3.5 text-center font-black">Nilai Final</th>
-                      <th className="p-3.5 text-center">Status KKM</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-100/70 dark:divide-emerald-900/40">
+                <TableRoot className="w-full text-left text-xs">
+                  <TableHeader className="bg-emerald-50/80 dark:bg-emerald-950/50 text-emerald-950 dark:text-emerald-100 font-bold border-b border-emerald-200/80 dark:border-emerald-800/60">
+                    <TableRow>
+                      <TableHead className="p-3.5">Nama Siswa</TableHead>
+                      <TableHead className="p-3.5 text-center">Durasi (m)</TableHead>
+                      <TableHead className="p-3.5 text-center">Benar</TableHead>
+                      <TableHead className="p-3.5 text-center">Salah</TableHead>
+                      <TableHead className="p-3.5 text-center">Kosong</TableHead>
+                      <TableHead className="p-3.5 text-center font-black">Nilai Final</TableHead>
+                      <TableHead className="p-3.5 text-center">Status KKM</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-emerald-100/70 dark:divide-emerald-900/40">
                     {(resultsData.peserta || []).map((p) => (
-                      <tr key={p.sesi_id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20">
-                        <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100">{p.nama_siswa}</td>
-                        <td className="p-3.5 text-center font-semibold text-slate-600 dark:text-slate-400">{p.durasi_menit}m</td>
-                        <td className="p-3.5 text-center text-emerald-600 dark:text-emerald-400 font-black">{p.jumlah_benar}</td>
-                        <td className="p-3.5 text-center text-rose-600 dark:text-rose-400 font-black">{p.jumlah_salah}</td>
-                        <td className="p-3.5 text-center text-amber-600 dark:text-amber-400 font-bold">{p.jumlah_kosong}</td>
-                        <td className="p-3.5 text-center text-sm font-black text-emerald-700 dark:text-emerald-300">{p.nilai_final}</td>
-                        <td className="p-3.5 text-center">
+                      <TableRow key={p.sesi_id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20">
+                        <TableCell className="p-3.5 font-bold text-slate-900 dark:text-slate-100">{p.nama_siswa}</TableCell>
+                        <TableCell className="p-3.5 text-center font-semibold text-slate-600 dark:text-slate-400">{p.durasi_menit}m</TableCell>
+                        <TableCell className="p-3.5 text-center text-emerald-600 dark:text-emerald-400 font-black">{p.jumlah_benar}</TableCell>
+                        <TableCell className="p-3.5 text-center text-rose-600 dark:text-rose-400 font-black">{p.jumlah_salah}</TableCell>
+                        <TableCell className="p-3.5 text-center text-amber-600 dark:text-amber-400 font-bold">{p.jumlah_kosong}</TableCell>
+                        <TableCell className="p-3.5 text-center text-sm font-black text-emerald-700 dark:text-emerald-300">{p.nilai_final}</TableCell>
+                        <TableCell className="p-3.5 text-center">
                           <span
                             className={`px-3 py-1 rounded-full text-[10px] font-black ${
                               p.is_lulus
@@ -2405,11 +2763,11 @@ export default function LmsUjianPage({
                           >
                             {p.is_lulus ? 'LULUS' : 'TIDAK LULUS'}
                           </span>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </TableRoot>
               </div>
             </div>
 
@@ -2510,12 +2868,14 @@ export default function LmsUjianPage({
   return (
     <PageContainer maxW="7xl">
       {!(embedded || hideBreadcrumb) && (
-        <AppBreadcrumb
-          items={[
-            { label: 'LMS & Akademik', href: '/dashboard' },
-            { label: 'Ujian Online (CBT)' },
-          ]}
-        />
+        <div className="mb-4">
+          <AppBreadcrumb
+            items={[
+              { label: 'LMS & Akademik', href: '/dashboard' },
+              { label: 'Ujian Online (CBT)' },
+            ]}
+          />
+        </div>
       )}
       {pageContent}
     </PageContainer>

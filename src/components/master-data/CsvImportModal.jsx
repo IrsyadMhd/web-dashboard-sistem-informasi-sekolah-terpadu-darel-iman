@@ -125,7 +125,7 @@ export default function CsvImportModal({
         tabIndex={-1}
         aria-modal="true"
         aria-labelledby="csv-import-modal-title"
-        className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md overflow-y-auto"
+        className="fixed inset-0 z-[80] flex items-start sm:items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md overflow-y-auto"
         onMouseDown={(e) => {
           if (e.target === e.currentTarget && !busy) onClose()
         }}
@@ -303,7 +303,7 @@ export default function CsvImportModal({
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/80 px-6 py-4 dark:border-slate-800 dark:bg-[#131B27] shrink-0">
+              <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/80 px-6 py-4 dark:border-slate-800 dark:bg-[#131B27] shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
                 <button
                   type="button"
                   disabled={busy}

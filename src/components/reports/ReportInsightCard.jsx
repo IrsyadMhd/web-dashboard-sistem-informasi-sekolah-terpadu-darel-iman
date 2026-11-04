@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Sparkles, Building2, GraduationCap, Scale, ChevronRight, X, Users, Search } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Card } from '../ui/card'
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '@/components/tailgrids/core/dialog'
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '@/components/ui/dialog'
 
 export function ReportInsightCard({ insights, unitRecaps = [], summary = null, details = [] }) {
   const [activeModal, setActiveModal] = useState(null) // null | 'unit_terbanyak' | 'guru_terbanyak' | 'rasio_gender'

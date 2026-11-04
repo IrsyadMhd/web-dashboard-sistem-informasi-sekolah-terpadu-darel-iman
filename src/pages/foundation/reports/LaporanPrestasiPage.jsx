@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Award,
   BookOpen,
   Building2,
   Calendar,
+  Check,
   CheckCircle2,
   ChevronDown,
   Download,
@@ -40,13 +41,15 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from '../../../stores/authStore'
 import { reportService } from '../../../services/reportService'
+import { useDebounce } from '../../../hooks/useDebounce'
+import { SmartScrollFab } from '../../../components/common'
 
 // TailGrids Core Components
-import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../../../components/tailgrids/core/avatar'
-import { Badge } from '../../../components/tailgrids/core/badge'
-import { Button } from '../../../components/tailgrids/core/button'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../../components/tailgrids/core/card'
-import { Alert, AlertContent, AlertDescription, AlertIndicator, AlertTitle } from '../../../components/tailgrids/core/alert'
+import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../../../components/ui/avatar'
+import { Badge } from '../../../components/ui/badge'
+import { Button } from '../../../components/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../../components/ui/card'
+import { Alert, AlertContent, AlertDescription, AlertIndicator, AlertTitle } from '../../../components/ui/alert'
 import {
   Dialog,
   DialogHeader,
@@ -55,8 +58,8 @@ import {
   DialogBody,
   DialogFooter,
   DialogClose,
-} from '../../../components/tailgrids/core/dialog'
-import { Pagination } from '../../../components/tailgrids/core/pagination'
+} from '../../../components/ui/dialog'
+import { Pagination } from '../../../components/ui/pagination'
 import {
   TableRoot,
   TableHeader,
@@ -64,7 +67,7 @@ import {
   TableHead,
   TableRow,
   TableCell,
-} from '../../../components/tailgrids/core/table'
+} from '../../../components/ui/table'
 import PageContainer from '../../../components/app/PageContainer'
 import AppBreadcrumb from '../../../components/app/AppBreadcrumb'
 import {
@@ -147,6 +150,168 @@ const MODERN_CARD_TONES = {
   },
 }
 
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'w-full',
+  searchable = false,
+  ariaLabel = '',
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [openUpwards, setOpenUpwards] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const handleToggle = () => {
+    if (disabled) return
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const spaceAbove = rect.top
+      setOpenUpwards(spaceBelow < 240 && spaceAbove > spaceBelow)
+      setSearch('')
+    }
+    setIsOpen((prev) => !prev)
+  }
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+      (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  const hasValue = value !== '' && value !== 'semua' && value !== 'all' && value !== undefined && value !== null
+
+  return (
+    <div className={`relative ${isOpen ? 'z-[60]' : 'z-10'} ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={handleToggle}
+        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+          isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+            : hasValue
+            ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
+            : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: openUpwards ? 6 : -6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: openUpwards ? 6 : -6 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 ${
+              openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+            } z-[100] ${popoverWidth} min-w-[200px] overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/60 dark:shadow-black/60`}
+          >
+            {(searchable || options.length > 5) && (
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div className="truncate">{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export function LaporanPrestasiPage() {
   const user = useAuthStore((state) => state.user)
 
@@ -172,12 +337,14 @@ export function LaporanPrestasiPage() {
     )
   }, [user, isFoundationRole])
 
+  const [searchTerm, setSearchTerm] = useState('')
+  const debouncedSearch = useDebounce(searchTerm, 350)
+
   const [filters, setFilters] = useState({
     period: 'year',
     unit_id: 'all',
     jenis_prestasi: 'all',
     tingkat_prestasi: 'all',
-    search: '',
     page: 1,
     per_page: 15,
   })
@@ -197,7 +364,8 @@ export function LaporanPrestasiPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await reportService.getPrestasiReport(filters, user, isFoundationRole)
+      const queryParams = { ...filters, search: debouncedSearch }
+      const res = await reportService.getPrestasiReport(queryParams, user, isFoundationRole)
       setReportData(res)
     } catch (err) {
       console.error('Failed to fetch Prestasi report', err)
@@ -209,23 +377,46 @@ export function LaporanPrestasiPage() {
 
   useEffect(() => {
     fetchReport()
-  }, [filters])
+  }, [filters, debouncedSearch])
 
   const handleFilterChange = (key, val) => {
     setFilters((prev) => ({ ...prev, [key]: val, page: 1 }))
   }
 
   const handleResetFilters = () => {
+    setSearchTerm('')
     setFilters({
       period: 'year',
       unit_id: 'all',
       jenis_prestasi: 'all',
       tingkat_prestasi: 'all',
-      search: '',
       page: 1,
       per_page: 15,
     })
   }
+
+  const periodOptions = useMemo(() => [
+    { value: 'year', label: 'Tahun Ini (2026)' },
+    { value: 'month', label: 'Bulan Ini' },
+    { value: 'all', label: 'Semua Periode' },
+  ], [])
+
+  const jenisPrestasiOptions = useMemo(() => [
+    { value: 'all', label: 'Semua Kategori' },
+    { value: 'tahfizh', label: 'Tahfizh Al-Qur’an' },
+    { value: 'santri', label: 'Adab & Karakter Santri' },
+    { value: 'olahraga', label: 'Olahraga & Ekskul' },
+    { value: 'lomba', label: 'Lomba Pembelajaran' },
+    { value: 'akademik', label: 'Akademik Umum' },
+  ], [])
+
+  const tingkatPrestasiOptions = useMemo(() => [
+    { value: 'all', label: 'Semua Tingkat' },
+    { value: 'Nasional', label: 'Tingkat Nasional' },
+    { value: 'Provinsi', label: 'Tingkat Provinsi' },
+    { value: 'Kota/Kabupaten', label: 'Kota / Kabupaten' },
+    { value: 'Internal Sekolah', label: 'Internal Sekolah' },
+  ], [])
 
   const handleOpenStudentDetail = async (studentItem) => {
     try {
@@ -540,17 +731,22 @@ export function LaporanPrestasiPage() {
       {/* ── 3. 3-COLUMN EQUAL GRID: FILTER + TREND CHART + DONUT CHART ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch print:hidden">
         {/* Col 1: Kartu Filter Laporan + Reset */}
-        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] flex flex-col justify-between">
-          <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
-          <div className="relative z-10">
+        <div className="relative rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] flex flex-col justify-between">
+          <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15 overflow-hidden" />
+          <div className="relative z-20">
             <div className="flex items-center justify-between mb-4 border-b border-emerald-500/15 pb-3">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Filter className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 Filter Laporan Prestasi
               </h3>
-              <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                Interaktif
-              </span>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Reset Filter
+              </button>
             </div>
 
             <div className="space-y-3">
@@ -558,55 +754,47 @@ export function LaporanPrestasiPage() {
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                   Periode Waktu
                 </label>
-                <select
+                <HeroUiFilterSelect
                   value={filters.period}
-                  onChange={(e) => handleFilterChange('period', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs font-semibold text-slate-800 focus:border-emerald-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="year">Tahun Ini (2026)</option>
-                  <option value="month">Bulan Ini</option>
-                  <option value="all">Semua Periode</option>
-                </select>
+                  onChange={(val) => handleFilterChange('period', val)}
+                  options={periodOptions}
+                  placeholder="Pilih Periode"
+                  icon={Calendar}
+                  ariaLabel="Pilih Periode Waktu"
+                />
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                   Kategori Prestasi
                 </label>
-                <select
+                <HeroUiFilterSelect
                   value={filters.jenis_prestasi}
-                  onChange={(e) => handleFilterChange('jenis_prestasi', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs font-semibold text-slate-800 focus:border-emerald-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="all">Semua Kategori</option>
-                  <option value="tahfizh">Tahfizh Al-Qur’an</option>
-                  <option value="santri">Adab & Karakter Santri</option>
-                  <option value="olahraga">Olahraga & Ekskul</option>
-                  <option value="lomba">Lomba Pembelajaran</option>
-                  <option value="akademik">Akademik Umum</option>
-                </select>
+                  onChange={(val) => handleFilterChange('jenis_prestasi', val)}
+                  options={jenisPrestasiOptions}
+                  placeholder="Pilih Kategori"
+                  icon={Trophy}
+                  ariaLabel="Pilih Kategori Prestasi"
+                />
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                   Tingkat Prestasi
                 </label>
-                <select
+                <HeroUiFilterSelect
                   value={filters.tingkat_prestasi}
-                  onChange={(e) => handleFilterChange('tingkat_prestasi', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs font-semibold text-slate-800 focus:border-emerald-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="all">Semua Tingkat</option>
-                  <option value="Nasional">Tingkat Nasional</option>
-                  <option value="Provinsi">Tingkat Provinsi</option>
-                  <option value="Kota/Kabupaten">Kota / Kabupaten</option>
-                  <option value="Internal Sekolah">Internal Sekolah</option>
-                </select>
+                  onChange={(val) => handleFilterChange('tingkat_prestasi', val)}
+                  options={tingkatPrestasiOptions}
+                  placeholder="Pilih Tingkat"
+                  icon={Medal}
+                  ariaLabel="Pilih Tingkat Prestasi"
+                />
               </div>
             </div>
           </div>
 
-          <div className="relative z-10 mt-4 pt-3 border-t border-emerald-500/15">
+          <div className="relative z-0 mt-4 pt-3 border-t border-emerald-500/15">
             <button
               type="button"
               onClick={handleResetFilters}
@@ -807,7 +995,7 @@ export function LaporanPrestasiPage() {
       )}
 
       {/* ── 5. MASTER DATATABLE CONTAINER (EMERALD STANDAR BENCHMARK) ── */}
-      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+      <section id="tabel-laporan-prestasi" className="scroll-mt-6 relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* Toolbar Header Baris 1: Tab Switcher & Squircle Action Buttons */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-5 dark:border-emerald-800/60">
           <div>
@@ -922,8 +1110,8 @@ export function LaporanPrestasiPage() {
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Cari siswa, NIS, nama prestasi..."
               className="w-full rounded-xl border border-emerald-200/80 bg-white pl-9 pr-3 py-1.5 text-xs font-medium focus:border-emerald-600 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
@@ -1396,6 +1584,9 @@ export function LaporanPrestasiPage() {
           title="Export Laporan Rekapitulasi Prestasi Siswa"
         />
       )}
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-laporan-prestasi" downTooltip="Langsung ke Tabel Prestasi" />
     </PageContainer>
   )
 }

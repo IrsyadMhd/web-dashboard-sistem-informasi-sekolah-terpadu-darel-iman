@@ -28,8 +28,8 @@ import { usePengaturanStore, resolveFoundationName } from '../../stores/pengatur
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import AppBadge from '../../components/app/AppBadge'
 import AppSkeleton from '../../components/app/AppSkeleton'
-import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/tailgrids/core/table'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/tailgrids/core/avatar'
+import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/ui/table'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Dialog,
   DialogBody,
@@ -38,8 +38,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
-import { Backdrop } from '@/components/tailgrids/core/overlay'
+} from '@/components/ui/dialog'
+import { Backdrop } from '@/components/ui/dialog'
 
 // ── Soft Pastel Color Mappings ───────────────────────────────────────────────
 const UNIT_BADGE_STYLES = {

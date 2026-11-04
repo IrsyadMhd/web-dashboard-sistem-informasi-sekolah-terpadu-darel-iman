@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { DatePicker } from '@/components/ui/date-picker'
 import { motion } from 'framer-motion'
 import {
   Building2,
@@ -22,9 +23,9 @@ import {
   Sparkles,
 } from 'lucide-react'
 import {
-  ArrowBothDirectionHorizontal2,
-  Download1,
-} from '@tailgrids/icons'
+  ArrowRightLeft as ArrowBothDirectionHorizontal2,
+  Download as Download1,
+} from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -40,6 +41,7 @@ import {
 
 import { exportCsv } from '../components/reports/ReportKit'
 import { reportService } from '../services/reportService'
+import { useDebounce } from '../hooks/useDebounce'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { PersonIdentityCell } from '../components/ui/PersonIdentityCell'
@@ -54,7 +56,7 @@ import {
 } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 
-import { Button } from '@/components/tailgrids/core/button'
+import { Button } from '@/components/ui/button'
 import {
   TableRoot,
   TableHeader,
@@ -62,14 +64,14 @@ import {
   TableBody,
   TableRow,
   TableCell,
-} from '@/components/tailgrids/core/table'
-import { Pagination } from '@/components/tailgrids/core/pagination'
-import { Input } from '@/components/tailgrids/core/input'
+} from '@/components/ui/table'
+import { Pagination } from '@/components/ui/pagination'
+import { Input } from '@/components/ui/input'
 import {
   HoverCard,
   HoverCardTrigger,
   HoverCardContent,
-} from '@/components/tailgrids/core/hover-card'
+} from '@/components/ui/hover-card'
 import {
   Dialog,
   DialogBody,
@@ -77,8 +79,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
-import { Backdrop } from '@/components/tailgrids/core/overlay'
+} from '@/components/ui/dialog'
+import { Backdrop } from '@/components/ui/dialog'
 
 const angka = (nilai) => new Intl.NumberFormat('id-ID').format(Number(nilai || 0))
 const warnaPie = ['#059669', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
@@ -87,6 +89,7 @@ export default function LaporanPegawaiPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [rows, setRows] = useState([])
   const [dashboard, setDashboard] = useState({})
   
@@ -141,7 +144,7 @@ export default function LaporanPegawaiPage() {
       setLoading(true)
       setError('')
       const [list, stats] = await Promise.all([
-        reportService.employees({ search }),
+        reportService.employees({ search: debouncedSearch }),
         reportService.employeeStats(),
       ])
       setRows(list.data || list || [])
@@ -151,7 +154,7 @@ export default function LaporanPegawaiPage() {
     } finally {
       setLoading(false)
     }
-  }, [search])
+  }, [debouncedSearch])
 
   useEffect(() => {
     loadData()
@@ -184,7 +187,7 @@ export default function LaporanPegawaiPage() {
       const jabatanName = r.position?.name || r.jabatan?.name || r.jabatan || ''
       const cocokCari = `${nama} ${nip} ${unitName} ${jabatanName}`
         .toLowerCase()
-        .includes(search.toLowerCase())
+        .includes(debouncedSearch.toLowerCase())
 
       const jkVal = String(r.gender || r.jenis_kelamin || '').toUpperCase()
       const cocokJK =
@@ -221,7 +224,7 @@ export default function LaporanPegawaiPage() {
       })
     }
     return filtered
-  }, [rows, search, jenisKelamin, status, unit, jabatan, dateFrom, dateTo, sortKey, sortOrder])
+  }, [rows, debouncedSearch, jenisKelamin, status, unit, jabatan, dateFrom, dateTo, sortKey, sortOrder])
 
   const totalHalaman = Math.max(Math.ceil(hasilFilter.length / perHalaman), 1)
   const baris = hasilFilter.slice((halaman - 1) * perHalaman, halaman * perHalaman)
@@ -668,20 +671,20 @@ export default function LaporanPegawaiPage() {
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <div>
                   <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Mulai</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={dateFrom}
                     onChange={(e) => { setDateFrom(e.target.value); setPeriod('custom'); setHalaman(1); }}
-                    className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                    placeholder="Mulai..."
+                    inputClassName="h-8 text-[11px]"
                   />
                 </div>
                 <div>
                   <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Selesai</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={dateTo}
                     onChange={(e) => { setDateTo(e.target.value); setPeriod('custom'); setHalaman(1); }}
-                    className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                    placeholder="Selesai..."
+                    inputClassName="h-8 text-[11px]"
                   />
                 </div>
               </div>

@@ -9,23 +9,23 @@ import {
   RefreshCw,
   Eye,
   ShieldCheck,
+  Download as Download1,
 } from 'lucide-react'
-import { Download1 } from '@tailgrids/icons'
 
 import {
   Avatar,
   AvatarImage,
   AvatarFallback,
-} from '@/components/tailgrids/core/avatar'
+} from '@/components/ui/avatar'
 
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Button } from '@/components/tailgrids/core/button'
-import { Pagination } from '@/components/tailgrids/core/pagination'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Pagination } from '@/components/ui/pagination'
 
 import {
   OverlayWrapper,
   Backdrop,
-} from '@/components/tailgrids/core/overlay'
+} from '@/components/ui/overlay'
 
 import {
   Dialog,
@@ -35,7 +35,7 @@ import {
   DialogBody,
   DialogFooter,
   DialogClose,
-} from '@/components/tailgrids/core/dialog'
+} from '@/components/ui/dialog'
 
 import {
   TableRoot,
@@ -44,7 +44,7 @@ import {
   TableHead,
   TableRow,
   TableCell,
-} from '@/components/tailgrids/core/table'
+} from '@/components/ui/table'
 
 export default function StudentAchievementRecapSection({
   achievements = [],
@@ -219,10 +219,10 @@ export default function StudentAchievementRecapSection({
             setCategoryFilter('all')
             setCurrentPage(1)
           }}
-          className={`cursor-pointer rounded-2xl border p-4 shadow-sm transition hover:shadow-md ${
+          className={`cursor-pointer rounded-2xl border-2 p-4 shadow-sm transition hover:shadow-md ${
             categoryFilter === 'all'
-              ? 'border-amber-500 bg-amber-500/5 dark:border-amber-500 dark:bg-amber-500/10'
-              : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]'
+              ? 'border-amber-500 bg-amber-500/10 shadow-md ring-2 ring-amber-500/20 dark:border-amber-500 dark:bg-amber-500/15'
+              : 'border-amber-200/80 bg-gradient-to-br from-amber-50/50 to-white hover:border-amber-400 dark:border-amber-800/60 dark:from-amber-950/20 dark:to-[#1B2433]'
           }`}
         >
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
@@ -272,10 +272,10 @@ export default function StudentAchievementRecapSection({
             setCategoryFilter('tahfizh')
             setCurrentPage(1)
           }}
-          className={`cursor-pointer rounded-2xl border p-4 shadow-sm transition hover:shadow-md ${
+          className={`cursor-pointer rounded-2xl border-2 p-4 shadow-sm transition hover:shadow-md ${
             categoryFilter === 'tahfizh'
-              ? 'border-emerald-500 bg-emerald-500/5 dark:border-emerald-500 dark:bg-emerald-500/10'
-              : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]'
+              ? 'border-emerald-500 bg-emerald-500/10 shadow-md ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-500/15'
+              : 'border-emerald-200/80 bg-gradient-to-br from-emerald-50/50 to-white hover:border-emerald-400 dark:border-emerald-800/60 dark:from-emerald-950/20 dark:to-[#1B2433]'
           }`}
         >
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
@@ -329,10 +329,10 @@ export default function StudentAchievementRecapSection({
             setCategoryFilter('karakter')
             setCurrentPage(1)
           }}
-          className={`cursor-pointer rounded-2xl border p-4 shadow-sm transition hover:shadow-md ${
+          className={`cursor-pointer rounded-2xl border-2 p-4 shadow-sm transition hover:shadow-md ${
             categoryFilter === 'karakter'
-              ? 'border-purple-500 bg-purple-500/5 dark:border-purple-500 dark:bg-purple-500/10'
-              : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]'
+              ? 'border-purple-500 bg-purple-500/10 shadow-md ring-2 ring-purple-500/20 dark:border-purple-500 dark:bg-purple-500/15'
+              : 'border-purple-200/80 bg-gradient-to-br from-purple-50/50 to-white hover:border-purple-400 dark:border-purple-800/60 dark:from-purple-950/20 dark:to-[#1B2433]'
           }`}
         >
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
@@ -386,10 +386,10 @@ export default function StudentAchievementRecapSection({
             setCategoryFilter('akademik')
             setCurrentPage(1)
           }}
-          className={`cursor-pointer rounded-2xl border p-4 shadow-sm transition hover:shadow-md ${
+          className={`cursor-pointer rounded-2xl border-2 p-4 shadow-sm transition hover:shadow-md ${
             categoryFilter === 'akademik'
-              ? 'border-cyan-500 bg-cyan-500/5 dark:border-cyan-500 dark:bg-cyan-500/10'
-              : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]'
+              ? 'border-cyan-500 bg-cyan-500/10 shadow-md ring-2 ring-cyan-500/20 dark:border-cyan-500 dark:bg-cyan-500/15'
+              : 'border-cyan-200/80 bg-gradient-to-br from-cyan-50/50 to-white hover:border-cyan-400 dark:border-cyan-800/60 dark:from-cyan-950/20 dark:to-[#1B2433]'
           }`}
         >
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
@@ -443,10 +443,10 @@ export default function StudentAchievementRecapSection({
             setCategoryFilter('ekstrakurikuler')
             setCurrentPage(1)
           }}
-          className={`cursor-pointer rounded-2xl border p-4 shadow-sm transition hover:shadow-md ${
+          className={`cursor-pointer rounded-2xl border-2 p-4 shadow-sm transition hover:shadow-md ${
             categoryFilter === 'ekstrakurikuler'
-              ? 'border-sky-500 bg-sky-500/5 dark:border-sky-500 dark:bg-sky-500/10'
-              : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]'
+              ? 'border-sky-500 bg-sky-500/10 shadow-md ring-2 ring-sky-500/20 dark:border-sky-500 dark:bg-sky-500/15'
+              : 'border-sky-200/80 bg-gradient-to-br from-sky-50/50 to-white hover:border-sky-400 dark:border-sky-800/60 dark:from-sky-950/20 dark:to-[#1B2433]'
           }`}
         >
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
@@ -496,9 +496,9 @@ export default function StudentAchievementRecapSection({
       </div>
 
       {/* 2. TailGrids Master Data Table Container */}
-      <div className="rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] overflow-hidden">
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* Toolbar Baris 1: Title + Action Buttons */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-6 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-6 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30">
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{title}</h3>
@@ -537,7 +537,7 @@ export default function StudentAchievementRecapSection({
         </div>
 
         {/* Toolbar Baris 2: Search + Filter Dropdowns + perPage */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 p-4 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800/80">
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 p-4 dark:bg-slate-900/40 border-b border-emerald-200/80 dark:border-emerald-800/60">
           <div className="flex flex-wrap items-center gap-2 flex-1">
             {/* Search Input */}
             <div className="relative min-w-[220px] max-w-xs flex-1">
@@ -613,7 +613,7 @@ export default function StudentAchievementRecapSection({
 
         {/* TailGrids Table */}
         <div className="overflow-x-auto">
-          <TableRoot fullBleed={false}>
+          <TableRoot className="w-full text-left border-collapse text-xs min-w-[940px]">
             <TableHeader className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:border-emerald-800/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-800 dark:text-slate-100">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-12 text-center text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">#</TableHead>

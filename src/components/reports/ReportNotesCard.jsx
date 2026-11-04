@@ -1,6 +1,6 @@
 import React from 'react'
 import { FileText, Calendar, UserCheck } from 'lucide-react'
-import { Card } from '@/components/tailgrids/core/card'
+import { Card } from '@/components/ui/card'
 
 export function ReportNotesCard({
   periodLabel = 'Periode Aktif',

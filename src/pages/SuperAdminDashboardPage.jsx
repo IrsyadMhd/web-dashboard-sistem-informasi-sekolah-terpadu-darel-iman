@@ -44,20 +44,17 @@ import {
   AppButton,
   PageContainer,
   AppDataTable,
+  HeroUiHeader,
 } from '../components/app'
-import { Button } from '../components/tailgrids/core/button'
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '../components/tailgrids/core/hover-card'
+import { Button } from '../components/ui/button'
+import { Modal } from '../components/ui/modal'
 import {
   Alert,
   AlertContent,
   AlertDescription,
   AlertIndicator,
   AlertTitle,
-} from '../components/tailgrids/core/alert'
+} from '../components/ui/alert'
 import { SquircleActionButton } from '../components/master-data'
 
 import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
@@ -193,7 +190,10 @@ function ModernKpiCard({ card, onClick }) {
             {card.badgeText}
           </span>
         </div>
-        <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider block mb-1 truncate ${tone.title}`}>
+        <span
+          title={card.title}
+          className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider block mb-1 line-clamp-2 min-h-[2.4em] leading-snug ${tone.title}`}
+        >
           {card.title}
         </span>
         <strong className={`text-xl sm:text-2xl md:text-3xl font-black tabular-nums tracking-tight block ${tone.val}`}>
@@ -224,6 +224,7 @@ export default function SuperAdminDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
   const [activeModal, setActiveModal] = useState(null)
+  const [selectedLoginAudit, setSelectedLoginAudit] = useState(null)
   const pageSize = 5
 
   // ── 4. TANSTACK REACT QUERY V5 FETCHING DENGAN CACHING CEPAT ──
@@ -305,50 +306,19 @@ export default function SuperAdminDashboardPage() {
         sortable: true,
         className: 'w-[36%] min-w-[200px]',
         render: (row) => (
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <div className="flex items-center gap-3 cursor-pointer group max-w-sm">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 text-emerald-800 font-black text-xs dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-emerald-300 group-hover:scale-105 transition-transform shadow-xs">
-                  {(row.code || row.name || 'UN').substring(0, 3).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1 overflow-hidden">
-                  <p className="font-extrabold text-slate-900 dark:text-white truncate text-xs group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                    {row.name}
-                  </p>
-                  <p className="text-[11px] text-slate-400 font-medium truncate">
-                    Kode: {row.code || 'UNIT'}
-                  </p>
-                </div>
-              </div>
-            </HoverCardTrigger>
-            <HoverCardContent className="w-72 p-4 bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 shadow-xl rounded-2xl">
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-9 rounded-xl bg-emerald-600 text-white font-bold items-center justify-center text-xs">
-                    {(row.code || 'UN').substring(0, 3).toUpperCase()}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white text-xs">
-                      {row.name}
-                    </h4>
-                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                      Unit Sekolah Terdaftar
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Siswa:</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{formatAngka(row.siswa_count)} Siswa</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[10px]">Guru:</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{formatAngka(row.guru_count)} Guru</strong>
-                  </div>
-                </div>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
+          <div className="flex items-center gap-3 max-w-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 text-emerald-800 font-black text-xs dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-emerald-300 shadow-xs">
+              {(row.code || row.name || 'UN').substring(0, 3).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <p className="font-extrabold text-slate-900 dark:text-white truncate text-xs">
+                {row.name}
+              </p>
+              <p className="text-[11px] text-slate-400 font-medium truncate">
+                Kode: {row.code || 'UNIT'}
+              </p>
+            </div>
+          </div>
         ),
       },
       {
@@ -564,50 +534,25 @@ export default function SuperAdminDashboardPage() {
         <motion.div variants={itemVariants} className="space-y-4">
           <AppBreadcrumb items={[{ label: `Dashboard Utama ${welcomeRoleName}` }]} />
 
-          {/* Header Halaman Modern Hero Card Sesuai Panduan */}
-          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
-            {/* Dual Multi-Tone Ambient Glow Blobs */}
-            <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
-            <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
-
-            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
-                {/* 3D Gradient Icon Badge */}
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600 mt-0.5 sm:mt-0">
-                  <ShieldCheck className="h-6 w-6" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
-                      Dashboard Utama {welcomeRoleName}
-                    </h1>
-                    {/* Role Tag Badge */}
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
-                      <Sparkles className="size-3.5" />
-                      {welcomeRoleName}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
-                    Pusat kendali dan pemantauan terpadu seluruh unit pendidikan, aktivitas operasional, dan metrik sistem sekolah.
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Badge & Tombol Segarkan */}
-              <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center w-full sm:w-auto">
-                <AppButton
-                  variant="outline"
-                  size="sm"
-                  icon={RefreshCw}
-                  pending={isLoading}
-                  onClick={() => refetch()}
-                  className="w-full sm:w-auto text-xs font-bold text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-950/80 cursor-pointer shadow-2xs"
-                >
-                  Segarkan Data
-                </AppButton>
-              </div>
-            </div>
-          </div>
+          {/* Header Halaman Modern Hero Card HeroUI */}
+          <HeroUiHeader
+            icon={ShieldCheck}
+            title={`Dashboard Utama ${welcomeRoleName}`}
+            tag={{ text: welcomeRoleName, icon: Sparkles }}
+            description="Pusat kendali dan pemantauan terpadu seluruh unit pendidikan, aktivitas operasional, dan metrik sistem sekolah."
+            actions={
+              <AppButton
+                variant="outline"
+                size="sm"
+                icon={RefreshCw}
+                pending={isLoading}
+                onClick={() => refetch()}
+                className="w-full sm:w-auto text-xs font-bold text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-950/80 cursor-pointer shadow-2xs"
+              >
+                Segarkan Data
+              </AppButton>
+            }
+          />
         </motion.div>
 
         {/* 2. Operational Alert Section (TailGrids Alert) */}
@@ -695,53 +640,45 @@ export default function SuperAdminDashboardPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
                   {recentLogins.slice(0, 8).map((userItem, idx) => (
-                    <HoverCard key={userItem.id ? `${userItem.id}-${userItem.created_at || ''}-${idx}` : idx}>
-                      <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-500/20 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 transition-[background-color,border-color] duration-150 cursor-pointer group">
-                          <div className="size-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                            {(userItem.name || 'U').substring(0, 2).toUpperCase()}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                              {userItem.name}
-                            </p>
-                            <p className="text-[10px] text-slate-400 truncate">
-                              {userItem.email}
-                            </p>
-                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
-                              {userItem.created_at || 'Baru saja'}
-                            </p>
-                          </div>
+                    <div
+                      key={userItem.event_id || userItem.id ? `${userItem.event_id || userItem.id}-${idx}` : idx}
+                      role="button"
+                      tabIndex={0}
+                      title={`Klik untuk melihat audit rincian sesi masuk ${userItem.name}`}
+                      onClick={() => setSelectedLoginAudit(userItem)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setSelectedLoginAudit(userItem)
+                        }
+                      }}
+                      className="relative overflow-hidden flex items-center gap-3 p-3.5 rounded-2xl border border-emerald-500/20 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-800/80 hover:border-emerald-500/50 hover:shadow-md hover:shadow-emerald-500/10 transition-all duration-200 cursor-pointer group active:scale-[0.98]"
+                    >
+                      <div className="size-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                        {(userItem.name || 'U').substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <p className="font-extrabold text-slate-800 dark:text-slate-100 text-xs truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                            {userItem.name}
+                          </p>
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                            {userItem.role || 'Pengguna'}
+                          </span>
                         </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-72 p-4 bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 shadow-xl rounded-2xl">
-                        <div className="space-y-2.5">
-                          <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-bold flex items-center justify-center text-xs shadow-inner">
-                              {(userItem.name || 'U').substring(0, 2).toUpperCase()}
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-slate-900 dark:text-white text-xs">
-                                {userItem.name}
-                              </h4>
-                              <p className="text-[10px] text-slate-400 font-medium">
-                                {userItem.email}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <div>
-                              <span className="text-slate-400 block text-[10px]">Role Hak Akses:</span>
-                              <strong className="text-slate-800 dark:text-slate-200">{userItem.role || 'Pengguna'}</strong>
-                            </div>
-                            <div>
-                              <span className="text-slate-400 block text-[10px]">Sesi Masuk:</span>
-                              <strong className="text-emerald-600 dark:text-emerald-400">{userItem.created_at || 'Terbaru'}</strong>
-                            </div>
-                          </div>
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                          {userItem.email}
+                        </p>
+                        <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                            {userItem.created_at || 'Baru saja'}
+                          </span>
+                          <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform shrink-0 ml-1">
+                            Audit &rarr;
+                          </span>
                         </div>
-                      </HoverCardContent>
-                    </HoverCard>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -1111,6 +1048,133 @@ export default function SuperAdminDashboardPage() {
             )}
           </AnimatePresence>
         </ModalErrorBoundary>
+
+        {/* 10. Modal Audit Rincian Sesi Masuk User (HeroUI Modal) */}
+        {selectedLoginAudit && (
+          <Modal
+            isOpen={Boolean(selectedLoginAudit)}
+            onClose={() => setSelectedLoginAudit(null)}
+            title="Audit Rincian Sesi Masuk Pengguna"
+            description="Informasi autentikasi pengguna, hak akses, alamat IP, dan perangkat sesi aktif"
+            maxWidth="max-w-xl"
+            footer={
+              <div className="flex items-center justify-between w-full">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedLoginAudit(null)}
+                  className="rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  Tutup
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedLoginAudit(null)
+                    navigate('/dashboard/master/hak-akses')
+                  }}
+                  className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                >
+                  Lihat Hak Akses &rarr;
+                </Button>
+              </div>
+            }
+          >
+            <div className="space-y-4">
+              {/* Header Profil User */}
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-slate-50/80 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900/60 border border-emerald-500/20">
+                <div className="size-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-black text-lg flex items-center justify-center shadow-md shrink-0">
+                  {(selectedLoginAudit.name || 'U').substring(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-base font-extrabold text-slate-900 dark:text-white truncate">
+                      {selectedLoginAudit.name}
+                    </h4>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                      Akun Aktif
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
+                    {selectedLoginAudit.email}
+                  </p>
+                  <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                    No. Telepon: {selectedLoginAudit.phone || '-'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Matrix Data Audit */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/50">
+                  <span className="text-[11px] font-bold text-slate-400 block mb-1">Role Utama</span>
+                  <span className="font-extrabold text-slate-800 dark:text-slate-200 text-sm">
+                    {selectedLoginAudit.role || 'Pengguna'}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/50">
+                  <span className="text-[11px] font-bold text-slate-400 block mb-1">Unit Pendidikan</span>
+                  <span className="font-extrabold text-slate-800 dark:text-slate-200 text-sm">
+                    {selectedLoginAudit.unit_name || 'Semua Unit'}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/50">
+                  <span className="text-[11px] font-bold text-slate-400 block mb-1">Waktu Masuk Sesi</span>
+                  <span className="font-extrabold text-emerald-600 dark:text-emerald-400 block">
+                    {selectedLoginAudit.exact_time || selectedLoginAudit.created_at}
+                  </span>
+                  <span className="text-[10px] text-slate-400">({selectedLoginAudit.created_at})</span>
+                </div>
+                <div className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/50">
+                  <span className="text-[11px] font-bold text-slate-400 block mb-1">Alamat IP & Keamanan</span>
+                  <code className="px-2 py-0.5 rounded-md font-mono bg-slate-100 dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200 text-xs">
+                    {selectedLoginAudit.ip_address || '127.0.0.1'}
+                  </code>
+                </div>
+                <div className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/50">
+                  <span className="text-[11px] font-bold text-slate-400 block mb-1">Portal / Saluran Masuk</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 uppercase text-[11px]">
+                    {selectedLoginAudit.portal_type || 'Unified Web Dashboard'}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/50">
+                  <span className="text-[11px] font-bold text-slate-400 block mb-1">Metode Autentikasi</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 capitalize text-[11px]">
+                    {selectedLoginAudit.login_method || 'Password'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Seluruh Role Terdaftar */}
+              {Array.isArray(selectedLoginAudit.roles) && selectedLoginAudit.roles.length > 0 && (
+                <div className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/30">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1.5">
+                    Seluruh Role Terdaftar ({selectedLoginAudit.roles.length}):
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedLoginAudit.roles.map((r) => (
+                      <span
+                        key={r}
+                        className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-2xs"
+                      >
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* User Agent / Client Info */}
+              <div className="p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-2">
+                <span className="font-bold text-slate-700 dark:text-slate-300 shrink-0">User Agent:</span>
+                <span className="font-mono text-[10px] break-all">
+                  {selectedLoginAudit.user_agent || 'Mozilla/5.0 (Client Session)'}
+                </span>
+              </div>
+            </div>
+          </Modal>
+        )}
       </motion.div>
     </PageContainer>
   )

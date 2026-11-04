@@ -26,8 +26,8 @@ import {
   X
 } from 'lucide-react'
 import { schoolInformationService } from '../../services/schoolInformationService'
-import { Button } from '../tailgrids/core/button'
-import { Badge } from '../tailgrids/core/badge'
+import { Button } from '../ui/button'
+import { Badge } from '../ui/badge'
 import { useAuthStore } from '../../stores/authStore'
 
 const tabs = [

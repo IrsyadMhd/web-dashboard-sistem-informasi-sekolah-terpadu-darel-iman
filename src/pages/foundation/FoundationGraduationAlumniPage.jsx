@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
+import { ArrowRightLeft as ArrowBothDirectionHorizontal2 } from 'lucide-react'
 import {
   Award,
   BarChart3,
@@ -49,6 +49,7 @@ import { PersonIdentityCell } from '../../components/ui/PersonIdentityCell'
 import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 import { FoundationExportModal } from '../../components/foundation/FoundationExportModal'
 import { FoundationUnitKpiModal } from '../../components/foundation/FoundationUnitKpiModal'
+import { SmartScrollFab } from '../../components/common'
 import { useAuthStore } from '../../stores/authStore'
 
 export function FoundationGraduationAlumniPage() {
@@ -443,7 +444,7 @@ export function FoundationGraduationAlumniPage() {
         }
       />
 
-      <MasterDataTable className="foundation-table">
+      <MasterDataTable id="tabel-kelulusan-alumni" className="foundation-table scroll-mt-6">
         <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-700">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">{activeTab === 'alumni' ? 'Daftar Alumni Lulus' : 'Daftar Siswa Lulus'}</h2>
@@ -589,6 +590,9 @@ export function FoundationGraduationAlumniPage() {
         rows={exportRows}
         filename="Alumni_Kelulusan_Yayasan"
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-kelulusan-alumni" downTooltip="Langsung ke Tabel Alumni" />
     </MasterDataPage>
   )
 }

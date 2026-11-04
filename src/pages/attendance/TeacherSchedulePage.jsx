@@ -15,8 +15,9 @@ import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import AppBadge from '../../components/app/AppBadge'
 import AppEmptyState from '../../components/app/AppEmptyState'
 import AppSkeleton from '../../components/app/AppSkeleton'
-import { Button } from '@/components/tailgrids/core/button'
-import { Input } from '@/components/tailgrids/core/input'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 
 const todayDateStr = new Date().toLocaleDateString('en-CA')
 
@@ -91,11 +92,11 @@ export default function TeacherSchedulePage() {
           <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
             <CalendarIcon size={15} /> Pilih Tanggal:
           </label>
-          <input
-            type="date"
+          <DatePicker
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            className="w-44"
+            inputClassName="h-8 text-xs font-semibold"
           />
         </div>
       </div>

@@ -78,9 +78,11 @@ import { useAuthStore } from '../stores/authStore'
 import { usePengaturanStore } from '../stores/pengaturanStore'
 import { ROLES, hasAnyRole } from '../auth/portalResolver'
 import useDebounce from '../hooks/useDebounce'
-import { Avatar, AvatarFallback, AvatarImage } from '../components/tailgrids/core/avatar'
-import { Pagination } from '../components/tailgrids/core/pagination'
-import { Button } from '../components/tailgrids/core/button'
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar'
+import { Pagination } from '../components/ui/pagination'
+import { Button } from '../components/ui/button'
+import { DatePicker } from '../components/ui/date-picker'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import api from '../services/api'
 import { equranService } from '../services/equranService'
 import {
@@ -125,6 +127,351 @@ function calculatePekanFromDate(dateStr) {
       label: `Pekan ${String(pekan).padStart(2, '0')} (Semester Genap - Pekan ${pekanGenap})`,
     }
   }
+}
+
+// ── HEROUI SELECT DROPDOWN COMPONENT (FOR WORKSPACE FILTER BAR & MODULES) ──
+function HeroUiWorkspaceSelect({
+  id,
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  label = null,
+  className = '',
+  buttonClassName = '',
+  popoverWidth = 'w-64',
+  searchable = false,
+  disabled = false,
+  badge = null,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  // Normalize options into { value, label, subtext }
+  const normalizedOptions = useMemo(() => {
+    return options.map((opt) => {
+      if (typeof opt === 'object' && opt !== null) {
+        return {
+          value: opt.value !== undefined ? opt.value : opt.id,
+          label: opt.label || opt.nama_kelas || opt.name || String(opt.value ?? opt.id),
+          subtext: opt.subtext || (opt.kode_kelas ? `Kode: ${opt.kode_kelas}` : undefined),
+        }
+      }
+      return { value: opt, label: String(opt), subtext: undefined }
+    })
+  }, [options])
+
+  const selectedOption = useMemo(() => {
+    return normalizedOptions.find((opt) => String(opt.value) === String(value))
+  }, [normalizedOptions, value])
+
+  const shouldSearch = searchable || normalizedOptions.length > 7
+
+  const filteredOptions = useMemo(() => {
+    if (!shouldSearch || !search.trim()) return normalizedOptions
+    const q = search.toLowerCase()
+    return normalizedOptions.filter((opt) =>
+      (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+      (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [normalizedOptions, search, shouldSearch])
+
+  const hasValue = value !== '' && value !== 'all' && value !== 'semua' && value !== undefined && value !== null
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef} id={id ? `${id}-container` : undefined}>
+      <button
+        type="button"
+        id={id}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`h-9.5 flex items-center justify-between gap-2.5 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+          isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+            : hasValue
+            ? 'border-emerald-300 bg-emerald-50/90 text-emerald-950 dark:border-emerald-700/80 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold shadow-2xs'
+            : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-400 hover:bg-slate-50/80 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-500/60 shadow-2xs'
+        } ${buttonClassName}`}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {label && (
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
+              {label}:
+            </span>
+          )}
+          <span className="truncate font-extrabold text-xs text-emerald-900 dark:text-emerald-100 max-w-[200px]">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+          {badge && (
+            <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+              {badge}
+            </span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[100] ${popoverWidth} min-w-[220px] max-w-sm overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-1.5 shadow-2xl shadow-slate-900/15 dark:shadow-black/50`}
+          >
+            {shouldSearch && (
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-60 overflow-y-auto space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div className="truncate font-semibold">{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+const ATTENDANCE_PEKAN_OPTIONS = [
+  { value: 'pekan_ini', label: 'Pekan Berjalan (Saat Ini)' },
+  ...Array.from({ length: 16 }, (_, i) => ({
+    value: `pekan_${i + 1}`,
+    label: `Pekan ke-${i + 1} (KBM Pekan ${i + 1})`,
+  })),
+]
+
+const ATTENDANCE_BULAN_OPTIONS = [
+  { value: '07', label: 'Juli 2026 (Awal TA 2026/2027)' },
+  { value: '08', label: 'Agustus 2026' },
+  { value: '09', label: 'September 2026 (Bulan Berjalan)' },
+  { value: '10', label: 'Oktober 2026' },
+  { value: '11', label: 'November 2026' },
+  { value: '12', label: 'Desember 2026 (PAS 1)' },
+  { value: '01', label: 'Januari 2027 (Awal Semester 2)' },
+  { value: '02', label: 'Februari 2027 🌙 (Ramadhan 1448 H)' },
+  { value: '03', label: 'Maret 2027 🕌 (Idul Fitri 1448 H)' },
+  { value: '04', label: 'April 2027' },
+  { value: '05', label: 'Mei 2027' },
+  { value: '06', label: 'Juni 2027 (PAT & Rapor Kenaikan Kelas)' },
+]
+
+const ATTENDANCE_SEMESTER_OPTIONS = [
+  { value: '1', label: 'Semester 1 (Ganjil) - Juli s/d Desember 2026' },
+  { value: '2', label: 'Semester 2 (Genap) - Januari s/d Juni 2027' },
+]
+
+const MODERN_KPI_TONES = {
+  emerald: {
+    topBar: 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600',
+    card: 'border-2 border-emerald-300 dark:border-emerald-700/80 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-white dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    activeCard: 'ring-2 ring-emerald-500 border-emerald-500 shadow-md shadow-emerald-500/10',
+    glow: 'bg-emerald-500/25 group-hover:bg-emerald-500/35',
+    iconGradient: 'from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-600/30 border border-emerald-300/40',
+    badgeBg: 'bg-emerald-100/90 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60',
+    title: 'text-emerald-900 dark:text-emerald-200',
+    value: 'text-emerald-950 dark:text-emerald-100',
+    subtext: 'text-emerald-800/80 dark:text-emerald-400/80',
+    footerBorder: 'border-emerald-200/80 dark:border-emerald-800/60',
+    cta: 'text-emerald-700 dark:text-emerald-400',
+  },
+  teal: {
+    topBar: 'bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-600',
+    card: 'border-2 border-teal-300 dark:border-teal-700/80 bg-gradient-to-br from-teal-50/70 via-emerald-50/30 to-white dark:from-teal-950/40 dark:via-emerald-950/20 dark:to-slate-900',
+    activeCard: 'ring-2 ring-teal-500 border-teal-500 shadow-md shadow-teal-500/10',
+    glow: 'bg-teal-500/25 group-hover:bg-teal-500/35',
+    iconGradient: 'from-teal-500 via-teal-600 to-emerald-700 shadow-teal-600/30 border border-teal-300/40',
+    badgeBg: 'bg-teal-100/90 text-teal-800 dark:bg-teal-950/80 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60',
+    title: 'text-teal-900 dark:text-teal-200',
+    value: 'text-teal-950 dark:text-teal-100',
+    subtext: 'text-teal-800/80 dark:text-teal-400/80',
+    footerBorder: 'border-teal-200/80 dark:border-teal-800/60',
+    cta: 'text-teal-700 dark:text-teal-400',
+  },
+  blue: {
+    topBar: 'bg-gradient-to-r from-blue-500 via-sky-400 to-indigo-600',
+    card: 'border-2 border-blue-300 dark:border-blue-700/80 bg-gradient-to-br from-blue-50/70 via-sky-50/30 to-white dark:from-blue-950/40 dark:via-sky-950/20 dark:to-slate-900',
+    activeCard: 'ring-2 ring-blue-500 border-blue-500 shadow-md shadow-blue-500/10',
+    glow: 'bg-blue-500/25 group-hover:bg-blue-500/35',
+    iconGradient: 'from-blue-500 via-sky-600 to-indigo-700 shadow-blue-600/30 border border-blue-300/40',
+    badgeBg: 'bg-blue-100/90 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/60',
+    title: 'text-blue-900 dark:text-blue-200',
+    value: 'text-blue-950 dark:text-blue-100',
+    subtext: 'text-blue-800/80 dark:text-blue-400/80',
+    footerBorder: 'border-blue-200/80 dark:border-blue-800/60',
+    cta: 'text-blue-700 dark:text-blue-400',
+  },
+  amber: {
+    topBar: 'bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600',
+    card: 'border-2 border-amber-300 dark:border-amber-700/80 bg-gradient-to-br from-amber-50/70 via-orange-50/30 to-white dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    activeCard: 'ring-2 ring-amber-500 border-amber-500 shadow-md shadow-amber-500/10',
+    glow: 'bg-amber-500/25 group-hover:bg-amber-500/35',
+    iconGradient: 'from-amber-500 via-amber-600 to-orange-700 shadow-amber-600/30 border border-amber-300/40',
+    badgeBg: 'bg-amber-100/90 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60',
+    title: 'text-amber-900 dark:text-amber-200',
+    value: 'text-amber-950 dark:text-amber-100',
+    subtext: 'text-amber-800/80 dark:text-amber-400/80',
+    footerBorder: 'border-amber-200/80 dark:border-amber-800/60',
+    cta: 'text-amber-700 dark:text-amber-400',
+  },
+}
+
+function ModernWorkspaceKpiCard({
+  icon: Icon,
+  title,
+  value,
+  subtitle,
+  tone = 'emerald',
+  badge = 'Semua Data',
+  active = false,
+  onClick,
+}) {
+  const t = MODERN_KPI_TONES[tone] || MODERN_KPI_TONES.emerald
+  return (
+    <motion.div
+      whileHover={{ y: -3, scale: 1.01 }}
+      whileTap={onClick ? { scale: 0.98 } : undefined}
+      transition={{ duration: 0.2 }}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick()
+              }
+            }
+          : undefined
+      }
+      className={`group relative flex flex-col justify-between overflow-hidden rounded-[20px] transition-all duration-300 shadow-xs hover:shadow-xl ${t.card} ${
+        active ? t.activeCard : ''
+      } ${onClick ? 'cursor-pointer' : ''}`}
+    >
+      {/* Top Accent Gradient Line */}
+      <div className={`h-1.5 w-full ${t.topBar} shrink-0`} />
+
+      <div className="p-4 sm:p-5 flex flex-col justify-between flex-1 relative">
+        {/* Ambient Backlight Glow */}
+        <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all duration-500 ${t.glow}`} />
+
+        <div>
+          {/* Header with Tag & 3D Gradient Squircle Icon */}
+          <div className="relative z-10 flex items-start justify-between gap-2.5 mb-2.5">
+            <div className="space-y-1 min-w-0">
+              <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${t.badgeBg}`}>
+                {badge}
+              </span>
+              <p className={`text-xs font-bold pt-0.5 truncate uppercase tracking-wider ${t.title}`}>{title}</p>
+            </div>
+            <div className={`flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-md transition-transform duration-300 group-hover:scale-105 ${t.iconGradient}`}>
+              {Icon && <Icon className="size-5 text-white" strokeWidth={2.2} />}
+            </div>
+          </div>
+
+          {/* Metric Value & Subtitle */}
+          <div className="relative z-10 mt-1">
+            <p className={`text-3xl sm:text-4xl font-black tabular-nums tracking-tight ${t.value}`}>
+              {typeof value === 'number' ? value.toLocaleString('id-ID') : (value ?? 0)}
+            </p>
+            {subtitle && (
+              <p className={`mt-1 text-xs font-semibold line-clamp-1 ${t.subtext}`}>{subtitle}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Click Affordance Footer */}
+        {onClick && (
+          <div className={`relative z-10 mt-3.5 pt-2.5 border-t ${t.footerBorder} flex items-center justify-between text-[11px] font-bold`}>
+            <span className="text-slate-400 dark:text-slate-500 font-medium text-[10px]">
+              {active ? 'Filter aktif' : 'Klik untuk filter'}
+            </span>
+            <span className={`inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5 ${t.cta}`}>
+              {active ? 'Reset Filter' : 'Tampilkan Data'} &rarr;
+            </span>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  )
 }
 
 const MateriModalForm = React.memo(function MateriModalForm({
@@ -214,13 +561,12 @@ const MateriModalForm = React.memo(function MateriModalForm({
               <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               Tanggal Pembelajaran <span className="text-rose-500">*</span>
             </label>
-            <input
+            <DatePicker
               id="materi-tanggal"
-              type="date"
               required
               value={form.tanggal || ''}
               onChange={(e) => handleDateChange(e.target.value)}
-              className="w-full p-2.5 border rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none transition"
+              inputClassName="p-2.5 text-xs font-semibold"
             />
             <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 block">
               Tahun Ajaran 2026/2027 Aktif
@@ -328,15 +674,17 @@ const MateriModalForm = React.memo(function MateriModalForm({
           <label htmlFor="materi-status" className="font-bold block mb-1.5 text-slate-800 dark:text-slate-200">
             Status Publikasi <span className="text-rose-500">*</span>
           </label>
-          <select
+          <HeroUiWorkspaceSelect
             id="materi-status"
             value={form.status || 'published'}
-            onChange={(e) => setForm({ ...form, status: e.target.value })}
-            className="h-10 w-full border rounded-xl bg-white px-3 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none transition cursor-pointer"
-          >
-            <option value="draft">📝 Simpan Sebagai Draft</option>
-            <option value="published">✅ Publikasikan Langsung ke Siswa</option>
-          </select>
+            onChange={(val) => setForm({ ...form, status: val })}
+            options={[
+              { value: 'published', label: '✅ Publikasikan Langsung ke Siswa' },
+              { value: 'draft', label: '📝 Simpan Sebagai Draft' },
+            ]}
+            popoverWidth="w-full"
+            className="w-full"
+          />
         </div>
       </form>
 
@@ -419,13 +767,20 @@ export const calculateScheduleStatus = (schedule, selectedDate = '') => {
     return {
       label: 'Berlangsung',
       isActive: true,
+      canFillAttendance: true,
       className: 'bg-emerald-100 text-emerald-800 font-extrabold ring-1 ring-emerald-500/60 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-400'
     }
   }
   if (currentMinutes > endMinutes) {
-    return { label: 'Selesai', isActive: false, className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
+    // Toleransi pengisian hingga akhir hari aktif: guru tidak terblokir untuk mencatat presensi dan rangkuman!
+    return {
+      label: 'Selesai (Hari Ini)',
+      isActive: false,
+      canFillAttendance: true,
+      className: 'bg-amber-100 text-amber-800 border border-amber-300 font-bold dark:bg-amber-950 dark:text-amber-300'
+    }
   }
-  return { label: 'Berikutnya', isActive: false, className: 'bg-amber-100 text-amber-700 font-bold dark:bg-amber-950 dark:text-amber-300' }
+  return { label: 'Berikutnya', isActive: false, canFillAttendance: false, className: 'bg-slate-100 text-slate-700 font-bold dark:bg-slate-800 dark:text-slate-300' }
 }
 
 export default function TeacherTeachingWorkspacePage() {
@@ -495,10 +850,72 @@ export default function TeacherTeachingWorkspacePage() {
   // Selection & UI states
   const [selectedClass, setSelectedClass] = useState('')
   const [timelineFilter, setTimelineFilter] = useState('auto')
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState('2026/2027')
-  const [selectedSemester, setSelectedSemester] = useState('Ganjil')
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState('')
+  const [selectedSemester, setSelectedSemester] = useState('')
   const [selectedDate, setSelectedDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const getScheduleStatus = useCallback((schedule) => calculateScheduleStatus(schedule, selectedDate), [selectedDate])
+
+  // ── Pending Journals State (Tanggung Jawab Pengisian Rangkuman Belum Selesai) ──
+  const [pendingJournals, setPendingJournals] = useState([])
+  const [loadingPendingJournals, setLoadingPendingJournals] = useState(false)
+  const [showPendingJournalModal, setShowPendingJournalModal] = useState(false)
+  const [selectedPendingSession, setSelectedPendingSession] = useState(null)
+  const [journalTopicInput, setJournalTopicInput] = useState('')
+  const [journalNotesInput, setJournalNotesInput] = useState('')
+  const [savingJournalNotes, setSavingJournalNotes] = useState(false)
+
+  const fetchPendingJournals = useCallback(async () => {
+    try {
+      setLoadingPendingJournals(true)
+      const res = await api.get('/teacher/pending-journals')
+      if (res?.data?.success) {
+        setPendingJournals(res.data.data || [])
+      }
+    } catch (err) {
+      console.warn('Gagal memuat pending journals:', err?.message)
+    } finally {
+      setLoadingPendingJournals(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchPendingJournals()
+  }, [fetchPendingJournals])
+
+  const handleOpenPendingJournalModal = (sess) => {
+    setSelectedPendingSession(sess)
+    setJournalTopicInput(sess.topic || sess.learning_material || (sess.schedule?.subject?.name ? `Materi ${sess.schedule.subject.name}` : ''))
+    setJournalNotesInput(sess.meeting_notes || '')
+    setShowPendingJournalModal(true)
+  }
+
+  const handleSavePendingJournal = async (e) => {
+    if (e) e.preventDefault()
+    if (!selectedPendingSession) return
+    if (!journalNotesInput.trim() || journalNotesInput.trim().length < 3) {
+      addToast('warning', 'Rangkuman Belum Lengkap', 'Catatan rangkuman pelajaran minimal 3 karakter.')
+      return
+    }
+
+    setSavingJournalNotes(true)
+    try {
+      const res = await api.post(`/teacher/sessions/${selectedPendingSession.id}/journal`, {
+        topic: journalTopicInput.trim() || 'Pembelajaran Tematik & KBM',
+        meeting_notes: journalNotesInput.trim(),
+        learning_material: journalTopicInput.trim() || null,
+      })
+
+      addToast('success', 'Rangkuman Tersimpan', res?.data?.message || 'Rangkuman pelajaran berhasil disimpan dan tanggung jawab terselesaikan.')
+      setShowPendingJournalModal(false)
+      setSelectedPendingSession(null)
+      fetchPendingJournals()
+      fetchSchedules()
+    } catch (err) {
+      addToast('error', 'Gagal Simpan', err?.response?.data?.message || 'Terjadi kesalahan saat menyimpan rangkuman pelajaran.')
+    } finally {
+      setSavingJournalNotes(false)
+    }
+  }
 
   const isAdminOrSuperAdmin = React.useMemo(() => hasAnyRole(userRoles, [
     ...ROLES.SUPER_ADMIN, ...ROLES.ADMIN
@@ -558,6 +975,7 @@ export default function TeacherTeachingWorkspacePage() {
   const [showSetoranTypeModal, setShowSetoranTypeModal] = useState(false)
   const [showSurahSearchModal, setShowSurahSearchModal] = useState(false)
   const [studentModalSearch, setStudentModalSearch] = useState('')
+  const [tahfizhModalClass, setTahfizhModalClass] = useState('')
   const [surahModalSearch, setSurahModalSearch] = useState('')
 
   const [showExportModal, setShowExportModal] = useState(false)
@@ -1830,11 +2248,12 @@ export default function TeacherTeachingWorkspacePage() {
     }
     if (cardItem.id === 'presensi') {
       const target = getCurrentSchedule() || schedules[0] || null
-      if (!target || !getScheduleStatus(target).isActive) {
+      const st = target ? getScheduleStatus(target) : null
+      if (!target || (!st.isActive && !st.canFillAttendance)) {
         addToast(
           'warning',
-          'Di Luar Jam KBM',
-          'Tombol presensi hanya aktif pada jadwal KBM yang sedang berlangsung saat ini.'
+          'Di Luar Jadwal KBM',
+          'Presensi dapat diakses pada jadwal KBM aktif hari ini.'
         )
         return
       }
@@ -1904,11 +2323,11 @@ export default function TeacherTeachingWorkspacePage() {
     const targetSchedule = scheduleObj || getCurrentSchedule() || schedules[0] || null
     if (targetSchedule) {
       const scheduleStatus = getScheduleStatus(targetSchedule)
-      if (!scheduleStatus.isActive) {
+      if (!scheduleStatus.isActive && !scheduleStatus.canFillAttendance) {
         addToast(
           'warning',
           'Jadwal KBM Tidak Aktif',
-          `Presensi hanya dapat diakses saat jam KBM berlangsung (${(targetSchedule.start_time || targetSchedule.time_start || '00:00').slice(0, 5)} - ${(targetSchedule.end_time || targetSchedule.time_end || '00:00').slice(0, 5)} WIB). Status saat ini: ${scheduleStatus.label}.`
+          `Presensi hanya dapat diakses pada jadwal KBM aktif hari ini. Status: ${scheduleStatus.label}.`
         )
         return
       }
@@ -2314,11 +2733,11 @@ export default function TeacherTeachingWorkspacePage() {
     }
 
     const scheduleStatus = getScheduleStatus(activeSchedule)
-    if (!scheduleStatus.isActive) {
+    if (!scheduleStatus.isActive && !scheduleStatus.canFillAttendance) {
       addToast(
         'warning',
-        'Di Luar Jam KBM',
-        `Presensi hanya dapat disimpan saat jam KBM berlangsung (${(activeSchedule.start_time || activeSchedule.time_start || '00:00').slice(0, 5)} - ${(activeSchedule.end_time || activeSchedule.time_end || '00:00').slice(0, 5)} WIB). Status saat ini: ${scheduleStatus.label}.`
+        'Di Luar Jadwal KBM',
+        `Presensi hanya dapat disimpan pada jadwal KBM aktif hari ini.`
       )
       return
     }
@@ -4095,11 +4514,11 @@ export default function TeacherTeachingWorkspacePage() {
             {attendancePeriodFilter === 'harian' && (
               <div className="flex flex-wrap items-center gap-2">
                 <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Pilih Tanggal:</label>
-                <input
-                  type="date"
+                <DatePicker
                   value={attendanceDateFilter}
                   onChange={(e) => setAttendanceDateFilter(e.target.value)}
-                  className="h-8 rounded-lg border border-emerald-500/30 bg-white px-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  className="w-36"
+                  inputClassName="h-8 text-xs font-semibold"
                 />
                 <button
                   type="button"
@@ -4116,19 +4535,14 @@ export default function TeacherTeachingWorkspacePage() {
 
             {attendancePeriodFilter === 'mingguan' && (
               <div className="flex flex-wrap items-center gap-2">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Pilih Pekan Efektif:</label>
-                <select
+                <HeroUiWorkspaceSelect
                   value={attendanceWeekFilter}
-                  onChange={(e) => setAttendanceWeekFilter(e.target.value)}
-                  className="h-8 rounded-lg border border-emerald-500/30 bg-white px-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="pekan_ini">Pekan Berjalan (Saat Ini)</option>
-                  {Array.from({ length: 16 }, (_, i) => (
-                    <option key={i + 1} value={`pekan_${i + 1}`}>
-                      Pekan ke-{i + 1} (KBM Pekan {i + 1})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setAttendanceWeekFilter(val)}
+                  options={ATTENDANCE_PEKAN_OPTIONS}
+                  label="Pekan Efektif"
+                  placeholder="Pilih Pekan"
+                  popoverWidth="w-64"
+                />
                 <span className="rounded-md bg-emerald-100/70 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                   Rentang 7 Hari KBM Rombel {selectedClassName}
                 </span>
@@ -4137,25 +4551,14 @@ export default function TeacherTeachingWorkspacePage() {
 
             {attendancePeriodFilter === 'bulanan' && (
               <div className="flex flex-wrap items-center gap-2">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Pilih Bulan TA 2026/2027:</label>
-                <select
+                <HeroUiWorkspaceSelect
                   value={attendanceMonthFilter}
-                  onChange={(e) => setAttendanceMonthFilter(e.target.value)}
-                  className="h-8 rounded-lg border border-emerald-500/30 bg-white px-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="07">Juli 2026 (Awal Tahun Ajaran 2026/2027)</option>
-                  <option value="08">Agustus 2026</option>
-                  <option value="09">September 2026 (Bulan Berjalan)</option>
-                  <option value="10">Oktober 2026</option>
-                  <option value="11">November 2026</option>
-                  <option value="12">Desember 2026 (Penilaian Akhir Semester 1)</option>
-                  <option value="01">Januari 2027 (Awal Semester 2)</option>
-                  <option value="02">Februari 2027 🌙 (Bulan Ramadhan 1448 H)</option>
-                  <option value="03">Maret 2027 🕌 (Hari Raya Idul Fitri 1448 H)</option>
-                  <option value="04">April 2027</option>
-                  <option value="05">Mei 2027</option>
-                  <option value="06">Juni 2027 (PAT & Rapor Kenaikan Kelas)</option>
-                </select>
+                  onChange={(val) => setAttendanceMonthFilter(val)}
+                  options={ATTENDANCE_BULAN_OPTIONS}
+                  label="Bulan"
+                  placeholder="Pilih Bulan"
+                  popoverWidth="w-72"
+                />
                 <span className="rounded-md bg-emerald-100/70 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                   Presensi Bulanan Lengkap
                 </span>
@@ -4164,15 +4567,14 @@ export default function TeacherTeachingWorkspacePage() {
 
             {attendancePeriodFilter === 'semester' && (
               <div className="flex flex-wrap items-center gap-2">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Pilih Semester:</label>
-                <select
+                <HeroUiWorkspaceSelect
                   value={attendanceSemesterFilter}
-                  onChange={(e) => setAttendanceSemesterFilter(e.target.value)}
-                  className="h-8 rounded-lg border border-emerald-500/30 bg-white px-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="1">Semester 1 (Ganjil) - Juli s/d Desember 2026</option>
-                  <option value="2">Semester 2 (Genap) - Januari s/d Juni 2027</option>
-                </select>
+                  onChange={(val) => setAttendanceSemesterFilter(val)}
+                  options={ATTENDANCE_SEMESTER_OPTIONS}
+                  label="Semester"
+                  placeholder="Pilih Semester"
+                  popoverWidth="w-72"
+                />
                 <span className="rounded-md bg-emerald-100/70 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                   Agregasi Kumulatif 1 Semester
                 </span>
@@ -4789,8 +5191,58 @@ export default function TeacherTeachingWorkspacePage() {
       return true
     })
   }, [assignments, selectedClass, assignmentSearch, assignmentJenisFilter, assignmentStatusFilter])
+  // Filter khusus seleksi siswa pada Modal Setoran Tahfizh:
+  // - Hanya siswa dari rombel guru / wali kelas (classes)
+  // - Hanya siswa dari unit pendidikan guru tersebut (teacherProfile / user)
+  // - Filter per rombel (tahfizhModalClass)
+  // - Pencarian nama atau NIS (studentModalSearch)
+  const filteredTahfizhStudents = useMemo(() => {
+    const teacherClassIds = new Set(classes.map((c) => String(c.id)))
+    const teacherUnitId = teacherProfile?.education_unit_data?.id || user?.education_unit_id || user?.education_unit?.id
+    const teacherUnitName = (teacherProfile?.education_unit || user?.education_unit?.name || '').toLowerCase().trim()
+
+    return students.filter((s) => {
+      // 1. Filter rombel guru: pastikan kelas siswa ada dalam daftar classes guru
+      const sClassId = String(s.kelas_id || s.class_id || s.kelas?.id || '')
+      if (!isAdminOrSuperAdmin && !isPengurusYayasan && classes.length > 0) {
+        if (!sClassId || !teacherClassIds.has(sClassId)) {
+          return false
+        }
+      }
+
+      // 2. Filter unit guru: jangan tampilkan siswa bukan unit guru tersebut
+      if (!isAdminOrSuperAdmin && !isPengurusYayasan) {
+        const studentUnitId = s.education_unit_id || s.unit_id || s.education_unit?.id || s.kelas?.unit_pendidikan_id || s.kelas?.education_unit_id
+        const studentUnitName = (s.education_unit?.name || s.unit?.name || s.kelas?.unit_pendidikan?.name || s.unit_name || '').toLowerCase().trim()
+
+        if (teacherUnitId && studentUnitId && String(teacherUnitId) !== String(studentUnitId)) {
+          return false
+        }
+        if (teacherUnitName && teacherUnitName !== '-' && studentUnitName && !studentUnitName.includes(teacherUnitName) && !teacherUnitName.includes(studentUnitName)) {
+          return false
+        }
+      }
+
+      // 3. Filter rombel spesifik di modal
+      if (tahfizhModalClass && tahfizhModalClass !== 'all' && sClassId !== String(tahfizhModalClass)) {
+        return false
+      }
+
+      // 4. Pencarian nama siswa atau NIS
+      const query = (studentModalSearch || '').toLowerCase().trim()
+      if (query) {
+        const nameMatch = s.nama_lengkap?.toLowerCase().includes(query)
+        const nisMatch = s.nis?.toLowerCase().includes(query) || s.nisn?.toLowerCase().includes(query)
+        if (!nameMatch && !nisMatch) return false
+      }
+
+      return true
+    })
+  }, [students, classes, tahfizhModalClass, studentModalSearch, teacherProfile, user, isAdminOrSuperAdmin, isPengurusYayasan])
+
   const selectedTahfizhSurah = quranSurahs.find((surah) => Number(surah.nomor) === Number(tahfizhForm.surah_number))
-  const selectedTahfizhStudent = students.find((student) => student.id === tahfizhForm.student_id) || null
+  const selectedTahfizhStudent = students.find((student) => String(student.id) === String(tahfizhForm.student_id)) || null
+  const isStudentSelected = Boolean(tahfizhForm.student_id)
   const selectedStudentTahfizhLogs = tahfizhLogs
     .filter((log) => log.student_id === tahfizhForm.student_id)
     .sort((first, second) => String(second.record_date || '').localeCompare(String(first.record_date || '')))
@@ -5069,9 +5521,27 @@ export default function TeacherTeachingWorkspacePage() {
   const tahfizhByStudent = paginatedTahfizhLeaderboard
 
   const openTahfizhForm = (student = null) => {
-    setTahfizhForm({ student_id: student?.id || '', class_id: getCurrentClassId(), type: 'Ziyadah', juz: 30, surah_number: '', ayat_start: 1, ayat_end: 1, kelancaran: 'Sangat Lancar', tajwid: 'Baik', makhraj: 'Baik', notes_teacher: '' })
+    const studentClassId = student?.kelas_id || student?.class_id || student?.kelas?.id || selectedClass || (classes[0]?.id ? String(classes[0].id) : '')
+    setTahfizhModalClass(studentClassId || 'all')
+    setStudentModalSearch('')
+    setTahfizhForm({
+      student_id: student?.id || '',
+      class_id: studentClassId,
+      type: 'Ziyadah',
+      juz: 30,
+      surah_number: '',
+      ayat_start: 1,
+      ayat_end: 1,
+      kelancaran: 'Sangat Lancar',
+      tajwid: 'Baik',
+      makhraj: 'Baik',
+      notes_teacher: ''
+    })
     setModalType('tahfizh')
     setShowModal(true)
+    if (studentClassId && studentClassId !== 'all' && String(studentClassId) !== String(selectedClass)) {
+      fetchStudentsForClass(studentClassId)
+    }
   }
 
   useEffect(() => {
@@ -5089,6 +5559,51 @@ export default function TeacherTeachingWorkspacePage() {
     setTahfizhDetailStudent(student)
     setTahfizhWeekOffset(0)
     setShowTahfizhDetail(true)
+  }
+
+  const handlePrintTahfizhLeaderboard = () => {
+    printCleanTable({
+      title: 'Leaderboard & Rekapitulasi Tahfizh Al-Qur\'an',
+      subtitle: `Scope: ${isPengurusYayasan ? 'Seluruh Unit (Yayasan)' : isKepalaSekolahOrDivisiPendidikan ? `Unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'Pimpinan'}` : `Kelas ${selectedClassName}`} | Tahun Ajaran ${selectedAcademicYear || 'Aktif'}`,
+      headers: ['Rank', 'Nama Siswa / Santri', 'NIS', 'Unit Sekolah', 'Kelas', 'Juz', 'Capaian Terakhir', 'Total Hafalan (Ayat)', 'Total Surah'],
+      rows: sortedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, unitName, className }, idx) => [
+        idx + 1,
+        student.nama_lengkap || '-',
+        student.nis || student.nisn || '-',
+        unitName || '-',
+        className || '-',
+        latest ? `Juz ${latest.metadata?.juz || getQuranJuz(latest.hafalan_surah_number, latest.hafalan_ayah_start) || '-'}` : '-',
+        latest ? `${latest.hafalan_surah_name || '-'} (${latest.hafalan_ayah_start || 1}-${latest.hafalan_ayah_end || 1})` : 'Belum Ada',
+        `${totalAyat || 0} Ayat`,
+        `${completedSurahs || 0} Surah`,
+      ]),
+      user,
+      unit: teacherProfile?.unit || user?.employee?.unit || user?.unit,
+    })
+    addToast('info', 'Dokumen Siap Dicetak', 'Pratinjau cetak leaderboard tahfizh berhasil dibuka.')
+  }
+
+  const handleDownloadPdfTahfizhLeaderboard = () => {
+    downloadPdfTable({
+      title: 'Leaderboard & Rekapitulasi Tahfizh Al-Qur\'an',
+      subtitle: `Scope: ${isPengurusYayasan ? 'Seluruh Unit (Yayasan)' : isKepalaSekolahOrDivisiPendidikan ? `Unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'Pimpinan'}` : `Kelas ${selectedClassName}`} | Tahun Ajaran ${selectedAcademicYear || 'Aktif'}`,
+      headers: ['Rank', 'Nama Siswa / Santri', 'NIS', 'Unit Sekolah', 'Kelas', 'Juz', 'Capaian Terakhir', 'Total Hafalan (Ayat)', 'Total Surah'],
+      rows: sortedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, unitName, className }, idx) => [
+        idx + 1,
+        student.nama_lengkap || '-',
+        student.nis || student.nisn || '-',
+        unitName || '-',
+        className || '-',
+        latest ? `Juz ${latest.metadata?.juz || getQuranJuz(latest.hafalan_surah_number, latest.hafalan_ayah_start) || '-'}` : '-',
+        latest ? `${latest.hafalan_surah_name || '-'} (${latest.hafalan_ayah_start || 1}-${latest.hafalan_ayah_end || 1})` : 'Belum Ada',
+        `${totalAyat || 0} Ayat`,
+        `${completedSurahs || 0} Surah`,
+      ]),
+      user,
+      unit: teacherProfile?.unit || user?.employee?.unit || user?.unit,
+      filename: `leaderboard-tahfizh-${selectedClassName || 'all'}-${new Date().toISOString().slice(0, 10)}.pdf`,
+    })
+    addToast('success', 'PDF Disiapkan', 'Dokumen PDF leaderboard tahfizh siap diunduh.')
   }
 
   const tahfizhWeekStart = (() => {
@@ -5137,7 +5652,7 @@ export default function TeacherTeachingWorkspacePage() {
                     Portal Guru Terpadu
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/90 dark:bg-emerald-950/80 px-3 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
-                    Tahun Ajaran 2026/2027
+                    {selectedAcademicYear ? `Tahun Ajaran ${selectedAcademicYear}` : 'Tahun Ajaran Aktif'} {selectedSemester ? `• ${selectedSemester}` : ''}
                   </span>
                 </div>
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
@@ -5159,12 +5674,90 @@ export default function TeacherTeachingWorkspacePage() {
         </div>
       </motion.div>
 
+      {/* ── HERO UI WARNING BANNER: TANGGUNG JAWAB RANGKUMAN KBM BELUM LENGKAP ── */}
+      <AnimatePresence>
+        {pendingJournals.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: -8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="relative overflow-hidden rounded-[22px] border-2 border-amber-500/50 bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-amber-600/15 p-4 sm:p-5 shadow-lg shadow-amber-500/10 dark:border-amber-600/50 dark:bg-gradient-to-r dark:from-amber-950/70 dark:via-rose-950/50 dark:to-slate-900"
+          >
+            {/* Ambient Multi-tone Glow */}
+            <div className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-gradient-to-br from-amber-500/30 via-rose-500/20 to-transparent blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-gradient-to-tr from-rose-500/20 via-amber-400/20 to-transparent blur-3xl" />
+
+            <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 via-rose-600 to-amber-700 text-white shadow-md shadow-rose-600/30 border border-amber-300/40">
+                  <AlertTriangle className="size-5 sm:size-6 text-white animate-pulse" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-600 to-rose-600 px-3 py-0.5 text-[11px] font-extrabold text-white shadow-xs">
+                      <Clock className="size-3" />
+                      Tanggung Jawab Jurnal Belum Selesai
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 dark:bg-rose-950/80 px-2.5 py-0.5 text-[11px] font-bold text-rose-800 dark:text-rose-300 border border-rose-300/60 dark:border-rose-800">
+                      {pendingJournals.length} Pertemuan Tertunda
+                    </span>
+                  </div>
+                  <h3 className="mt-1 text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                    Peringatan: Terdapat Rangkuman Pelajaran yang Belum Anda Lengkapi
+                  </h3>
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Jam pertemuan telah selesai, namun ringkasan materi dan catatan hasil KBM belum diisi. Tanggung jawab pengisian tetap wajib dilengkapi.
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Pills for Pending Sessions */}
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-1">
+                  {pendingJournals.slice(0, 3).map((sess) => (
+                    <button
+                      key={sess.id}
+                      type="button"
+                      onClick={() => handleOpenPendingJournalModal(sess)}
+                      className="group flex items-center gap-2 rounded-xl border border-amber-400/60 bg-white/90 dark:bg-slate-800/90 px-3 py-1.5 text-xs font-extrabold text-slate-800 dark:text-slate-100 shadow-xs hover:border-amber-500 hover:bg-amber-50/80 dark:hover:bg-amber-950/40 transition-all cursor-pointer"
+                    >
+                      <BookOpen className="size-3.5 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+                      <span className="truncate max-w-[130px]">
+                        {sess.schedule?.subject?.name || 'Mapel'} ({sess.schedule?.kelas?.nama_kelas || 'Kelas'})
+                      </span>
+                      <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-300">
+                        P#{sess.meeting_number || 1}
+                      </span>
+                    </button>
+                  ))}
+                  {pendingJournals.length > 3 && (
+                    <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                      +{pendingJournals.length - 3} lainnya
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenPendingJournalModal(pendingJournals[0])}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-600 via-rose-600 to-amber-700 px-4 py-2 text-xs font-extrabold text-white shadow-md shadow-rose-600/25 hover:from-amber-500 hover:to-rose-600 transition-all cursor-pointer shrink-0"
+                >
+                  <Edit3 className="size-3.5 text-white" />
+                  <span>Isi Rangkuman Sekarang</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── BAR KONTROL ROMBEL & MATA PELAJARAN (SUB-HEADER WORKSPACE) ── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="relative overflow-hidden rounded-[20px] border-2 border-emerald-500/25 bg-white p-4 sm:p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-700/60 dark:bg-[#1B2433]"
+        className="relative rounded-[20px] border-2 border-emerald-500/25 bg-white p-4 sm:p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-700/60 dark:bg-[#1B2433] z-20"
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
@@ -5188,50 +5781,42 @@ export default function TeacherTeachingWorkspacePage() {
 
           <div className="flex flex-wrap items-center gap-3">
             {/* Pemilihan Rombel / Kelas */}
-            <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-emerald-200/80 dark:border-emerald-800/80 px-3 py-2 shadow-xs">
-              <Users className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <label htmlFor="workspace-rombel-select" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                Rombel:
-              </label>
-              <select
-                id="workspace-rombel-select"
-                value={selectedClass}
-                onChange={(e) => handleWorkspaceClassChange(e.target.value)}
-                className="bg-transparent font-extrabold text-xs text-emerald-900 dark:text-emerald-200 outline-none cursor-pointer pr-1"
-              >
-                <option value="all" className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                  Semua Rombel
-                </option>
-                {filteredClassesOptions.map((c) => (
-                  <option key={c.id} value={c.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                    {c.nama_kelas || c.name}{c.kode_kelas ? ` · ${c.kode_kelas}` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <HeroUiWorkspaceSelect
+              id="workspace-rombel-select"
+              value={selectedClass}
+              onChange={(val) => handleWorkspaceClassChange(val)}
+              options={[
+                { value: 'all', label: 'Semua Rombel', subtext: 'Seluruh rombel yang diampu' },
+                ...filteredClassesOptions.map((c) => ({
+                  value: c.id,
+                  label: `${c.nama_kelas || c.name}${c.kode_kelas ? ` · ${c.kode_kelas}` : ''}`,
+                })),
+              ]}
+              icon={Users}
+              label="Rombel"
+              placeholder="Pilih Rombel"
+              popoverWidth="w-72"
+              searchable
+            />
 
             {/* Pemilihan Mata Pelajaran */}
-            <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-emerald-200/80 dark:border-emerald-800/80 px-3 py-2 shadow-xs">
-              <BookOpen className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <label htmlFor="workspace-mapel-select" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                Mapel:
-              </label>
-              <select
-                id="workspace-mapel-select"
-                value={materialMapelFilter}
-                onChange={(e) => handleWorkspaceMapelChange(e.target.value)}
-                className="bg-transparent font-extrabold text-xs text-emerald-900 dark:text-emerald-200 outline-none cursor-pointer pr-1 max-w-[210px] truncate"
-              >
-                <option value="all" className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                  Semua Mata Pelajaran
-                </option>
-                {uniqueMapelOptions.map((subj) => (
-                  <option key={subj.id} value={subj.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                    {subj.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <HeroUiWorkspaceSelect
+              id="workspace-mapel-select"
+              value={materialMapelFilter}
+              onChange={(val) => handleWorkspaceMapelChange(val)}
+              options={[
+                { value: 'all', label: 'Semua Mata Pelajaran', subtext: 'Seluruh mapel yang diampu' },
+                ...uniqueMapelOptions.map((subj) => ({
+                  value: subj.id,
+                  label: subj.name,
+                })),
+              ]}
+              icon={BookOpen}
+              label="Mapel"
+              placeholder="Pilih Mata Pelajaran"
+              popoverWidth="w-72"
+              searchable
+            />
 
             {/* Pill Jumlah Siswa */}
             <div className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/60 px-3 py-2 text-xs font-bold text-emerald-800 dark:text-emerald-300">
@@ -6062,11 +6647,11 @@ export default function TeacherTeachingWorkspacePage() {
                     {attendancePeriodFilter === 'harian' && (
                       <div className="flex flex-wrap items-center gap-2">
                         <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Pilih Tanggal:</label>
-                        <input
-                          type="date"
+                        <DatePicker
                           value={attendanceDateFilter}
                           onChange={(e) => setAttendanceDateFilter(e.target.value)}
-                          className="h-8 rounded-lg border border-emerald-500/30 bg-white px-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                          className="w-36"
+                          inputClassName="h-8 text-xs font-semibold"
                         />
                         <button
                           type="button"
@@ -6083,19 +6668,14 @@ export default function TeacherTeachingWorkspacePage() {
 
                     {attendancePeriodFilter === 'mingguan' && (
                       <div className="flex flex-wrap items-center gap-2">
-                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Pilih Pekan Efektif:</label>
-                        <select
+                        <HeroUiWorkspaceSelect
                           value={attendanceWeekFilter}
-                          onChange={(e) => setAttendanceWeekFilter(e.target.value)}
-                          className="h-8 rounded-lg border border-emerald-500/30 bg-white px-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                        >
-                          <option value="pekan_ini">Pekan Berjalan (Saat Ini)</option>
-                          {Array.from({ length: 16 }, (_, i) => (
-                            <option key={i + 1} value={`pekan_${i + 1}`}>
-                              Pekan ke-{i + 1} (KBM Pekan {i + 1})
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => setAttendanceWeekFilter(val)}
+                          options={ATTENDANCE_PEKAN_OPTIONS}
+                          label="Pekan Efektif"
+                          placeholder="Pilih Pekan"
+                          popoverWidth="w-64"
+                        />
                         <span className="rounded-md bg-emerald-100/70 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                           Rekap Kehadiran Mingguan Rombel {selectedClassName}
                         </span>
@@ -6104,25 +6684,14 @@ export default function TeacherTeachingWorkspacePage() {
 
                     {attendancePeriodFilter === 'bulanan' && (
                       <div className="flex flex-wrap items-center gap-2">
-                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Pilih Bulan TA 2026/2027:</label>
-                        <select
+                        <HeroUiWorkspaceSelect
                           value={attendanceMonthFilter}
-                          onChange={(e) => setAttendanceMonthFilter(e.target.value)}
-                          className="h-8 rounded-lg border border-emerald-500/30 bg-white px-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                        >
-                          <option value="07">Juli 2026 (Awal Tahun Ajaran 2026/2027)</option>
-                          <option value="08">Agustus 2026</option>
-                          <option value="09">September 2026 (Bulan Berjalan)</option>
-                          <option value="10">Oktober 2026</option>
-                          <option value="11">November 2026</option>
-                          <option value="12">Desember 2026 (Penilaian Akhir Semester 1)</option>
-                          <option value="01">Januari 2027 (Awal Semester 2)</option>
-                          <option value="02">Februari 2027 🌙 (Bulan Ramadhan 1448 H)</option>
-                          <option value="03">Maret 2027 🕌 (Hari Raya Idul Fitri 1448 H)</option>
-                          <option value="04">April 2027</option>
-                          <option value="05">Mei 2027</option>
-                          <option value="06">Juni 2027 (PAT & Rapor Kenaikan Kelas)</option>
-                        </select>
+                          onChange={(val) => setAttendanceMonthFilter(val)}
+                          options={ATTENDANCE_BULAN_OPTIONS}
+                          label="Bulan"
+                          placeholder="Pilih Bulan"
+                          popoverWidth="w-72"
+                        />
                         <span className="rounded-md bg-emerald-100/70 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                           Presensi Bulanan Lengkap
                         </span>
@@ -6131,15 +6700,14 @@ export default function TeacherTeachingWorkspacePage() {
 
                     {attendancePeriodFilter === 'semester' && (
                       <div className="flex flex-wrap items-center gap-2">
-                        <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Pilih Semester:</label>
-                        <select
+                        <HeroUiWorkspaceSelect
                           value={attendanceSemesterFilter}
-                          onChange={(e) => setAttendanceSemesterFilter(e.target.value)}
-                          className="h-8 rounded-lg border border-emerald-500/30 bg-white px-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                        >
-                          <option value="1">Semester 1 (Ganjil) - Juli s/d Desember 2026</option>
-                          <option value="2">Semester 2 (Genap) - Januari s/d Juni 2027</option>
-                        </select>
+                          onChange={(val) => setAttendanceSemesterFilter(val)}
+                          options={ATTENDANCE_SEMESTER_OPTIONS}
+                          label="Semester"
+                          placeholder="Pilih Semester"
+                          popoverWidth="w-72"
+                        />
                         <span className="rounded-md bg-emerald-100/70 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                           Agregasi Kehadiran Kumulatif Semester
                         </span>
@@ -6325,8 +6893,110 @@ export default function TeacherTeachingWorkspacePage() {
                     </div>
                   </div>
 
-                  {/* Datatable Body */}
-                  <div className="overflow-x-auto">
+                  {/* Mobile Card List View (Visible on screens < md) */}
+                  <div className="block md:hidden divide-y divide-slate-100 p-3 dark:divide-slate-800">
+                    {paginatedAttendanceStudents.map((student, idx) => {
+                      const record = attendanceData[student.id] || { status: 'Belum Dicatat' }
+                      const rowNumber = (attendancePage - 1) * attendancePerPage + idx + 1
+                      const status = record.status || 'Belum Dicatat'
+                      const perm = pendingPermissions[String(student.id)]
+                      const isPending = perm && ['submitted', 'waiting_verification'].includes(perm.status)
+                      const isApprovingThis = approvingPermissionId !== null && String(approvingPermissionId) === String(perm?.id)
+
+                      const statusColorMap = {
+                        'Belum Dicatat': 'bg-slate-100 border-slate-300 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300',
+                        Hadir: 'bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-800 dark:text-emerald-300',
+                        Terlambat: 'bg-amber-50 border-amber-300 text-amber-800 dark:bg-amber-950/60 dark:border-amber-800 dark:text-amber-300',
+                        Izin: 'bg-sky-50 border-sky-300 text-sky-800 dark:bg-sky-950/60 dark:border-sky-800 dark:text-sky-300',
+                        Sakit: 'bg-violet-50 border-violet-300 text-violet-800 dark:bg-violet-950/60 dark:border-violet-800 dark:text-violet-300',
+                        Alpha: 'bg-rose-50 border-rose-300 text-rose-800 dark:bg-rose-950/60 dark:border-rose-800 dark:text-rose-300',
+                      }
+
+                      return (
+                        <div
+                          key={student.id}
+                          className="rounded-2xl border border-slate-200/80 bg-white p-3.5 mb-2.5 shadow-xs dark:border-slate-800 dark:bg-[#151F2E]"
+                        >
+                          <div className="flex items-start justify-between gap-2.5">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                {rowNumber}
+                              </span>
+                              <Avatar size="sm" className="ring-1 ring-emerald-500/30 shrink-0">
+                                <AvatarFallback className="bg-emerald-100 text-emerald-800 font-bold text-[11px] dark:bg-emerald-900 dark:text-emerald-200">
+                                  {(student.nama_lengkap || student.full_name || 'S').slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                                  {student.nama_lengkap || student.full_name}
+                                </p>
+                                <p className="truncate text-[10px] text-slate-500">
+                                  {student.nis || student.nisn || 'NIS -'}
+                                </p>
+                              </div>
+                            </div>
+                            <span
+                              className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
+                                statusColorMap[status] || statusColorMap['Belum Dicatat']
+                              }`}
+                            >
+                              {status}
+                            </span>
+                          </div>
+
+                          <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 border-t border-slate-100 pt-2 dark:border-slate-800/80">
+                            <span>Waktu: <b className="text-slate-700 dark:text-slate-200 font-mono">{record.time || '-'}</b></span>
+                            <span>Metode: <b className="text-slate-700 dark:text-slate-200">{record.method || 'Manual'}</b></span>
+                          </div>
+
+                          <div className="mt-2.5 flex items-center justify-end gap-1.5 pt-1">
+                            {isPending && (
+                              <button
+                                type="button"
+                                disabled={isApprovingThis}
+                                onClick={() => handleApproveStudentPermission(student, perm)}
+                                className="inline-flex h-8 items-center justify-center gap-1 rounded-xl bg-amber-500 px-2.5 text-[10px] font-bold text-white shadow-xs hover:bg-amber-600 transition"
+                              >
+                                {isApprovingThis ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                                Setujui Izin
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => toggleStudentChecklist(student, status !== 'Hadir')}
+                              className={`inline-flex h-8 items-center justify-center gap-1 rounded-xl px-3 text-[10px] font-bold transition shadow-xs ${
+                                status === 'Hadir'
+                                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                  : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300'
+                              }`}
+                            >
+                              <Check className="h-3 w-3" />
+                              {status === 'Hadir' ? 'Hadir' : 'Set Hadir'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenStudentAttendanceDetail(student, attendancePeriodFilter)}
+                              className="inline-flex h-8 items-center justify-center gap-1 rounded-xl border border-sky-200 bg-sky-50 px-2.5 text-[10px] font-bold text-sky-700 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300"
+                            >
+                              <Eye className="h-3 w-3" />
+                              Detail
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handlePrintWeeklyEvaluation(student)}
+                              className="inline-flex h-8 items-center justify-center gap-1 rounded-xl border border-orange-200 bg-orange-50 px-2 text-[10px] font-bold text-orange-700 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950/60 dark:text-orange-300"
+                            >
+                              <Printer className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Datatable Body (Desktop / Tablet view >= md) */}
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full min-w-[720px] text-left text-xs">
                       <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 text-slate-700 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-slate-300 select-none">
                         <tr>
@@ -6700,6 +7370,48 @@ export default function TeacherTeachingWorkspacePage() {
           {/* TAB 3: MATERI BELAJAR */}
           {activeTab === 'materi' && (
             <section className="space-y-4" aria-labelledby="material-heading">
+              {/* ── 4 HERO UI KPI CARDS UNTUK MATERI BELAJAR ── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <ModernWorkspaceKpiCard
+                  icon={BookOpen}
+                  title="Total Materi Belajar"
+                  value={materialMeta.total || materials.length}
+                  subtitle={`Rombel: ${selectedClassName || 'Semua'}`}
+                  tone="emerald"
+                  badge="Semua Modul"
+                  active={materialStatusFilter === 'semua'}
+                  onClick={() => setMaterialStatusFilter('semua')}
+                />
+                <ModernWorkspaceKpiCard
+                  icon={CheckCircle2}
+                  title="Dipublikasikan"
+                  value={materials.filter((m) => String(m.status).toLowerCase() === 'published').length}
+                  subtitle="Dapat diakses santri & ortu"
+                  tone="teal"
+                  badge="Siap Belajar"
+                  active={materialStatusFilter === 'published'}
+                  onClick={() => setMaterialStatusFilter((prev) => (prev === 'published' ? 'semua' : 'published'))}
+                />
+                <ModernWorkspaceKpiCard
+                  icon={Clock}
+                  title="Draft Materi"
+                  value={materials.filter((m) => String(m.status).toLowerCase() === 'draft').length}
+                  subtitle="Perlu review & dilengkapi"
+                  tone="amber"
+                  badge="Draft Modul"
+                  active={materialStatusFilter === 'draft'}
+                  onClick={() => setMaterialStatusFilter((prev) => (prev === 'draft' ? 'semua' : 'draft'))}
+                />
+                <ModernWorkspaceKpiCard
+                  icon={Layers}
+                  title="Mata Pelajaran"
+                  value={uniqueMapelOptions.length}
+                  subtitle="Cakupan mapel terintegrasi"
+                  tone="blue"
+                  badge="Kurikulum"
+                />
+              </div>
+
               <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
                 {/* Toolbar Header */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
@@ -6721,7 +7433,7 @@ export default function TeacherTeachingWorkspacePage() {
                     <button
                       type="button"
                       onClick={() => openMaterialForm()}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition hover:from-emerald-700 hover:to-teal-700"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition hover:from-emerald-700 hover:to-teal-700 cursor-pointer active:scale-95"
                     >
                       <Plus className="h-3.5 w-3.5" /> Tambah Materi
                     </button>
@@ -6732,8 +7444,8 @@ export default function TeacherTeachingWorkspacePage() {
                 <div className="border-b border-emerald-500/15 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 p-4 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 sm:p-5">
 
                 {/* Baris 1: Search + Filter Utama */}
-                <div className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-[minmax(0,1fr)_180px_160px_auto] dark:border-slate-800">
-                  <label className="relative">
+                <div className="mt-1 flex flex-col gap-3 lg:flex-row lg:items-center">
+                  <label className="relative flex-1">
                     <span className="sr-only">Cari materi</span>
                     <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <input
@@ -6741,67 +7453,80 @@ export default function TeacherTeachingWorkspacePage() {
                       value={materialSearch}
                       onChange={(event) => setMaterialSearch(event.target.value)}
                       placeholder="Cari judul, ringkasan, mapel..."
-                      className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-xs font-semibold outline-none focus:border-emerald-700 focus:ring-3 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
+                      className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-xs font-semibold outline-none focus:border-emerald-700 focus:ring-3 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
                     />
                   </label>
-                  <select
-                    value={selectedClass}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      setSelectedClass(val)
-                      setMaterialMapelFilter('all')
-                      fetchStudentsForClass(val)
-                    }}
-                    aria-label="Filter rombel materi"
-                    className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold outline-none focus:border-emerald-700 focus:ring-3 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
-                  >
-                    <option value="all">Semua Rombel</option>
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        Rombel {c.nama_kelas || c.name}{c.kode_kelas ? ` · ${c.kode_kelas}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={materialStatusFilter}
-                    onChange={(event) => setMaterialStatusFilter(event.target.value)}
-                    aria-label="Filter status materi"
-                    className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold outline-none focus:border-emerald-700 focus:ring-3 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
-                  >
-                    <option value="semua">Semua Status</option>
-                    <option value="published">Dipublikasikan</option>
-                    <option value="draft">Draft</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={fetchMaterials}
-                    aria-label="Muat ulang materi"
-                    title="Muat ulang materi"
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-50 focus-visible:ring-3 focus-visible:ring-emerald-700/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    <span className="sr-only">Muat ulang</span>
-                  </button>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <HeroUiWorkspaceSelect
+                      id="material-rombel-select"
+                      value={selectedClass}
+                      onChange={(val) => {
+                        setSelectedClass(val)
+                        setMaterialMapelFilter('all')
+                        fetchStudentsForClass(val)
+                      }}
+                      options={[
+                        { value: 'all', label: 'Semua Rombel', subtext: 'Seluruh rombel yang diampu' },
+                        ...classes.map((c) => ({
+                          value: String(c.id),
+                          label: `Rombel ${c.nama_kelas || c.name}${c.kode_kelas ? ` · ${c.kode_kelas}` : ''}`,
+                        })),
+                      ]}
+                      icon={Users}
+                      label="Rombel"
+                      placeholder="Pilih Rombel"
+                      popoverWidth="w-64"
+                      searchable
+                    />
+
+                    <HeroUiWorkspaceSelect
+                      id="material-status-select"
+                      value={materialStatusFilter}
+                      onChange={(val) => setMaterialStatusFilter(val)}
+                      options={[
+                        { value: 'semua', label: 'Semua Status' },
+                        { value: 'published', label: 'Dipublikasikan' },
+                        { value: 'draft', label: 'Draft' },
+                      ]}
+                      icon={Filter}
+                      label="Status"
+                      placeholder="Pilih Status"
+                      popoverWidth="w-52"
+                    />
+
+                    <HeroUiWorkspaceSelect
+                      id="material-mapel-select"
+                      value={materialMapelFilter}
+                      onChange={(val) => setMaterialMapelFilter(val)}
+                      options={[
+                        { value: 'all', label: 'Semua Mapel', subtext: 'Seluruh mata pelajaran' },
+                        ...uniqueMapelOptions.map((subj) => ({
+                          value: String(subj.id),
+                          label: subj.name,
+                        })),
+                      ]}
+                      icon={BookOpen}
+                      label="Mapel"
+                      placeholder="Pilih Mapel"
+                      popoverWidth="w-64"
+                      searchable
+                    />
+
+                    <button
+                      type="button"
+                      onClick={fetchMaterials}
+                      aria-label="Muat ulang materi"
+                      title="Muat ulang materi"
+                      className="inline-flex h-9.5 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-50 focus-visible:ring-3 focus-visible:ring-emerald-700/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer active:scale-95"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Baris 2: Filter Mapel + Badge Aktif + Reset */}
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <div className="relative flex-1 min-w-[180px] max-w-xs">
-                    <BookOpen className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-emerald-600 dark:text-emerald-400" />
-                    <select
-                      value={materialMapelFilter}
-                      onChange={(e) => setMaterialMapelFilter(e.target.value)}
-                      aria-label="Filter mata pelajaran"
-                      className="h-9 w-full rounded-xl border border-emerald-200 bg-emerald-50/60 pl-8 pr-3 text-xs font-semibold text-emerald-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-100"
-                    >
-                      <option value="all">📚 Semua Mata Pelajaran</option>
-                      {uniqueMapelOptions.map((subj) => (
-                        <option key={subj.id} value={subj.id}>{subj.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Badge filter aktif */}
+                {/* Baris 2: Badge filter aktif & Ringkasan */}
+                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-emerald-500/10">
                   <div className="flex flex-wrap items-center gap-1.5">
                     {materialSearch.trim() && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -6812,7 +7537,7 @@ export default function TeacherTeachingWorkspacePage() {
                     {materialMapelFilter !== 'all' && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
                         <BookOpen className="h-3 w-3" />
-                        {uniqueMapelOptions.find((s) => s.id === materialMapelFilter)?.name || 'Mapel'}
+                        {uniqueMapelOptions.find((s) => String(s.id) === String(materialMapelFilter))?.name || 'Mapel'}
                         <button type="button" onClick={() => setMaterialMapelFilter('all')} className="ml-0.5 rounded-full hover:text-rose-500">×</button>
                       </span>
                     )}
@@ -6826,7 +7551,7 @@ export default function TeacherTeachingWorkspacePage() {
                       <button
                         type="button"
                         onClick={() => { setMaterialSearch(''); setMaterialMapelFilter('all'); setMaterialStatusFilter('semua') }}
-                        className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-600 transition hover:bg-rose-100 dark:border-rose-800/60 dark:bg-rose-950/30 dark:text-rose-400"
+                        className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-600 transition hover:bg-rose-100 dark:border-rose-800/60 dark:bg-rose-950/30 dark:text-rose-400 cursor-pointer"
                       >
                         <X className="h-3 w-3" /> Reset Filter
                       </button>
@@ -6834,140 +7559,234 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
 
                   {/* Info jumlah hasil */}
-                  <span className="ml-auto text-[10px] font-semibold text-slate-400">
-                    {loading ? '…' : `${filteredMaterials.length} dari ${materialMeta.total || materials.length} materi`}
+                  <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                    {loading ? 'Memuat materi…' : `Menampilkan ${filteredMaterials.length} dari ${materialMeta.total || materials.length} materi`}
                   </span>
                 </div>
               </div>
             </div>
 
-
               {materialError ? (
-                <div className="rounded-[18px] border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900/60 dark:bg-rose-950/20"><AlertTriangle className="mx-auto h-8 w-8 text-rose-500" /><h4 className="mt-3 text-sm font-bold text-slate-900 dark:text-white">Materi gagal dimuat</h4><p className="mt-1 text-xs text-slate-500">{materialError}</p><button type="button" onClick={fetchMaterials} className="mt-4 h-10 rounded-xl bg-emerald-800 px-4 text-xs font-bold text-white">Coba Lagi</button></div>
+                <div className="rounded-[20px] border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900/60 dark:bg-rose-950/20">
+                  <AlertTriangle className="mx-auto h-8 w-8 text-rose-500" />
+                  <h4 className="mt-3 text-sm font-bold text-slate-900 dark:text-white">Materi gagal dimuat</h4>
+                  <p className="mt-1 text-xs text-slate-500">{materialError}</p>
+                  <button type="button" onClick={fetchMaterials} className="mt-4 h-10 rounded-xl bg-emerald-800 px-4 text-xs font-bold text-white cursor-pointer hover:bg-emerald-700">
+                    Coba Lagi
+                  </button>
+                </div>
               ) : loading && materials.length === 0 ? (
-                <div className="grid gap-4 md:grid-cols-2">{[1, 2, 3, 4].map((item) => <div key={item} className="h-48 animate-pulse rounded-[18px] border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800" />)}</div>
+                /* ── 4 SKELETON CARDS DENGAN HERO UI STYLE ── */
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {[1, 2, 3, 4].map((item) => (
+                    <div
+                      key={item}
+                      className="group relative flex min-h-52 flex-col justify-between overflow-hidden rounded-[20px] border-2 border-emerald-500/20 bg-white p-5 shadow-xs dark:border-emerald-600/30 dark:bg-[#1B2433] animate-pulse"
+                    >
+                      <div className="absolute top-0 left-0 h-1.5 w-full bg-gradient-to-r from-emerald-500/40 via-teal-400/30 to-emerald-600/40" />
+                      <div>
+                        <div className="flex items-start justify-between gap-3 mb-4">
+                          <div className="flex size-11 items-center justify-center rounded-2xl bg-emerald-100/70 dark:bg-emerald-950/60 shadow-xs" />
+                          <div className="h-6 w-28 rounded-full bg-slate-200 dark:bg-slate-700/80" />
+                        </div>
+                        <div className="h-3 w-1/3 rounded-md bg-emerald-100/60 dark:bg-emerald-950/40 mb-2.5" />
+                        <div className="h-5 w-3/4 rounded-lg bg-slate-200 dark:bg-slate-700 mb-2" />
+                        <div className="h-3.5 w-full rounded-md bg-slate-100 dark:bg-slate-800/80 mb-1.5" />
+                        <div className="h-3.5 w-2/3 rounded-md bg-slate-100 dark:bg-slate-800/80" />
+                      </div>
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                        <div className="h-7 w-32 rounded-xl bg-slate-100 dark:bg-slate-800" />
+                        <div className="flex gap-1.5">
+                          <div className="size-7 rounded-xl bg-slate-100 dark:bg-slate-800" />
+                          <div className="size-7 rounded-xl bg-slate-100 dark:bg-slate-800" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : filteredMaterials.length === 0 ? (
-                <div className="rounded-[18px] border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-[#1B2433]"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"><BookOpen className="h-7 w-7" /></div><h4 className="mt-4 text-sm font-bold text-slate-900 dark:text-white">{materials.length ? 'Materi tidak ditemukan' : 'Belum ada materi belajar'}</h4><p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-slate-500">{materials.length ? 'Ubah kata kunci atau filter status untuk melihat materi lain.' : 'Mulai susun konten pembelajaran pertama untuk rombel ini.'}</p>{!materials.length && <button type="button" onClick={() => openMaterialForm()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-800 px-4 text-xs font-bold text-white"><Plus className="h-4 w-4" /> Buat Materi Pertama</button>}</div>
+                /* ── EMPTY STATE BERGAYA HERO UI ── */
+                <div className="relative overflow-hidden rounded-[22px] border-2 border-dashed border-emerald-300 dark:border-emerald-700/80 bg-white p-10 text-center dark:bg-[#1B2433] shadow-sm">
+                  <div className="pointer-events-none absolute -top-12 -right-12 h-36 w-36 rounded-full bg-gradient-to-br from-emerald-500/15 via-teal-400/10 to-transparent blur-2xl" />
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30">
+                    <BookOpen className="h-7 w-7 text-white" />
+                  </div>
+                  <h4 className="mt-4 text-sm font-black text-slate-900 dark:text-white">
+                    {materials.length ? 'Materi tidak ditemukan' : 'Belum ada materi belajar'}
+                  </h4>
+                  <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                    {materials.length ? 'Ubah kata kunci atau filter status untuk melihat materi lain.' : `Mulai susun konten pembelajaran pertama untuk rombel ${selectedClassName || 'ini'}.`}
+                  </p>
+                  {!materials.length && (
+                    <button
+                      type="button"
+                      onClick={() => openMaterialForm()}
+                      className="mt-5 inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 text-xs font-bold text-white shadow-md shadow-emerald-600/25 transition hover:from-emerald-700 hover:to-teal-700 cursor-pointer active:scale-95"
+                    >
+                      <Plus className="h-4 w-4" /> Buat Materi Pertama
+                    </button>
+                  )}
+                </div>
               ) : (
                 <>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {filteredMaterials.map((mat) => {
                     const isPublished = String(mat.status).toLowerCase() === 'published'
-                    return <article key={mat.id} className="group flex min-h-52 flex-col overflow-hidden rounded-[18px] border border-slate-200/80 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[var(--shadow-soft-xl)] dark:border-slate-700/80 dark:bg-[#1B2433]">
-                      <div className="h-1 bg-gradient-to-r from-emerald-800 via-emerald-500 to-amber-400" />
-                      <div className="flex flex-1 flex-col p-5">
-                        <div className="flex items-start justify-between gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"><BookOpen className="h-5 w-5" /></div><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase ${isPublished ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300'}`}><span className={`h-1.5 w-1.5 rounded-full ${isPublished ? 'bg-emerald-500' : 'bg-sky-500'}`} />{isPublished ? 'Dipublikasikan' : 'Draft'}</span></div>
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                            {mat.subject?.name || mat.subject?.nama_mapel || 'Materi Pembelajaran'}
-                          </p>
-                          <div className="flex items-center gap-1.5">
-                            {(mat.tanggal_publish || mat.tanggal || mat.created_at) && (
-                              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                                <Calendar className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                                {new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(mat.tanggal_publish || mat.tanggal || mat.created_at))}
-                              </span>
-                            )}
-                            <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                              Pekan {String(mat.urutan || calculatePekanFromDate(mat.tanggal_publish || mat.tanggal || mat.created_at).pekan).padStart(2, '0')}
+                    return (
+                      <article
+                        key={mat.id}
+                        className="group relative flex min-h-52 flex-col justify-between overflow-hidden rounded-[20px] border-2 border-emerald-500/20 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/60 hover:shadow-xl dark:border-emerald-600/30 dark:bg-[#1B2433]"
+                      >
+                        {/* Top Accent Gradient Stripe */}
+                        <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+                        
+                        {/* Ambient Glow */}
+                        <div className="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full bg-emerald-500/15 blur-2xl transition-all duration-500 group-hover:bg-emerald-500/25" />
+
+                        <div className="flex flex-1 flex-col p-5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40">
+                              <BookOpen className="h-5 w-5" />
+                            </div>
+                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${isPublished ? 'border-emerald-200/90 bg-emerald-50 text-emerald-800 dark:border-emerald-800/80 dark:bg-emerald-950/60 dark:text-emerald-300' : 'border-sky-200/90 bg-sky-50 text-sky-800 dark:border-sky-800/80 dark:bg-sky-950/60 dark:text-sky-300'}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${isPublished ? 'bg-emerald-500 animate-pulse' : 'bg-sky-500'}`} />
+                              {isPublished ? 'Dipublikasikan' : 'Draft'}
                             </span>
                           </div>
+
+                          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                              {mat.subject?.name || mat.subject?.nama_mapel || 'Materi Pembelajaran'}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              {(mat.tanggal_publish || mat.tanggal || mat.created_at) && (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                  <Calendar className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                  {new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(mat.tanggal_publish || mat.tanggal || mat.created_at))}
+                                </span>
+                              )}
+                              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                Pekan {String(mat.urutan || calculatePekanFromDate(mat.tanggal_publish || mat.tanggal || mat.created_at).pekan).padStart(2, '0')}
+                              </span>
+                            </div>
+                          </div>
+
+                          <h4 className="mt-1.5 line-clamp-2 text-sm font-black text-slate-900 dark:text-white">{mat.judul}</h4>
+                          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{mat.ringkasan || 'Belum ada ringkasan untuk materi ini.'}</p>
+
+                          {(mat.file || mat.video || mat.link) && (
+                            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                              {mat.file && (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300">
+                                  <FileText className="h-3 w-3" /> PDF Modul
+                                </span>
+                              )}
+                              {mat.video && (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+                                  <Video className="h-3 w-3" /> Video
+                                </span>
+                              )}
+                              {mat.link && (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+                                  <ExternalLink className="h-3 w-3" /> Link
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800/80">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => openMaterialDetail(mat)}
+                                title="Lihat Data Materi"
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 cursor-pointer"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>Lihat Data</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openMaterialForm(mat)}
+                                title="Edit Data Materi"
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50 cursor-pointer"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                                <span>Edit Data</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCreateTaskFromMaterial(mat)}
+                                title="Buat Tugas Berdasarkan Materi Ini"
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700 transition hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50 cursor-pointer"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                                <span>+ Buat Tugas</span>
+                              </button>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => printMaterial(mat)}
+                                title="Cetak Materi"
+                                aria-label="Cetak Materi"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer"
+                              >
+                                <Printer className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => printMaterial(mat, true)}
+                                title="Export PDF"
+                                aria-label="Export PDF"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 text-sky-600 transition hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/50 cursor-pointer"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => confirmDeleteModal('materi', mat.id, mat.judul)}
+                                title="Hapus Data Materi"
+                                aria-label="Hapus Data Materi"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/50 cursor-pointer"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <h4 className="mt-1 line-clamp-2 text-sm font-black text-slate-900 dark:text-white">{mat.judul}</h4>
-                        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500">{mat.ringkasan || 'Belum ada ringkasan untuk materi ini.'}</p>
-
-                        {(mat.file || mat.video || mat.link) && (
-                          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                            {mat.file && (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300">
-                                <FileText className="h-3 w-3" /> PDF Modul
-                              </span>
-                            )}
-                            {mat.video && (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
-                                <Video className="h-3 w-3" /> Video
-                              </span>
-                            )}
-                            {mat.link && (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
-                                <ExternalLink className="h-3 w-3" /> Link
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => openMaterialDetail(mat)}
-                              title="Lihat Data Materi"
-                              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50"
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                              <span>Lihat Data</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openMaterialForm(mat)}
-                              title="Edit Data Materi"
-                              className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50"
-                            >
-                              <Edit3 className="h-3.5 w-3.5" />
-                              <span>Edit Data</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleCreateTaskFromMaterial(mat)}
-                              title="Buat Tugas Berdasarkan Materi Ini"
-                              className="inline-flex items-center gap-1.5 rounded-xl bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700 transition hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50"
-                            >
-                              <FileText className="h-3.5 w-3.5" />
-                              <span>+ Buat Tugas</span>
-                            </button>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => printMaterial(mat)}
-                              title="Cetak Materi"
-                              aria-label="Cetak Materi"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                            >
-                              <Printer className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => printMaterial(mat, true)}
-                              title="Export PDF"
-                              aria-label="Export PDF"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 text-sky-600 transition hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/50"
-                            >
-                              <FileText className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => confirmDeleteModal('materi', mat.id, mat.judul)}
-                              title="Hapus Data Materi"
-                              aria-label="Hapus Data Materi"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/50"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                    </div>
-                    </article>
+                      </article>
+                    )
                   })}
                   </div>
                   {materialMeta.last_page > 1 && (
                   <div className="flex flex-col items-center justify-between gap-3 rounded-[18px] border border-slate-200 bg-white px-4 py-3 sm:flex-row dark:border-slate-700 dark:bg-[#1B2433]">
                     <p className="text-xs text-slate-500">Menampilkan {materialMeta.from || 0}–{materialMeta.to || 0} dari {materialMeta.total} materi.</p>
-                    <div className="flex items-center gap-2">
-                      <button type="button" disabled={materialPage <= 1 || loading} onClick={() => setMaterialPage((page) => Math.max(1, page - 1))} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700">Sebelumnya</button>
-                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Halaman {materialMeta.current_page} / {materialMeta.last_page}</span>
-                      <button type="button" disabled={materialPage >= materialMeta.last_page || loading} onClick={() => setMaterialPage((page) => Math.min(materialMeta.last_page, page + 1))} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700">Berikutnya</button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={materialPage <= 1 || loading}
+                        onClick={() => setMaterialPage((page) => Math.max(1, page - 1))}
+                        title="Halaman Sebelumnya"
+                        aria-label="Halaman Sebelumnya"
+                        className="flex size-8.5 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
+                      >
+                        <ChevronLeft className="size-4 shrink-0 text-white" />
+                      </button>
+                      <span className="px-2.5 py-1 text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Halaman {materialMeta.current_page} / {materialMeta.last_page}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={materialPage >= materialMeta.last_page || loading}
+                        onClick={() => setMaterialPage((page) => Math.min(materialMeta.last_page, page + 1))}
+                        title="Halaman Berikutnya"
+                        aria-label="Halaman Berikutnya"
+                        className="flex size-8.5 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
+                      >
+                        <ChevronRight className="size-4 shrink-0 text-white" />
+                      </button>
                     </div>
                   </div>
                   )}
@@ -7660,80 +8479,362 @@ export default function TeacherTeachingWorkspacePage() {
 
           {/* TAB 6: TAHFIZH */}
           {activeTab === 'tahfizh' && (
-            <section className="space-y-5" aria-labelledby="tahfizh-heading">
-              {/* Header Card & Scope Banner */}
-              <div className="rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-[var(--shadow-soft-xl)] dark:border-slate-700/80 dark:bg-[#1B2433]">
-                <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-400">
-                        {isPengurusYayasan ? 'Monitoring Konsolidasi Yayasan' : isKepalaSekolahOrDivisiPendidikan ? 'Monitoring Unit Pimpinan' : 'Monitoring Rombel Binaan'}
-                      </p>
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                        isPengurusYayasan
-                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
-                          : isKepalaSekolahOrDivisiPendidikan
-                          ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300'
-                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                      }`}>
-                        {isPengurusYayasan ? (
-                          <>• Scope: Seluruh Unit (Yayasan)</>
-                        ) : isKepalaSekolahOrDivisiPendidikan ? (
-                          <>• Scope: Unit Pimpinan ({teacherProfile?.education_unit || user?.education_unit?.name || 'Kepala Sekolah / Divisi'})</>
-                        ) : (
-                          <>• Scope: Kelas {selectedClassName}</>
-                        )}
-                      </span>
+            <section className="space-y-6" aria-labelledby="tahfizh-heading">
+              {/* 1. TAILGRIDS MODERN HERO CARD BANNER */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900"
+              >
+                {/* Dual multi-tone ambient glow */}
+                <div className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/35 via-teal-400/25 to-transparent blur-3xl dark:from-emerald-500/40 dark:via-teal-400/30" />
+                <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-gradient-to-tr from-teal-500/25 via-emerald-400/20 to-transparent blur-3xl dark:from-teal-600/30 dark:via-emerald-500/20" />
+
+                <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-start gap-4 min-w-0">
+                    <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                      <BookOpen className="size-6 sm:size-7 text-white" />
                     </div>
-                    <h3 id="tahfizh-heading" className="mt-1 text-lg font-black text-slate-900 dark:text-white">
-                      {isPengurusYayasan
-                        ? 'Leaderboard Pencapaian Hafalan Tahfizh Seluruh Unit'
-                        : isKepalaSekolahOrDivisiPendidikan
-                        ? `Leaderboard Hafalan Tahfizh Terbanyak — ${teacherProfile?.education_unit || user?.education_unit?.name || 'Unit Pimpinan'}`
-                        : `Jurnal & Ranking Setoran Tahfizh Al-Qur'an — Kelas ${selectedClassName}`}
-                    </h3>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {isPengurusYayasan
-                        ? 'Menampilkan konsolidasi pencapaian hafalan tahfizh terbanyak dari seluruh unit pendidikan di bawah naungan yayasan.'
-                        : isKepalaSekolahOrDivisiPendidikan
-                        ? 'Menampilkan peringkat pencapaian hafalan tahfizh terbanyak siswa dari masing-masing unit yang Anda pimpin.'
-                        : `Daftar siswa yang diajar pada rombel ${selectedClassName} diurutkan berdasarkan pencapaian hafalan terbanyak.`}
-                    </p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-white shadow-md shadow-emerald-600/25 border border-emerald-300/40">
+                          <Sparkles className="size-3 sm:size-3.5 text-amber-300 animate-pulse" />
+                          Jurnal &amp; Monitoring Tahfizh
+                        </span>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-bold border ${
+                          isPengurusYayasan
+                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border-purple-300/70'
+                            : isKepalaSekolahOrDivisiPendidikan
+                            ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border-sky-300/70'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300/70'
+                        }`}>
+                          {isPengurusYayasan ? (
+                            <>• Scope: Seluruh Unit (Yayasan)</>
+                          ) : isKepalaSekolahOrDivisiPendidikan ? (
+                            <>• Scope: Unit Pimpinan ({teacherProfile?.education_unit || user?.education_unit?.name || 'Kepala Sekolah / Divisi'})</>
+                          ) : (
+                            <>• Scope: Kelas {selectedClassName}</>
+                          )}
+                        </span>
+                      </div>
+                      <h2 id="tahfizh-heading" className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                        {isPengurusYayasan
+                          ? 'Leaderboard Pencapaian Hafalan Tahfizh Seluruh Unit'
+                          : isKepalaSekolahOrDivisiPendidikan
+                          ? `Leaderboard Hafalan Tahfizh Terbanyak — ${teacherProfile?.education_unit || user?.education_unit?.name || 'Unit Pimpinan'}`
+                          : `Jurnal & Ranking Setoran Tahfizh Al-Qur'an — Kelas ${selectedClassName}`}
+                      </h2>
+                      <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                        {isPengurusYayasan
+                          ? 'Menampilkan konsolidasi pencapaian hafalan tahfizh terbanyak dari seluruh unit pendidikan di bawah naungan yayasan.'
+                          : isKepalaSekolahOrDivisiPendidikan
+                          ? 'Menampilkan peringkat pencapaian hafalan tahfizh terbanyak siswa dari masing-masing unit yang Anda pimpin.'
+                          : `Daftar siswa yang diajar pada rombel ${selectedClassName} diurutkan berdasarkan pencapaian hafalan terbanyak.`}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+
+                  <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start lg:self-center">
                     <button
                       type="button"
                       onClick={() => changeTab('rekapan-tahfizh')}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 text-xs font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-100 hover:border-emerald-400 dark:border-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900 cursor-pointer"
+                      className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white/90 dark:bg-emerald-950/70 hover:bg-emerald-50 dark:hover:bg-emerald-900 px-4 py-2.5 text-xs font-bold text-emerald-800 dark:text-emerald-200 shadow-sm transition-all cursor-pointer hover:scale-102 active:scale-98"
                       title="Buka Halaman Laporan Rekapan & Cetak Tahfizh"
                     >
                       <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                      <span>Laporan Rekapan Tahfizh</span>
+                      <span>Laporan Rekapan</span>
                     </button>
                     <button
-                      type="button" onClick={() => openTahfizhForm()}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-800 px-4 text-xs font-bold text-white shadow-lg shadow-emerald-900/15 transition hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 cursor-pointer"
+                      type="button"
+                      onClick={() => openTahfizhForm()}
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/30 transition-all cursor-pointer hover:scale-102 active:scale-98"
                     >
-                      <Plus className="h-4 w-4" /> Input Setoran
+                      <Plus className="h-4 w-4 text-white" />
+                      <span>Input Setoran Baru</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* 2. TOP 5 CARDS SECTION */}
+              {top5TahfizhStudents.length > 0 ? (
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex size-9 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-orange-700 text-white shadow-md shadow-amber-600/30 border border-amber-300/40">
+                        <Trophy className="size-4.5 text-white" />
+                      </span>
+                      <div>
+                        <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                          5 Terbaik Pencapaian Hafalan Tahfizh Al-Qur'an
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Kartu profil santri dengan progres hafalan terbanyak (Rank #1 s.d. #5)
+                        </p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300/70 px-3 py-1 text-[11px] font-black shadow-xs">
+                      🏆 Top 5 Leaderboard
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3.5 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 items-stretch">
+                    {top5TahfizhStudents.map(({ student, latest, totalAyat, completedSurahs, totalSetoran, unitName, className }, index) => {
+                      const getInitials = (name = '') => {
+                        return name.split(' ').map((n) => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'S'
+                      }
+                      const avatarUrl = student.foto_url || student.avatar || student.foto || student.user?.avatar_url || null
+                      const rankLabel = index === 0 ? '🥇 Rank #1' : index === 1 ? '🥈 Rank #2' : index === 2 ? '🥉 Rank #3' : `🏅 Rank #${index + 1}`
+                      
+                      const rankStyle = index === 0 
+                        ? {
+                            card: 'border-2 border-amber-400 bg-gradient-to-b from-amber-50/80 via-orange-50/30 to-white dark:border-amber-600/80 dark:from-amber-950/40 dark:via-orange-950/15 dark:to-[#1B2433] shadow-md shadow-amber-500/10',
+                            badge: 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-sm shadow-amber-600/30',
+                          }
+                        : index === 1
+                        ? {
+                            card: 'border-2 border-slate-300 bg-gradient-to-b from-slate-50/80 via-slate-100/30 to-white dark:border-slate-600/80 dark:from-slate-900/50 dark:via-slate-900/20 dark:to-[#1B2433] shadow-md shadow-slate-500/10',
+                            badge: 'bg-gradient-to-r from-slate-500 to-slate-700 text-white shadow-sm shadow-slate-600/30',
+                          }
+                        : index === 2
+                        ? {
+                            card: 'border-2 border-orange-300 bg-gradient-to-b from-orange-50/80 via-amber-50/30 to-white dark:border-orange-600/80 dark:from-orange-950/40 dark:via-amber-950/15 dark:to-[#1B2433] shadow-md shadow-orange-500/10',
+                            badge: 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-sm shadow-orange-600/30',
+                          }
+                        : {
+                            card: 'border-2 border-emerald-300/80 bg-gradient-to-b from-emerald-50/60 via-teal-50/20 to-white dark:border-emerald-700/80 dark:from-emerald-950/30 dark:via-teal-950/10 dark:to-[#1B2433] shadow-md shadow-emerald-500/10',
+                            badge: 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-sm shadow-emerald-700/30',
+                          }
+
+                      const surahName = latest?.hafalan_surah_name || 'Belum setoran'
+                      const ayahRange = latest ? `Ayat ${latest.hafalan_ayah_start}–${latest.hafalan_ayah_end}` : '—'
+                      const juzNum = latest ? (latest.metadata?.juz || getQuranJuz(latest.hafalan_surah_number, latest.hafalan_ayah_start)) : '—'
+
+                      return (
+                        <article
+                          key={student.id || index}
+                          className={`group relative flex flex-col justify-between rounded-[20px] p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${rankStyle.card}`}
+                        >
+                          {/* Rank Badge & Unit Label */}
+                          <div className="flex items-center justify-between gap-1.5 mb-2.5">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black ${rankStyle.badge}`}>
+                              {rankLabel}
+                            </span>
+                            <span className="truncate rounded-md bg-white/90 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 px-2 py-0.5 text-[9.5px] font-bold text-slate-700 dark:text-slate-300 max-w-[100px]" title={unitName}>
+                              {unitName}
+                            </span>
+                          </div>
+
+                          {/* Profil & Avatar */}
+                          <div className="flex items-center gap-3">
+                            <Avatar size="lg" className="shrink-0 ring-2 ring-emerald-500/25">
+                              {avatarUrl && <AvatarImage src={avatarUrl} alt={student.nama_lengkap} />}
+                              <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 font-black text-white text-xs">
+                                {getInitials(student.nama_lengkap)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <h5 className="truncate text-xs font-black text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors" title={student.nama_lengkap}>
+                                {student.nama_lengkap}
+                              </h5>
+                              <p className="mt-0.5 text-[10px] font-medium text-slate-400">
+                                NIS: {student.nis || student.nisn || '—'}
+                              </p>
+                              <span className="mt-1 inline-block rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/60 px-2 py-0.5 text-[9px] font-extrabold">
+                                {className}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Detail Hafalan Tahfizh (Nama Surah, Ayat, Juz, Total Surah & Total Ayat) */}
+                          <div className="mt-3.5 space-y-2 rounded-xl bg-white/80 dark:bg-slate-800/80 p-3 text-[11px] border border-slate-200/70 dark:border-slate-700/70">
+                            {/* Nama Surah */}
+                            <div className="flex items-center justify-between gap-1 border-b border-slate-100 pb-1.5 dark:border-slate-700/60">
+                              <span className="text-[10px] font-bold text-slate-400 shrink-0">Nama Surah:</span>
+                              <span className="truncate font-black text-[#0E5C44] dark:text-[#3FBF75] text-right" title={surahName}>
+                                {surahName}
+                              </span>
+                            </div>
+
+                            {/* Ayat & Juz */}
+                            <div className="grid grid-cols-2 gap-1 text-[10px]">
+                              <div>
+                                <span className="block font-bold text-slate-400">Ayat:</span>
+                                <span className="font-extrabold text-slate-800 dark:text-slate-200">{ayahRange}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="block font-bold text-slate-400">Juz:</span>
+                                <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60">
+                                  Juz {juzNum}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Total Surah & Total Ayat Footer Summary */}
+                            <div className="mt-2 border-t border-slate-100 pt-2 grid grid-cols-2 gap-1.5 text-center dark:border-slate-700/80">
+                              <div className="rounded-lg bg-slate-50 dark:bg-slate-900/60 p-1.5 border border-slate-200/60 dark:border-slate-800">
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Total Surah</p>
+                                <p className="text-xs font-black text-slate-800 dark:text-slate-100">{completedSurahs} Surah</p>
+                              </div>
+                              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/60 p-1.5 border border-emerald-200/60 dark:border-emerald-800">
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Total Ayat</p>
+                                <p className="text-xs font-black text-emerald-800 dark:text-emerald-200">{totalAyat} Ayat</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="mt-3.5 grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openTahfizhDetail(student)}
+                              className="inline-flex h-8.5 items-center justify-center gap-1.5 rounded-xl border border-sky-300/80 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 text-[11px] font-bold text-sky-700 dark:text-sky-300 transition-all cursor-pointer shadow-xs active:scale-95"
+                            >
+                              <Eye className="size-3.5" /> Detail
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openTahfizhForm(student)}
+                              className="inline-flex h-8.5 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-[11px] font-bold text-white transition-all cursor-pointer shadow-xs shadow-emerald-700/20 active:scale-95"
+                            >
+                              <Plus className="size-3.5 text-white" /> Setor
+                            </button>
+                          </div>
+                        </article>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-[22px] border-2 border-dashed border-emerald-300/80 bg-emerald-50/30 p-8 text-center dark:border-emerald-800/60 dark:bg-emerald-950/10">
+                  <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 shadow-sm border border-amber-300/60">
+                    <Trophy className="size-6 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <h4 className="mt-3 text-base font-black text-slate-900 dark:text-white">
+                    Belum Ada Data Peringkat 5 Terbaik
+                  </h4>
+                  <p className="mx-auto mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+                    Papan peringkat 5 Terbaik akan otomatis dihitung dan ditampilkan setelah santri mulai menyetorkan hafalan (saat ini seluruh santri masih 0 ayat).
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openTahfizhForm()}
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/30 transition-all cursor-pointer"
+                  >
+                    <Plus className="size-4" />
+                    Input Setoran Tahfizh Pertama
+                  </button>
+                </div>
+              )}
+
+              {/* 3. MULTI-UNIT SUMMARY CARDS (For Pengurus Yayasan & Kepala Sekolah) */}
+              {(isPengurusYayasan || isKepalaSekolahOrDivisiPendidikan) && unitStatsSummary.length > 0 && (
+                <div className="grid gap-3.5 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {unitStatsSummary.map((unitStat) => (
+                    <div
+                      key={unitStat.unitName}
+                      className="relative overflow-hidden rounded-[20px] border-2 border-emerald-300/70 bg-gradient-to-br from-emerald-50/60 via-teal-50/30 to-white dark:border-emerald-700/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900 p-4.5 shadow-sm transition-all hover:shadow-md"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="inline-flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-600/30">
+                          <Award className="size-4.5 text-white" />
+                        </span>
+                        <span className="rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/60 px-2.5 py-0.5 text-[10px] font-extrabold">
+                          {unitStat.totalStudents} Santri
+                        </span>
+                      </div>
+                      <h4 className="mt-3 truncate text-sm font-black text-slate-900 dark:text-white">
+                        {unitStat.unitName}
+                      </h4>
+                      <div className="mt-2.5 flex items-baseline justify-between border-t border-emerald-100 dark:border-emerald-900/60 pt-2.5">
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400">Total Hafalan</p>
+                          <p className="text-sm font-black text-emerald-700 dark:text-emerald-400">
+                            {unitStat.totalAyat} ayat
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] font-bold text-slate-400">Top Hafiz Unit</p>
+                          <p className="truncate text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[120px]" title={unitStat.topStudent?.student?.nama_lengkap}>
+                            🥇 {unitStat.topStudent?.student?.nama_lengkap?.split(' ')[0] || '-'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 4. TAILGRIDS EMERALD DATATABLE CONTAINER (Leaderboard Table) */}
+              <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+                {/* Toolbar Header */}
+                <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40">
+                      <Layers className="size-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                          Daftar Ranking &amp; Rekapitulasi Tahfizh Santri
+                        </h3>
+                        <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300/70 px-2.5 py-0.5 text-[11px] font-extrabold">
+                          {sortedTahfizhLeaderboard.length} Santri Terdata
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Peringkat santri diurutkan berdasarkan akumulasi ayat hafalan yang telah disetorkan
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handlePrintTahfizhLeaderboard}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-200 transition-colors cursor-pointer shadow-xs"
+                      title="Cetak Leaderboard Tahfizh"
+                    >
+                      <Printer className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>Cetak Ranking</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDownloadPdfTahfizhLeaderboard}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900 px-3 py-1.5 text-xs font-bold text-amber-800 dark:text-amber-200 transition-colors cursor-pointer shadow-xs"
+                      title="Unduh Dokumen PDF Leaderboard"
+                    >
+                      <FileText className="size-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>Unduh PDF</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Filter Toolbar */}
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                {/* Filter & Search Bar */}
+                <div className="bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 border-b border-emerald-200/80 dark:border-emerald-800/60 p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="relative flex-1 w-full max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                     <input
                       type="text"
                       value={tahfizhSearch}
                       onChange={(e) => setTahfizhSearch(e.target.value)}
-                      placeholder="Cari nama siswa, NIS, unit, atau kelas..."
-                      className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-xs dark:border-slate-700 dark:bg-slate-900"
+                      placeholder="Cari nama santri, NIS, unit, atau kelas..."
+                      className="w-full pl-9 pr-8 py-2 rounded-xl text-xs bg-white dark:bg-[#151D2A] border border-emerald-300/80 dark:border-emerald-700/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-slate-900 dark:text-white placeholder:text-slate-400"
                     />
+                    {tahfizhSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setTahfizhSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    )}
                   </div>
 
                   {(isPengurusYayasan || isKepalaSekolahOrDivisiPendidikan) && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
                       <label htmlFor="filter-unit-tahfizh" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
                         Filter Unit:
                       </label>
@@ -7741,7 +8842,7 @@ export default function TeacherTeachingWorkspacePage() {
                         id="filter-unit-tahfizh"
                         value={selectedTahfizhUnit}
                         onChange={(e) => setSelectedTahfizhUnit(e.target.value)}
-                        className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                        className="h-9 rounded-xl border border-emerald-300/80 bg-white px-3 text-xs font-semibold text-slate-800 dark:border-emerald-700/80 dark:bg-[#151D2A] dark:text-white outline-none cursor-pointer"
                       >
                         <option value="semua">✨ Semua Unit Pendidikan</option>
                         {educationUnits.map((u) => (
@@ -7753,211 +8854,19 @@ export default function TeacherTeachingWorkspacePage() {
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* TOP 5 CARDS ("5 Terbaik di 5 Card") */}
-              {top5TahfizhStudents.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-800 shadow-sm dark:bg-amber-950/60 dark:text-amber-300">
-                        <Trophy className="h-4 w-4" />
-                      </span>
-                      <div>
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                          5 Terbaik Pencapaian Hafalan Tahfizh Al-Qur'an
-                        </h4>
-                        <p className="text-[10px] text-slate-500">
-                          Kartu profil santri dengan pencapaian hafalan terbanyak (Rank #1 s.d. #5)
-                        </p>
-                      </div>
-                    </div>
-                    <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-black text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
-                      🏆 Top 5 Leaderboard
-                    </span>
-                  </div>
-
-                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-                    {top5TahfizhStudents.map(({ student, latest, totalAyat, completedSurahs, totalSetoran, unitName, className }, index) => {
-                      const getInitials = (name = '') => {
-                        return name.split(' ').map((n) => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'S'
-                      }
-                      const avatarUrl = student.foto_url || student.avatar || student.foto || student.user?.avatar_url || null
-                      const rankLabel = index === 0 ? '🥇 Rank #1' : index === 1 ? '🥈 Rank #2' : index === 2 ? '🥉 Rank #3' : `🏅 Rank #${index + 1}`
-                      const rankBadgeStyle = index === 0 ? 'bg-amber-500 text-white shadow-amber-500/20'
-                        : index === 1 ? 'bg-slate-500 text-white shadow-slate-500/20'
-                        : index === 2 ? 'bg-orange-500 text-white shadow-orange-500/20'
-                        : 'bg-emerald-700 text-white shadow-emerald-700/20'
-                      const borderGlow = index === 0 ? 'border-amber-300/90 shadow-amber-100/60 dark:border-amber-500/50'
-                        : index === 1 ? 'border-slate-300/90 shadow-slate-100/60 dark:border-slate-600/50'
-                        : index === 2 ? 'border-orange-300/90 shadow-orange-100/60 dark:border-orange-500/50'
-                        : 'border-slate-200/80 dark:border-slate-700/80'
-
-                      const surahName = latest?.hafalan_surah_name || 'Belum setoran'
-                      const ayahRange = latest ? `Ayat ${latest.hafalan_ayah_start}–${latest.hafalan_ayah_end}` : '—'
-                      const juzNum = latest ? (latest.metadata?.juz || getQuranJuz(latest.hafalan_surah_number, latest.hafalan_ayah_start)) : '—'
-
-                      return (
-                        <article
-                          key={student.id || index}
-                          className={`group relative flex flex-col justify-between rounded-2xl border bg-white p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl dark:bg-[#1B2433] ${borderGlow}`}
-                        >
-                          {/* Rank Badge & Unit Label */}
-                          <div className="flex items-center justify-between gap-1.5">
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black shadow-sm ${rankBadgeStyle}`}>
-                              {rankLabel}
-                            </span>
-                            <span className="truncate rounded-md bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300 max-w-[90px]" title={unitName}>
-                              {unitName}
-                            </span>
-                          </div>
-
-                          {/* Profil & Avatar */}
-                          <div className="mt-3 flex items-center gap-3">
-                            <Avatar size="lg" className="shrink-0 ring-2 ring-emerald-500/20">
-                              {avatarUrl && <AvatarImage src={avatarUrl} alt={student.nama_lengkap} />}
-                              <AvatarFallback className="bg-emerald-100 font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs">
-                                {getInitials(student.nama_lengkap)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0 flex-1">
-                              <h5 className="truncate text-xs font-black text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors" title={student.nama_lengkap}>
-                                {student.nama_lengkap}
-                              </h5>
-                              <p className="mt-0.5 text-[10px] font-medium text-slate-400">
-                                NIS: {student.nis || student.nisn || '—'}
-                              </p>
-                              <span className="mt-1 inline-block rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                {className}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Detail Hafalan Tahfizh (Nama Surah, Ayat, Juz, Total Surah & Total Ayat) */}
-                          <div className="mt-3.5 space-y-2 rounded-xl bg-slate-50 p-3 text-[11px] dark:bg-slate-800/60">
-                            {/* Nama Surah */}
-                            <div className="flex items-center justify-between gap-1 border-b border-slate-200/60 pb-1.5 dark:border-slate-700/60">
-                              <span className="text-[10px] font-bold text-slate-400 shrink-0">Nama Surah:</span>
-                              <span className="truncate font-extrabold text-slate-900 dark:text-white text-right" title={surahName}>
-                                {surahName}
-                              </span>
-                            </div>
-
-                            {/* Ayat & Juz */}
-                            <div className="grid grid-cols-2 gap-1 text-[10px]">
-                              <div>
-                                <span className="block font-bold text-slate-400">Ayat:</span>
-                                <span className="font-extrabold text-emerald-700 dark:text-emerald-400">{ayahRange}</span>
-                              </div>
-                              <div className="text-right">
-                                <span className="block font-bold text-slate-400">Juz:</span>
-                                <span className="inline-flex rounded bg-emerald-100 px-1.5 py-0.5 font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                  Juz {juzNum}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Total Surah & Total Ayat Footer Summary */}
-                            <div className="mt-2 border-t border-slate-200/80 pt-2 grid grid-cols-2 gap-1.5 text-center dark:border-slate-700/80">
-                              <div className="rounded-lg bg-white p-1.5 shadow-2xs dark:bg-slate-900/60">
-                                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Total Surah</p>
-                                <p className="text-xs font-black text-slate-800 dark:text-slate-100">{completedSurahs} Surah</p>
-                              </div>
-                              <div className="rounded-lg bg-emerald-100/70 p-1.5 shadow-2xs dark:bg-emerald-950/60">
-                                <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Total Ayat</p>
-                                <p className="text-xs font-black text-emerald-900 dark:text-emerald-200">{totalAyat} Ayat</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="mt-3 grid grid-cols-2 gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => openTahfizhDetail(student)}
-                              className="inline-flex h-8 items-center justify-center gap-1 rounded-xl border border-sky-200 bg-sky-50 text-[10px] font-bold text-sky-700 transition hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300"
-                            >
-                              <Eye className="h-3 w-3" /> Detail
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openTahfizhForm(student)}
-                              className="inline-flex h-8 items-center justify-center gap-1 rounded-xl bg-emerald-800 text-[10px] font-bold text-white transition hover:bg-emerald-900"
-                            >
-                              <Plus className="h-3 w-3" /> Setor
-                            </button>
-                          </div>
-                        </article>
-                      )
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border-2 border-dashed border-amber-300/80 bg-amber-50/50 p-6 text-center dark:border-amber-900/40 dark:bg-amber-950/20">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 shadow-xs">
-                    <Trophy className="h-6 w-6" />
-                  </div>
-                  <h4 className="mt-3 text-sm font-black text-slate-900 dark:text-white">
-                    Belum Ada Data Peringkat 5 Terbaik
-                  </h4>
-                  <p className="mx-auto mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
-                    Papan peringkat 5 Terbaik akan otomatis dihitung dan ditampilkan setelah santri mulai menyetorkan hafalan (saat ini seluruh santri masih 0 ayat).
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => openTahfizhForm()}
-                    className="mt-3.5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:from-emerald-700 hover:to-teal-700"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Input Setoran Tahfizh Pertama
-                  </button>
-                </div>
-              )}
-
-              {/* Multi-Unit Summary Cards (For Pengurus Yayasan & Kepala Sekolah) */}
-              {(isPengurusYayasan || isKepalaSekolahOrDivisiPendidikan) && unitStatsSummary.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {unitStatsSummary.map((unitStat) => (
-                    <div key={unitStat.unitName} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-slate-700/80 dark:bg-[#1B2433]">
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                          <Award className="h-4 w-4" />
-                        </span>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-extrabold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          {unitStat.totalStudents} Santri
-                        </span>
-                      </div>
-                      <h4 className="mt-3 truncate text-sm font-black text-slate-900 dark:text-white">{unitStat.unitName}</h4>
-                      <div className="mt-2 flex items-baseline justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400">Total Hafalan</p>
-                          <p className="text-sm font-extrabold text-emerald-700 dark:text-emerald-400">{unitStat.totalAyat} ayat</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-bold text-slate-400">Top Hafiz Unit</p>
-                          <p className="truncate text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[110px]" title={unitStat.topStudent?.student?.nama_lengkap}>
-                            🥇 {unitStat.topStudent?.student?.nama_lengkap?.split(' ')[0] || '-'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Leaderboard Table (Ranked from Most/Top Tahfizh Hafalan) */}
-              <div className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white shadow-[var(--shadow-soft-xl)] dark:border-slate-700/80 dark:bg-[#1B2433]">
-                <div className="divide-y divide-slate-100 md:hidden dark:divide-slate-800">
+                {/* Mobile Card View */}
+                <div className="divide-y divide-emerald-100/80 md:hidden dark:divide-emerald-900/40">
                   {paginatedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, totalSetoran, unitName, className }, index) => {
                     const absoluteIndex = (tahfizhPage - 1) * TAHFIZH_PER_PAGE + index
                     const isTop1 = absoluteIndex === 0
                     const isTop2 = absoluteIndex === 1
                     const isTop3 = absoluteIndex === 2
                     return (
-                      <article key={student.id} className="p-4">
+                      <article key={student.id} className="p-4 space-y-3">
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${
                               isTop1 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                               isTop2 ? 'bg-slate-200 text-slate-800 border border-slate-300' :
                               isTop3 ? 'bg-orange-100 text-orange-800 border border-orange-300' :
@@ -7970,36 +8879,44 @@ export default function TeacherTeachingWorkspacePage() {
                               <p className="text-[10px] text-slate-500">{student.nis || student.nisn || 'NIS N/A'} · {className}</p>
                             </div>
                           </div>
-                          <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                          <span className="shrink-0 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/60 px-2.5 py-0.5 text-[11px] font-black">
                             {totalAyat} ayat
                           </span>
                         </div>
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200/60">
                             {unitName}
                           </span>
                         </div>
-                        <div className="mt-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
+                        <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-xs">
                           {latest ? (
                             <>
-                              <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                                Juz {latest.metadata?.juz || '-'} · {latest.hafalan_surah_name}
+                              <p className="font-bold text-slate-800 dark:text-slate-100">
+                                Juz {latest.metadata?.juz || '-'} · <span className="text-[#0E5C44] dark:text-[#3FBF75]">{latest.hafalan_surah_name}</span>
                               </p>
-                              <p className="mt-1 text-[10px] text-slate-500">
+                              <p className="mt-1 text-[11px] text-slate-500">
                                 Ayat {latest.hafalan_ayah_start}–{latest.hafalan_ayah_end} · {latest.record_date}
                               </p>
                             </>
                           ) : (
-                            <p className="text-xs text-slate-400">Belum ada setoran Tahfizh.</p>
+                            <p className="text-slate-400">Belum ada setoran Tahfizh.</p>
                           )}
-                          <p className="mt-2 text-[10px] text-slate-500">{completedSurahs} surah · {totalSetoran} setoran</p>
+                          <p className="mt-2 text-[10px] text-slate-500 font-semibold">{completedSurahs} surah · {totalSetoran} setoran</p>
                         </div>
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          <button type="button" onClick={() => openTahfizhDetail(student)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 text-[11px] font-bold text-sky-700 transition hover:bg-sky-100">
-                            <Eye className="h-3.5 w-3.5" /> Lihat Detail
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openTahfizhDetail(student)}
+                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-sky-300/80 bg-sky-50 text-xs font-bold text-sky-700 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300 transition-all cursor-pointer"
+                          >
+                            <Eye className="size-3.5" /> Lihat Detail
                           </button>
-                          <button type="button" onClick={() => openTahfizhForm(student)} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-800 text-[11px] font-bold text-white transition hover:bg-emerald-900">
-                            <Plus className="h-3.5 w-3.5" /> Input Tahfizh
+                          <button
+                            type="button"
+                            onClick={() => openTahfizhForm(student)}
+                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-xs font-bold text-white hover:from-emerald-700 hover:to-teal-700 transition-all cursor-pointer shadow-xs"
+                          >
+                            <Plus className="size-3.5 text-white" /> Input Tahfizh
                           </button>
                         </div>
                       </article>
@@ -8007,99 +8924,104 @@ export default function TeacherTeachingWorkspacePage() {
                   })}
                 </div>
 
-                <table className="hidden w-full table-fixed text-left text-[11px] md:table">
-                  <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:bg-slate-800/70">
+                {/* Desktop Datatable */}
+                <table className="hidden w-full table-fixed text-left text-xs md:table">
+                  <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-slate-800 dark:text-emerald-200 text-[10px] font-black uppercase tracking-wider">
                     <tr>
-                      <th className="w-16 p-3 text-center">Rank</th>
-                      <th className="p-3">Siswa / Santri</th>
-                      <th className="p-3">Unit Sekolah</th>
-                      <th className="p-3">Kelas & Rombel</th>
-                      <th className="p-3">Pencapaian Tahfizh</th>
-                      <th className="p-3">Setoran Terakhir</th>
-                      <th className="p-3 text-center">Total (Terbanyak)</th>
-                      <th className="w-28 p-3 text-right">Aksi</th>
+                      <th className="w-16 p-3.5 text-center">Rank</th>
+                      <th className="p-3.5">Santri Binaan</th>
+                      <th className="p-3.5">Unit Sekolah</th>
+                      <th className="p-3.5">Kelas &amp; Rombel</th>
+                      <th className="p-3.5">Capaian Terakhir</th>
+                      <th className="p-3.5">Riwayat Setoran</th>
+                      <th className="p-3.5 text-center">Akumulasi Hafalan</th>
+                      <th className="w-32 p-3.5 text-right">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                     {paginatedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, totalSetoran, unitName, className }, index) => {
                       const absoluteIndex = (tahfizhPage - 1) * TAHFIZH_PER_PAGE + index
                       const isTop1 = absoluteIndex === 0
                       const isTop2 = absoluteIndex === 1
                       const isTop3 = absoluteIndex === 2
                       return (
-                        <tr key={student.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/10 transition">
-                          <td className="p-3 text-center">
-                            <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-black ${
-                              isTop1 ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-sm' :
-                              isTop2 ? 'bg-slate-200 text-slate-800 border border-slate-300' :
-                              isTop3 ? 'bg-orange-100 text-orange-800 border border-orange-300' :
+                        <tr key={student.id} className="hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-colors">
+                          <td className="p-3.5 text-center">
+                            <span className={`inline-flex size-7 items-center justify-center rounded-full text-xs font-black ${
+                              isTop1 ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-xs' :
+                              isTop2 ? 'bg-slate-200 text-slate-800 border border-slate-300 shadow-xs' :
+                              isTop3 ? 'bg-orange-100 text-orange-800 border border-orange-300 shadow-xs' :
                               'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                             }`}>
                               {isTop1 ? '🥇' : isTop2 ? '🥈' : isTop3 ? '🥉' : `#${absoluteIndex + 1}`}
                             </span>
                           </td>
-                          <td className="p-3">
+                          <td className="p-3.5">
                             <p className="font-extrabold text-slate-900 dark:text-white">{student.nama_lengkap}</p>
-                            <p className="mt-0.5 text-[10px] text-slate-500">{student.nis || student.nisn || 'NIS N/A'}</p>
+                            <p className="mt-0.5 text-[10px] text-slate-500 font-medium">NIS: {student.nis || student.nisn || 'N/A'}</p>
                           </td>
-                          <td className="p-3">
-                            <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                              unitName.includes('SMA') ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' :
-                              unitName.includes('SMP') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300' :
-                              unitName.includes('SD') ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' :
-                              'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                          <td className="p-3.5">
+                            <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border ${
+                              unitName.includes('SMA') ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800' :
+                              unitName.includes('SMP') ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800' :
+                              unitName.includes('SD') ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' :
+                              'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
                             }`}>
                               {unitName}
                             </span>
                           </td>
-                          <td className="p-3">
-                            <span className="font-semibold text-slate-700 dark:text-slate-300">{className}</span>
+                          <td className="p-3.5">
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{className}</span>
                           </td>
-                          <td className="p-3">
+                          <td className="p-3.5">
                             {latest ? (
-                              <>
-                                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                              <div>
+                                <span className="inline-block rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/60 px-2 py-0.2 text-[9.5px] font-bold">
                                   Juz {latest.metadata?.juz || '-'}
                                 </span>
-                                <p className="mt-1 font-bold text-slate-800 dark:text-slate-100">{latest.hafalan_surah_name}</p>
-                              </>
+                                <p className="mt-1 font-black text-[#0E5C44] dark:text-[#3FBF75]">{latest.hafalan_surah_name}</p>
+                              </div>
                             ) : (
-                              <span className="text-slate-400">Belum ada capaian</span>
+                              <span className="text-slate-400 italic">Belum ada capaian</span>
                             )}
                           </td>
-                          <td className="p-3">
+                          <td className="p-3.5">
                             {latest ? (
-                              <>
-                                <p className="font-semibold text-slate-700 dark:text-slate-200">Ayat {latest.hafalan_ayah_start}–{latest.hafalan_ayah_end}</p>
-                                <p className="mt-0.5 text-[10px] text-slate-500">{latest.record_date} · {latest.metadata?.type || 'Ziyadah'}</p>
-                              </>
+                              <div>
+                                <p className="font-semibold text-slate-800 dark:text-slate-200">
+                                  Ayat {latest.hafalan_ayah_start}–{latest.hafalan_ayah_end}
+                                </p>
+                                <p className="mt-0.5 text-[10px] text-slate-500 font-medium">
+                                  {latest.record_date} · <span className="font-semibold text-emerald-700 dark:text-emerald-400">{latest.metadata?.type || 'Ziyadah'}</span>
+                                </p>
+                              </div>
                             ) : (
                               <span className="text-slate-400">—</span>
                             )}
                           </td>
-                          <td className="p-3 text-center">
-                            <p className="font-black text-emerald-700 dark:text-emerald-400 text-xs">{totalAyat} ayat</p>
-                            <p className="text-[10px] text-slate-500">{completedSurahs} surah · {totalSetoran} setoran</p>
+                          <td className="p-3.5 text-center">
+                            <p className="font-black text-emerald-700 dark:text-emerald-400 text-sm">{totalAyat} ayat</p>
+                            <p className="text-[10px] text-slate-500 font-medium mt-0.5">{completedSurahs} surah · {totalSetoran} setoran</p>
                           </td>
-                          <td className="p-3 text-right">
-                            <div className="inline-flex items-center gap-1.5">
+                          <td className="p-3.5 text-right">
+                            <div className="inline-flex items-center gap-1.5 justify-end">
                               <button
                                 type="button"
                                 onClick={() => openTahfizhDetail(student)}
                                 title="Lihat detail jurnal"
                                 aria-label={`Lihat detail jurnal ${student.nama_lengkap}`}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100 focus-visible:ring-2 focus-visible:ring-sky-500 cursor-pointer"
+                                className="inline-flex size-8.5 items-center justify-center rounded-xl border border-sky-300/80 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 text-sky-700 dark:text-sky-300 transition-all cursor-pointer shadow-xs active:scale-95"
                               >
-                                <Eye className="h-4 w-4" />
+                                <Eye className="size-4" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => openTahfizhForm(student)}
                                 title="Input Tahfizh"
                                 aria-label={`Input Tahfizh ${student.nama_lengkap}`}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-800 text-white transition hover:bg-emerald-900 focus-visible:ring-2 focus-visible:ring-emerald-600 cursor-pointer"
+                                className="inline-flex size-8.5 items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white transition-all cursor-pointer shadow-xs shadow-emerald-700/20 active:scale-95"
                               >
-                                <Plus className="h-4 w-4" />
+                                <Plus className="size-4 text-white" />
                               </button>
                             </div>
                           </td>
@@ -8108,17 +9030,20 @@ export default function TeacherTeachingWorkspacePage() {
                     })}
                   </tbody>
                 </table>
+
                 {!loading && sortedTahfizhLeaderboard.length === 0 && (
-                  <div className="p-10 text-center">
-                    <Users className="mx-auto h-8 w-8 text-slate-300" />
-                    <p className="mt-2 text-xs font-semibold text-slate-500">Tidak ada data pencapaian tahfizh yang sesuai dengan filter.</p>
+                  <div className="p-12 text-center">
+                    <Users className="mx-auto size-9 text-slate-300 dark:text-slate-600" />
+                    <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      Tidak ada data pencapaian tahfizh yang sesuai dengan filter.
+                    </p>
                   </div>
                 )}
 
                 {/* Footer Pagination Controls */}
-                <div className="w-full border-t border-slate-100 px-4 py-3.5 sm:px-6 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="text-xs text-slate-500 font-medium">
-                    Menampilkan <span className="font-bold text-slate-700 dark:text-slate-200">{sortedTahfizhLeaderboard.length > 0 ? (tahfizhPage - 1) * TAHFIZH_PER_PAGE + 1 : 0}</span> s.d. <span className="font-bold text-slate-700 dark:text-slate-200">{Math.min(tahfizhPage * TAHFIZH_PER_PAGE, sortedTahfizhLeaderboard.length)}</span> dari <span className="font-bold text-slate-700 dark:text-slate-200">{sortedTahfizhLeaderboard.length}</span> santri
+                <div className="w-full border-t border-emerald-200/80 dark:border-emerald-800/60 px-4 py-3.5 sm:px-6 bg-gradient-to-r from-emerald-50/30 via-teal-50/20 to-transparent flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    Menampilkan <span className="font-bold text-slate-800 dark:text-slate-200">{sortedTahfizhLeaderboard.length > 0 ? (tahfizhPage - 1) * TAHFIZH_PER_PAGE + 1 : 0}</span> s.d. <span className="font-bold text-slate-800 dark:text-slate-200">{Math.min(tahfizhPage * TAHFIZH_PER_PAGE, sortedTahfizhLeaderboard.length)}</span> dari <span className="font-bold text-slate-800 dark:text-slate-200">{sortedTahfizhLeaderboard.length}</span> santri binaan
                   </div>
                   {totalTahfizhPages > 1 && (
                     <div className="w-full sm:w-auto">
@@ -8177,7 +9102,7 @@ export default function TeacherTeachingWorkspacePage() {
 
           {/* TAB 8: CATATAN SISWA */}
           {activeTab === 'catatan' && (
-            <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+            <div className="relative overflow-visible z-10 rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
               {/* Toolbar Header */}
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
                 <div className="flex items-center gap-2.5">
@@ -8229,7 +9154,7 @@ export default function TeacherTeachingWorkspacePage() {
 
               {/* Filter Bar */}
               <div className="border-b border-emerald-500/15 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 px-4 py-2.5 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 sm:px-5">
-                <div className="grid gap-3 md:grid-cols-[1fr_180px_160px]">
+                <div className="grid gap-3 md:grid-cols-[1fr_200px_180px]">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     <input
@@ -8239,32 +9164,158 @@ export default function TeacherTeachingWorkspacePage() {
                       className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-8.5 pr-3 text-xs outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     />
                   </div>
-                  <select
-                    value={studentNoteCategory}
-                    onChange={(e) => setStudentNoteCategory(e.target.value)}
-                    className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none transition focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                  >
-                    <option value="semua">Semua kategori</option>
-                    {['Akademik', 'Perilaku', 'Kedisiplinan', 'Prestasi', 'Konseling', 'Tahfizh', 'Ibadah', 'Kesehatan'].map((category) => (
-                      <option key={category}>{category}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={studentNotePriority}
-                    onChange={(e) => setStudentNotePriority(e.target.value)}
-                    className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none transition focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                  >
-                    <option value="semua">Semua prioritas</option>
-                    <option value="low">Rendah</option>
-                    <option value="medium">Sedang</option>
-                    <option value="high">Tinggi</option>
-                    <option value="urgent">Mendesak</option>
-                  </select>
+                  <div>
+                    <HeroUiFilterSelect
+                      value={studentNoteCategory}
+                      onChange={(val) => setStudentNoteCategory(val)}
+                      options={[
+                        { value: 'semua', label: 'Semua Kategori' },
+                        ...['Akademik', 'Perilaku', 'Kedisiplinan', 'Prestasi', 'Konseling', 'Tahfizh', 'Ibadah', 'Kesehatan'].map((cat) => ({
+                          value: cat,
+                          label: cat
+                        }))
+                      ]}
+                      placeholder="Semua Kategori"
+                      ariaLabel="Kategori catatan"
+                      popoverWidth="min-w-[190px]"
+                    />
+                  </div>
+                  <div>
+                    <HeroUiFilterSelect
+                      value={studentNotePriority}
+                      onChange={(val) => setStudentNotePriority(val)}
+                      options={[
+                        { value: 'semua', label: 'Semua Prioritas' },
+                        { value: 'low', label: 'Rendah' },
+                        { value: 'medium', label: 'Sedang' },
+                        { value: 'high', label: 'Tinggi' },
+                        { value: 'urgent', label: 'Mendesak' },
+                      ]}
+                      placeholder="Semua Prioritas"
+                      ariaLabel="Prioritas catatan"
+                      popoverWidth="min-w-[170px]"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Datatable */}
-              <div className="overflow-x-auto">
+              {/* Mobile Card View for Catatan Siswa (screens < lg) */}
+              <div className="block lg:hidden divide-y divide-slate-100 p-3 dark:divide-slate-800">
+                {catatanStudents.map((student, index) => {
+                  const notes = studentNotes.filter((note) => note.student_id === student.id);
+                  const latest = notes[0];
+                  const isSigned = latest?.signature_status === 'signed' || Boolean(latest?.signed_by_user_id && latest?.signed_at);
+                  const isStale = latest?.signature_status === 'signed_updated';
+
+                  return (
+                    <div
+                      key={student.id}
+                      className="rounded-2xl border border-slate-200/80 bg-white p-3.5 mb-2.5 shadow-xs dark:border-slate-800 dark:bg-[#151F2E]"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-bold text-slate-900 dark:text-white">
+                              {student.nama_lengkap || student.full_name}
+                            </p>
+                            <p className="truncate text-[10px] text-slate-500">
+                              {student.nis || student.nisn || 'NIS -'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                          {student.kelas?.nama_kelas || student.kelas?.name || selectedClassName}
+                        </span>
+                      </div>
+
+                      {/* Catatan Terakhir */}
+                      <div className="mt-2.5 rounded-xl bg-slate-50 p-2.5 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
+                        {latest ? (
+                          <>
+                            <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                              <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-200">
+                                {latest.title}
+                              </p>
+                              {isSigned && !isStale ? (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                  <CheckCircle2 className="w-2.5 h-2.5" /> Ditandatangani
+                                </span>
+                              ) : isStale ? (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300">
+                                  <AlertTriangle className="w-2.5 h-2.5" /> Revisi
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-700 dark:text-slate-300">
+                                  <Clock className="w-2.5 h-2.5" /> Menunggu
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1 text-[10px] text-slate-500">
+                              {latest.category} · {latest.date} {latest.follow_up ? ` · Respon: "${latest.follow_up}"` : ''}
+                            </p>
+                          </>
+                        ) : (
+                          <span className="text-[11px] text-slate-400">Belum ada catatan</span>
+                        )}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
+                        <span className="text-[11px] font-semibold text-slate-500">
+                          Total: <b className="text-emerald-700 dark:text-emerald-400">{notes.length}</b> catatan
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openStudentDetail(student)}
+                            className="inline-flex h-8 items-center justify-center gap-1 rounded-xl border border-sky-200 bg-sky-50 px-2.5 text-[10px] font-bold text-sky-700 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> Lihat
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePrintWeeklyEvaluation(student)}
+                            className="inline-flex h-8 items-center justify-center gap-1 rounded-xl border border-orange-200 bg-orange-50 px-2 text-[10px] font-bold text-orange-700 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950/60 dark:text-orange-300"
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openCatatanForm(null, student)}
+                            className="inline-flex h-8 items-center justify-center gap-1 rounded-xl bg-[#0E5C44] px-2.5 text-[10px] font-bold text-white hover:bg-emerald-800"
+                          >
+                            <Plus className="h-3.5 w-3.5" /> Catatan
+                          </button>
+                          {latest?.teacher_id === teacherProfile?.id && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openCatatanForm(latest)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => confirmDeleteModal('catatan', latest.id, latest.title)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Datatable Body (Desktop / Tablet view >= lg) */}
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full min-w-[1040px] table-fixed text-left text-xs">
                   <colgroup><col className="w-14" /><col className="w-60" /><col className="w-36" /><col /><col className="w-20" /><col className="w-[430px]" /></colgroup>
                   <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 text-slate-700 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-slate-300 select-none">
@@ -10930,6 +11981,8 @@ export default function TeacherTeachingWorkspacePage() {
           <div className={
             modalType === 'materi'
               ? 'bg-white dark:bg-[#1B2433] w-full max-w-2xl rounded-[24px] shadow-2xl border border-slate-200/90 dark:border-slate-800 relative my-auto max-h-[92vh] overflow-hidden p-0 flex flex-col'
+              : modalType === 'tahfizh'
+              ? 'bg-white dark:bg-[#1B2433] w-full max-w-3xl rounded-[26px] p-5 sm:p-7 shadow-2xl border border-emerald-500/30 dark:border-emerald-600/30 relative my-auto max-h-[92vh] overflow-y-auto space-y-4'
               : [
                   'bg-white dark:bg-[#1B2433] w-full rounded-[22px] p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 relative my-auto max-h-[92vh] overflow-y-auto space-y-4',
                   modalType === 'tugas' ? 'max-w-3xl' : 'max-w-lg',
@@ -10988,9 +12041,30 @@ export default function TeacherTeachingWorkspacePage() {
               />
             ) : (
               <>
-                <h3 className="text-base font-bold uppercase tracking-wider text-[#0E5C44] dark:text-emerald-400 flex items-center gap-2">
-                  <Plus className="w-5 h-5" /> {editingId ? 'Edit' : 'Form Input'} {modalType}
-                </h3>
+                {modalType === 'tahfizh' ? (
+                  <div className="border-b border-emerald-500/20 pb-3 -mt-1">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40 shrink-0">
+                        <BookOpen className="h-6 w-6" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Pencatatan Setoran Tahfizh Al-Qur'an</span>
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            {editingId ? 'Edit Setoran' : 'Input Setoran Baru'}
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Bimbingan dan evaluasi capaian hafalan santri/siswa sesuai target kurikulum
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <h3 className="text-base font-bold uppercase tracking-wider text-[#0E5C44] dark:text-emerald-400 flex items-center gap-2">
+                    <Plus className="w-5 h-5" /> {editingId ? 'Edit' : 'Form Input'} {modalType}
+                  </h3>
+                )}
 
                 {modalType === 'tugas' && (
                   <form onSubmit={handleSaveTugas} className="space-y-3.5 text-xs">
@@ -11673,12 +12747,11 @@ export default function TeacherTeachingWorkspacePage() {
                       </div>
                       <div>
                         <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-200">Deadline <span className="text-rose-500">*</span></label>
-                        <input
-                          type="date"
+                        <DatePicker
                           required
                           value={tugasForm.deadline}
                           onChange={(e) => setTugasForm({ ...tugasForm, deadline: e.target.value })}
-                          className="h-11 w-full p-2.5 border rounded-xl dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                          inputClassName="h-11"
                         />
                       </div>
                       <div>
@@ -11705,27 +12778,66 @@ export default function TeacherTeachingWorkspacePage() {
                 )}
 
                 {modalType === 'tahfizh' && (
-                  <form onSubmit={handleSaveTahfizh} className="space-y-3.5 text-xs">
-                    {/* Field Siswa Rombel dengan Soft Pastel Squircle Button */}
-                    <div>
-                      <label htmlFor="tahfizh-siswa" className="font-semibold block mb-1 text-slate-700 dark:text-slate-200">
-                        Siswa Rombel <span className="text-rose-500">*</span>
-                      </label>
+                  <form onSubmit={handleSaveTahfizh} className="space-y-4 text-xs">
+                    {/* 1. SELEKSI SISWA & FILTER ROMBEL */}
+                    <div className="rounded-2xl border border-emerald-500/25 bg-emerald-50/50 p-3.5 sm:p-4 dark:border-emerald-800/50 dark:bg-emerald-950/20 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <label htmlFor="tahfizh-siswa" className="text-xs font-black uppercase tracking-wider text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
+                          <Users className="w-4 h-4 text-emerald-600" />
+                          <span>Pilih Siswa / Santri Rombel</span>
+                          <span className="text-rose-500">*</span>
+                        </label>
+
+                        {classes.length > 1 && (
+                          <div className="flex items-center gap-2 self-start sm:self-auto">
+                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Rombel:</span>
+                            <select
+                              value={tahfizhModalClass}
+                              onChange={(e) => {
+                                const newClass = e.target.value
+                                setTahfizhModalClass(newClass)
+                                setTahfizhForm((prev) => ({ ...prev, class_id: newClass, student_id: '' }))
+                                if (newClass && newClass !== 'all') {
+                                  fetchStudentsForClass(newClass)
+                                }
+                              }}
+                              className="h-8 rounded-xl border border-emerald-300/80 bg-white px-2.5 text-[11px] font-bold text-emerald-800 shadow-sm outline-none focus:border-emerald-500 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300"
+                            >
+                              <option value="all">Semua Rombel ({classes.length})</option>
+                              {classes.map((cls) => (
+                                <option key={cls.id} value={cls.id}>
+                                  {cls.nama_kelas || cls.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex items-center gap-2">
                         <select
                           id="tahfizh-siswa"
                           required
                           value={tahfizhForm.student_id}
-                          onChange={(e) => setTahfizhForm({ ...tahfizhForm, student_id: e.target.value })}
-                          className="h-11 flex-1 border rounded-xl dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-semibold px-3"
+                          onChange={(e) => {
+                            const sid = e.target.value
+                            const stu = students.find((s) => String(s.id) === String(sid))
+                            setTahfizhForm({
+                              ...tahfizhForm,
+                              student_id: sid,
+                              class_id: stu?.kelas_id || stu?.class_id || stu?.kelas?.id || tahfizhForm.class_id,
+                            })
+                          }}
+                          className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-800 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         >
-                          <option value="">-- Pilih Siswa Rombel --</option>
-                          {students.map((s) => (
+                          <option value="">-- Pilih Siswa / Santri ({filteredTahfizhStudents.length} santri) --</option>
+                          {filteredTahfizhStudents.map((s) => (
                             <option key={s.id} value={s.id}>
-                              {s.nama_lengkap} (NIS: {s.nis || s.nisn || '-'})
+                              {s.nama_lengkap} (NIS: {s.nis || s.nisn || '-'}) {s.kelas?.nama_kelas ? `• ${s.kelas.nama_kelas}` : ''}
                             </option>
                           ))}
                         </select>
+
                         <div className="relative group">
                           <button
                             type="button"
@@ -11733,95 +12845,142 @@ export default function TeacherTeachingWorkspacePage() {
                               setStudentModalSearch('')
                               setShowStudentSearchModal(true)
                             }}
-                            className="w-11 h-11 rounded-[14px] bg-sky-100/90 dark:bg-sky-950/60 text-sky-600 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800 shadow-sm hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
+                            className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-sky-400 via-sky-500 to-sky-600 text-white shadow-md shadow-sky-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
                             aria-label="Pencarian Nama Siswa Rombel"
                           >
                             <UserCheck className="w-5 h-5" />
                           </button>
                           <div className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-lg z-20">
-                            Pencarian Nama Siswa Rombel
+                            Pencarian Interaktif Siswa
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Card Info Profile Siswa & Data Tahfizh Terakhir / Selesai */}
-                    {selectedTahfizhStudent && (
-                      <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-900/60 space-y-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center justify-center text-sm border border-emerald-200/80 shrink-0">
-                            {selectedTahfizhStudent.avatar ? (
-                              <img src={selectedTahfizhStudent.avatar} alt="" className="w-full h-full rounded-full object-cover" />
-                            ) : (
-                              (selectedTahfizhStudent.nama_lengkap || 'S').slice(0, 2).toUpperCase()
-                            )}
+                    {/* 2. CARD INFO PROFILE SISWA & CAPAIAN TAHFIZH */}
+                    {selectedTahfizhStudent ? (
+                      <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/20 shrink-0 overflow-hidden">
+                              {selectedTahfizhStudent.avatar ? (
+                                <img src={selectedTahfizhStudent.avatar} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                (selectedTahfizhStudent.nama_lengkap || 'S').slice(0, 2).toUpperCase()
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-black text-sm text-slate-900 dark:text-white truncate">
+                                {selectedTahfizhStudent.nama_lengkap}
+                              </h4>
+                              <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                                NIS: {selectedTahfizhStudent.nis || selectedTahfizhStudent.nisn || '-'}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-extrabold text-sm text-slate-900 dark:text-white truncate">
-                              {selectedTahfizhStudent.nama_lengkap}
-                            </h4>
-                            <p className="text-[11px] text-slate-500 font-mono">
-                              NIS: {selectedTahfizhStudent.nis || selectedTahfizhStudent.nisn || '-'} • Rombel {selectedClassName}
-                            </p>
+
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span className="inline-flex items-center rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/40">
+                              {selectedTahfizhStudent.kelas?.nama_kelas || selectedClassName || 'Rombel Aktif'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {selectedTahfizhStudent.education_unit?.name || teacherProfile?.education_unit || 'Unit Terpadu'}
+                            </span>
                           </div>
                         </div>
 
                         {previousTahfizhLog ? (
-                          <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-2.5 dark:border-emerald-800 dark:bg-emerald-950/40 text-xs">
-                            <div className="flex items-center gap-1.5 font-bold text-emerald-800 dark:text-emerald-300">
-                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                              <span>Hafalan Selesai Sebelumnya:</span>
+                          <div className="rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50/90 to-teal-50/50 p-3 dark:border-emerald-800 dark:from-emerald-950/40 dark:to-teal-950/30 text-xs space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 font-black text-emerald-900 dark:text-emerald-200">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                <span>Setoran Selesai Sebelumnya:</span>
+                              </div>
+                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                {previousTahfizhLog.record_date || 'Terakhir'}
+                              </span>
                             </div>
-                            <p className="mt-0.5 text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
-                              Juz {previousTahfizhLog.metadata?.juz || '-'} • Surah {previousTahfizhLog.hafalan_surah_name || '-'} (Ayat {previousTahfizhLog.hafalan_ayah_start}–{previousTahfizhLog.hafalan_ayah_end})
-                            </p>
+
+                            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                              <span className="font-extrabold text-xs text-emerald-950 dark:text-emerald-100">
+                                Surah {previousTahfizhLog.hafalan_surah_name || '-'} (Ayat {previousTahfizhLog.hafalan_ayah_start}–{previousTahfizhLog.hafalan_ayah_end})
+                              </span>
+                              <span className="inline-flex items-center rounded-md bg-emerald-200/80 px-2 py-0.5 text-[10px] font-bold text-emerald-900 dark:bg-emerald-900/60 dark:text-emerald-200">
+                                Juz {previousTahfizhLog.metadata?.juz || '-'}
+                              </span>
+                              <span className="inline-flex items-center rounded-md bg-white/80 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300 border border-emerald-200/60 dark:border-emerald-800">
+                                {previousTahfizhLog.metadata?.kelancaran || 'Lancar'}
+                              </span>
+                            </div>
+
                             {automaticTahfizhTarget && (
-                              <p className="mt-1 text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold leading-relaxed">
-                                {automaticTahfizhTarget.repeated ? '🔁 Mengulang Target: ' : '⚡ Lanjutan Otomatis: '}
-                                <strong>Surah {automaticTahfizhTarget.surah_name} (Mulai Ayat {automaticTahfizhTarget.ayat_start})</strong>. {automaticTahfizhTarget.repeated ? 'Evaluasi sebelumnya memerlukan bimbingan, silakan setorkan kembali rentang ayat ini.' : 'Silakan pilih Ayat Terakhir untuk setoran baru.'}
-                              </p>
+                              <div className="mt-2 rounded-lg bg-white/90 dark:bg-slate-900/90 p-2.5 border border-emerald-300/60 dark:border-emerald-700/60 flex items-start gap-2">
+                                <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                <div className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-200">
+                                  <strong>{automaticTahfizhTarget.repeated ? '🔁 Mengulang Target Hafalan: ' : '⚡ Rekomendasi Target Otomatis: '}</strong>
+                                  Surah <strong>{automaticTahfizhTarget.surah_name}</strong> (Mulai Ayat {automaticTahfizhTarget.ayat_start}).
+                                  <span className="text-slate-500 dark:text-slate-400 ml-1">
+                                    {automaticTahfizhTarget.repeated
+                                      ? 'Evaluasi sebelumnya memerlukan bimbingan, silakan setorkan kembali rentang ayat ini.'
+                                      : 'Pilih ayat terakhir yang berhasil disetorkan hari ini.'}
+                                  </span>
+                                </div>
+                              </div>
                             )}
                           </div>
                         ) : (
-                          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900 text-xs">
-                            <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-200">
-                              <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-                              <span>Data Tahfizh Siswa Belum Ada (Kosong)</span>
+                          <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-3 dark:border-amber-700/60 dark:bg-amber-950/20 text-xs">
+                            <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300">
+                              <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                              <span>Setoran Awal (Belum Ada Catatan Riwayat)</span>
                             </div>
-                            <p className="mt-0.5 text-[10px] text-slate-500 font-medium">
-                              Belum ada setoran sebelumnya. Anda dapat mengisi Juz, Surah, Ayat Awal, dan Ayat Terakhir secara manual.
+                            <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400 font-medium">
+                              Santri ini belum memiliki riwayat setoran di sistem. Anda dapat menentukan Juz, Surah, dan Ayat awal secara leluasa.
                             </p>
                           </div>
                         )}
                       </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 p-4 text-center dark:border-slate-700 dark:bg-slate-900/40">
+                        <UserCheck className="mx-auto h-7 w-7 text-slate-400 mb-1.5" />
+                        <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200">Silakan Pilih Siswa Terlebih Dahulu</h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Pilih nama siswa pada dropdown di atas untuk memuat riwayat hafalan dan target otomatis.
+                        </p>
+                      </div>
                     )}
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {/* Jenis Setoran dengan Soft Pastel Squircle Button */}
+                    {/* 3. GRID FORM INPUT SETORAN */}
+                    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                      {/* Jenis Setoran */}
                       <div>
-                        <label htmlFor="tahfizh-jenis" className="font-semibold block mb-1 text-slate-700 dark:text-slate-200">Jenis Setoran</label>
+                        <label htmlFor="tahfizh-jenis" className="font-bold block mb-1 text-slate-700 dark:text-slate-200">
+                          Jenis Setoran <span className="text-rose-500">*</span>
+                        </label>
                         <div className="flex items-center gap-2">
                           <select
                             id="tahfizh-jenis"
                             value={tahfizhForm.type}
                             onChange={(e) => setTahfizhForm({ ...tahfizhForm, type: e.target.value })}
-                            className="h-11 flex-1 border rounded-xl bg-white px-3 font-semibold dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                            className="h-11 flex-1 border rounded-xl bg-white px-3 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500"
                           >
                             {['Ziyadah', 'Murajaah', 'Tasmi', 'Ujian'].map((type) => (
-                              <option key={type}>{type}</option>
+                              <option key={type} value={type}>
+                                {type === 'Ziyadah' ? 'Ziyadah (Hafalan Baru)' : type === 'Murajaah' ? 'Murajaah (Pengulangan)' : type === 'Tasmi' ? 'Tasmi\' (Uji Simakan)' : 'Ujian Tahfizh'}
+                              </option>
                             ))}
                           </select>
                           <div className="relative group">
                             <button
                               type="button"
                               onClick={() => setShowSetoranTypeModal(true)}
-                              className="w-11 h-11 rounded-[14px] bg-emerald-100/90 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800 shadow-sm hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
-                              aria-label="Jenis Setoran Cepat"
+                              className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
+                              aria-label="Pilih Cepat Jenis Setoran"
                             >
                               <Zap className="w-5 h-5" />
                             </button>
                             <div className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-lg z-20">
-                              Jenis Setoran Cepat
+                              Pilih Cepat Jenis Setoran
                             </div>
                           </div>
                         </div>
@@ -11829,15 +12988,14 @@ export default function TeacherTeachingWorkspacePage() {
 
                       {/* Juz Capaian */}
                       <div>
-                        <label htmlFor="tahfizh-juz" className="font-semibold block mb-1 text-slate-700 dark:text-slate-200">
+                        <label htmlFor="tahfizh-juz" className="font-bold block mb-1 text-slate-700 dark:text-slate-200">
                           Juz Capaian <span className="text-rose-500">*</span>
                         </label>
                         <select
                           id="tahfizh-juz"
-                          disabled={Boolean(previousTahfizhLog)}
                           value={tahfizhForm.juz}
                           onChange={(e) => setTahfizhForm({ ...tahfizhForm, juz: Number(e.target.value) })}
-                          className="h-11 w-full border rounded-xl bg-white px-3 font-semibold dark:bg-slate-800 border-slate-200 dark:border-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-slate-900"
+                          className="h-11 w-full border rounded-xl bg-white px-3 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500"
                         >
                           {Array.from({ length: 30 }, (_, index) => index + 1).map((juz) => (
                             <option key={juz} value={juz}>Juz {juz}</option>
@@ -11846,27 +13004,34 @@ export default function TeacherTeachingWorkspacePage() {
                       </div>
                     </div>
 
-                    {/* Surah dari Master Al-Qur'an dengan Soft Pastel Squircle Button */}
+                    {/* Surah dari Master Al-Qur'an */}
                     <div>
-                      <label htmlFor="tahfizh-surah" className="font-semibold block mb-1 text-slate-700 dark:text-slate-200">
-                        Surah dari Master Al-Qur'an <span className="text-rose-500">*</span>
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label htmlFor="tahfizh-surah" className="font-bold text-slate-700 dark:text-slate-200">
+                          Surah dari Master Al-Qur'an <span className="text-rose-500">*</span>
+                        </label>
+                        {selectedTahfizhSurah && (
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                            Total {selectedTahfizhSurah.jumlah_ayat} Ayat
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         <select
                           id="tahfizh-surah"
                           required
-                          disabled={loadingSurahs || Boolean(previousTahfizhLog)}
+                          disabled={loadingSurahs}
                           value={tahfizhForm.surah_number}
                           onChange={(e) => {
                             const surahNumber = Number(e.target.value)
                             setTahfizhForm({ ...tahfizhForm, surah_number: surahNumber, ayat_start: 1, ayat_end: 1, juz: getQuranJuz(surahNumber, 1) })
                           }}
-                          className="h-11 flex-1 border rounded-xl bg-white px-3 font-semibold dark:bg-slate-800 border-slate-200 dark:border-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-slate-900"
+                          className="h-11 flex-1 border rounded-xl bg-white px-3 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-100"
                         >
                           <option value="">{loadingSurahs ? 'Memuat Master Al-Qur’an...' : '-- Pilih Surah Master --'}</option>
                           {quranSurahs.map((surah) => (
                             <option key={surah.nomor} value={surah.nomor}>
-                              {surah.nomor}. {surah.nama_latin} ({surah.jumlah_ayat} ayat)
+                              {surah.nomor}. {surah.nama_latin} ({surah.jumlah_ayat} ayat) - {surah.arti}
                             </option>
                           ))}
                         </select>
@@ -11877,7 +13042,7 @@ export default function TeacherTeachingWorkspacePage() {
                               setSurahModalSearch('')
                               setShowSurahSearchModal(true)
                             }}
-                            className="w-11 h-11 rounded-[14px] bg-purple-100/90 dark:bg-purple-950/60 text-purple-600 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 shadow-sm hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
+                            className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
                             aria-label="Master Surah Al-Qur'an"
                           >
                             <BookMarked className="w-5 h-5" />
@@ -11889,47 +13054,55 @@ export default function TeacherTeachingWorkspacePage() {
                       </div>
                     </div>
 
-                    {/* Ayat Awal & Ayat Terakhir */}
+                    {/* Rentang Ayat Awal & Terakhir */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label htmlFor="tahfizh-ayat-awal" className="font-semibold block mb-1 text-slate-700 dark:text-slate-200">
-                          Ayat Awal
+                        <label htmlFor="tahfizh-ayat-awal" className="font-bold block mb-1 text-slate-700 dark:text-slate-200">
+                          Ayat Awal <span className="text-rose-500">*</span>
                         </label>
                         <select
                           id="tahfizh-ayat-awal"
-                          disabled={!selectedTahfizhSurah || Boolean(previousTahfizhLog)}
+                          disabled={!selectedTahfizhSurah}
                           value={tahfizhForm.ayat_start}
                           onChange={(e) => {
                             const value = Number(e.target.value)
                             setTahfizhForm({ ...tahfizhForm, ayat_start: value, ayat_end: Math.max(value, Number(tahfizhForm.ayat_end)), juz: getQuranJuz(tahfizhForm.surah_number, value) })
                           }}
-                          className="h-11 w-full border rounded-xl bg-white px-3 font-semibold dark:bg-slate-800 border-slate-200 dark:border-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-slate-900"
+                          className="h-11 w-full border rounded-xl bg-white px-3 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                         >
                           {Array.from({ length: selectedTahfizhSurah?.jumlah_ayat || 1 }, (_, index) => index + 1).map((ayat) => (
-                            <option key={ayat}>{ayat}</option>
+                            <option key={ayat} value={ayat}>Ayat {ayat}</option>
                           ))}
                         </select>
                       </div>
                       <div>
-                        <label htmlFor="tahfizh-ayat-akhir" className="font-semibold block mb-1 text-slate-700 dark:text-slate-200">
-                          Ayat Terakhir (Aktif)
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label htmlFor="tahfizh-ayat-akhir" className="font-bold text-slate-700 dark:text-slate-200">
+                            Ayat Terakhir <span className="text-rose-500">*</span>
+                          </label>
+                          {selectedTahfizhSurah && Number(tahfizhForm.ayat_end) >= Number(tahfizhForm.ayat_start) && (
+                            <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400">
+                              {Number(tahfizhForm.ayat_end) - Number(tahfizhForm.ayat_start) + 1} ayat
+                            </span>
+                          )}
+                        </div>
                         <select
                           id="tahfizh-ayat-akhir"
                           disabled={!selectedTahfizhSurah}
                           value={tahfizhForm.ayat_end}
                           onChange={(e) => setTahfizhForm({ ...tahfizhForm, ayat_end: Number(e.target.value) })}
-                          className="h-11 w-full border rounded-xl bg-white px-3 font-bold text-emerald-700 dark:text-emerald-400 dark:bg-slate-800 border-emerald-300 dark:border-emerald-700 focus:ring-2 focus:ring-emerald-500/30"
+                          className="h-11 w-full border rounded-xl bg-white px-3 font-extrabold text-emerald-800 dark:text-emerald-300 dark:bg-slate-800 border-emerald-400 dark:border-emerald-600 shadow-sm focus:ring-2 focus:ring-emerald-500/30"
                         >
                           {Array.from({ length: selectedTahfizhSurah?.jumlah_ayat || 1 }, (_, index) => index + 1)
                             .filter((ayat) => ayat >= Number(tahfizhForm.ayat_start))
                             .map((ayat) => (
-                              <option key={ayat}>{ayat}</option>
+                              <option key={ayat} value={ayat}>Ayat {ayat}</option>
                             ))}
                         </select>
                       </div>
                     </div>
 
+                    {/* Evaluasi 3 Dimensi */}
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       {[
                         ['kelancaran', 'Kelancaran', ['Sangat Lancar', 'Lancar', 'Perlu Bimbingan']],
@@ -11937,47 +13110,51 @@ export default function TeacherTeachingWorkspacePage() {
                         ['makhraj', 'Makhraj', ['Sangat Baik', 'Baik', 'Perlu Bimbingan']],
                       ].map(([key, label, options]) => (
                         <div key={key}>
-                          <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-200">{label}</label>
+                          <label className="font-bold block mb-1 text-slate-700 dark:text-slate-200">{label}</label>
                           <select
                             value={tahfizhForm[key]}
                             onChange={(e) => setTahfizhForm({ ...tahfizhForm, [key]: e.target.value })}
-                            className="h-11 w-full border rounded-xl bg-white px-2 font-semibold dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                            className="h-11 w-full border rounded-xl bg-white px-2.5 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500"
                           >
                             {options.map((option) => (
-                              <option key={option}>{option}</option>
+                              <option key={option} value={option}>{option}</option>
                             ))}
                           </select>
                         </div>
                       ))}
                     </div>
 
+                    {/* Catatan Guru */}
                     <div>
-                      <label htmlFor="tahfizh-catatan" className="font-semibold block mb-1 text-slate-700 dark:text-slate-200">Catatan Guru</label>
+                      <label htmlFor="tahfizh-catatan" className="font-bold block mb-1 text-slate-700 dark:text-slate-200">
+                        Catatan & Arahan Guru
+                      </label>
                       <textarea
                         id="tahfizh-catatan"
                         rows={3}
                         value={tahfizhForm.notes_teacher}
                         onChange={(e) => setTahfizhForm({ ...tahfizhForm, notes_teacher: e.target.value })}
-                        placeholder="Catatan evaluasi atau target setoran berikutnya..."
-                        className="w-full border rounded-xl p-2.5 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-white"
+                        placeholder="Tuliskan catatan bimbingan, kelemahan makhraj/tajwid, atau target setoran berikutnya..."
+                        className="w-full border rounded-xl p-3 dark:bg-slate-800 border-slate-300 dark:border-slate-700 font-semibold text-slate-800 dark:text-white shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                       />
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-3">
+                    {/* Tombol Aksi */}
+                    <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
                       <button
                         type="button"
                         onClick={() => setShowModal(false)}
-                        className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-50 font-semibold"
+                        className="h-11 px-5 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition"
                       >
                         Batal
                       </button>
                       <button
                         type="submit"
-                        disabled={savingTahfizh || loadingSurahs}
-                        className="inline-flex min-w-32 items-center justify-center gap-2 px-4 py-2 bg-[#0E5C44] text-white rounded-xl font-bold shadow-md disabled:opacity-60 hover:bg-emerald-800 transition"
+                        disabled={savingTahfizh || loadingSurahs || !tahfizhForm.student_id || !tahfizhForm.surah_number}
+                        className="h-11 inline-flex min-w-40 items-center justify-center gap-2 px-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-xl font-black shadow-lg shadow-emerald-700/20 disabled:opacity-50 hover:brightness-110 active:scale-95 transition"
                       >
                         {savingTahfizh && <RefreshCw className="h-4 w-4 animate-spin" />}
-                        {savingTahfizh ? 'Menyimpan...' : 'Simpan Setoran'}
+                        {savingTahfizh ? 'Menyimpan...' : 'Simpan Setoran Tahfizh'}
                       </button>
                     </div>
                   </form>
@@ -11987,65 +13164,110 @@ export default function TeacherTeachingWorkspacePage() {
                 <AppModal
                   isOpen={showStudentSearchModal}
                   onClose={() => setShowStudentSearchModal(false)}
-                  title="Pilih Siswa Rombel"
-                  description={`Cari dan pilih siswa pada rombel ${selectedClassName} untuk setoran tahfizh`}
+                  title="Pilih Siswa / Santri Rombel"
+                  description="Cari dan pilih siswa santri terdaftar untuk mencatat setoran tahfizh"
                   icon={UserCheck}
                   maxWidth="max-w-xl"
                 >
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="search"
-                        value={studentModalSearch}
-                        onChange={(e) => setStudentModalSearch(e.target.value)}
-                        placeholder="Cari nama siswa atau NIS..."
-                        className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-xs font-semibold outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      />
+                  <div className="space-y-3.5">
+                    {/* Header Filter Modal */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <div className="relative flex-1">
+                        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="search"
+                          value={studentModalSearch}
+                          onChange={(e) => setStudentModalSearch(e.target.value)}
+                          placeholder="Cari nama santri atau NIS..."
+                          className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-4 text-xs font-semibold outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                        />
+                      </div>
+
+                      {classes.length > 1 && (
+                        <select
+                          value={tahfizhModalClass}
+                          onChange={(e) => {
+                            const newClass = e.target.value
+                            setTahfizhModalClass(newClass)
+                            if (newClass && newClass !== 'all') {
+                              fetchStudentsForClass(newClass)
+                            }
+                          }}
+                          className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 shrink-0"
+                        >
+                          <option value="all">Semua Rombel ({classes.length})</option>
+                          {classes.map((cls) => (
+                            <option key={cls.id} value={cls.id}>
+                              {cls.nama_kelas || cls.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
 
-                    <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-                      {students
-                        .filter((s) => !studentModalSearch.trim() || s.nama_lengkap?.toLowerCase().includes(studentModalSearch.toLowerCase()) || s.nis?.includes(studentModalSearch))
-                        .map((s) => {
-                          const isSelected = tahfizhForm.student_id === s.id
-                          return (
-                            <button
-                              key={s.id}
-                              type="button"
-                              onClick={() => {
-                                setTahfizhForm({ ...tahfizhForm, student_id: s.id })
-                                setShowStudentSearchModal(false)
-                              }}
-                              className={`flex items-center gap-3 w-full p-3 rounded-2xl border text-left transition ${
-                                isSelected
-                                  ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
-                                  : 'border-slate-200/80 hover:border-emerald-300 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900'
-                              }`}
-                            >
-                              <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center justify-center text-xs border border-emerald-200 shrink-0">
-                                {s.avatar ? (
-                                  <img src={s.avatar} alt="" className="w-full h-full rounded-full object-cover" />
-                                ) : (
-                                  (s.nama_lengkap || 'S').slice(0, 2).toUpperCase()
-                                )}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate">{s.nama_lengkap}</h4>
-                                <p className="text-[11px] text-slate-500 font-mono">NIS: {s.nis || s.nisn || '-'}</p>
-                              </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold px-1">
+                      <span>Daftar Siswa Tersedia</span>
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold">
+                        {filteredTahfizhStudents.length} Santri
+                      </span>
+                    </div>
+
+                    <div className="max-h-80 overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100 dark:divide-slate-800">
+                      {filteredTahfizhStudents.map((s) => {
+                        const isSelected = String(tahfizhForm.student_id) === String(s.id)
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => {
+                              setTahfizhForm((prev) => ({
+                                ...prev,
+                                student_id: s.id,
+                                class_id: s.kelas_id || s.class_id || s.kelas?.id || prev.class_id,
+                              }))
+                              setShowStudentSearchModal(false)
+                            }}
+                            className={`flex items-center gap-3 w-full p-3 rounded-2xl border text-left transition ${
+                              isSelected
+                                ? 'border-emerald-500 bg-emerald-50/90 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
+                                : 'border-slate-200/80 hover:border-emerald-400 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900/60'
+                            }`}
+                          >
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-extrabold flex items-center justify-center text-xs shadow-sm shrink-0 overflow-hidden">
+                              {s.avatar ? (
+                                <img src={s.avatar} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                (s.nama_lengkap || 'S').slice(0, 2).toUpperCase()
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate">{s.nama_lengkap}</h4>
+                              <p className="text-[11px] text-slate-500 font-mono mt-0.5">NIS: {s.nis || s.nisn || '-'}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {s.kelas?.nama_kelas && (
+                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                                  {s.kelas.nama_kelas}
+                                </span>
+                              )}
                               {isSelected ? (
-                                <span className="px-2.5 py-1 bg-emerald-600 text-white font-bold text-[10px] rounded-full">Dipilih</span>
+                                <span className="px-2.5 py-1 bg-emerald-600 text-white font-black text-[10px] rounded-full">
+                                  Dipilih
+                                </span>
                               ) : (
                                 <ChevronRight className="w-4 h-4 text-slate-400" />
                               )}
-                            </button>
-                          )
-                        })}
+                            </div>
+                          </button>
+                        )
+                      })}
 
-                      {students.filter((s) => !studentModalSearch.trim() || s.nama_lengkap?.toLowerCase().includes(studentModalSearch.toLowerCase()) || s.nis?.includes(studentModalSearch)).length === 0 && (
-                        <div className="p-8 text-center text-xs text-slate-500">
-                          Tidak ditemukan siswa dengan kata kunci "{studentModalSearch}"
+                      {filteredTahfizhStudents.length === 0 && (
+                        <div className="p-8 text-center text-xs text-slate-500 space-y-1">
+                          <p className="font-bold">Tidak ditemukan siswa</p>
+                          <p className="text-[11px]">
+                            {studentModalSearch ? `Tidak ada santri yang cocok dengan kata kunci "${studentModalSearch}"` : 'Belum ada data santri pada rombel yang dipilih.'}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -12178,8 +13400,24 @@ export default function TeacherTeachingWorkspacePage() {
                       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950/30"><p className="font-bold text-emerald-800 dark:text-emerald-300">{students.find((student) => student.id === catatanForm.student_id)?.nama_lengkap || students.find((student) => student.id === catatanForm.student_id)?.full_name || 'Siswa tidak ditemukan'}</p><p className="mt-0.5 text-[10px] text-emerald-700">{selectedClassName} · Dipilih otomatis dari tabel</p></div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div><label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Tanggal</label><input type="date" required value={catatanForm.date} onChange={(e) => setCatatanForm({ ...catatanForm, date: e.target.value })} className="h-10 w-full rounded-xl border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-800" /></div>
-                      <div><label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Kategori</label><select value={catatanForm.category} onChange={(e) => setCatatanForm({ ...catatanForm, category: e.target.value })} className="h-10 w-full rounded-xl border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-800">{['Akademik', 'Perilaku', 'Kedisiplinan', 'Prestasi', 'Konseling', 'Tahfizh', 'Ibadah', 'Kesehatan'].map((category) => <option key={category}>{category}</option>)}</select></div>
+                      <div><label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Tanggal</label><DatePicker required value={catatanForm.date} onChange={(e) => setCatatanForm({ ...catatanForm, date: e.target.value })} /></div>
+                      <div>
+                        <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Kategori</label>
+                        <div className="relative flex items-center">
+                          <select
+                            value={catatanForm.category}
+                            onChange={(e) => setCatatanForm({ ...catatanForm, category: e.target.value })}
+                            className="h-10 w-full appearance-none rounded-xl border border-slate-200 pl-3 pr-9 text-xs font-semibold text-slate-800 transition hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
+                          >
+                            {['Akademik', 'Perilaku', 'Kedisiplinan', 'Prestasi', 'Konseling', 'Tahfizh', 'Ibadah', 'Kesehatan'].map((category) => (
+                              <option key={category}>{category}</option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute right-3 flex items-center text-slate-400">
+                            <ChevronDown className="size-4" />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div>
                       <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-200">Judul Catatan</label>
@@ -12205,7 +13443,24 @@ export default function TeacherTeachingWorkspacePage() {
                     </div>
                     <div><label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Tindak Lanjut</label><textarea rows={2} value={catatanForm.follow_up} onChange={(e) => setCatatanForm({ ...catatanForm, follow_up: e.target.value })} className="w-full rounded-xl border border-slate-200 p-2.5 dark:border-slate-700 dark:bg-slate-800" placeholder="Rencana pendampingan berikutnya (opsional)..." /></div>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <div><label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Prioritas</label><select value={catatanForm.priority} onChange={(e) => setCatatanForm({ ...catatanForm, priority: e.target.value })} className="h-10 w-full rounded-xl border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-800"><option value="low">Rendah</option><option value="medium">Sedang</option><option value="high">Tinggi</option><option value="urgent">Mendesak</option></select></div>
+                      <div>
+                        <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Prioritas</label>
+                        <div className="relative flex items-center">
+                          <select
+                            value={catatanForm.priority}
+                            onChange={(e) => setCatatanForm({ ...catatanForm, priority: e.target.value })}
+                            className="h-10 w-full appearance-none rounded-xl border border-slate-200 pl-3 pr-9 text-xs font-semibold text-slate-800 transition hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
+                          >
+                            <option value="low">Rendah</option>
+                            <option value="medium">Sedang</option>
+                            <option value="high">Tinggi</option>
+                            <option value="urgent">Mendesak</option>
+                          </select>
+                          <div className="pointer-events-none absolute right-3 flex items-center text-slate-400">
+                            <ChevronDown className="size-4" />
+                          </div>
+                        </div>
+                      </div>
                       <div className="flex items-end gap-4 pb-2"><label className="flex items-center gap-2"><input type="checkbox" checked={catatanForm.visible_to_parent} onChange={(e) => setCatatanForm({ ...catatanForm, visible_to_parent: e.target.checked })} /> Orang tua</label><label className="flex items-center gap-2"><input type="checkbox" checked={catatanForm.visible_to_student} onChange={(e) => setCatatanForm({ ...catatanForm, visible_to_student: e.target.checked })} /> Siswa</label></div>
                     </div>
                     <div className="flex justify-end gap-2 pt-3">
@@ -12359,8 +13614,8 @@ export default function TeacherTeachingWorkspacePage() {
 
       {/* EXPORT OPTIONS MODAL */}
       {showExportModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#1B2433] w-full max-w-md rounded-[22px] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-start sm:items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-white dark:bg-[#1B2433] w-full max-w-md my-auto rounded-[22px] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Download className="w-5 h-5 text-[#0E5C44]" /> Export Data Workspace
             </h3>
@@ -12414,8 +13669,8 @@ export default function TeacherTeachingWorkspacePage() {
 
       {/* IMPORT DATA SPREADSHEET MODAL (.csv, .xls, .xlsx) */}
       {showImportModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="bg-white dark:bg-[#1B2433] w-full max-w-lg rounded-[22px] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-start sm:items-center justify-center p-3 sm:p-5 overflow-y-auto" role="dialog" aria-modal="true">
+          <div className="bg-white dark:bg-[#1B2433] w-full max-w-lg my-auto rounded-[22px] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300">
@@ -12552,8 +13807,8 @@ export default function TeacherTeachingWorkspacePage() {
           const tidakHadirCount = izinCount + sakitCount + alphaCount
 
           return (
-            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-5" role="dialog" aria-modal="true">
-              <div className="bg-white dark:bg-[#1B2433] w-full max-w-4xl max-h-[92vh] flex flex-col rounded-[22px] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden relative animate-in fade-in zoom-in duration-200">
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-start sm:items-center justify-center p-3 sm:p-5 overflow-y-auto" role="dialog" aria-modal="true">
+              <div className="bg-white dark:bg-[#1B2433] w-full max-w-4xl my-auto max-h-[calc(100dvh-1.5rem)] flex flex-col rounded-[22px] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden relative animate-in fade-in zoom-in duration-200">
                 {/* Header Modal */}
                 <div className="flex shrink-0 items-center justify-between border-b border-slate-200 p-4 sm:p-5 dark:border-slate-700 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent">
                   <div className="flex items-center gap-3">
@@ -13025,8 +14280,8 @@ export default function TeacherTeachingWorkspacePage() {
 
         // Default Modal for Non-Schedule items (Materi, Evaluasi, etc.)
         return (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
-            <div className={`bg-white dark:bg-[#1B2433] w-full ${detailData.category === 'Materi Belajar' ? 'max-w-2xl max-h-[85vh] overflow-y-auto' : 'max-w-md'} rounded-[22px] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 relative animate-in fade-in zoom-in duration-200`}>
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-start sm:items-center justify-center p-3 sm:p-5 overflow-y-auto">
+            <div className={`bg-white dark:bg-[#1B2433] w-full my-auto ${detailData.category === 'Materi Belajar' ? 'max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto' : 'max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto'} rounded-[22px] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 relative animate-in fade-in zoom-in duration-200`}>
               <button
                 onClick={() => setShowDetailModal(false)}
                 className="absolute right-5 top-5 p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
@@ -13192,6 +14447,106 @@ export default function TeacherTeachingWorkspacePage() {
           </div>
         </div>
       )}
+
+      {/* ── MODAL HERO UI: PENGISIAN RANGKUMAN JURNAL TERLEWAT ── */}
+      <AppModal
+        isOpen={showPendingJournalModal}
+        onClose={() => {
+          if (!savingJournalNotes) {
+            setShowPendingJournalModal(false)
+            setSelectedPendingSession(null)
+          }
+        }}
+        title="Lengkapi Rangkuman Pembelajaran KBM"
+        subtitle={
+          selectedPendingSession
+            ? `${selectedPendingSession.schedule?.subject?.name || 'Mata Pelajaran'} • ${selectedPendingSession.schedule?.kelas?.nama_kelas || 'Kelas'} • Pertemuan #${selectedPendingSession.meeting_number || 1} (${selectedPendingSession.attendance_date})`
+            : 'Isi ringkasan materi dan evaluasi KBM'
+        }
+        size="lg"
+      >
+        {selectedPendingSession && (
+          <form onSubmit={handleSavePendingJournal} className="space-y-4 pt-1">
+            <div className="rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/10 via-amber-50/50 to-transparent p-3.5 dark:border-amber-700/60 dark:bg-amber-950/20">
+              <div className="flex items-center gap-2">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white shadow-xs">
+                  <Clock className="size-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">
+                    Penyelesaian Tanggung Jawab Jurnal Mengajar
+                  </h4>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                    Sesi mengajar tanggal <strong>{selectedPendingSession.attendance_date}</strong>. Rangkuman ini akan langsung tersinkronkan ke buku raport, wali santri, dan laporan kurikulum.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-extrabold text-slate-800 dark:text-slate-200 mb-1">
+                Topik / Materi Pokok Bahasan <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={journalTopicInput}
+                onChange={(e) => setJournalTopicInput(e.target.value)}
+                placeholder="Contoh: Bab 4 - Persamaan Linier & Soal Cerita"
+                className="h-10 w-full rounded-xl border border-emerald-500/30 bg-white px-3.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-extrabold text-slate-800 dark:text-slate-200 mb-1">
+                Catatan Rangkuman Pembelajaran & Capaian KBM <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                rows={4}
+                value={journalNotesInput}
+                onChange={(e) => setJournalNotesInput(e.target.value)}
+                placeholder="Tuliskan rangkuman materi yang telah diajarkan, pemahaman siswa, evaluasi singkat, atau tugas yang diberikan..."
+                className="w-full rounded-xl border border-emerald-500/30 bg-white p-3.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                required
+              />
+              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                Minimal 3 karakter. Catatan ini juga dapat dibaca oleh orang tua di modul portal santri.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={savingJournalNotes}
+                onClick={() => {
+                  setShowPendingJournalModal(false)
+                  setSelectedPendingSession(null)
+                }}
+                className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={savingJournalNotes}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-600 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {savingJournalNotes ? (
+                  <>
+                    <RefreshCw className="size-3.5 animate-spin text-white" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="size-3.5 text-white" />
+                    <span>Simpan Rangkuman & Selesaikan</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+      </AppModal>
 
       {/* CBT QUIZ RUNNER PREVIEW MODAL */}
       {cbtPreviewModal && (

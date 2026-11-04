@@ -1,7 +1,5 @@
 import React, { useState } from 'react'
-import { FileSpreadsheet, Download, AlertCircle, CheckCircle2, X } from 'lucide-react'
-import { Upload1 } from '@tailgrids/icons'
-import { OverlayWrapper, Backdrop } from '@/components/tailgrids/core/overlay'
+import { FileSpreadsheet, Download, AlertCircle, CheckCircle2, X, Upload as Upload1 } from 'lucide-react'
 import {
   Dialog,
   DialogHeader,
@@ -9,9 +7,9 @@ import {
   DialogDescription,
   DialogBody,
   DialogFooter,
-} from '@/components/tailgrids/core/dialog'
-import { Button } from '@/components/tailgrids/core/button'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import Swal from '@/components/ui/compat/swal-heroui'
 
 export default function ImporDivisiModal({ isOpen, onClose, onImportSuccess }) {
   const [file, setFile] = useState(null)
@@ -126,9 +124,12 @@ export default function ImporDivisiModal({ isOpen, onClose, onImportSuccess }) {
   }
 
   return (
-    <OverlayWrapper isOpen={isOpen}>
-      <Backdrop onDismiss={onClose}>
-        <Dialog className="max-w-xl w-full p-6 bg-white dark:bg-[#1B2433] rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800">
+    <Dialog
+      isOpen={isOpen}
+      onClose={onClose}
+      showCloseButton={false}
+      className="max-w-xl w-full p-6 bg-white dark:bg-[#1B2433] rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800"
+    >
           <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800 relative">
             <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 font-extrabold text-xs uppercase tracking-wider">
               <Upload1 className="h-4 w-4" />
@@ -232,7 +233,5 @@ export default function ImporDivisiModal({ isOpen, onClose, onImportSuccess }) {
             </Button>
           </DialogFooter>
         </Dialog>
-      </Backdrop>
-    </OverlayWrapper>
   )
 }

@@ -97,29 +97,56 @@ export default function GuruBkDashboardPage() {
       {/* Breadcrumb Navigation */}
       <AppBreadcrumb items={[{ label: 'Dashboard Guru BK' }]} />
 
-      {/* Header */}
-      <AppPageHeader
-        variant="brand"
-        title="Dashboard Guru BK (Bimbingan Konseling)"
-        eyebrow="Student Counseling & Confidential Guidance"
-        description="Ruang pendampingan konseling dan penanganan catatan perilaku siswa yang terproteksi dan rahasia."
-        welcomeName="Guru BK"
-        chips={[
-          context.tahun_ajaran ? `TA ${context.tahun_ajaran.nama}` : 'TBA 2026/2027',
-          context.semester ? `Semester ${context.semester.nama}` : 'Semester Ganjil',
-          'Scope: Konseling & Proteksi BK',
-        ]}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <AppButton variant="accent" size="sm" icon={Plus} onClick={() => navigate('/portal-guru/workspace')}>
-              Catatan Baru
-            </AppButton>
-            <AppButton variant="outline" size="sm" icon={RefreshCw} onClick={fetchDashboard} className="border-white/30 text-white hover:bg-white/10">
-              Segarkan Data
-            </AppButton>
+      {/* Modern Vivid Emerald Hero Header */}
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+        <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+              <ShieldCheck className="size-6 sm:size-7 text-white" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                  <ShieldCheck className="size-3 text-emerald-200" />
+                  Konseling &amp; Proteksi BK
+                </span>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  {context.tahun_ajaran ? `TA ${context.tahun_ajaran.nama}` : 'TA 2026/2027'} • {context.semester ? `Semester ${context.semester.nama}` : 'Semester Ganjil'}
+                </span>
+              </div>
+              <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                Dashboard Guru BK (Bimbingan Konseling)
+              </h1>
+              <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                Ruang pendampingan konseling dan penanganan catatan perilaku santri yang terproteksi dan rahasia.
+              </p>
+            </div>
           </div>
-        }
-      />
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => navigate('/portal-guru/workspace')}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-md shadow-emerald-600/25 transition cursor-pointer"
+            >
+              <Plus className="size-4" />
+              <span>Catatan Baru</span>
+            </button>
+            <button
+              type="button"
+              onClick={fetchDashboard}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-200/80 bg-white/80 dark:border-emerald-800/80 dark:bg-slate-900/80 text-emerald-800 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-50 dark:hover:bg-slate-800 transition shadow-sm cursor-pointer"
+            >
+              <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>Segarkan</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Filter Bar */}
       <AppFilterBar label="Filter Kasus Konseling" onReset={fetchDashboard} />

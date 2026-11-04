@@ -23,11 +23,13 @@ import {
   AlertTriangle,
   FileSpreadsheet,
   Download,
+  ChevronLeft,
+  ChevronRight,
   Share2,
   Check,
   GraduationCap,
 } from 'lucide-react'
-import { Download1, Upload1 } from '@tailgrids/icons'
+import { Download as Download1, Upload as Upload1 } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -42,6 +44,8 @@ import {
 } from 'recharts'
 import { lmsRaporService } from '../services/lmsRaporService'
 import PageContainer from '../components/app/PageContainer'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { useDebounce } from '../hooks/useDebounce'
 import { SquircleActionButton, PrintOptionModal } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { exportCsv } from '../components/reports/ReportKit'
@@ -49,13 +53,15 @@ import {
   HoverCard,
   HoverCardTrigger,
   HoverCardContent,
-} from '../components/tailgrids/core/hover-card'
-import { Avatar, AvatarFallback } from '../components/tailgrids/core/avatar'
-import { Badge } from '../components/tailgrids/core/badge'
-import { Pagination } from '../components/tailgrids/core/pagination'
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '../components/tailgrids/core/dialog'
-import { Backdrop, OverlayWrapper } from '../components/tailgrids/core/overlay'
-import { Button } from '../components/tailgrids/core/button'
+} from '../components/ui/hover-card'
+import { Avatar, AvatarFallback } from '../components/ui/avatar'
+import { Badge } from '../components/ui/badge'
+import { Pagination } from '../components/ui/pagination'
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '../components/ui/dialog'
+import { Backdrop, OverlayWrapper } from '../components/ui/dialog'
+import { Button } from '../components/ui/button'
+import { TableRoot, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table'
+import { DatePicker } from '@/components/ui/date-picker'
 
 const toneStyles = {
   emerald: {
@@ -672,6 +678,9 @@ export default function LmsRaporPage({ tabNav = null }) {
     status_rapor: '',
   })
 
+  // Debounced search for API query prevention
+  const debouncedSearch = useDebounce(filters.search, 350)
+
   // Modals state
   const [showFormModal, setShowFormModal] = useState(false)
   const [showGenerateModal, setShowGenerateModal] = useState(false)
@@ -734,14 +743,12 @@ export default function LmsRaporPage({ tabNav = null }) {
 
   useEffect(() => {
     fetchOptions()
-    fetchStats()
-    fetchData(1)
   }, [])
 
   useEffect(() => {
     fetchStats()
     fetchData(1)
-  }, [filters])
+  }, [debouncedSearch, filters.kelas_id, filters.semester_id, filters.tahun_ajaran_id, filters.status_rapor])
 
   const showToastNotification = (message, type = 'success') => {
     setToast({ show: true, message, type })
@@ -770,7 +777,10 @@ export default function LmsRaporPage({ tabNav = null }) {
 
   const fetchStats = async () => {
     try {
-      const res = await lmsRaporService.getStats(filters)
+      const res = await lmsRaporService.getStats({
+        ...filters,
+        search: debouncedSearch,
+      })
       if (res.success) {
         setStats(res.data)
       }
@@ -786,6 +796,7 @@ export default function LmsRaporPage({ tabNav = null }) {
         page,
         per_page: 15,
         ...filters,
+        search: debouncedSearch,
       }
       const res = await lmsRaporService.getDaftar(params)
       if (res.data) {
@@ -1189,8 +1200,53 @@ export default function LmsRaporPage({ tabNav = null }) {
   }
 
   return (
-    <PageContainer>
-      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-12">
+    <PageContainer maxW="7xl">
+      <div className="space-y-6 pb-12">
+        {/* ── Breadcrumb Navigation ── */}
+        <div className="mb-4">
+          <AppBreadcrumb
+            items={[
+              { label: 'LMS & Akademik', href: '/dashboard' },
+              { label: 'Rapor Digital Siswa' },
+            ]}
+          />
+        </div>
+
+        {/* ── Modern Hero Card ── */}
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40">
+                <GraduationCap className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Rapor Digital Siswa
+                  </h1>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    LMS Penilaian &amp; Rapor
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  Kalkulasi otomatis capaian nilai, cetak rapor resmi Kurikulum Merdeka, serta distribusi laporan hasil belajar digital santri/siswa.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+                <FileText className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Kurikulum Merdeka</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
 
         {/* 5-Card KPI Summary Grid */}
         <motion.div variants={itemVariants}>
@@ -1513,24 +1569,24 @@ export default function LmsRaporPage({ tabNav = null }) {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm border-collapse" aria-label="Daftar rapor digital siswa">
-                  <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200">
-                    <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-xs font-extrabold uppercase tracking-wider">
-                      <th className="py-3.5 px-4">Nama Siswa</th>
-                      <th className="py-3.5 px-4">Kelas &amp; Periode</th>
-                      <th className="py-3.5 px-4 text-center">Mapel (Lulus/Total)</th>
-                      <th className="py-3.5 px-4 text-center">Rata-Rata Nilai</th>
-                      <th className="py-3.5 px-4 text-center">Ranking Kelas</th>
-                      <th className="py-3.5 px-4 text-center">Presensi (H/I/S/A)</th>
-                      <th className="py-3.5 px-4 text-center">Status Rapor</th>
-                      <th className="py-3.5 px-4 text-right">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-slate-700 dark:text-slate-200">
+                <TableRoot className="w-full text-left text-sm border-collapse" aria-label="Daftar rapor digital siswa">
+                  <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200">
+                    <TableRow className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-xs font-extrabold uppercase tracking-wider">
+                      <TableHead className="py-3.5 px-4">Nama Siswa</TableHead>
+                      <TableHead className="py-3.5 px-4">Kelas &amp; Periode</TableHead>
+                      <TableHead className="py-3.5 px-4 text-center">Mapel (Lulus/Total)</TableHead>
+                      <TableHead className="py-3.5 px-4 text-center">Rata-Rata Nilai</TableHead>
+                      <TableHead className="py-3.5 px-4 text-center">Ranking Kelas</TableHead>
+                      <TableHead className="py-3.5 px-4 text-center">Presensi (H/I/S/A)</TableHead>
+                      <TableHead className="py-3.5 px-4 text-center">Status Rapor</TableHead>
+                      <TableHead className="py-3.5 px-4 text-right">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-slate-700 dark:text-slate-200">
                     {dataList.map((item) => (
-                      <tr key={item.id} className="hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                      <TableRow key={item.id} className="hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 transition-colors duration-150">
                         {/* Student Info with HoverCard */}
-                        <td className="py-3.5 px-4 align-top">
+                        <TableCell className="py-3.5 px-4 align-top">
                           <HoverCard>
                             <HoverCardTrigger asChild>
                               <div className="cursor-pointer group flex items-center gap-2.5">
@@ -1566,30 +1622,30 @@ export default function LmsRaporPage({ tabNav = null }) {
                               </div>
                             </HoverCardContent>
                           </HoverCard>
-                        </td>
+                        </TableCell>
 
                         {/* Kelas & Periode */}
-                        <td className="py-3.5 px-4 align-top">
+                        <TableCell className="py-3.5 px-4 align-top">
                           <div className="font-semibold text-slate-800 dark:text-slate-200">{item.kelas?.nama_kelas || 'Kelas -'}</div>
                           <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                             {item.semester?.nama || 'Semester'} • {item.tahun_ajaran?.year || 'Tahun'}
                           </div>
-                        </td>
+                        </TableCell>
 
                         {/* Mapel Lulus */}
-                        <td className="py-3.5 px-4 text-center align-top font-bold text-emerald-700 dark:text-emerald-400">
+                        <TableCell className="py-3.5 px-4 text-center align-top font-bold text-emerald-700 dark:text-emerald-400">
                           {item.mapel_lulus} <span className="text-slate-400 font-normal">/ {item.total_mapel}</span>
-                        </td>
+                        </TableCell>
 
                         {/* Rata-Rata Nilai */}
-                        <td className="py-3.5 px-4 text-center align-top">
+                        <TableCell className="py-3.5 px-4 text-center align-top">
                           <span className="inline-block px-3 py-1 rounded-lg bg-emerald-50 text-[#0E5C44] dark:bg-emerald-950/60 dark:text-emerald-300 font-extrabold text-base border border-emerald-200 dark:border-emerald-800">
                             {item.rata_rata}
                           </span>
-                        </td>
+                        </TableCell>
 
                         {/* Ranking Kelas */}
-                        <td className="py-3.5 px-4 text-center align-top">
+                        <TableCell className="py-3.5 px-4 text-center align-top">
                           {item.peringkat_kelas ? (
                             <span className="inline-flex items-center gap-1 font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1 rounded-full text-xs">
                               🏆 Ke-{item.peringkat_kelas}
@@ -1598,23 +1654,23 @@ export default function LmsRaporPage({ tabNav = null }) {
                           ) : (
                             <span className="text-slate-400 text-xs">-</span>
                           )}
-                        </td>
+                        </TableCell>
 
                         {/* Presensi */}
-                        <td className="py-3.5 px-4 text-center align-top">
+                        <TableCell className="py-3.5 px-4 text-center align-top">
                           <div className="text-xs font-medium text-slate-700 dark:text-slate-300">
                             <span className="text-emerald-600 font-bold">{item.total_hadir || 0}H</span> /{' '}
                             <span className="text-blue-600">{item.total_izin || 0}I</span> /{' '}
                             <span className="text-amber-600">{item.total_sakit || 0}S</span> /{' '}
                             <span className="text-rose-600 font-bold">{item.total_alpha || 0}A</span>
                           </div>
-                        </td>
+                        </TableCell>
 
                         {/* Status Rapor */}
-                        <td className="py-3.5 px-4 text-center align-top">{getStatusBadge(item.status_rapor)}</td>
+                        <TableCell className="py-3.5 px-4 text-center align-top">{getStatusBadge(item.status_rapor)}</TableCell>
 
                         {/* Actions */}
-                        <td className="py-3.5 px-4 text-right align-top">
+                        <TableCell className="py-3.5 px-4 text-right align-top">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
@@ -1649,11 +1705,11 @@ export default function LmsRaporPage({ tabNav = null }) {
                               <Trash2 className="size-4" />
                             </button>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </TableRoot>
               </div>
             )}
 
@@ -1856,11 +1912,10 @@ export default function LmsRaporPage({ tabNav = null }) {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Tanggal Terbit</label>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={formData.tanggal_terbit}
                       onChange={(e) => setFormData({ ...formData, tanggal_terbit: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                      inputClassName="py-2.5 text-sm"
                     />
                   </div>
                 </div>
@@ -2013,44 +2068,44 @@ export default function LmsRaporPage({ tabNav = null }) {
               </div>
 
               <div className="overflow-x-auto border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-emerald-950 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200 font-semibold border-b border-emerald-200/90 dark:border-emerald-800/80">
-                      <th className="py-2.5 px-3">Siswa & NIS</th>
-                      <th className="py-2.5 px-3">Kelas & Periode</th>
-                      <th className="py-2.5 px-3 text-center">Rata-Rata</th>
-                      <th className="py-2.5 px-3 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                <TableRoot className="w-full text-left text-xs border-collapse">
+                  <TableHeader>
+                    <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-emerald-950 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200 font-semibold border-b border-emerald-200/90 dark:border-emerald-800/80">
+                      <TableHead className="py-2.5 px-3">Siswa & NIS</TableHead>
+                      <TableHead className="py-2.5 px-3">Kelas & Periode</TableHead>
+                      <TableHead className="py-2.5 px-3 text-center">Rata-Rata</TableHead>
+                      <TableHead className="py-2.5 px-3 text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                     {paginatedModalRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="py-8 text-center text-slate-400">
+                      <TableRow>
+                        <TableCell colSpan={4} className="py-8 text-center text-slate-400">
                           Tidak ada data siswa untuk kategori ini.
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ) : (
                       paginatedModalRows.map((row) => (
-                        <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          <td className="py-2.5 px-3">
+                        <TableRow key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          <TableCell className="py-2.5 px-3">
                             <div className="font-bold text-slate-900 dark:text-white">{row.siswa?.name || 'Siswa'}</div>
                             <div className="text-[10px] text-slate-400 font-mono">NISN: {row.siswa?.nisn || '-'}</div>
-                          </td>
-                          <td className="py-2.5 px-3">
+                          </TableCell>
+                          <TableCell className="py-2.5 px-3">
                             <div className="font-medium text-slate-800 dark:text-slate-200">{row.kelas?.nama_kelas || '-'}</div>
                             <div className="text-[10px] text-slate-400">{row.semester?.nama || '-'}</div>
-                          </td>
-                          <td className="py-2.5 px-3 text-center font-bold text-[#0E5C44] dark:text-emerald-400">
+                          </TableCell>
+                          <TableCell className="py-2.5 px-3 text-center font-bold text-[#0E5C44] dark:text-emerald-400">
                             {row.rata_rata}
-                          </td>
-                          <td className="py-2.5 px-3 text-center">
+                          </TableCell>
+                          <TableCell className="py-2.5 px-3 text-center">
                             {getStatusBadge(row.status_rapor)}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </TableRoot>
               </div>
 
               {modalTotalPages > 1 && (
@@ -2058,22 +2113,29 @@ export default function LmsRaporPage({ tabNav = null }) {
                   <span>
                     Halaman {cardModal.page} dari {modalTotalPages} ({modalRows.length} data)
                   </span>
-                  <div className="flex gap-1">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       disabled={cardModal.page <= 1}
                       onClick={() => setCardModal((prev) => ({ ...prev, page: prev.page - 1 }))}
-                      className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      title="Halaman Sebelumnya"
+                      aria-label="Halaman Sebelumnya"
+                      className="flex size-7.5 items-center justify-center rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
                     >
-                      Sebelumnya
+                      <ChevronLeft className="size-3.5 shrink-0 text-white" />
                     </button>
+                    <span className="px-2 py-0.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                      {cardModal.page} / {modalTotalPages}
+                    </span>
                     <button
                       type="button"
                       disabled={cardModal.page >= modalTotalPages}
                       onClick={() => setCardModal((prev) => ({ ...prev, page: prev.page + 1 }))}
-                      className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      title="Halaman Berikutnya"
+                      aria-label="Halaman Berikutnya"
+                      className="flex size-7.5 items-center justify-center rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
                     >
-                      Selanjutnya
+                      <ChevronRight className="size-3.5 shrink-0 text-white" />
                     </button>
                   </div>
                 </div>
@@ -2350,35 +2412,19 @@ export default function LmsRaporPage({ tabNav = null }) {
                   try {
                     setIsImporting(true)
                     setImportError('')
-                    const text = await importFile.text()
-                    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
-                    if (lines.length <= 1) throw new Error('File tidak memiliki data baris untuk diimport.')
-                    
-                    const newRows = lines.slice(1).map((line, idx) => {
-                      const cols = line.split(',').map((c) => c.replace(/^"|"$/g, '').trim())
-                      return {
-                        id: `imp-rapor-${Date.now()}-${idx}`,
-                        siswa: { name: cols[1] || `Siswa Import ${idx + 1}`, nisn: cols[0] || `NISN-${idx + 1}` },
-                        kelas: { nama_kelas: cols[2] || 'Kelas' },
-                        semester: { nama: cols[3] || 'Semester 1' },
-                        rata_rata: parseFloat(cols[4]) || 85.0,
-                        peringkat_kelas: parseInt(cols[5]) || (idx + 1),
-                        total_mapel: 10,
-                        mapel_lulus: 10,
-                        total_hadir: parseInt(cols[6]) || 100,
-                        total_izin: parseInt(cols[7]) || 0,
-                        total_sakit: parseInt(cols[8]) || 0,
-                        total_alpha: parseInt(cols[9]) || 0,
-                        status_rapor: cols[10] || 'draft',
-                      }
-                    })
+                    const form = new FormData()
+                    form.append('file', importFile)
+                    if (filters.kelas_id) form.append('kelas_id', filters.kelas_id)
+                    if (filters.semester_id) form.append('semester_id', filters.semester_id)
+                    if (filters.tahun_ajaran_id) form.append('tahun_ajaran_id', filters.tahun_ajaran_id)
 
-                    setDataList((prev) => [...newRows, ...prev])
+                    const res = await lmsRaporService.import(form)
                     setIsImportModalOpen(false)
                     setImportFile(null)
-                    showToastNotification(`Berhasil mengimport ${newRows.length} data Rapor Digital!`)
+                    showToastNotification(res.message || 'Berhasil mengimpor data Rapor Digital!')
+                    await fetchData(1)
                   } catch (err) {
-                    setImportError(err.message || 'Gagal memproses file import.')
+                    setImportError(err.response?.data?.message || err.message || 'Gagal memproses berkas impor.')
                   } finally {
                     setIsImporting(false)
                   }
@@ -2398,6 +2444,7 @@ export default function LmsRaporPage({ tabNav = null }) {
           isSubmitting={deleteModal.isSubmitting}
         />
       </motion.div>
+      </div>
     </PageContainer>
   )
 }

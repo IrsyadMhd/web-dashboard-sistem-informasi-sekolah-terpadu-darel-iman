@@ -5,10 +5,11 @@ import { useAuthStore } from '../stores/authStore'
 import SuperAdminDashboardPage from './SuperAdminDashboardPage'
 import TeacherMonitoringDashboardPage from './TeacherMonitoringDashboardPage'
 import ParentDashboardPage from './ParentDashboardPage'
-import { getUserRoleLevel, ROLE_LEVELS, resolveDefaultPortal } from '../auth/portalResolver'
+import { getUserRoleLevel, ROLE_LEVELS, resolveDefaultPortal, hasAnyRole, ROLES } from '../auth/portalResolver'
 
 export default function MultiRoleDashboardPage() {
   const user = useAuthStore((state) => state.user)
+  const roles = Array.isArray(user?.roles) ? user.roles : (user?.role ? [user.role] : [])
   const permissions = user?.permissions || []
   const userLevel = getUserRoleLevel(user)
 
@@ -20,29 +21,44 @@ export default function MultiRoleDashboardPage() {
   // Tingkat 2: Yayasan / Pimpinan
   const isFoundationUser =
     userLevel === ROLE_LEVELS.PIMPINAN_YAYASAN ||
+    hasAnyRole(roles, ROLES.YAYASAN) ||
     permissions.includes('foundation.dashboard.view')
 
   if (isFoundationUser) {
     return <Navigate to="/dashboard/yayasan" replace />
   }
 
+  // Tingkat 3: Divisi Pendidikan
+  const isDivisiUser =
+    hasAnyRole(roles, ROLES.DIVISI) ||
+    permissions.includes('dashboard.divisi-pendidikan.view') ||
+    permissions.includes('divisi.monitoring')
+
+  if (isDivisiUser) {
+    return <Navigate to="/dashboard/divisi-pendidikan" replace />
+  }
+
   // Tingkat 8: Siswa
-  if (userLevel === ROLE_LEVELS.SISWA) {
+  if (userLevel === ROLE_LEVELS.SISWA || hasAnyRole(roles, ROLES.SISWA)) {
     return <Navigate to="/portal-siswa" replace />
   }
 
   // Tingkat 7: Orang Tua
-  if (userLevel === ROLE_LEVELS.ORANG_TUA) {
+  if (userLevel === ROLE_LEVELS.ORANG_TUA || hasAnyRole(roles, ROLES.ORANG_TUA)) {
     return <ParentDashboardPage />
   }
 
   // Tingkat 4: Kepala Sekolah
-  if (userLevel === ROLE_LEVELS.KEPALA_SEKOLAH || permissions.includes('dashboard.kepala-sekolah.view')) {
+  const isKepsekUser =
+    hasAnyRole(roles, ROLES.KEPALA_SEKOLAH) ||
+    permissions.includes('dashboard.kepala-sekolah.view')
+
+  if (isKepsekUser) {
     return <Navigate to="/dashboard/kepala-sekolah" replace />
   }
 
   // Tingkat 5: Tenaga Pendidik / Guru
-  if (userLevel === ROLE_LEVELS.GURU) {
+  if (userLevel === ROLE_LEVELS.GURU || hasAnyRole(roles, ROLES.GURU)) {
     return <TeacherMonitoringDashboardPage />
   }
 

@@ -41,6 +41,7 @@ import {
 import api from '../../services/api'
 import { webRealtimeWs } from '../../services/websocketService'
 import { familyPortalService } from '../../services/familyPortalService'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { educationUnitService } from '../../services/educationUnitService'
 
 const CATEGORIES = [
@@ -1036,7 +1037,12 @@ export default function ChatGuruWorkspace({
         fetchContacts()
       }
     } catch (err) {
-      alert('Gagal membuat grup percakapan.')
+      Swal.fire({
+        title: 'Gagal Membuat Grup',
+        text: err.response?.data?.message || 'Terjadi kendala saat membuat grup percakapan baru. Silakan coba lagi.',
+        icon: 'error',
+        confirmButtonColor: '#059669',
+      })
     } finally {
       setIsCreatingGroup(false)
     }

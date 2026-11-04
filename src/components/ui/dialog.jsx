@@ -7,14 +7,34 @@ import {
 import { X } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
-export function Dialog({ isOpen, onClose, children, className }) {
-  if (!isOpen) return null
+import { OverlayContext } from './overlay'
+
+export function Dialog({
+  isOpen: directIsOpen,
+  onClose: directOnClose,
+  onOpenChange,
+  showCloseButton = true,
+  children,
+  className,
+}) {
+  const overlayCtx = React.useContext(OverlayContext)
+
+  const resolvedIsOpen = directIsOpen !== undefined
+    ? Boolean(directIsOpen)
+    : (overlayCtx?.isOpen !== undefined ? Boolean(overlayCtx.isOpen) : false)
+
+  const resolvedOnClose = directOnClose
+    || (onOpenChange ? (open) => !open && onOpenChange(false) : null)
+    || overlayCtx?.onClose
+    || null
+
+  if (!resolvedIsOpen) return null
 
   return (
     <HeroModal
-      isOpen={Boolean(isOpen)}
+      isOpen={Boolean(resolvedIsOpen)}
       onOpenChange={(open) => {
-        if (!open && onClose) onClose()
+        if (!open && resolvedOnClose) resolvedOnClose()
       }}
     >
       <HeroModal.Backdrop className="bg-slate-950/70 backdrop-blur-md fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -27,11 +47,11 @@ export function Dialog({ isOpen, onClose, children, className }) {
           >
             <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
             <div className="relative p-6">
-              {onClose && (
+              {resolvedOnClose && showCloseButton && (
                 <HeroButton
                   isIconOnly
                   size="sm"
-                  onPress={onClose}
+                  onPress={resolvedOnClose}
                   aria-label="Tutup dialog"
                   className="absolute right-4 top-4 rounded-xl size-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-400 transition-all cursor-pointer active:scale-95"
                 >
@@ -67,9 +87,57 @@ export function DialogFooter({ className, ...props }) {
   return <div className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-6 border-t border-slate-100 pt-4 dark:border-slate-800', className)} {...props} />
 }
 
+export function DialogClose({ children, onClick, ...props }) {
+  return (
+    <div onClick={onClick} className="inline-block" {...props}>
+      {children}
+    </div>
+  )
+}
+
+export function OverlayWrapper({ isOpen, onOpenChange, children }) {
+  const handleClose = () => {
+    if (onOpenChange) onOpenChange(false)
+  }
+  if (isOpen === false) return null
+  return (
+    <OverlayContext.Provider value={{ isOpen: isOpen !== undefined ? Boolean(isOpen) : undefined, onClose: handleClose }}>
+      {children}
+    </OverlayContext.Provider>
+  )
+}
+
+export function Backdrop({
+  isOpen,
+  onOpenChange,
+  isDismissable,
+  className,
+  children,
+  ...props
+}) {
+  const overlayCtx = React.useContext(OverlayContext)
+
+  const resolvedIsOpen = isOpen !== undefined
+    ? Boolean(isOpen)
+    : (overlayCtx?.isOpen !== undefined ? Boolean(overlayCtx.isOpen) : false)
+
+  if (!resolvedIsOpen) return null
+
+  const handleClose = () => {
+    if (onOpenChange) onOpenChange(false)
+    if (overlayCtx?.onClose) overlayCtx.onClose()
+  }
+
+  return (
+    <OverlayContext.Provider value={{ isOpen: resolvedIsOpen, onClose: handleClose }}>
+      {children}
+    </OverlayContext.Provider>
+  )
+}
+
 Dialog.propTypes = {
-  isOpen: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
+  isOpen: PropTypes.bool,
+  onClose: PropTypes.func,
   children: PropTypes.node,
   className: PropTypes.string,
 }

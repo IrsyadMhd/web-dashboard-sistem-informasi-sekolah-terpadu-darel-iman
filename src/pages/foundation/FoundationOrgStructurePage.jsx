@@ -31,6 +31,7 @@ import {
 import { PersonIdentityCell } from '../../components/ui/PersonIdentityCell'
 import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 import { FoundationExportModal } from '../../components/foundation/FoundationExportModal'
+import { SmartScrollFab } from '../../components/common'
 
 export function FoundationOrgStructurePage() {
   const [units, setUnits] = useState([])
@@ -239,7 +240,7 @@ export function FoundationOrgStructurePage() {
           description="Ubah filter pencarian atau pilih unit pendidikan lain untuk menampilkan bagan organisasi."
         />
       ) : (
-        <div className="space-y-8">
+        <div id="bagan-struktur-organisasi" className="space-y-8 scroll-mt-6">
           {filteredLevels.map((lvlGroup) => (
             <section key={lvlGroup.level} className={`${masterStyles.card} p-5 sm:p-6`}>
               <div className="flex items-center justify-between border-b border-slate-200/80 pb-4 dark:border-slate-700">
@@ -342,6 +343,9 @@ export function FoundationOrgStructurePage() {
         rows={exportRows}
         filename="Struktur_Organisasi_Yayasan"
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="bagan-struktur-organisasi" downTooltip="Langsung ke Struktur Organisasi" />
     </MasterDataPage>
   )
 }

@@ -17,7 +17,7 @@ import {
   Sparkles,
   FileText,
 } from 'lucide-react'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { parentService } from '../services/parentService'
 import { handleApiExport } from '../utils/exportUtils'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'

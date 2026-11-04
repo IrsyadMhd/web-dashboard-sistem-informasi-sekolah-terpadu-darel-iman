@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/tailgrids/core/card'
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from '@/components/tailgrids/core/dialog'
-import { Backdrop } from '@/components/tailgrids/core/overlay'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
-import { Button } from '@/components/tailgrids/core/button'
-import { Pagination } from '@/components/tailgrids/core/pagination'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from '@/components/ui/dialog'
+import { Backdrop } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Pagination } from '@/components/ui/pagination'
+import { DatePicker } from '@/components/ui/date-picker'
 import { useDebounce } from '../hooks/useDebounce'
 import { printCleanTable, downloadPdfTable } from '@/utils/printHelper'
 import {
@@ -75,7 +76,310 @@ import { kelasService } from '../services/kelasService'
 import { educationUnitService } from '../services/educationUnitService'
 import { SquircleActionButton, PrintOptionModal } from '@/components/master-data'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import PageContainer from '../components/app/PageContainer'
 import { useToast } from '../components/app'
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          disabled
+            ? 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-800/60 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== undefined && value !== null && value !== 'ALL'
+            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-500/15 text-emerald-900 font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ── HEROUI MODAL FORM SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  label = null,
+  required = false,
+  icon: IconComponent = null,
+  disabled = false,
+  searchable = false,
+  className = '',
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative w-full ${className}`} ref={containerRef}>
+      {label && (
+        <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+            : 'border-slate-300 bg-white hover:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[95] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400">
+                  Tidak ada opsi yang sesuai
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-500/15 text-emerald-900 font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <div>
+                        <div className="truncate">{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 font-normal">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export default function StudentWorshipAttendancePage() {
   const authUser = useAuthStore((s) => s.user) || (() => {
@@ -188,6 +492,71 @@ export default function StudentWorshipAttendancePage() {
   const [filterUnit, setFilterUnit] = useState(isSuperOrYayasan ? 'ALL' : userUnitName)
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [perPage, setPerPage] = useState(10)
+
+  const unitOptions = useMemo(() => {
+    const opts = []
+    if (isSuperOrYayasan) {
+      opts.push({ value: 'ALL', label: 'Semua Unit Pendidikan' })
+    }
+    if (educationUnits.length > 0) {
+      educationUnits.forEach((u) => {
+        opts.push({ value: u.name, label: u.name })
+      })
+    } else {
+      opts.push({ value: userUnitName, label: userUnitName })
+    }
+    return opts
+  }, [isSuperOrYayasan, educationUnits, userUnitName])
+
+  const classOptions = useMemo(() => {
+    return [
+      { value: 'ALL', label: 'Semua Kelas / Rombel' },
+      ...availableClasses.map((cls) => ({ value: cls, label: cls })),
+    ]
+  }, [availableClasses])
+
+  const statusOptions = [
+    { value: 'ALL', label: 'Semua Status Presensi' },
+    { value: 'hadir_berjamaah', label: 'Hadir Berjamaah' },
+    { value: 'masbuk', label: 'Masbuk / Terlambat' },
+    { value: 'uzur_sakit', label: 'Uzur / Sakit' },
+    { value: 'izin', label: 'Izin' },
+    { value: 'alpa', label: 'Alpa' },
+    { value: 'belum_verifikasi', label: 'Belum Verifikasi' },
+  ]
+
+  const perPageOptions = [
+    { value: 5, label: '5 / hal' },
+    { value: 10, label: '10 / hal' },
+    { value: 25, label: '25 / hal' },
+    { value: 50, label: '50 / hal' },
+  ]
+
+  const editSessionStatusOptions = [
+    { value: 'opened', label: 'Dibuka (Opened)' },
+    { value: 'upcoming', label: 'Akan Datang (Upcoming)' },
+    { value: 'closed', label: 'Ditutup (Closed)' },
+  ]
+
+  const verifyStatusOptions = [
+    { value: 'hadir_berjamaah', label: 'Hadir Berjamaah' },
+    { value: 'masbuk', label: 'Masbuk / Terlambat' },
+    { value: 'uzur_sakit', label: "Uzur / Sakit (Halangan Syar'i)" },
+    { value: 'izin', label: 'Izin UKS / Izin Khusus' },
+    { value: 'alpa', label: 'Alpa / Tanpa Keterangan' },
+  ]
+
+  const templateCategoryOptions = [
+    { value: 'shalat_wajib', label: 'Shalat Wajib' },
+    { value: 'shalat_sunnah', label: 'Shalat Sunnah (Dhuha)' },
+    { value: 'ibadah_lain', label: 'Pembiasaan Doa & Dzikir' },
+  ]
+
+  const templateObligationOptions = [
+    { value: 'wajib', label: 'Wajib Sekolah' },
+    { value: 'sunnah_muakkad', label: 'Sunnah Muakkad' },
+    { value: 'pembiasaan', label: 'Pembiasaan Harian' },
+  ]
 
   // Modal Data Siswa Presensi Shalat
   const [isAttendingModalOpen, setIsAttendingModalOpen] = useState(false)
@@ -762,11 +1131,12 @@ export default function StudentWorshipAttendancePage() {
   }
 
   return (
-    <div className="space-y-5">
+    <PageContainer maxW="7xl">
+      <div className="mb-4">
+        <AppBreadcrumb items={[{ label: 'Absensi & Ibadah', href: '/dashboard' }, { label: 'Absensi Ibadah Siswa' }]} />
+      </div>
+
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-5">
-        <motion.div variants={itemVariants}>
-          <AppBreadcrumb items={[{ label: 'Absensi & Ibadah', href: '/dashboard' }, { label: 'Absensi Ibadah Siswa' }]} />
-        </motion.div>
       
 
 
@@ -818,11 +1188,11 @@ export default function StudentWorshipAttendancePage() {
                 </div>
 
                 {/* Date Picker Input (Field Tanggal) */}
-                <input
-                  type="date"
+                <DatePicker
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200"
+                  className="w-40"
+                  inputClassName="py-1.5 text-xs font-semibold"
                 />
 
                 {/* Squircle Action Button Icon-Only with Floating Tooltip on Hover */}
@@ -1256,60 +1626,49 @@ export default function StudentWorshipAttendancePage() {
                 </div>
 
                 {/* Dynamic Unit Dropdown Scoped to Active User Unit */}
-                <select
+                <HeroUiFilterSelect
                   value={filterUnit}
                   disabled={!isSuperOrYayasan}
-                  onChange={(e) => setFilterUnit(e.target.value)}
-                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 disabled:bg-slate-100 dark:disabled:bg-slate-800/80 cursor-pointer"
-                >
-                  {isSuperOrYayasan && <option value="ALL">Semua Unit Pendidikan</option>}
-                  {educationUnits.length > 0 ? (
-                    educationUnits.map((u) => (
-                      <option key={u.id} value={u.name}>
-                        {u.name}
-                      </option>
-                    ))
-                  ) : (
-                    <option value={userUnitName}>{userUnitName}</option>
-                  )}
-                </select>
+                  onChange={(val) => setFilterUnit(val)}
+                  options={unitOptions}
+                  placeholder="Unit Pendidikan"
+                  icon={Building2}
+                  className="w-full sm:w-auto min-w-[170px]"
+                  popoverWidth="w-64"
+                  searchable={unitOptions.length > 5}
+                />
 
                 {/* Dynamic Classes Selector Adapted to Active Unit Level */}
-                <select
+                <HeroUiFilterSelect
                   value={filterClass}
-                  onChange={(e) => setFilterClass(e.target.value)}
-                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  <option value="ALL">Semua Kelas / Rombel</option>
-                  {availableClasses.map((cls) => (
-                    <option key={cls} value={cls}>{cls}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setFilterClass(val)}
+                  options={classOptions}
+                  placeholder="Semua Kelas"
+                  icon={GraduationCap}
+                  className="w-full sm:w-auto min-w-[160px]"
+                  popoverWidth="w-56"
+                  searchable={classOptions.length > 5}
+                />
 
-                <select
+                <HeroUiFilterSelect
                   value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  <option value="ALL">Semua Status Presensi</option>
-                  <option value="hadir_berjamaah">Hadir Berjamaah</option>
-                  <option value="masbuk">Masbuk / Terlambat</option>
-                  <option value="uzur_sakit">Uzur / Sakit</option>
-                  <option value="izin">Izin</option>
-                  <option value="alpa">Alpa</option>
-                  <option value="belum_verifikasi">Belum Verifikasi</option>
-                </select>
+                  onChange={(val) => setFilterStatus(val)}
+                  options={statusOptions}
+                  placeholder="Status Presensi"
+                  icon={CheckCircle2}
+                  className="w-full sm:w-auto min-w-[170px]"
+                  popoverWidth="w-56"
+                />
 
-                <select
+                <HeroUiFilterSelect
                   value={perPage}
-                  onChange={(e) => setPerPage(Number(e.target.value))}
-                  className="w-full sm:w-auto min-w-[90px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  <option value={5}>5 / hal</option>
-                  <option value={10}>10 / hal</option>
-                  <option value={25}>25 / hal</option>
-                  <option value={50}>50 / hal</option>
-                </select>
+                  onChange={(val) => setPerPage(Number(val))}
+                  options={perPageOptions}
+                  placeholder="Per Halaman"
+                  icon={Layers}
+                  className="w-full sm:w-auto min-w-[110px]"
+                  popoverWidth="w-32"
+                />
               </div>
 
               {/* Data Table */}
@@ -1451,440 +1810,442 @@ export default function StudentWorshipAttendancePage() {
         </section>
 
       {/* ── MODAL UBAH MANUAL JADWAL SESI IBADAH ─────────────────────────── */}
-      {/* ── MODAL UBAH MANUAL JADWAL SESI IBADAH ─────────────────────────── */}
-      {showEditSessionModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4 animate-fadeIn">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.94 }}
-            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
-          >
-            <div className="h-1.5 w-full bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-600" />
-            <form onSubmit={handleSaveEditSession} className="p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 via-teal-600 to-emerald-700 text-white shadow-md shadow-sky-500/30">
-                    <Clock className="size-5 text-white" />
+      <AnimatePresence>
+        {showEditSessionModal && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="relative w-full max-w-md my-auto overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+            >
+              <div className="h-1.5 w-full bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-600" />
+              <form onSubmit={handleSaveEditSession} className="p-6 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 via-teal-600 to-emerald-700 text-white shadow-md shadow-sky-500/30">
+                      <Clock className="size-5 text-white" />
+                    </div>
+                    <div>
+                      <span className="inline-block rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">
+                        Sesi Ibadah
+                      </span>
+                      <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                        Ubah Jam & Lokasi Sesi
+                      </h3>
+                    </div>
                   </div>
-                  <div>
-                    <span className="inline-block rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">
-                      Sesi Ibadah
-                    </span>
-                    <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
-                      Ubah Jam & Lokasi Sesi
-                    </h3>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowEditSessionModal(false)}
-                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
-                >
-                  <X className="size-5" />
-                </button>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Sesi</label>
-                  <p className="font-bold text-sky-700 dark:text-sky-400 text-sm">{editSessionForm.nama}</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditSessionModal(false)}
+                    className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
+                  >
+                    <X className="size-5" />
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-3 text-xs">
                   <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Mulai Sesi</label>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Sesi</label>
+                    <p className="font-bold text-sky-700 dark:text-sky-400 text-sm">{editSessionForm.nama}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Mulai Sesi</label>
+                      <input
+                        type="time"
+                        required
+                        value={editSessionForm.start_time}
+                        onChange={(e) => setEditSessionForm({ ...editSessionForm, start_time: e.target.value })}
+                        className="w-full rounded-xl border border-slate-300 bg-white p-2.5 font-bold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Selesai Sesi</label>
+                      <input
+                        type="time"
+                        required
+                        value={editSessionForm.end_time}
+                        onChange={(e) => setEditSessionForm({ ...editSessionForm, end_time: e.target.value })}
+                        className="w-full rounded-xl border border-slate-300 bg-white p-2.5 font-bold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Lokasi Ibadah</label>
                     <input
-                      type="time"
+                      type="text"
                       required
-                      value={editSessionForm.start_time}
-                      onChange={(e) => setEditSessionForm({ ...editSessionForm, start_time: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 font-bold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                      value={editSessionForm.location_name}
+                      onChange={(e) => setEditSessionForm({ ...editSessionForm, location_name: e.target.value })}
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 font-semibold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
                     />
                   </div>
+
                   <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Selesai Sesi</label>
-                    <input
-                      type="time"
-                      required
-                      value={editSessionForm.end_time}
-                      onChange={(e) => setEditSessionForm({ ...editSessionForm, end_time: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 font-bold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                    <HeroUiModalSelect
+                      label="Status Sesi"
+                      value={editSessionForm.status}
+                      onChange={(val) => setEditSessionForm({ ...editSessionForm, status: val })}
+                      options={editSessionStatusOptions}
+                      placeholder="Pilih Status Sesi"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Lokasi Ibadah</label>
-                  <input
-                    type="text"
-                    required
-                    value={editSessionForm.location_name}
-                    onChange={(e) => setEditSessionForm({ ...editSessionForm, location_name: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 font-semibold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                  />
+                <div className="flex justify-end gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditSessionModal(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/25 hover:brightness-105 transition-all cursor-pointer"
+                  >
+                    Simpan Perubahan
+                  </button>
                 </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Status Sesi</label>
-                <select
-                  value={editSessionForm.status}
-                  onChange={(e) => setEditSessionForm({ ...editSessionForm, status: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 font-semibold focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                >
-                  <option value="opened">Dibuka (Opened)</option>
-                  <option value="upcoming">Akan Datang (Upcoming)</option>
-                  <option value="closed">Ditutup (Closed)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setShowEditSessionModal(false)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/25 hover:brightness-105 transition-all cursor-pointer"
-              >
-                Simpan Perubahan
-              </button>
-            </div>
-          </form>
-        </motion.div>
-      </div>
-    )}
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── MODAL CAMERA SCANNER QR CODE ──────────────────────────────────── */}
-      {showCameraModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#111827] space-y-4 border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                  <Camera className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Scanner QR Code Kartu Siswa
-                  </h3>
-                  <p className="text-[11px] text-slate-400">Arahkan QR Code pada kartu siswa ke area pemindai</p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setShowCameraModal(false)
-                  stopCamera()
-                }}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Video Camera Viewfinder Screen */}
-            <div className="relative overflow-hidden rounded-2xl bg-black aspect-video flex items-center justify-center border-2 border-indigo-500/50 shadow-inner">
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                className="h-full w-full object-cover"
-              />
-
-              {/* Viewfinder Target Box Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="h-48 w-48 rounded-2xl border-2 border-dashed border-sky-400 bg-sky-500/10 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] flex flex-col items-center justify-between p-3">
-                  <div className="w-full flex justify-between">
-                    <span className="h-4 w-4 border-t-2 border-l-2 border-sky-400" />
-                    <span className="h-4 w-4 border-t-2 border-r-2 border-sky-400" />
+      <AnimatePresence>
+        {showCameraModal && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="relative w-full max-w-lg my-auto rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#111827] space-y-4 border border-slate-200 dark:border-slate-800"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                    <Camera className="h-4 w-4" />
                   </div>
-                  <p className="text-[10px] font-bold text-white bg-black/60 px-2 py-0.5 rounded-full">
-                    Arahkan QR Code Di Sini
-                  </p>
-                  <div className="w-full flex justify-between">
-                    <span className="h-4 w-4 border-b-2 border-l-2 border-sky-400" />
-                    <span className="h-4 w-4 border-b-2 border-r-2 border-sky-400" />
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      Scanner QR Code Kartu Siswa
+                    </h3>
+                    <p className="text-[11px] text-slate-400">Arahkan QR Code pada kartu siswa ke area pemindai</p>
                   </div>
                 </div>
-              </div>
-
-              {cameraLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 text-white gap-2">
-                  <RefreshCw className="h-8 w-8 animate-spin text-sky-400" />
-                  <p className="text-xs font-semibold">Mengaktifkan Kamera Pemindai...</p>
-                </div>
-              )}
-
-              {cameraError && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/95 text-white p-4 text-center gap-2">
-                  <AlertCircle className="h-8 w-8 text-rose-500" />
-                  <p className="text-xs font-semibold text-rose-300">{cameraError}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Manual QR NISN Input */}
-            <div className="space-y-2 pt-2">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={scanInput}
-                  onChange={(e) => setScanInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleProcessScan(scanInput)}
-                  placeholder="Atau masukkan NISN hasil scan..."
-                  className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                />
                 <button
-                  onClick={() => handleProcessScan(scanInput)}
-                  disabled={processingScan}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  Proses QR
-                </button>
-              </div>
-
-              <div className="flex justify-between items-center pt-2 text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={cameraActive ? stopCamera : startCamera}
-                  className="flex items-center gap-1.5 font-bold text-slate-600 hover:text-slate-800 dark:text-slate-300"
-                >
-                  {cameraActive ? <><CameraOff className="h-3.5 w-3.5 text-rose-500" /> Matikan Kamera</> : <><Camera className="h-3.5 w-3.5 text-emerald-500" /> Nyalakan Kamera</>}
-                </button>
-                <button
-                  type="button"
                   onClick={() => {
                     setShowCameraModal(false)
                     stopCamera()
                   }}
-                  className="text-slate-500 hover:text-slate-700 font-semibold"
+                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
                 >
-                  Tutup Kamera
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-            </div>
+
+              {/* Video Camera Viewfinder Screen */}
+              <div className="relative overflow-hidden rounded-2xl bg-black aspect-video flex items-center justify-center border-2 border-indigo-500/50 shadow-inner">
+                <video
+                  ref={videoRef}
+                  playsInline
+                  muted
+                  className="h-full w-full object-cover"
+                />
+
+                {/* Viewfinder Target Box Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="h-48 w-48 rounded-2xl border-2 border-dashed border-sky-400 bg-sky-500/10 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] flex flex-col items-center justify-between p-3">
+                    <div className="w-full flex justify-between">
+                      <span className="h-4 w-4 border-t-2 border-l-2 border-sky-400" />
+                      <span className="h-4 w-4 border-t-2 border-r-2 border-sky-400" />
+                    </div>
+                    <p className="text-[10px] font-bold text-white bg-black/60 px-2 py-0.5 rounded-full">
+                      Arahkan QR Code Di Sini
+                    </p>
+                    <div className="w-full flex justify-between">
+                      <span className="h-4 w-4 border-b-2 border-l-2 border-sky-400" />
+                      <span className="h-4 w-4 border-b-2 border-r-2 border-sky-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {cameraLoading && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 text-white gap-2">
+                    <RefreshCw className="h-8 w-8 animate-spin text-sky-400" />
+                    <p className="text-xs font-semibold">Mengaktifkan Kamera Pemindai...</p>
+                  </div>
+                )}
+
+                {cameraError && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/95 text-white p-4 text-center gap-2">
+                    <AlertCircle className="h-8 w-8 text-rose-500" />
+                    <p className="text-xs font-semibold text-rose-300">{cameraError}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Manual QR NISN Input */}
+              <div className="space-y-2 pt-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={scanInput}
+                    onChange={(e) => setScanInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleProcessScan(scanInput)}
+                    placeholder="Atau masukkan NISN hasil scan..."
+                    className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                  />
+                  <button
+                    onClick={() => handleProcessScan(scanInput)}
+                    disabled={processingScan}
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
+                  >
+                    Proses QR
+                  </button>
+                </div>
+
+                <div className="flex justify-between items-center pt-2 text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={cameraActive ? stopCamera : startCamera}
+                    className="flex items-center gap-1.5 font-bold text-slate-600 hover:text-slate-800 dark:text-slate-300 cursor-pointer"
+                  >
+                    {cameraActive ? <><CameraOff className="h-3.5 w-3.5 text-rose-500" /> Matikan Kamera</> : <><Camera className="h-3.5 w-3.5 text-emerald-500" /> Nyalakan Kamera</>}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCameraModal(false)
+                      stopCamera()
+                    }}
+                    className="text-slate-500 hover:text-slate-700 font-semibold cursor-pointer"
+                  >
+                    Tutup Kamera
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* ── MODAL VERIFIKASI STATUS IBADAH SISWA ──────────────────────────── */}
-      {showVerifyModal && selectedStudentForVerify && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4 animate-fadeIn">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.94 }}
-            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
-          >
-            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/30">
-                    <UserCheck className="size-5 text-white" />
+      <AnimatePresence>
+        {showVerifyModal && selectedStudentForVerify && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="relative w-full max-w-md my-auto overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+            >
+              <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/30">
+                      <UserCheck className="size-5 text-white" />
+                    </div>
+                    <div>
+                      <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                        Verifikasi
+                      </span>
+                      <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                        Verifikasi Ibadah Siswa
+                      </h3>
+                    </div>
                   </div>
-                  <div>
-                    <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                      Verifikasi
-                    </span>
-                    <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
-                      Verifikasi Ibadah Siswa
-                    </h3>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowVerifyModal(false)}
-                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
-                >
-                  <X className="size-5" />
-                </button>
-              </div>
-
-              <div className="space-y-3.5 text-xs">
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-                  <p className="font-bold text-slate-900 dark:text-white">{selectedStudentForVerify.name}</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    NISN: {selectedStudentForVerify.nisn} • Kelas: {selectedStudentForVerify.class_name}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Status Presensi Ibadah</label>
-                  <select
-                    value={verifyStatus}
-                    onChange={(e) => setVerifyStatus(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-semibold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                  <button
+                    type="button"
+                    onClick={() => setShowVerifyModal(false)}
+                    className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
                   >
-                    <option value="hadir_berjamaah">Hadir Berjamaah</option>
-                    <option value="masbuk">Masbuk / Terlambat</option>
-                    <option value="uzur_sakit">Uzur / Sakit (Halangan Syar'i)</option>
-                    <option value="izin">Izin UKS / Izin Khusus</option>
-                    <option value="alpa">Alpa / Tanpa Keterangan</option>
-                  </select>
+                    <X className="size-5" />
+                  </button>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Catatan Verifikator</label>
-                  <textarea
-                    rows={3}
-                    value={verifyNotes}
-                    onChange={(e) => setVerifyNotes(e.target.value)}
-                    placeholder="Catatan tambahan (misal: Masbuk 1 rakaat, izin UKS...)"
-                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                  />
+                <div className="space-y-3.5 text-xs">
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                    <p className="font-bold text-slate-900 dark:text-white">{selectedStudentForVerify.name}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      NISN: {selectedStudentForVerify.nisn} • Kelas: {selectedStudentForVerify.class_name}
+                    </p>
+                  </div>
+
+                  <div>
+                    <HeroUiModalSelect
+                      label="Status Presensi Ibadah"
+                      value={verifyStatus}
+                      onChange={(val) => setVerifyStatus(val)}
+                      options={verifyStatusOptions}
+                      placeholder="Pilih Status Presensi"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Catatan Verifikator</label>
+                    <textarea
+                      rows={3}
+                      value={verifyNotes}
+                      onChange={(e) => setVerifyNotes(e.target.value)}
+                      placeholder="Catatan tambahan (misal: Masbuk 1 rakaat, izin UKS...)"
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowVerifyModal(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveVerify}
+                    className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/25 hover:brightness-105 transition-all cursor-pointer"
+                  >
+                    Simpan Verifikasi
+                  </button>
                 </div>
               </div>
-
-              <div className="flex justify-end gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowVerifyModal(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveVerify}
-                  className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/25 hover:brightness-105 transition-all cursor-pointer"
-                >
-                  Simpan Verifikasi
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── MODAL TAMBAH TEMPLATE IBADAH SEKOLAH ─────────────────────────── */}
-      {showTemplateModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4 animate-fadeIn">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.94 }}
-            className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
-          >
-            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
-            <form onSubmit={handleCreateTemplate} className="p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/30">
-                    <Plus className="size-5 text-white" />
+      <AnimatePresence>
+        {showTemplateModal && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="relative w-full max-w-lg my-auto overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+            >
+              <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+              <form onSubmit={handleCreateTemplate} className="p-6 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/30">
+                      <Plus className="size-5 text-white" />
+                    </div>
+                    <div>
+                      <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                        Jadwal Baru
+                      </span>
+                      <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                        Tambah Jadwal Ibadah Sekolah
+                      </h3>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplateModal(false)}
+                    className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="col-span-2">
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Kegiatan Ibadah</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Misal: Shalat Zhuhur Berjamaah Siswa"
+                      value={templateForm.nama}
+                      onChange={(e) => setTemplateForm({ ...templateForm, nama: e.target.value })}
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                    />
+                  </div>
+
                   <div>
-                    <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                      Jadwal Baru
-                    </span>
-                    <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
-                      Tambah Jadwal Ibadah Sekolah
-                    </h3>
+                    <HeroUiModalSelect
+                      label="Kategori Ibadah"
+                      value={templateForm.category}
+                      onChange={(val) => setTemplateForm({ ...templateForm, category: val })}
+                      options={templateCategoryOptions}
+                      placeholder="Pilih Kategori"
+                    />
+                  </div>
+
+                  <div>
+                    <HeroUiModalSelect
+                      label="Tipe Kewajiban"
+                      value={templateForm.obligation_type}
+                      onChange={(val) => setTemplateForm({ ...templateForm, obligation_type: val })}
+                      options={templateObligationOptions}
+                      placeholder="Pilih Kewajiban"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Mulai</label>
+                    <input
+                      type="time"
+                      value={templateForm.start_time}
+                      onChange={(e) => setTemplateForm({ ...templateForm, start_time: e.target.value })}
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Selesai</label>
+                    <input
+                      type="time"
+                      value={templateForm.end_time}
+                      onChange={(e) => setTemplateForm({ ...templateForm, end_time: e.target.value })}
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Lokasi Pelaksanaan</label>
+                    <input
+                      type="text"
+                      placeholder="Misal: Musholla Utama Sekolah / Hall Serbaguna"
+                      value={templateForm.location_name}
+                      onChange={(e) => setTemplateForm({ ...templateForm, location_name: e.target.value })}
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                    />
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowTemplateModal(false)}
-                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
-                >
-                  <X className="size-5" />
-                </button>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="col-span-2">
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Kegiatan Ibadah</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Misal: Shalat Zhuhur Berjamaah Siswa"
-                    value={templateForm.nama}
-                    onChange={(e) => setTemplateForm({ ...templateForm, nama: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Kategori Ibadah</label>
-                  <select
-                    value={templateForm.category}
-                    onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-semibold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                <div className="flex justify-end gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplateModal(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
                   >
-                    <option value="shalat_wajib">Shalat Wajib</option>
-                    <option value="shalat_sunnah">Shalat Sunnah (Dhuha)</option>
-                    <option value="ibadah_lain">Pembiasaan Doa & Dzikir</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Tipe Kewajiban</label>
-                  <select
-                    value={templateForm.obligation_type}
-                    onChange={(e) => setTemplateForm({ ...templateForm, obligation_type: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-semibold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/25 hover:brightness-105 transition-all cursor-pointer"
                   >
-                    <option value="wajib">Wajib Sekolah</option>
-                    <option value="sunnah_muakkad">Sunnah Muakkad</option>
-                    <option value="pembiasaan">Pembiasaan Harian</option>
-                  </select>
+                    Simpan Jadwal
+                  </button>
                 </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Mulai</label>
-                  <input
-                    type="time"
-                    value={templateForm.start_time}
-                    onChange={(e) => setTemplateForm({ ...templateForm, start_time: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Selesai</label>
-                  <input
-                    type="time"
-                    value={templateForm.end_time}
-                    onChange={(e) => setTemplateForm({ ...templateForm, end_time: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Lokasi Pelaksanaan</label>
-                  <input
-                    type="text"
-                    placeholder="Misal: Musholla Utama Sekolah / Hall Serbaguna"
-                    value={templateForm.location_name}
-                    onChange={(e) => setTemplateForm({ ...templateForm, location_name: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowTemplateModal(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/25 hover:brightness-105 transition-all cursor-pointer"
-                >
-                  Simpan Jadwal
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── MODAL DATA SISWA PRESENSI SHOLAT ────────────────────────────── */}
       <Backdrop isOpen={isAttendingModalOpen} onOpenChange={setIsAttendingModalOpen}>
@@ -2053,6 +2414,6 @@ export default function StudentWorshipAttendancePage() {
       />
 
       </motion.div>
-    </div>
+    </PageContainer>
   )
 }

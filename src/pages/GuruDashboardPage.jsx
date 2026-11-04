@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { DatePicker } from '@/components/ui/date-picker'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/app/ToastProvider'
 import {
@@ -37,6 +38,7 @@ import {
   SectionHeader,
   DetailPanel,
   PageContainer,
+  HeroUiHeader,
 } from '../components/app'
 
 import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
@@ -47,7 +49,7 @@ import ModalErrorBoundary from '../components/common/ModalErrorBoundary'
 import api from '../services/api'
 
 // TailGrids Core UI Components
-import { Button } from '@/components/tailgrids/core/button'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogBody,
@@ -56,14 +58,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
-import { Backdrop } from '@/components/tailgrids/core/overlay'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Alert, AlertTitle, AlertDescription } from '@/components/tailgrids/core/alert'
-import { Input } from '@/components/tailgrids/core/input'
-import { TextArea } from '@/components/tailgrids/core/text-area'
-import { Checkbox } from '@/components/tailgrids/core/checkbox'
-import { Label } from '@/components/tailgrids/core/label'
+} from '@/components/ui/dialog'
+import { Backdrop } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { Input } from '@/components/ui/input'
+import { TextArea } from '@/components/ui/text-area'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 
 export default function GuruDashboardPage() {
   const navigate = useNavigate()
@@ -194,7 +196,7 @@ export default function GuruDashboardPage() {
   const handleSaveMateri = (e) => {
     e?.preventDefault()
     if (!materiJudul.trim()) {
-      alert('Silakan isi judul materi terlebih dahulu.')
+      triggerAlert('warning', 'Judul Wajib Diisi', 'Silakan lengkapi judul materi terlebih dahulu.')
       return
     }
     triggerAlert('success', 'Materi Berhasil Ditambahkan', `Materi "${materiJudul}" telah berhasil disimpan dan dipublikasikan ke siswa.`)
@@ -208,7 +210,7 @@ export default function GuruDashboardPage() {
   const handleSaveTugas = (e) => {
     e?.preventDefault()
     if (!tugasJudul.trim()) {
-      alert('Silakan isi judul tugas terlebih dahulu.')
+      triggerAlert('warning', 'Judul Wajib Diisi', 'Silakan lengkapi judul tugas terlebih dahulu.')
       return
     }
     triggerAlert('success', 'Tugas Berhasil Diterbitkan', `Tugas "${tugasJudul}" untuk kelas ${tugasKelasMapel} telah diterbitkan.`)
@@ -394,6 +396,26 @@ export default function GuruDashboardPage() {
 
       {/* Breadcrumb Navigation */}
       <AppBreadcrumb items={[{ label: 'Portal Guru Mata Pelajaran' }]} />
+
+      {/* Modern Vivid Emerald HeroUI Header */}
+      <HeroUiHeader
+        icon={BookOpen}
+        title="Dashboard Guru & Pembelajaran"
+        tag={{ text: 'Portal Guru Mata Pelajaran', icon: Award }}
+        description="Pantau jadwal harian, presensi santri, administrasi mengajar, dan evaluasi tugas terintegrasi."
+        actions={
+          <button
+            type="button"
+            onClick={fetchDashboard}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-200/80 bg-white/80 dark:border-emerald-800/80 dark:bg-slate-900/80 text-emerald-800 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-50 dark:hover:bg-slate-800 transition shadow-sm cursor-pointer"
+          >
+            <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Segarkan</span>
+          </button>
+        }
+      />
+
 
       {/* Filter Bar */}
       <AppFilterBar label="Filter Jadwal & Pembelajaran" onReset={fetchDashboard} />
@@ -707,12 +729,11 @@ export default function GuruDashboardPage() {
                   <label htmlFor="presensi-tanggal" className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
                     Tanggal Pertemuan <span className="text-rose-500">*</span>
                   </label>
-                  <input
+                  <DatePicker
                     id="presensi-tanggal"
-                    type="date"
                     value={presensiTanggal}
                     onChange={(e) => setPresensiTanggal(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300/80 bg-white dark:bg-slate-800/80 dark:border-slate-700 px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium transition-all duration-300 ease-in-out focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/20 dark:focus:border-[#3FBF75] dark:focus:ring-[#3FBF75]/30 focus:outline-none"
+                    placeholder="Pilih tanggal pertemuan..."
                   />
                 </div>
               </div>
@@ -1171,8 +1192,8 @@ export default function GuruDashboardPage() {
               </div>
 
               {/* Student Submissions List Table */}
-              <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                <table className="w-full text-left text-xs">
+              <div className="max-h-72 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <table className="w-full min-w-[500px] text-left text-xs">
                   <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
                     <tr>
                       <th className="px-3 py-2.5">Siswa</th>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Award, CalendarPlus, FileSpreadsheet, GraduationCap, RefreshCcw, ShieldAlert, UserCheck, UserMinus, UserRound, UsersRound } from 'lucide-react'
-import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
+import { ArrowRightLeft as ArrowBothDirectionHorizontal2 } from 'lucide-react'
 import ActionDropdown from '../../components/app/ActionDropdown'
 import api from '../../services/api'
 import useDebounce from '../../hooks/useDebounce'
@@ -22,6 +22,7 @@ import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 import { FoundationExportModal } from '../../components/foundation/FoundationExportModal'
 import { FoundationUnitKpiModal } from '../../components/foundation/FoundationUnitKpiModal'
 import { SquircleActionButton } from '../../components/master-data'
+import { SmartScrollFab } from '../../components/common'
 
 function formatDate(value) {
   if (!value) return '-'
@@ -271,7 +272,7 @@ export function FoundationNewStudentsPage() {
         }
       />
 
-      <MasterDataTable className="foundation-table">
+      <MasterDataTable id="tabel-siswa-baru" className="foundation-table scroll-mt-6">
         <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-700">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Siswa Baru</h2>
@@ -441,6 +442,9 @@ export function FoundationNewStudentsPage() {
         rows={exportRows}
         filename="Siswa_Baru_Yayasan"
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-siswa-baru" downTooltip="Langsung ke Tabel Siswa Baru" />
     </MasterDataPage>
   )
 }

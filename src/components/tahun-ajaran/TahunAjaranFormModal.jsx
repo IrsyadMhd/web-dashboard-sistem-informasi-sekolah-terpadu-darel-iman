@@ -13,6 +13,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { DatePicker } from '@/components/ui/date-picker'
 
 export default function TahunAjaranFormModal({
   isOpen,
@@ -221,25 +222,20 @@ export default function TahunAjaranFormModal({
                       <label className="mb-1.5 block text-xs font-bold text-slate-800 dark:text-slate-100">
                         Tanggal Mulai <span className="text-rose-500">*</span>
                       </label>
-                      <div className="relative">
-                        <Calendar className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400" />
-                        <input
-                          type="date"
-                          required
-                          value={formData.start_date}
-                          onChange={(e) => {
-                            setFormData({ ...formData, start_date: e.target.value })
-                            if (errors.start_date) setErrors({ ...errors, start_date: null })
-                          }}
-                          className={cn(
-                            'h-11 w-full rounded-xl border bg-white pl-10 pr-4 text-xs font-semibold outline-none transition-all',
-                            'focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 dark:bg-[#111827] dark:text-white',
-                            errors.start_date
-                              ? 'border-rose-500 ring-2 ring-rose-500/20'
-                              : 'border-slate-200 dark:border-slate-700'
-                          )}
-                        />
-                      </div>
+                      <DatePicker
+                        required
+                        value={formData.start_date}
+                        onChange={(e) => {
+                          setFormData({ ...formData, start_date: e.target.value })
+                          if (errors.start_date) setErrors({ ...errors, start_date: null })
+                        }}
+                        className="w-full"
+                        inputClassName={cn(
+                          'h-11',
+                          errors.start_date && 'border-rose-500 ring-2 ring-rose-500/20'
+                        )}
+                        placeholder="Pilih tanggal mulai..."
+                      />
                       {errors.start_date && (
                         <p className="mt-1.5 text-[11px] font-medium text-rose-500">{errors.start_date}</p>
                       )}
@@ -249,25 +245,20 @@ export default function TahunAjaranFormModal({
                       <label className="mb-1.5 block text-xs font-bold text-slate-800 dark:text-slate-100">
                         Tanggal Selesai <span className="text-rose-500">*</span>
                       </label>
-                      <div className="relative">
-                        <Calendar className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400" />
-                        <input
-                          type="date"
-                          required
-                          value={formData.end_date}
-                          onChange={(e) => {
-                            setFormData({ ...formData, end_date: e.target.value })
-                            if (errors.end_date) setErrors({ ...errors, end_date: null })
-                          }}
-                          className={cn(
-                            'h-11 w-full rounded-xl border bg-white pl-10 pr-4 text-xs font-semibold outline-none transition-all',
-                            'focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 dark:bg-[#111827] dark:text-white',
-                            errors.end_date
-                              ? 'border-rose-500 ring-2 ring-rose-500/20'
-                              : 'border-slate-200 dark:border-slate-700'
-                          )}
-                        />
-                      </div>
+                      <DatePicker
+                        required
+                        value={formData.end_date}
+                        onChange={(e) => {
+                          setFormData({ ...formData, end_date: e.target.value })
+                          if (errors.end_date) setErrors({ ...errors, end_date: null })
+                        }}
+                        className="w-full"
+                        inputClassName={cn(
+                          'h-11',
+                          errors.end_date && 'border-rose-500 ring-2 ring-rose-500/20'
+                        )}
+                        placeholder="Pilih tanggal selesai..."
+                      />
                       {errors.end_date && (
                         <p className="mt-1.5 text-[11px] font-medium text-rose-500">{errors.end_date}</p>
                       )}

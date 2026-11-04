@@ -20,11 +20,13 @@ import {
   Layers,
   Info,
 } from 'lucide-react'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { studentStatusService } from '../services/studentStatusService'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { useAuthStore } from '../stores/authStore'
-import { hasRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
+import { hasRoleLevel, ROLE_LEVELS, isFoundationUser } from '../auth/portalResolver'
+import { SmartScrollFab } from '../components/common'
 import { useDebounce } from '../hooks/useDebounce'
 import { cn } from '../lib/utils'
 
@@ -72,8 +74,9 @@ export default function MasterStatusSiswaPage() {
   const user = useAuthStore((s) => s.user)
 
   // Validasi role level angka: Level 1 (Super Admin), Level 2 (Admin), Level 3 (Operator)
-  // Menolak bila tingkat privilege > 3
-  const canManage = hasRoleLevel(user, ROLE_LEVELS.OPERATOR) // level <= 3
+  // Menolak bila tingkat privilege > 3 atau pengguna adalah Pengurus Yayasan (read-only/monitoring)
+  const isFoundation = isFoundationUser(user)
+  const canManage = !isFoundation && hasRoleLevel(user, ROLE_LEVELS.OPERATOR) // level <= 3
 
   // Search & Filter
   const [searchInput, setSearchInput] = useState('')
@@ -171,8 +174,13 @@ export default function MasterStatusSiswaPage() {
       setDeleteTarget(null)
     },
     onError: (err) => {
-      const msg = err.response?.data?.message || err.message || 'Gagal menghapus status'
-      alert(msg)
+      const msg = err.response?.data?.message || err.message || 'Gagal menghapus status siswa.'
+      Swal.fire({
+        title: 'Gagal Menghapus Status',
+        text: msg,
+        icon: 'error',
+        confirmButtonColor: '#059669',
+      })
     },
   })
 
@@ -346,7 +354,7 @@ export default function MasterStatusSiswaPage() {
       </div>
 
       {/* Datatable Emerald Container */}
-      <div className="mt-6 relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
+      <div id="tabel-status-siswa" className="mt-6 scroll-mt-6 relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
         {/* Toolbar Header */}
         <div className="border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-5 dark:border-emerald-800/60">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -883,6 +891,9 @@ export default function MasterStatusSiswaPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Smart Floating Scroll Navigator (Opsi A) */}
+      <SmartScrollFab targetId="tabel-status-siswa" downTooltip="Langsung ke Tabel Status" />
     </PageContainer>
   )
 }

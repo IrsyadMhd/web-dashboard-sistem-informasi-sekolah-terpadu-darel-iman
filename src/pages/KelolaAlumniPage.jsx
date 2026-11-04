@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   GraduationCap,
   ArrowRightLeft,
@@ -22,10 +22,12 @@ import {
   Building,
   ShieldCheck,
   Sparkles,
+  Check,
+  ChevronDown,
 } from 'lucide-react'
-import { Upload1, Download1, CheckCircle1 } from '@tailgrids/icons'
+import { Upload as Upload1, Download as Download1, CheckCircle2 as CheckCircle1 } from 'lucide-react'
 import { FaGraduationCap, FaSchool, FaExchangeAlt, FaUserSlash } from 'react-icons/fa'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 import useDebounce from '../hooks/useDebounce'
 import { printCleanTable } from '../utils/printHelper'
 
@@ -45,17 +47,20 @@ import {
 } from '../components/master-data'
 import { exportCsv } from '../components/reports/ReportKit'
 import { businessOptionService } from '../services/businessOptionService'
+import { useAuthStore } from '../stores/authStore'
+import { hasRoleLevel, ROLE_LEVELS, isFoundationUser } from '../auth/portalResolver'
+import { SmartScrollFab } from '../components/common'
 
-import { Button } from '../components/tailgrids/core/button'
-import { Spinner } from '../components/tailgrids/core/spinner'
-import { Pagination } from '../components/tailgrids/core/pagination'
+import { Button } from '../components/ui/button'
+import { Spinner } from '@heroui/react'
+import { Pagination } from '../components/ui/pagination'
 import {
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
   CardContent,
-} from '../components/tailgrids/core/card'
+} from '../components/ui/card'
 import {
   ResponsiveContainer,
   BarChart,
@@ -76,17 +81,18 @@ import {
   DialogBody,
   DialogFooter,
   DialogClose,
-} from '../components/tailgrids/core/dialog'
-import { OverlayWrapper, Backdrop } from '../components/tailgrids/core/overlay'
-import { FieldLabel, FieldDescription } from '../components/tailgrids/core/field'
-import { Input } from '../components/tailgrids/core/input'
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/tailgrids/core/select'
-import { Alert, AlertDescription, AlertTitle } from '../components/tailgrids/core/alert'
+  OverlayWrapper,
+  Backdrop,
+} from '../components/ui/dialog'
+import { FieldLabel, FieldDescription } from '../components/ui/field'
+import { Input } from '../components/ui/input'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select'
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import {
   HoverCard,
   HoverCardTrigger,
   HoverCardContent,
-} from '../components/tailgrids/core/hover-card'
+} from '../components/ui/hover-card'
 
 import alumniService from '../services/alumniService'
 import { studentService } from '../services/studentService'
@@ -225,7 +231,163 @@ function AlumniHoverCard({ row, children }) {
   )
 }
 
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'w-full',
+  searchable = false,
+  ariaLabel = '',
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+      (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  const hasValue = value !== '' && value !== 'semua' && value !== 'all' && value !== undefined && value !== null
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+          isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+            : hasValue
+            ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
+            : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} min-w-[200px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div className="truncate">{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export default function KelolaAlumniPage() {
+  const user = useAuthStore((state) => state.user)
+  const isFoundation = isFoundationUser(user)
+  const canManage = !isFoundation && hasRoleLevel(user, ROLE_LEVELS.OPERATOR)
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [alumniList, setAlumniList] = useState([])
@@ -684,6 +846,24 @@ export default function KelolaAlumniPage() {
     })
     return Array.from(yearSet).sort((a, b) => b.localeCompare(a))
   }, [alumniList, stats?.available_years])
+
+  const unitFilterOptions = useMemo(() => [
+    { value: 'all', label: 'Semua Unit Pendidikan' },
+    ...units.map((u) => ({ value: String(u.id), label: u.name || u.nama })),
+  ], [units])
+
+  const statusLanjutanOptions = useMemo(() => [
+    { value: 'all', label: 'Semua Status Studi / Karir' },
+    { value: 'kuliah', label: 'Kuliah (PTN / PTS / Univ)' },
+    { value: 'bekerja', label: 'Bekerja / Karir' },
+    { value: 'pesantren', label: "Pesantren / Ma'had" },
+    { value: 'sekolah', label: 'Sekolah Lanjutan (SMA/SMK)' },
+  ], [])
+
+  const tahunLulusOptions = useMemo(() => [
+    { value: 'all', label: 'Semua Tahun Lulus' },
+    ...availableYears.map((yr) => ({ value: String(yr), label: String(yr) })),
+  ], [availableYears])
 
   // Scoped Alumni List according to selected unit & graduation year (for 100% synchronized KPI cards, charts, and drill-downs)
   const scopedAlumniList = useMemo(() => {
@@ -1747,47 +1927,73 @@ export default function KelolaAlumniPage() {
         </div>
 
         {/* Analytics Chart Cards Grid (2-Column Grid Layout) */}
+        {/* Analytics Chart Cards Grid (2-Column Grid Layout - Hero UI Specification) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Card 1: Grafik Perbandingan Data Perpindahan Per Tahun */}
-          <Card className="rounded-[18px] border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <ArrowRightLeft className="w-4.5 h-4.5 text-amber-500" />
-                  Perbandingan Perpindahan Siswa Per Tahun
+          {/* Card 1: Grafik Perbandingan Data Perpindahan Per Tahun (Hero UI Style) */}
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-amber-300/90 bg-white shadow-md shadow-amber-500/5 transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/10 dark:border-amber-700/80 dark:bg-[#1B2433] flex flex-col justify-between">
+            {/* Top Accent Gradient Stripe */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600 shrink-0" />
+
+            {/* Ambient Backlight Glow */}
+            <div className="pointer-events-none absolute -top-12 -right-12 h-36 w-36 rounded-full bg-amber-400/20 blur-3xl dark:bg-amber-400/25" />
+
+            {/* Card Header (Hero UI Structured) */}
+            <div className="relative z-10 p-5 sm:p-6 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent border-b border-amber-200/80 dark:border-amber-800/60 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 via-orange-600 to-amber-700 text-white shadow-md shadow-amber-500/25 border border-amber-200/40 mt-0.5">
+                  <ArrowRightLeft className="size-5.5" strokeWidth={2.3} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                      <Sparkles className="size-3" /> ANALISIS MUTASI
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug">
+                    Perbandingan Perpindahan Siswa Per Tahun
+                  </h3>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    Grafik perbandingan mutasi internal unit vs pindah keluar ke sekolah lain per tahun ajaran
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 flex items-center">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-amber-100/90 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800/60 shadow-xs tabular-nums">
+                  <span className={`size-2 rounded-full ${counts.mutasi > 0 ? 'bg-amber-500 animate-pulse' : 'bg-slate-400'}`} />
+                  {loading ? 'Memuat...' : error ? 'Gagal' : `${counts.mutasi} Total Mutasi`}
                 </span>
-                <AppBadge variant={loading ? 'gray' : error ? 'danger' : counts.mutasi > 0 ? 'warning' : 'gray'}>
-                  {loading ? 'Memuat...' : error ? 'Gagal' : `${counts.mutasi} Mutasi`}
-                </AppBadge>
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-                Grafik perbandingan mutasi internal unit vs pindah keluar ke sekolah lain per tahun ajaran
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-4 pb-5">
+              </div>
+            </div>
+
+            {/* Card Content */}
+            <div className="relative z-10 p-5 sm:p-6 flex-1 flex flex-col justify-center">
               {loading ? (
                 <div className="h-64 flex items-center justify-center p-2">
                   <AppSkeleton variant="card" className="h-56 w-full" />
                 </div>
               ) : error ? (
                 <div className="h-64 flex flex-col items-center justify-center text-center p-4">
-                  <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 mb-3 border border-rose-200/60 dark:border-rose-900/40">
-                    <AlertCircle className="size-6" />
+                  <div className="flex size-14 items-center justify-center rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 mb-3 border border-rose-200/60 dark:border-rose-900/40 shadow-xs">
+                    <AlertCircle className="size-7" />
                   </div>
-                  <p className="text-xs font-bold text-rose-700 dark:text-rose-300">Gagal Memuat Data Perpindahan</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[260px]">{error}</p>
+                  <p className="text-sm font-bold text-rose-700 dark:text-rose-300">Gagal Memuat Data Perpindahan</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[280px]">{error}</p>
                 </div>
               ) : perpindahanChartData.length === 0 ? (
-                <div className="h-64 flex flex-col items-center justify-center text-center p-4">
-                  <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 mb-3 border border-amber-200/60 dark:border-amber-900/40">
-                    <ArrowRightLeft className="size-6 opacity-60" />
+                <div className="h-64 flex flex-col items-center justify-center text-center p-6 rounded-2xl border-2 border-dashed border-amber-200/80 dark:border-amber-800/50 bg-amber-50/30 dark:bg-amber-950/20">
+                  <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-950/60 dark:to-orange-950/40 text-amber-600 dark:text-amber-400 mb-3 border border-amber-300/70 dark:border-amber-800/60 shadow-xs">
+                    <ArrowRightLeft className="size-6 stroke-[2.2]" />
                   </div>
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Belum ada data perpindahan siswa
+                  <p className="text-sm font-black text-slate-800 dark:text-slate-100">
+                    Belum Ada Data Perpindahan Siswa
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[260px]">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5 max-w-sm leading-relaxed">
                     Tidak ada rekaman mutasi internal antar unit maupun pindah keluar pada filter ini.
                   </p>
+                  <div className="mt-3.5 inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-slate-800/80 px-3 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 shadow-2xs">
+                    <span className="size-1.5 rounded-full bg-amber-500" />
+                    Siap Merekam Data Mutasi
+                  </div>
                 </div>
               ) : (
                 <div className="h-64 w-full">
@@ -1828,49 +2034,74 @@ export default function KelolaAlumniPage() {
                   </ResponsiveContainer>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          {/* Card 2: Grafik Total Alumni Menurut Tahun */}
-          <Card className="rounded-[18px] border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <GraduationCap className="w-4.5 h-4.5 text-emerald-600" />
-                  Total Alumni Menurut Tahun Kelulusan
+          {/* Card 2: Grafik Total Alumni Menurut Tahun (Hero UI Style) */}
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300/90 dark:border-emerald-700/80 bg-white dark:bg-[#1B2433] shadow-md shadow-emerald-500/5 transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 flex flex-col justify-between">
+            {/* Top Accent Gradient Stripe */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
+            {/* Ambient Backlight Glow */}
+            <div className="pointer-events-none absolute -top-12 -right-12 h-36 w-36 rounded-full bg-emerald-400/20 blur-3xl dark:bg-emerald-400/25" />
+
+            {/* Card Header (Hero UI Structured) */}
+            <div className="relative z-10 p-5 sm:p-6 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/80 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/25 border border-emerald-200/40 mt-0.5">
+                  <GraduationCap className="size-5.5" strokeWidth={2.3} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                      <Sparkles className="size-3" /> ANALISIS KELULUSAN
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug">
+                    Total Alumni Menurut Tahun Kelulusan
+                  </h3>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    Pertumbuhan total alumni yang terdaftar lulus menurut tahun kelulusan
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 flex items-center">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-100/90 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800/60 shadow-xs tabular-nums">
+                  <span className={`size-2 rounded-full ${counts.alumni > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                  {loading ? 'Memuat...' : error ? 'Gagal' : `${counts.alumni} Total Lulus`}
                 </span>
-                <AppBadge variant={loading ? 'gray' : error ? 'danger' : counts.alumni > 0 ? 'success' : 'gray'}>
-                  {loading ? 'Memuat...' : error ? 'Gagal' : `${counts.alumni} Lulus`}
-                </AppBadge>
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-                Pertumbuhan total alumni yang terdaftar lulus menurut tahun kelulusan
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-4 pb-5">
+              </div>
+            </div>
+
+            {/* Card Content */}
+            <div className="relative z-10 p-5 sm:p-6 flex-1 flex flex-col justify-center">
               {loading ? (
                 <div className="h-64 flex items-center justify-center p-2">
                   <AppSkeleton variant="card" className="h-56 w-full" />
                 </div>
               ) : error ? (
                 <div className="h-64 flex flex-col items-center justify-center text-center p-4">
-                  <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 mb-3 border border-rose-200/60 dark:border-rose-900/40">
-                    <AlertCircle className="size-6" />
+                  <div className="flex size-14 items-center justify-center rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 mb-3 border border-rose-200/60 dark:border-rose-900/40 shadow-xs">
+                    <AlertCircle className="size-7" />
                   </div>
-                  <p className="text-xs font-bold text-rose-700 dark:text-rose-300">Gagal Memuat Data Kelulusan</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[260px]">{error}</p>
+                  <p className="text-sm font-bold text-rose-700 dark:text-rose-300">Gagal Memuat Data Kelulusan</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[280px]">{error}</p>
                 </div>
               ) : alumniChartData.length === 0 ? (
-                <div className="h-64 flex flex-col items-center justify-center text-center p-4">
-                  <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 mb-3 border border-emerald-200/60 dark:border-emerald-900/40">
-                    <GraduationCap className="size-6 opacity-60" />
+                <div className="h-64 flex flex-col items-center justify-center text-center p-6 rounded-2xl border-2 border-dashed border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-950/20">
+                  <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-950/60 dark:to-teal-950/40 text-emerald-600 dark:text-emerald-400 mb-3 border border-emerald-300/70 dark:border-emerald-800/60 shadow-xs">
+                    <GraduationCap className="size-6 stroke-[2.2]" />
                   </div>
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Belum ada data kelulusan alumni
+                  <p className="text-sm font-black text-slate-800 dark:text-slate-100">
+                    Belum Ada Data Kelulusan Alumni
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[260px]">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1.5 max-w-sm leading-relaxed">
                     Tidak ada rekaman alumni yang terdaftar lulus pada filter ini.
                   </p>
+                  <div className="mt-3.5 inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-slate-800/80 px-3 py-1 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs">
+                    <span className="size-1.5 rounded-full bg-emerald-500" />
+                    Siap Merekam Data Kelulusan
+                  </div>
                 </div>
               ) : (
                 <div className="h-64 w-full">
@@ -1918,12 +2149,13 @@ export default function KelolaAlumniPage() {
                   </ResponsiveContainer>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* MasterDataSection Identik Halaman StudentsPage */}
         {/* AppDataTable Unified Emerald Container */}
+        <div id="tabel-kelola-alumni" className="scroll-mt-6">
         <AppDataTable
           title="Daftar Pengolahan Alumni & Mutasi"
           actionColumnLabel=""
@@ -1931,39 +2163,43 @@ export default function KelolaAlumniPage() {
           countLabel={`${filteredList.length} alumni`}
           actions={
             <div className="flex items-center gap-2.5 flex-nowrap shrink-0 py-1">
-              {/* Import Data Button */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Import Data (Excel/CSV)"
-                  aria-label="Import Data"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-600 hover:bg-sky-600 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-sky-600/30 cursor-pointer shadow-2xs"
-                  onClick={() => setIsImportModalOpen(true)}
-                >
-                  <Upload1 className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Import Data
-                </div>
-              </div>
+              {canManage && (
+                <>
+                  {/* Import Data Button */}
+                  <div className="group relative inline-flex">
+                    <button
+                      type="button"
+                      title="Import Data (Excel/CSV)"
+                      aria-label="Import Data"
+                      className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-600 hover:bg-sky-600 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-sky-600/30 cursor-pointer shadow-2xs"
+                      onClick={() => setIsImportModalOpen(true)}
+                    >
+                      <Upload1 className="size-5 transition-colors" />
+                    </button>
+                    <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                      <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                      Import Data
+                    </div>
+                  </div>
 
-              {/* Tambah Alumni Button (Soft Emerald -> Solid Emerald Stationary Hover) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Tambah Alumni"
-                  aria-label="Tambah Alumni"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-emerald-600/30 cursor-pointer shadow-2xs"
-                  onClick={handleOpenAdd}
-                >
-                  <Plus className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Tambah Alumni
-                </div>
-              </div>
+                  {/* Tambah Alumni Button (Soft Emerald -> Solid Emerald Stationary Hover) */}
+                  <div className="group relative inline-flex">
+                    <button
+                      type="button"
+                      title="Tambah Alumni"
+                      aria-label="Tambah Alumni"
+                      className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-emerald-600/30 cursor-pointer shadow-2xs"
+                      onClick={handleOpenAdd}
+                    >
+                      <Plus className="size-5 transition-colors" />
+                    </button>
+                    <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                      <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                      Tambah Alumni
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Export CSV Button (Soft Amber -> Solid Amber Stationary Hover) */}
               <div className="group relative inline-flex">
@@ -2022,39 +2258,36 @@ export default function KelolaAlumniPage() {
           searchPlaceholder="Cari NIS, NISN, nama siswa, atau perguruan tinggi..."
           filters={
             <>
-              <MasterFilterSelect
-                aria-label="Filter unit pendidikan"
+              <HeroUiFilterSelect
+                ariaLabel="Filter unit pendidikan"
                 value={selectedUnit}
-                onChange={(e) => { setSelectedUnit(e.target.value); setPage(1) }}
-              >
-                <option value="all">Semua Unit Pendidikan</option>
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name || u.nama}</option>
-                ))}
-              </MasterFilterSelect>
+                onChange={(val) => { setSelectedUnit(val); setPage(1) }}
+                options={unitFilterOptions}
+                placeholder="Pilih Unit"
+                icon={School}
+                searchable={true}
+                className="w-full sm:w-56"
+              />
 
-              <MasterFilterSelect
-                aria-label="Filter status lanjutan"
+              <HeroUiFilterSelect
+                ariaLabel="Filter status lanjutan"
                 value={statusLanjutanFilter}
-                onChange={(e) => { setStatusLanjutanFilter(e.target.value); setPage(1) }}
-              >
-                <option value="all">Semua Status Studi / Karir</option>
-                <option value="kuliah">Kuliah (PTN / PTS / Univ)</option>
-                <option value="bekerja">Bekerja / Karir</option>
-                <option value="pesantren">Pesantren / Ma'had</option>
-                <option value="sekolah">Sekolah Lanjutan (SMA/SMK)</option>
-              </MasterFilterSelect>
+                onChange={(val) => { setStatusLanjutanFilter(val); setPage(1) }}
+                options={statusLanjutanOptions}
+                placeholder="Pilih Status Studi / Karir"
+                icon={GraduationCap}
+                className="w-full sm:w-56"
+              />
 
-              <MasterFilterSelect
-                aria-label="Filter tahun lulus"
+              <HeroUiFilterSelect
+                ariaLabel="Filter tahun lulus"
                 value={tahunLulusFilter}
-                onChange={(e) => { setTahunLulusFilter(e.target.value); setPage(1) }}
-              >
-                <option value="all">Semua Tahun Lulus</option>
-                {availableYears.map((yr) => (
-                  <option key={yr} value={yr}>{yr}</option>
-                ))}
-              </MasterFilterSelect>
+                onChange={(val) => { setTahunLulusFilter(val); setPage(1) }}
+                options={tahunLulusOptions}
+                placeholder="Pilih Tahun Lulus"
+                icon={Calendar}
+                className="w-full sm:w-48"
+              />
             </>
           }
           onResetFilters={handleResetFilter}
@@ -2147,33 +2380,37 @@ export default function KelolaAlumniPage() {
                               icon: Eye,
                               onClick: () => handleOpenDetail(row),
                             },
-                            {
-                              label: 'Ubah Tujuan Lanjut Sekolah / PTN',
-                              icon: School,
-                              onClick: () => handleOpenUbahTujuan(row),
-                            },
-                            {
-                              label: 'Edit Data Alumni',
-                              icon: Edit3,
-                              onClick: () => handleOpenEdit(row),
-                            },
-                            {
-                              label: 'Pindah Unit (Internal)',
-                              icon: ArrowRightLeft,
-                              onClick: () => handleOpenPindahUnit(row),
-                            },
-                            {
-                              label: 'Pindah Keluar (Lain Sekolah)',
-                              icon: UserX,
-                              isDanger: true,
-                              onClick: () => handleOpenPindahKeluar(row),
-                            },
-                            {
-                              label: 'Hapus Data Alumni',
-                              icon: Trash2,
-                              isDanger: true,
-                              onClick: () => handleOpenDelete(row),
-                            },
+                            ...(canManage
+                              ? [
+                                  {
+                                    label: 'Ubah Tujuan Lanjut Sekolah / PTN',
+                                    icon: School,
+                                    onClick: () => handleOpenUbahTujuan(row),
+                                  },
+                                  {
+                                    label: 'Edit Data Alumni',
+                                    icon: Edit3,
+                                    onClick: () => handleOpenEdit(row),
+                                  },
+                                  {
+                                    label: 'Pindah Unit (Internal)',
+                                    icon: ArrowRightLeft,
+                                    onClick: () => handleOpenPindahUnit(row),
+                                  },
+                                  {
+                                    label: 'Pindah Keluar (Lain Sekolah)',
+                                    icon: UserX,
+                                    isDanger: true,
+                                    onClick: () => handleOpenPindahKeluar(row),
+                                  },
+                                  {
+                                    label: 'Hapus Data Alumni',
+                                    icon: Trash2,
+                                    isDanger: true,
+                                    onClick: () => handleOpenDelete(row),
+                                  },
+                                ]
+                              : []),
                           ]}
                         />
                       </td>
@@ -2184,6 +2421,7 @@ export default function KelolaAlumniPage() {
             </table>
           )}
         />
+        </div>
       </MasterDataPage>
 
       {/* ── 1. MODAL TAMBAH DATA ALUMNI BARU (TailGrids Dialog) ───────────────────── */}
@@ -2591,16 +2829,17 @@ export default function KelolaAlumniPage() {
                 </div>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <MasterFilterSelect
+                  <HeroUiFilterSelect
                     value={studentTableUnitFilter}
-                    onChange={(e) => { setStudentTableUnitFilter(e.target.value); setStudentTablePage(1); }}
-                    className="h-9 text-xs rounded-lg min-w-[160px]"
-                  >
-                    <option value="all">-- Semua Unit Sekolah --</option>
-                    {units.map((u) => (
-                      <option key={u.id} value={u.id}>{u.name || u.nama}</option>
-                    ))}
-                  </MasterFilterSelect>
+                    onChange={(val) => { setStudentTableUnitFilter(val); setStudentTablePage(1); }}
+                    options={unitFilterOptions}
+                    placeholder="Semua Unit Sekolah"
+                    icon={School}
+                    searchable={true}
+                    className="w-48 text-xs"
+                    popoverWidth="w-56"
+                    ariaLabel="Pilih Unit Sekolah"
+                  />
 
                   <AppBadge color="emerald" size="sm" className="whitespace-nowrap font-bold">
                     {studentTableTotalCount} Siswa
@@ -3661,6 +3900,9 @@ export default function KelolaAlumniPage() {
         title="Import Data Alumni"
         onImport={handleImportAlumni}
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-kelola-alumni" downTooltip="Langsung ke Tabel Alumni" />
     </PageContainer>
   )
 }

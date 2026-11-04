@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { FileSpreadsheet, Save, X, Calendar, CheckCircle2, AlertCircle, FileText, Send } from 'lucide-react'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
-import { OverlayWrapper, Backdrop } from '@/components/tailgrids/core/overlay'
+import Swal from '@/components/ui/compat/swal-heroui'
+import { OverlayWrapper, Backdrop } from '@/components/ui/overlay'
 import {
   Dialog,
   DialogHeader,
@@ -9,18 +9,18 @@ import {
   DialogDescription,
   DialogBody,
   DialogFooter,
-} from '@/components/tailgrids/core/dialog'
-import { Button } from '@/components/tailgrids/core/button'
-import { TextField } from '@/components/tailgrids/core/text-field'
-import { FieldLabel, FieldDescription, FieldError } from '@/components/tailgrids/core/field'
-import { Input } from '@/components/tailgrids/core/input'
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { TextField } from '@/components/ui/text-field'
+import { FieldLabel, FieldDescription, FieldError } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from '@/components/tailgrids/core/select'
+} from '@/components/ui/select'
 import { dashboardPemantauanService } from '../../services/dashboardPemantauanService'
 
 const BULAN_LIST = [

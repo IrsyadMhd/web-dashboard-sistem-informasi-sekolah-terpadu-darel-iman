@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
+import { useEffect, useMemo, useState, useRef, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams, useNavigate } from 'react-router-dom'
@@ -34,6 +34,7 @@ const StudentFormModal = lazy(() => import('../components/siswa/StudentFormModal
 import StudentLeaderAnalyticsSection from '../components/siswa/StudentLeaderAnalyticsSection'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { Button } from '../components/ui/button'
+import { TableRoot, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table'
 import { useToast } from '../components/app'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppBadge from '../components/app/AppBadge'
@@ -48,10 +49,12 @@ import { businessOptionService } from '../services/businessOptionService'
 import { studentStatusService } from '../services/studentStatusService'
 import PersonAvatar, { resolveAvatarUrl } from '../components/ui/PersonAvatar'
 import PersonIdentityCell from '../components/ui/PersonIdentityCell'
-import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
+import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS, ROLES, isFoundationUser } from '../auth/portalResolver'
+import { SmartScrollFab } from '../components/common'
 import { useAuthStore } from '../stores/authStore'
 import { usePengaturanStore, useTerminology } from '../stores/pengaturanStore'
 import PageContainer from '../components/app/PageContainer'
+import { HeroUiHeader } from '../components/ui/HeroUiHeader'
 import {
   Printer,
   ShieldCheck,
@@ -76,9 +79,31 @@ import {
   Save,
   ArrowRightLeft,
   CreditCard,
+  Building2,
+  Lock,
+  Clock,
+  FileText,
+  Check,
+  ChevronDown,
+  Search,
 } from 'lucide-react'
-import { OverlayWrapper, Backdrop } from '../components/tailgrids/core/overlay'
-import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/tailgrids/core/dialog'
+import {
+  Select as HeroSelect,
+  SelectTrigger as HeroSelectTrigger,
+  SelectValue as HeroSelectValue,
+  SelectContent as HeroSelectContent,
+  SelectItem as HeroSelectItem,
+} from '../components/ui/select'
+import {
+  OverlayWrapper,
+  Backdrop,
+  Dialog,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog'
 import { handleApiExport, downloadFileFromApi } from '../utils/exportUtils'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import {
@@ -129,85 +154,278 @@ const initialForm = () => ({
   catatan: '',
 })
 
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'w-full',
+  searchable = false,
+  ariaLabel = '',
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+      (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  const hasValue = value !== '' && value !== 'semua' && value !== 'all' && value !== undefined && value !== null
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+          isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+            : hasValue
+            ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
+            : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} min-w-[200px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div className="truncate">{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                            {opt.subtext}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 const MODERN_CARD_TONES = {
   emerald: {
-    container: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    container: 'border-2 border-emerald-300/90 bg-gradient-to-br from-emerald-100/80 via-teal-50/50 to-white hover:border-emerald-400 hover:shadow-emerald-500/20 dark:border-emerald-600/70 dark:from-emerald-950/60 dark:via-teal-950/40 dark:to-slate-900',
+    topBar: 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600',
     activeCard: 'ring-2 ring-emerald-500 shadow-md shadow-emerald-500/20',
-    glow: 'bg-emerald-400/20',
-    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30 border-emerald-300/30',
-    title: 'text-slate-600 dark:text-slate-300',
-    val: 'text-emerald-700 dark:text-emerald-300',
-    sub: 'text-emerald-700/80 dark:text-emerald-400/80',
+    badgeBg: 'bg-emerald-100/90 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300/70 dark:border-emerald-700',
+    glow: 'bg-emerald-400/25 group-hover:bg-emerald-400/40',
+    iconBox: 'from-emerald-500 via-emerald-600 to-teal-700 shadow-md shadow-emerald-500/30',
+    title: 'text-emerald-800 dark:text-emerald-300',
+    val: 'text-emerald-600 dark:text-emerald-400',
+    sub: 'text-emerald-700/90 dark:text-emerald-300/80',
+    cta: 'text-emerald-600 dark:text-emerald-400',
+    footerBorder: 'border-emerald-200/80 dark:border-emerald-800/60',
   },
   blue: {
-    container: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    container: 'border-2 border-blue-300/90 bg-gradient-to-br from-blue-100/80 via-sky-50/50 to-white hover:border-blue-400 hover:shadow-blue-500/20 dark:border-blue-600/70 dark:from-blue-950/60 dark:via-sky-950/40 dark:to-slate-900',
+    topBar: 'bg-gradient-to-r from-blue-500 via-sky-400 to-indigo-600',
     activeCard: 'ring-2 ring-blue-500 shadow-md shadow-blue-500/20',
-    glow: 'bg-blue-400/20',
-    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30 border-blue-300/30',
-    title: 'text-slate-600 dark:text-slate-300',
-    val: 'text-blue-700 dark:text-blue-300',
-    sub: 'text-blue-700/80 dark:text-blue-400/80',
+    badgeBg: 'bg-blue-100/90 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-300/70 dark:border-blue-700',
+    glow: 'bg-blue-400/25 group-hover:bg-blue-400/40',
+    iconBox: 'from-blue-500 via-blue-600 to-indigo-700 shadow-md shadow-blue-500/30',
+    title: 'text-blue-800 dark:text-blue-300',
+    val: 'text-blue-600 dark:text-blue-400',
+    sub: 'text-blue-700/90 dark:text-blue-300/80',
+    cta: 'text-blue-600 dark:text-blue-400',
+    footerBorder: 'border-blue-200/80 dark:border-blue-800/60',
   },
   rose: {
-    container: 'border-rose-300/70 bg-gradient-to-br from-rose-50 via-pink-50/60 to-white hover:border-rose-400 dark:border-rose-700/50 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-slate-900',
+    container: 'border-2 border-rose-300/90 bg-gradient-to-br from-rose-100/80 via-pink-50/50 to-white hover:border-rose-400 hover:shadow-rose-500/20 dark:border-rose-600/70 dark:from-rose-950/60 dark:via-pink-950/40 dark:to-slate-900',
+    topBar: 'bg-gradient-to-r from-rose-500 via-pink-400 to-red-600',
     activeCard: 'ring-2 ring-rose-500 shadow-md shadow-rose-500/20',
-    glow: 'bg-rose-400/20',
-    iconBox: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-rose-500/30 border-rose-300/30',
-    title: 'text-slate-600 dark:text-slate-300',
-    val: 'text-rose-700 dark:text-rose-300',
-    sub: 'text-rose-700/80 dark:text-rose-400/80',
+    badgeBg: 'bg-rose-100/90 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300 border border-rose-300/70 dark:border-rose-700',
+    glow: 'bg-rose-400/25 group-hover:bg-rose-400/40',
+    iconBox: 'from-rose-500 via-rose-600 to-red-700 shadow-md shadow-rose-500/30',
+    title: 'text-rose-800 dark:text-rose-300',
+    val: 'text-rose-600 dark:text-rose-400',
+    sub: 'text-rose-700/90 dark:text-rose-300/80',
+    cta: 'text-rose-600 dark:text-rose-400',
+    footerBorder: 'border-rose-200/80 dark:border-rose-800/60',
   },
   amber: {
-    container: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    container: 'border-2 border-amber-300/90 bg-gradient-to-br from-amber-100/80 via-orange-50/50 to-white hover:border-amber-400 hover:shadow-amber-500/20 dark:border-amber-600/70 dark:from-amber-950/60 dark:via-orange-950/40 dark:to-slate-900',
+    topBar: 'bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600',
     activeCard: 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20',
-    glow: 'bg-amber-400/20',
-    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30 border-amber-300/30',
-    title: 'text-slate-600 dark:text-slate-300',
-    val: 'text-amber-700 dark:text-amber-300',
-    sub: 'text-amber-700/80 dark:text-amber-400/80',
+    badgeBg: 'bg-amber-100/90 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300/70 dark:border-amber-700',
+    glow: 'bg-amber-400/25 group-hover:bg-amber-400/40',
+    iconBox: 'from-amber-500 via-orange-600 to-amber-700 shadow-md shadow-amber-500/30',
+    title: 'text-amber-800 dark:text-amber-300',
+    val: 'text-amber-600 dark:text-amber-400',
+    sub: 'text-amber-700/90 dark:text-amber-300/80',
+    cta: 'text-amber-600 dark:text-amber-400',
+    footerBorder: 'border-amber-200/80 dark:border-amber-800/60',
   },
 }
 
-function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', active, onClick, isLoading = false }) {
+function KpiTintedCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald', active, onClick, isLoading = false }) {
   const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
 
   return (
     <motion.button
       type="button"
-      whileHover={{ scale: 1.025, y: -2 }}
+      whileHover={{ scale: 1.02, y: -4 }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       onClick={onClick}
       className={cn(
-        "group relative overflow-hidden rounded-[22px] border-2 p-5 text-left transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md",
+        "group relative flex flex-col justify-between overflow-hidden rounded-[20px] text-left transition-all duration-300 cursor-pointer shadow-xs hover:shadow-xl",
         t.container,
         active && t.activeCard
       )}
     >
-      {/* Ambient Backlight Glow */}
-      <div className={cn("pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full blur-2xl transition-opacity duration-300 opacity-40 group-hover:opacity-80", t.glow)} />
+      {/* Top Accent Gradient Line */}
+      <div className={cn("h-1.5 w-full shrink-0", t.topBar)} />
 
-      <div className="relative z-10 flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className={cn("text-xs font-black uppercase tracking-wider", t.title)}>{label}</p>
-          {isLoading ? (
-            <div className="mt-2 h-9 w-24 animate-pulse rounded-lg bg-slate-200/80 dark:bg-slate-700/80" />
-          ) : (
-            <p className={cn("mt-1.5 text-3xl font-black tabular-nums tracking-tight", t.val)}>
-              {Number(value ?? 0).toLocaleString('id-ID')}
-            </p>
-          )}
-          {subtext && (
-            <p className={cn("mt-1 text-[11px] font-semibold flex items-center gap-1", t.sub)}>
-              {subtext}
-            </p>
-          )}
+      <div className="p-4.5 sm:p-5 flex flex-col justify-between flex-1 relative w-full">
+        {/* Ambient Backlight Glow */}
+        <div className={cn("pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all duration-500 opacity-60 group-hover:opacity-100", t.glow)} />
+
+        <div>
+          {/* Header with Tag & 3D Gradient Squircle Icon */}
+          <div className="relative z-10 flex items-start justify-between gap-2.5 mb-2.5">
+            <div className="min-w-0 flex-1 space-y-1">
+              <span className={cn("inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider", t.badgeBg)}>
+                {tag || label}
+              </span>
+              <p className={cn("text-xs font-bold pt-0.5 truncate uppercase tracking-wider", t.title)}>{label}</p>
+            </div>
+
+            {/* 3D Squircle Icon Badge */}
+            <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-md transition-transform duration-300 group-hover:scale-105", t.iconBox)}>
+              <Icon className="size-5 text-white" strokeWidth={2.2} />
+            </div>
+          </div>
+
+          {/* Metric Value & Subtitle */}
+          <div className="relative z-10 mt-1">
+            {isLoading ? (
+              <div className="mt-2 h-9 w-24 animate-pulse rounded-lg bg-slate-200/80 dark:bg-slate-700/80" />
+            ) : (
+              <p className={cn("text-3xl sm:text-4xl font-black tabular-nums tracking-tight", t.val)}>
+                {Number(value ?? 0).toLocaleString('id-ID')}
+              </p>
+            )}
+            {subtext && (
+              <p className={cn("mt-1 text-xs font-semibold line-clamp-1", t.sub)}>
+                {subtext}
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* 3D Squircle Icon Badge */}
-        <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-2xl border shadow-md transition-transform duration-300 group-hover:scale-110", t.iconBox)}>
-          <Icon className="size-5" />
-        </div>
+        {/* Click Affordance Footer */}
+        {onClick && (
+          <div className={cn("relative z-10 mt-3.5 pt-2.5 border-t flex items-center justify-between text-[11px] font-bold", t.footerBorder)}>
+            <span className="text-slate-400 dark:text-slate-500 font-medium text-[10px]">Klik untuk detail</span>
+            <span className={cn("inline-flex items-center gap-1 transition-transform group-hover:translate-x-0.5", t.cta)}>
+              Lihat Data &rarr;
+            </span>
+          </div>
+        )}
       </div>
     </motion.button>
   )
@@ -219,17 +437,38 @@ export default function StudentsPage() {
   const sitePengaturan = usePengaturanStore((state) => state.pengaturan)
   const terms = useTerminology()
   const permissions = user?.permissions || []
-  const userRoles = useMemo(() => user?.roles || [], [user])
+  const userRoles = useMemo(() => {
+    if (!user) return []
+    if (Array.isArray(user.roles)) return user.roles.map((r) => (typeof r === 'string' ? r : r.name || ''))
+    if (user.role) return [typeof user.role === 'string' ? user.role : user.role.name || '']
+    return []
+  }, [user])
   const userLevel = useMemo(() => getUserRoleLevel(user), [user])
   const isSuperAdmin = userLevel === ROLE_LEVELS.ADMIN_SISTEM // Level 1
+  const isYayasan = userLevel === ROLE_LEVELS.YAYASAN // Level 2
+  const isSuperAdminOrYayasan = userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin & Yayasan
   const isKepalaSekolah = useMemo(() => userLevel === ROLE_LEVELS.KEPALA_SEKOLAH, [userLevel]) // Level 4
-  const isDivisiPendidikan = useMemo(() => userLevel === ROLE_LEVELS.DIVISI_PENDIDIKAN, [userLevel]) // Level 4
-  const isLeaderRole = useMemo(() => userLevel <= ROLE_LEVELS.KEPALA_SEKOLAH, [userLevel]) // Level <= 4 (Admin, Yayasan, Operator, Kepsek)
-  const canCreateStudent = isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.create')
-  const canUpdateStudent = isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.update')
-  const canDeleteStudent = isSuperAdmin || isKepalaSekolah || permissions.includes('student.delete')
-  const canExportStudent = isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.export')
-  const canManageVaBsi = isSuperAdmin || isLeaderRole || hasAnyRole(user, ['Super Admin', 'Admin', 'Operator', 'Tata Usaha', 'TU', 'Admin Madrasah', 'Admin Sekolah'])
+
+  // Deteksi role Divisi Pendidikan (akses supervisi lintas unit)
+  const isDivisiPendidikan = useMemo(() => {
+    if (isSuperAdminOrYayasan) return false
+    return (
+      userLevel === ROLE_LEVELS.DIVISI_PENDIDIKAN ||
+      hasAnyRole(userRoles, ROLES.DIVISI) ||
+      userRoles.some((r) => /divisi|bidang[\s_]*pendidikan|pengawasan[\s_]*akademik/i.test(r))
+    )
+  }, [userLevel, userRoles, isSuperAdminOrYayasan])
+
+  // Divisi Pendidikan, Super Admin, Admin, dan Yayasan dapat memilih seluruh unit pendidikan (Semua Unit)
+  const canSelectUnit = isSuperAdminOrYayasan || isDivisiPendidikan
+  const isGlobalUser = canSelectUnit
+  const isFoundationRole = useMemo(() => isFoundationUser(user), [user])
+  const canCreateStudent = !isFoundationRole && (isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.create'))
+  const canUpdateStudent = !isFoundationRole && (isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.update'))
+  const canDeleteStudent = !isFoundationRole && (isSuperAdmin || isKepalaSekolah || permissions.includes('student.delete'))
+  const canExportStudent = isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.export') || isFoundationRole
+  const canImportStudent = !isFoundationRole && (isSuperAdmin || isKepalaSekolah || permissions.includes('student.import'))
+  const canManageVaBsi = !isFoundationRole && (isSuperAdmin || isLeaderRole || hasAnyRole(user, ['Super Admin', 'Admin', 'Operator', 'Tata Usaha', 'TU', 'Admin Madrasah', 'Admin Sekolah']))
   const [showGenerateVaModal, setShowGenerateVaModal] = useState(false)
   const [isGeneratingVa, setIsGeneratingVa] = useState(false)
   const [forceOverwriteVa, setForceOverwriteVa] = useState(false)
@@ -237,8 +476,8 @@ export default function StudentsPage() {
 
   const userUnitId = user?.unit_id || user?.education_unit_id || user?.employee?.unit_id || user?.metadata?.education_unit_id || user?.metadata?.unit_id || ''
 
-  // Filters
-  const [unitFilter, setUnitFilter] = useState(() => (isKepalaSekolah && userUnitId ? String(userUnitId) : ''))
+  // Filters: jika bukan user yang berhak pilih unit (canSelectUnit) dan memiliki userUnitId, default filter otomatis terkunci ke unit pengguna
+  const [unitFilter, setUnitFilter] = useState(() => (!canSelectUnit && userUnitId ? String(userUnitId) : ''))
   const [kelasFilter, setKelasFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [searchInput, setSearchInput] = useState('')
@@ -512,6 +751,12 @@ export default function StudentsPage() {
     return combined
   }, [rawUnitsFromApi, rawStudents])
 
+  const selectedUnitName = useMemo(() => {
+    if (!unitFilter || unitFilter === 'Semua') return ''
+    const u = rawUnits.find((item) => String(item.id) === String(unitFilter))
+    return u?.name || u?.nama_unit || u?.nama || unitFilter
+  }, [unitFilter, rawUnits])
+
   // ── Dynamic Available Classes per Selected Unit ─────────────────────────
   const availableClasses = useMemo(() => {
     if (!unitFilter) return rawClasses
@@ -574,6 +819,22 @@ export default function StudentsPage() {
 
     return filtered
   }, [rawClasses, rawUnits, unitFilter, daftarSiswaData])
+
+  // Auto-reset filter kelas jika unit pendidikan berganti dan kelas aktif tidak terdapat di unit baru
+  useEffect(() => {
+    if (kelasFilter && kelasFilter !== 'Semua' && availableClasses.length > 0) {
+      const exists = availableClasses.some((c) => {
+        const cId = String(c?.id ?? c?.nama_kelas ?? c?.name ?? c?.nama ?? '').toLowerCase().trim()
+        const cName = String(c?.nama_kelas ?? c?.name ?? c?.nama ?? '').toLowerCase().trim()
+        const target = String(kelasFilter).toLowerCase().trim()
+        return cId === target || cName === target
+      })
+      if (!exists) {
+        setKelasFilter('')
+      }
+    }
+  }, [availableClasses, kelasFilter])
+
   const studentPagination = {
     total: daftarSiswaData?.total || 0,
     from: daftarSiswaData?.from || 0,
@@ -1198,47 +1459,97 @@ export default function StudentsPage() {
           <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: `Buku Induk ${terms.siswa || 'Siswa'}` }]} />
         </div>
 
-        {/* Header Halaman Modern Hero Card */}
-        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden mb-6">
-          {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
-          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
-          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+        {/* Header Halaman Modern Hero Card HeroUI */}
+        <HeroUiHeader
+          variants={itemVariants}
+          icon={FaUserGraduate}
+          title={`Buku Induk ${terms.siswa || 'Siswa'} Terpadu`}
+          tag={{ text: isDivisiPendidikan ? 'Supervisi Divisi Pendidikan' : 'Manajemen Kesiswaan', icon: ShieldCheck }}
+          description={`Pengelolaan resmi buku induk dan direktori peserta didik (TK, SD, SMP, SMA, Ponpes, Ma'had), biodata lengkap orang tua, status mutasi, cetak kartu NISN, dan arsip kesiswaan.`}
+          badge={{ text: `Buku Induk ${terms.siswa || 'Siswa'}`, icon: Sparkles }}
+          className="mb-6"
+        />
 
-          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-4 min-w-0">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
-                <FaUserGraduate className="h-6 w-6" />
+        {/* Unit Performance Scope Bar (Hero UI Component) */}
+        <div className="relative overflow-visible z-20 rounded-[22px] border border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-5 mb-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/20 shrink-0 border border-emerald-300/40">
+                <Building2 className="size-5" />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                    Buku Induk {terms.siswa || 'Siswa'} Terpadu
-                  </h1>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Manajemen Kesiswaan
+              <div>
+                <p className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  Cakupan Data & KPI Unit Pendidikan
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/60">
+                    {isGlobalUser ? (selectedUnitName ? `Unit: ${selectedUnitName}` : 'Semua Unit') : 'Unit Terkunci'}
                   </span>
-                </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
-                  Pengelolaan resmi buku induk dan direktori peserta didik (TK, SD, SMP, SMA, Ponpes, Ma'had), biodata lengkap orang tua, status mutasi, cetak kartu NISN, dan arsip kesiswaan.
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {isGlobalUser
+                    ? `Pilih unit pendidikan untuk melihat total ${terms.siswa || 'siswa'} & KPI unit spesifik, atau pilih "Semua Unit" untuk melihat seluruh data unit${isDivisiPendidikan ? ' (Supervisi Divisi Pendidikan)' : ''}.`
+                    : `Menampilkan total kesiswaan dan KPI khusus untuk unit ${selectedUnitName || user?.unit_name || 'sekolah Anda'}.`}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
-                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Buku Induk {terms.siswa || 'Siswa'}</span>
-              </div>
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              {isGlobalUser ? (
+                <div className="relative min-w-[260px] sm:w-72">
+                  <HeroUiFilterSelect
+                    value={unitFilter || ''}
+                    onChange={(val) => {
+                      setUnitFilter(String(val || ''))
+                      setKelasFilter('')
+                      setCurrentPage(1)
+                    }}
+                    options={[
+                      { value: '', label: 'Semua Unit Pendidikan' },
+                      ...rawUnits.map((u, idx) => {
+                        const val = String(u.id ?? u.unit_id ?? u.code ?? `unit-${idx}`)
+                        const label = u.name ?? u.nama_unit ?? u.nama ?? val
+                        return {
+                          value: val,
+                          label: label,
+                          subtext: u.code || u.kode_unit ? `Kode: ${u.code || u.kode_unit}` : undefined,
+                        }
+                      }),
+                    ]}
+                    placeholder="Semua Unit Pendidikan"
+                    icon={Building2}
+                    searchable={rawUnits.length > 5}
+                    ariaLabel="Filter Unit Scope"
+                  />
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/80 bg-emerald-50/80 px-3.5 py-2 text-xs font-bold text-emerald-900 shadow-2xs dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  <Lock className="size-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>Unit: {selectedUnitName || user?.unit_name || 'Unit Sekolah Anda'}</span>
+                </div>
+              )}
+
+              {isGlobalUser && unitFilter && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUnitFilter('')
+                    setKelasFilter('')
+                    setCurrentPage(1)
+                  }}
+                  className="px-3 py-2 text-xs font-bold text-slate-600 hover:text-emerald-700 hover:bg-emerald-100/50 dark:text-slate-400 dark:hover:text-emerald-300 rounded-xl transition cursor-pointer"
+                >
+                  Reset
+                </button>
+              )}
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Quick Summary Cards (TAILGRIDS_CARD_COMPONENT) */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
           <KpiTintedCard
             icon={FaUserGraduate}
             label="Total Siswa"
+            tag="Semua Siswa"
             value={studentStats.total_siswa ?? 0}
             subtext="Terdaftar di sistem"
             tone="emerald"
@@ -1252,6 +1563,7 @@ export default function StudentsPage() {
           <KpiTintedCard
             icon={FaMale}
             label="Siswa Laki-laki"
+            tag="Laki-Laki"
             value={genderStats.laki_laki ?? 0}
             subtext="Berdasarkan data siswa"
             tone="blue"
@@ -1265,6 +1577,7 @@ export default function StudentsPage() {
           <KpiTintedCard
             icon={FaFemale}
             label="Siswa Perempuan"
+            tag="Perempuan"
             value={genderStats.perempuan ?? 0}
             subtext="Berdasarkan data siswa"
             tone="rose"
@@ -1278,6 +1591,7 @@ export default function StudentsPage() {
           <KpiTintedCard
             icon={FaCheckCircle}
             label="Status Aktif"
+            tag="Aktif KBM"
             value={studentStats.siswa_aktif ?? 0}
             subtext="Berstatus aktif"
             tone="amber"
@@ -1308,9 +1622,9 @@ export default function StudentsPage() {
             isKepalaSekolah={isKepalaSekolah}
             isDivisiPendidikan={isDivisiPendidikan}
             onSelectStudent={handleOpenDetail}
-            onOpenImport={() => setShowImportModal(true)}
+            onOpenImport={canImportStudent ? () => setShowImportModal(true) : undefined}
             onOpenExport={handleOpenExportModal}
-            onOpenAdd={handleOpenTambah}
+            onOpenAdd={canCreateStudent ? handleOpenTambah : undefined}
             canExportStudent={canExportStudent}
             canCreateStudent={canCreateStudent}
           />
@@ -1318,6 +1632,7 @@ export default function StudentsPage() {
 
         {/* Unified Master Data Section */}
         {/* Unified Master Data Container */}
+        <div id="tabel-daftar-siswa" className="scroll-mt-6">
         <AppDataTable
           title={`Daftar ${terms.siswa || 'Siswa'}`}
           icon={GraduationCap}
@@ -1329,15 +1644,17 @@ export default function StudentsPage() {
             <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
               {/* Cetak Datatable Button - Vivid Indigo / Violet Squircle */}
               <div className="group relative inline-flex">
-                <button
+                <Button
                   type="button"
+                  iconOnly
+                  variant="ghost"
                   title="Cetak Data Laporan (Print)"
                   aria-label="Cetak Data Laporan"
                   onClick={handlePrintMainTable}
                   className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                 >
                   <Printer className="size-5 text-white" strokeWidth={2.2} />
-                </button>
+                </Button>
                 <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
                   <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
                   Cetak Data (Print)
@@ -1345,34 +1662,40 @@ export default function StudentsPage() {
               </div>
 
               {/* Import Button (Vivid Sky Blue / Blue Squircle) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Import Data Siswa"
-                  aria-label="Import Data Siswa"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
-                  onClick={() => setShowImportModal(true)}
-                >
-                  <Upload className="size-5 text-white" strokeWidth={2.2} />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Import Data
+              {canImportStudent && (
+                <div className="group relative inline-flex">
+                  <Button
+                    type="button"
+                    iconOnly
+                    variant="ghost"
+                    title="Import Data Siswa"
+                    aria-label="Import Data Siswa"
+                    className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                    onClick={() => setShowImportModal(true)}
+                  >
+                    <Upload className="size-5 text-white" strokeWidth={2.2} />
+                  </Button>
+                  <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                    <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                    Import Data
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Export Button (Vivid Amber / Orange Squircle) */}
               {canExportStudent && (
                 <div className="group relative inline-flex">
-                  <button
+                  <Button
                     type="button"
+                    iconOnly
+                    variant="ghost"
                     title="Export Data Siswa"
                     aria-label="Export Data Siswa"
                     className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                     onClick={handleOpenExportModal}
                   >
                     <Download className="size-5 text-white" strokeWidth={2.2} />
-                  </button>
+                  </Button>
                   <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
                     <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
                     Export Data
@@ -1381,42 +1704,48 @@ export default function StudentsPage() {
               )}
 
               {/* Siswa Pindahan Masuk (Two-Way Handshake TU) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Siswa Pindahan Masuk (Menunggu Verifikasi & Persetujuan TU)"
-                  aria-label="Siswa Pindahan Masuk"
-                  className="relative flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 via-emerald-600 to-teal-800 text-white border border-teal-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
-                  onClick={() => {
-                    fetchIncomingMutations()
-                    setShowIncomingModal(true)
-                  }}
-                >
-                  <ArrowRightLeft className="size-5 text-white" strokeWidth={2.2} />
-                  {incomingMutations.length > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-black text-white ring-2 ring-white animate-pulse">
-                      {incomingMutations.length}
-                    </span>
-                  )}
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Pindahan Masuk ({incomingMutations.length})
+              {!isFoundationRole && (
+                <div className="group relative inline-flex">
+                  <Button
+                    type="button"
+                    iconOnly
+                    variant="ghost"
+                    title="Siswa Pindahan Masuk (Menunggu Verifikasi & Persetujuan TU)"
+                    aria-label="Siswa Pindahan Masuk"
+                    className="relative flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 via-emerald-600 to-teal-800 text-white border border-teal-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                    onClick={() => {
+                      fetchIncomingMutations()
+                      setShowIncomingModal(true)
+                    }}
+                  >
+                    <ArrowRightLeft className="size-5 text-white" strokeWidth={2.2} />
+                    {incomingMutations.length > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-black text-white ring-2 ring-white animate-pulse">
+                        {incomingMutations.length}
+                      </span>
+                    )}
+                  </Button>
+                  <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                    <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                    Pindahan Masuk ({incomingMutations.length})
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Generate VA BSI Siswa Button (Super Admin, Admin, Operator, TU) */}
               {canManageVaBsi && (
                 <div className="group relative inline-flex">
-                  <button
+                  <Button
                     type="button"
+                    iconOnly
+                    variant="ghost"
                     title="Generate Nomor Virtual Account (VA BSI) Siswa"
                     aria-label="Generate Nomor Virtual Account (VA BSI) Siswa"
                     className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-md shadow-indigo-500/20"
                     onClick={() => setShowGenerateVaModal(true)}
                   >
                     <CreditCard className="size-5 text-white" strokeWidth={2.2} />
-                  </button>
+                  </Button>
                   <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
                     <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
                     Generate VA BSI
@@ -1427,15 +1756,17 @@ export default function StudentsPage() {
               {/* Tambah Button (Vivid Emerald / Teal Squircle) */}
               {canCreateStudent && (
                 <div className="group relative inline-flex">
-                  <button
+                  <Button
                     type="button"
+                    iconOnly
+                    variant="ghost"
                     title={`Tambah ${terms.siswa || 'Siswa'} Baru`}
                     aria-label={`Tambah ${terms.siswa || 'Siswa'} Baru`}
                     className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                     onClick={handleOpenTambah}
                   >
                     <Plus className="size-5 text-white" strokeWidth={2.5} />
-                  </button>
+                  </Button>
                   <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
                     <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
                     Tambah {terms.siswa || 'Siswa'}
@@ -1449,77 +1780,102 @@ export default function StudentsPage() {
           searchPlaceholder="Cari NIS, NISN, atau nama siswa..."
           filters={
             <>
-              <MasterFilterSelect
-                aria-label="Filter unit pendidikan"
-                value={unitFilter}
-                onChange={(e) => {
-                  setUnitFilter(e.target.value)
-                  setKelasFilter('')
-                  setCurrentPage(1)
-                }}
-              >
-                <option value="">Semua Unit Pendidikan</option>
-                {rawUnits.map((u, idx) => {
-                  const getStr = (val) => {
-                    if (val === null || val === undefined) return ''
-                    if (typeof val === 'string' || typeof val === 'number') return String(val)
-                    if (typeof val === 'object') return String(val.name || val.nama_unit || val.nama || val.id || '')
-                    return ''
-                  }
-                  const rawVal = u.id ?? u.nama_unit ?? u.name ?? u.nama
-                  const val = getStr(rawVal) || `unit-${idx}`
-                  const rawLabel = u.name ?? u.nama_unit ?? u.nama ?? u.code ?? val
-                  const label = getStr(rawLabel) || val
-                  return (
-                    <option key={`unit-opt-${val}-${idx}`} value={val}>
-                      {label}
-                    </option>
-                  )
-                })}
-              </MasterFilterSelect>
+              <div className="w-full sm:w-60">
+                <HeroUiFilterSelect
+                  ariaLabel="Filter unit pendidikan"
+                  value={unitFilter}
+                  disabled={!isGlobalUser && Boolean(userUnitId)}
+                  onChange={(val) => {
+                    setUnitFilter(val)
+                    setKelasFilter('')
+                    setCurrentPage(1)
+                  }}
+                  options={[
+                    ...(isGlobalUser ? [{ value: '', label: 'Semua Unit Pendidikan' }] : []),
+                    ...rawUnits
+                      .filter((u) => isGlobalUser || String(u.id ?? u.unit_id ?? '') === String(userUnitId))
+                      .map((u, idx) => {
+                        const getStr = (v) => {
+                          if (v === null || v === undefined) return ''
+                          if (typeof v === 'string' || typeof v === 'number') return String(v)
+                          if (typeof v === 'object') return String(v.name || v.nama_unit || v.nama || v.id || '')
+                          return ''
+                        }
+                        const rawVal = u.id ?? u.nama_unit ?? u.name ?? u.nama
+                        const val = getStr(rawVal) || `unit-${idx}`
+                        const rawLabel = u.name ?? u.nama_unit ?? u.nama ?? u.code ?? val
+                        const label = getStr(rawLabel) || val
+                        return {
+                          value: val,
+                          label: label,
+                          subtext: u.code || u.kode_unit ? `Kode: ${u.code || u.kode_unit}` : undefined,
+                        }
+                      }),
+                  ]}
+                  placeholder="Semua Unit Pendidikan"
+                  icon={Building2}
+                  searchable={rawUnits.length > 5}
+                />
+              </div>
 
-              <MasterFilterSelect
-                aria-label="Filter kelas"
-                value={kelasFilter}
-                onChange={(e) => { setKelasFilter(e.target.value); setCurrentPage(1) }}
-              >
-                <option value="">Semua Kelas</option>
-                {availableClasses.map((c, idx) => {
-                  const getStr = (val) => {
-                    if (val === null || val === undefined) return ''
-                    if (typeof val === 'string' || typeof val === 'number') return String(val)
-                    if (typeof val === 'object') return String(val.nama_kelas || val.name || val.nama || val.id || '')
-                    return ''
-                  }
-                  const rawVal = c?.id ?? c?.nama_kelas ?? c?.name ?? c?.nama
-                  const val = getStr(rawVal) || `class-${idx}`
-                  const rawLabel = c?.nama_kelas ?? c?.name ?? c?.nama ?? val
-                  const label = getStr(rawLabel) || val
-                  return (
-                    <option key={`class-opt-${val}-${idx}`} value={val}>
-                      {label}
-                    </option>
-                  )
-                })}
-              </MasterFilterSelect>
+              <div className="w-full sm:w-52">
+                <HeroUiFilterSelect
+                  ariaLabel="Filter kelas"
+                  value={kelasFilter}
+                  onChange={(val) => {
+                    setKelasFilter(val)
+                    setCurrentPage(1)
+                  }}
+                  options={[
+                    { value: '', label: 'Semua Kelas' },
+                    ...availableClasses.map((c, idx) => {
+                      const getStr = (v) => {
+                        if (v === null || v === undefined) return ''
+                        if (typeof v === 'string' || typeof v === 'number') return String(v)
+                        if (typeof v === 'object') return String(v.nama_kelas || v.name || v.nama || v.id || '')
+                        return ''
+                      }
+                      const rawVal = c?.id ?? c?.nama_kelas ?? c?.name ?? c?.nama
+                      const val = getStr(rawVal) || `class-${idx}`
+                      const rawLabel = c?.nama_kelas ?? c?.name ?? c?.nama ?? val
+                      const label = getStr(rawLabel) || val
+                      return {
+                        value: val,
+                        label: label,
+                        subtext: c?.tingkat ? `Tingkat ${c.tingkat}` : undefined,
+                      }
+                    }),
+                  ]}
+                  placeholder="Semua Kelas"
+                  icon={GraduationCap}
+                  searchable={availableClasses.length > 5}
+                />
+              </div>
 
-              <MasterFilterSelect
-                aria-label="Filter status"
-                value={statusFilter}
-                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1) }}
-              >
-                <option value="">Semua Status</option>
-                {studentStatusOptions.map((opt) => (
-                  <option key={`status-opt-${opt.value}`} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </MasterFilterSelect>
+              <div className="w-full sm:w-48">
+                <HeroUiFilterSelect
+                  ariaLabel="Filter status"
+                  value={statusFilter}
+                  onChange={(val) => {
+                    setStatusFilter(val)
+                    setCurrentPage(1)
+                  }}
+                  options={[
+                    { value: '', label: 'Semua Status' },
+                    ...studentStatusOptions.map((opt) => ({
+                      value: String(opt.value),
+                      label: opt.label,
+                    })),
+                  ]}
+                  placeholder="Semua Status"
+                  icon={ShieldCheck}
+                />
+              </div>
             </>
           }
           onResetFilters={() => {
             setSearchInput('')
-            setUnitFilter('')
+            setUnitFilter(!isGlobalUser && userUnitId ? String(userUnitId) : '')
             setKelasFilter('')
             setStatusFilter('')
             setCurrentPage(1)
@@ -1547,29 +1903,29 @@ export default function StudentsPage() {
           }}
           serverControlled
           renderTable={() => (
-            <table className="w-full table-fixed text-left text-sm text-slate-600" aria-label="Daftar siswa">
-              <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-                <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
-                  <th className="w-[6%] bg-transparent px-2 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">No</th>
-                  <th className="w-[34%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">Identitas Siswa</th>
-                  <th className="hidden w-[29%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Orang Tua / Wali</th>
-                  <th className="hidden w-[11%] bg-transparent px-2 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
-                  <th className="w-[20%] bg-transparent px-2 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-200">
+            <TableRoot className="w-full table-fixed text-left text-sm text-slate-600" aria-label="Daftar siswa">
+              <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                <TableRow className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+                  <TableHead className="w-[6%] bg-transparent px-2 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">No</TableHead>
+                  <TableHead className="w-[34%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">Identitas Siswa</TableHead>
+                  <TableHead className="hidden w-[29%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Orang Tua / Wali</TableHead>
+                  <TableHead className="hidden w-[11%] bg-transparent px-2 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</TableHead>
+                  <TableHead className="w-[20%] bg-transparent px-2 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-200">
                 {paginatedStudents.map((item, idx) => (
-                  <tr
+                  <TableRow
                     key={item.id}
                     onClick={() => handleOpenDetail(item)}
                     title="Klik baris untuk melihat detail siswa"
                     className="edu-row align-middle transition-colors hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 cursor-pointer"
                     style={{ animationDelay: `${Math.min(idx, 8) * 35}ms` }}
                   >
-                    <td className="px-2 py-3 text-center text-xs font-bold text-slate-400">
+                    <TableCell className="px-2 py-3 text-center text-xs font-bold text-slate-400">
                       {(studentPagination.from || 1) + idx}
-                    </td>
-                    <td className="px-3 py-3">
+                    </TableCell>
+                    <TableCell className="px-3 py-3">
                       <div className="min-w-0">
                         <PersonIdentityCell src={item.foto} name={item.nama} subtitle={`NIS ${item.nis} · NISN ${item.nisn || '-'}`} />
                         <span className="mt-1 block min-w-0 pl-11">
@@ -1580,8 +1936,8 @@ export default function StudentsPage() {
                           <small className={`mt-0.5 text-[9px] font-bold sm:hidden ${(item.status || '').toLowerCase() === 'aktif' ? 'text-emerald-700' : 'text-amber-600'}`}>• {item.status}</small>
                         </span>
                       </div>
-                    </td>
-                    <td className="hidden px-3 py-3 md:table-cell">
+                    </TableCell>
+                    <TableCell className="hidden px-3 py-3 md:table-cell">
                       <div className="flex min-w-0 items-center gap-2">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-xs font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">{(item.orangTua || 'W').split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</span>
                         <span className="min-w-0">
@@ -1591,9 +1947,9 @@ export default function StudentsPage() {
                           </small>
                         </span>
                       </div>
-                    </td>
-                    <td className="hidden whitespace-nowrap px-3 py-3 text-center sm:table-cell">{renderStatusBadge(item.status)}</td>
-                    <td className="px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    </TableCell>
+                    <TableCell className="hidden whitespace-nowrap px-3 py-3 text-center sm:table-cell">{renderStatusBadge(item.status)}</TableCell>
+                    <TableCell className="px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center">
                         <ActionDropdown
                           onView={() => handleOpenDetail(item)}
@@ -1618,13 +1974,14 @@ export default function StudentsPage() {
                           ]}
                         />
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </TableRoot>
           )}
         />
+        </div>
 
         {/* POP UP MODAL 1: DETAIL SISWA */}
         <AnimatePresence>
@@ -1742,7 +2099,7 @@ export default function StudentsPage() {
                       </div>
 
                       {/* Tab Content */}
-                      <div className="p-4 text-xs space-y-2">
+                      <div className="p-4 text-xs max-h-[48vh] overflow-y-auto space-y-4">
                         {(() => {
                           const rawMeta = selectedStudent.raw?.metadata || {}
                           const parentRel = selectedStudent.raw?.parent || {}
@@ -1756,48 +2113,98 @@ export default function StudentsPage() {
                             hp_ibu: rawMeta.hp_ibu || rawMeta.ibu?.hp || rawMeta.orang_tua?.no_hp,
                             hp_wali: rawMeta.hp_wali || rawMeta.wali?.hp || rawMeta.orang_tua?.no_hp,
                           }
-                          const DRow = ({ label, val }) => (
-                            <p><span className="font-bold text-slate-700">{label}:</span>{' '}
-                              <span className="text-slate-800">{val || '-'}</span>
-                            </p>
-                          )
+
+                          const cleanVal = (val) => {
+                            if (val === null || val === undefined) return '-'
+                            const str = String(val).trim()
+                            if (!str || str === '#N/A' || str === 'N/A' || str === 'null' || str === 'undefined' || str === '-') return '-'
+                            return str
+                          }
+
+                          const DCell = ({ label, val, fullWidth = false }) => {
+                            const displayVal = cleanVal(val)
+                            return (
+                              <div className={cn(
+                                "p-2.5 rounded-xl border border-emerald-100/80 bg-slate-50/70 dark:border-emerald-900/30 dark:bg-slate-900/40 flex flex-col justify-center min-w-0",
+                                fullWidth && "sm:col-span-2"
+                              )}>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">{label}</span>
+                                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 mt-0.5 break-words">{displayVal}</span>
+                              </div>
+                            )
+                          }
+
                           if (activeDetailTab === 'siswa') return (
-                            <div className="space-y-2">
-                              <DRow label="NIS" val={selectedStudent.nis} />
-                              <DRow label="NISN" val={selectedStudent.nisn} />
-                              <DRow label="No Pendaftaran" val={meta.no_pendaftaran} />
-                              <DRow label="NIK" val={meta.nik} />
-                              <DRow label="No KK" val={meta.no_kk} />
-                              <DRow label="No Registrasi Akta Lahir" val={meta.no_registrasi_akta_lahir} />
-                              <DRow label="Kewarganegaraan" val={meta.kewarganegaraan || 'WNI'} />
-                              <DRow label="Email" val={meta.email} />
-                              <DRow label="Anak Ke-" val={meta.anak_ke} />
-                              <DRow label="Jumlah Saudara" val={meta.jumlah_saudara} />
-                              <DRow label="Jumlah Saudara Tiri" val={meta.jumlah_saudara_tiri} />
-                              <DRow label="Berat Badan" val={meta.berat_badan ? `${meta.berat_badan} kg` : null} />
-                              <DRow label="Tinggi Badan" val={meta.tinggi_badan ? `${meta.tinggi_badan} cm` : null} />
-                              <DRow label="Riwayat Penyakit" val={meta.riwayat_penyakit} />
-                              <hr className="border-slate-100 my-2" />
-                              <DRow label="Alamat Lengkap" val={selectedStudent.alamat || meta.alamat_siswa} />
-                              <DRow label="RT/RW" val={meta.rt && meta.rw ? `${meta.rt} / ${meta.rw}` : null} />
-                              <DRow label="Dusun/Jalan" val={meta.dusun} />
-                              <DRow label="Kelurahan" val={meta.kelurahan} />
-                              <DRow label="Kecamatan" val={meta.kecamatan} />
-                              <DRow label="Kota/Kabupaten" val={meta.kota_kabupaten} />
-                              <DRow label="Provinsi" val={meta.provinsi} />
-                              <DRow label="Kode Pos" val={meta.kode_pos} />
-                              <DRow label="Jenis Tempat Tinggal" val={meta.jenis_tempat_tinggal} />
-                              <DRow label="Jarak ke Sekolah" val={meta.jarak_tempuh_ke_sekolah ? `${meta.jarak_tempuh_ke_sekolah} km` : null} />
-                              <DRow label="Moda Transportasi" val={meta.moda_transportasi} />
-                              <hr className="border-slate-100 my-2" />
-                              <DRow label="Hobi" val={meta.hobi} />
-                              <DRow label="Cita-cita" val={meta.cita_cita} />
+                            <div className="space-y-3.5">
+                              {/* Sub-Card 1: Identitas & Kependudukan */}
+                              <div className="rounded-2xl border border-emerald-200/70 bg-white dark:border-emerald-800/40 dark:bg-slate-900/40 p-3.5 space-y-2.5 shadow-2xs">
+                                <p className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-100 dark:border-emerald-800/50 pb-2">
+                                  <ShieldCheck className="size-3.5 text-emerald-600" /> Identitas & Kependudukan Siswa
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <DCell label="NIS (Sekolah)" val={selectedStudent.nis} />
+                                  <DCell label="NISN (Nasional)" val={selectedStudent.nisn} />
+                                  <DCell label="No Pendaftaran" val={meta.no_pendaftaran} />
+                                  <DCell label="NIK Siswa" val={meta.nik} />
+                                  <DCell label="No Kartu Keluarga (KK)" val={meta.no_kk} />
+                                  <DCell label="No Registrasi Akta Lahir" val={meta.no_registrasi_akta_lahir} />
+                                  <DCell label="Kewarganegaraan" val={meta.kewarganegaraan || 'WNI'} />
+                                  <DCell label="Email Siswa" val={meta.email} />
+                                </div>
+                              </div>
+
+                              {/* Sub-Card 2: Keluarga & Kondisi Fisik */}
+                              <div className="rounded-2xl border border-emerald-200/70 bg-white dark:border-emerald-800/40 dark:bg-slate-900/40 p-3.5 space-y-2.5 shadow-2xs">
+                                <p className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-100 dark:border-emerald-800/50 pb-2">
+                                  <Info className="size-3.5 text-emerald-600" /> Data Keluarga & Kondisi Fisik
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                  <DCell label="Anak Ke-" val={meta.anak_ke} />
+                                  <DCell label="Jumlah Saudara" val={meta.jumlah_saudara} />
+                                  <DCell label="Jumlah Saudara Tiri" val={meta.jumlah_saudara_tiri} />
+                                  <DCell label="Berat Badan" val={cleanVal(meta.berat_badan) !== '-' ? `${meta.berat_badan} kg` : null} />
+                                  <DCell label="Tinggi Badan" val={cleanVal(meta.tinggi_badan) !== '-' ? `${meta.tinggi_badan} cm` : null} />
+                                  <DCell label="Riwayat Penyakit" val={meta.riwayat_penyakit} />
+                                </div>
+                              </div>
+
+                              {/* Sub-Card 3: Alamat & Tempat Tinggal */}
+                              <div className="rounded-2xl border border-emerald-200/70 bg-white dark:border-emerald-800/40 dark:bg-slate-900/40 p-3.5 space-y-2.5 shadow-2xs">
+                                <p className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-100 dark:border-emerald-800/50 pb-2">
+                                  <School className="size-3.5 text-emerald-600" /> Alamat Lengkap & Tempat Tinggal
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <DCell label="Alamat Lengkap" val={selectedStudent.alamat || meta.alamat_siswa} fullWidth />
+                                  <DCell label="RT / RW" val={meta.rt && meta.rw && cleanVal(meta.rt) !== '-' ? `${meta.rt} / ${meta.rw}` : null} />
+                                  <DCell label="Dusun / Jalan" val={meta.dusun} />
+                                  <DCell label="Kelurahan" val={meta.kelurahan} />
+                                  <DCell label="Kecamatan" val={meta.kecamatan} />
+                                  <DCell label="Kota / Kabupaten" val={meta.kota_kabupaten} />
+                                  <DCell label="Provinsi" val={meta.provinsi} />
+                                  <DCell label="Kode Pos" val={meta.kode_pos} />
+                                  <DCell label="Jenis Tempat Tinggal" val={meta.jenis_tempat_tinggal} />
+                                </div>
+                              </div>
+
+                              {/* Sub-Card 4: Transportasi & Minat */}
+                              <div className="rounded-2xl border border-emerald-200/70 bg-white dark:border-emerald-800/40 dark:bg-slate-900/40 p-3.5 space-y-2.5 shadow-2xs">
+                                <p className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-100 dark:border-emerald-800/50 pb-2">
+                                  <Sparkles className="size-3.5 text-emerald-600" /> Transportasi, Hobi & Cita-cita
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <DCell label="Jarak ke Sekolah" val={cleanVal(meta.jarak_tempuh_ke_sekolah) !== '-' ? `${meta.jarak_tempuh_ke_sekolah} km` : null} />
+                                  <DCell label="Moda Transportasi" val={meta.moda_transportasi} />
+                                  <DCell label="Hobi" val={meta.hobi} />
+                                  <DCell label="Cita-cita" val={meta.cita_cita} />
+                                </div>
+                              </div>
                             </div>
                           )
+
                           if (activeDetailTab === 'orangTua') return (
-                            <div className="space-y-2">
+                            <div className="space-y-3.5">
                               {/* Quick Contact Banner */}
-                              <div className="flex flex-wrap items-center justify-between gap-2 p-3 mb-3 rounded-xl bg-emerald-50/90 border border-emerald-200/80 dark:bg-emerald-950/40 dark:border-emerald-800/60">
+                              <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-emerald-50/90 border border-emerald-200/80 dark:bg-emerald-950/40 dark:border-emerald-800/60">
                                 <div className="flex items-center gap-2">
                                   <MessageSquare className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
                                   <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
@@ -1824,80 +2231,119 @@ export default function StudentsPage() {
                                 </div>
                               </div>
 
-                              <p className="font-bold text-emerald-800 border-b border-emerald-100 pb-1.5 mb-2">Data Ayah Kandung</p>
-                              <DRow label="NIK Ayah" val={meta.nik_ayah} />
-                              <DRow label="Nama Ayah" val={meta.nama_ayah} />
-                              <DRow label="Tempat, Tgl Lahir Ayah" val={meta.tempat_lahir_ayah && meta.tgl_lahir_ayah ? `${meta.tempat_lahir_ayah}, ${meta.tgl_lahir_ayah}` : (meta.tempat_lahir_ayah || meta.tgl_lahir_ayah)} />
-                              <DRow label="Telfon / HP Ayah" val={meta.telfon_ayah || meta.hp_ayah} />
-                              <DRow label="No WA Ayah" val={meta.nomor_wa_ayah} />
-                              <DRow label="Pendidikan Terakhir Ayah" val={meta.pendidikan_terakhir_ayah} />
-                              <DRow label="Pekerjaan Ayah" val={meta.pekerjaan_ayah} />
-                              <DRow label="Instansi / Jabatan Ayah" val={meta.instansi_pekerjaan_ayah && meta.jabatan_pekerjaan_ayah ? `${meta.instansi_pekerjaan_ayah} — ${meta.jabatan_pekerjaan_ayah}` : (meta.instansi_pekerjaan_ayah || meta.jabatan_pekerjaan_ayah)} />
-                              <DRow label="Penghasilan Ayah" val={meta.penghasilan_ayah ? `Rp ${Number(meta.penghasilan_ayah).toLocaleString('id-ID')}` : null} />
-                              <DRow label="Alamat Rumah Ayah" val={meta.alamat_ayah} />
-                              <hr className="border-slate-100 my-2" />
-                              <p className="font-bold text-blue-800 border-b border-blue-100 pb-1.5 mb-2">Data Ibu Kandung</p>
-                              <DRow label="NIK Ibu" val={meta.nik_ibu} />
-                              <DRow label="Nama Ibu" val={meta.nama_ibu} />
-                              <DRow label="Tempat, Tgl Lahir Ibu" val={meta.tempat_lahir_ibu && meta.tgl_lahir_ibu ? `${meta.tempat_lahir_ibu}, ${meta.tgl_lahir_ibu}` : (meta.tempat_lahir_ibu || meta.tgl_lahir_ibu)} />
-                              <DRow label="Telfon / HP Ibu" val={meta.telfon_ibu || meta.hp_ibu} />
-                              <DRow label="No WA Ibu" val={meta.nomor_wa_ibu} />
-                              <DRow label="Pendidikan Terakhir Ibu" val={meta.pendidikan_terakhir_ibu} />
-                              <DRow label="Pekerjaan Ibu" val={meta.pekerjaan_ibu} />
-                              <DRow label="Instansi / Jabatan Ibu" val={meta.instansi_pekerjaan_ibu && meta.jabatan_pekerjaan_ibu ? `${meta.instansi_pekerjaan_ibu} — ${meta.jabatan_pekerjaan_ibu}` : (meta.instansi_pekerjaan_ibu || meta.jabatan_pekerjaan_ibu)} />
-                              <DRow label="Penghasilan Ibu" val={meta.penghasilan_ibu ? `Rp ${Number(meta.penghasilan_ibu).toLocaleString('id-ID')}` : null} />
-                              <DRow label="Alamat Rumah Ibu" val={meta.alamat_ibu} />
-                              {(meta.nama_wali || meta.hp_wali) && (<>
-                                <hr className="border-slate-100 my-2" />
-                                <p className="font-bold text-slate-700 border-b border-slate-100 pb-1.5 mb-2">Data Wali</p>
-                                <DRow label="NIK Wali" val={meta.nik_wali} />
-                                <DRow label="Nama Wali" val={meta.nama_wali} />
-                                <DRow label="HP / WA Wali" val={meta.hp_wali || meta.nomor_wa_wali} />
-                                <DRow label="Pekerjaan Wali" val={meta.pekerjaan_wali} />
-                                <DRow label="Alamat Wali" val={meta.alamat_wali} />
-                              </>)}
+                              {/* Data Ayah */}
+                              <div className="rounded-2xl border border-emerald-200/70 bg-white dark:border-emerald-800/40 dark:bg-slate-900/40 p-3.5 space-y-2.5 shadow-2xs">
+                                <p className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-100 dark:border-emerald-800/50 pb-2">
+                                  Data Ayah Kandung
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <DCell label="NIK Ayah" val={meta.nik_ayah} />
+                                  <DCell label="Nama Ayah" val={meta.nama_ayah} />
+                                  <DCell label="Tempat, Tgl Lahir Ayah" val={meta.tempat_lahir_ayah && meta.tgl_lahir_ayah ? `${meta.tempat_lahir_ayah}, ${meta.tgl_lahir_ayah}` : (meta.tempat_lahir_ayah || meta.tgl_lahir_ayah)} />
+                                  <DCell label="Telfon / HP Ayah" val={meta.telfon_ayah || meta.hp_ayah} />
+                                  <DCell label="No WA Ayah" val={meta.nomor_wa_ayah} />
+                                  <DCell label="Pendidikan Terakhir Ayah" val={meta.pendidikan_terakhir_ayah} />
+                                  <DCell label="Pekerjaan Ayah" val={meta.pekerjaan_ayah} />
+                                  <DCell label="Instansi / Jabatan Ayah" val={meta.instansi_pekerjaan_ayah && meta.jabatan_pekerjaan_ayah ? `${meta.instansi_pekerjaan_ayah} — ${meta.jabatan_pekerjaan_ayah}` : (meta.instansi_pekerjaan_ayah || meta.jabatan_pekerjaan_ayah)} />
+                                  <DCell label="Penghasilan Ayah" val={meta.penghasilan_ayah && cleanVal(meta.penghasilan_ayah) !== '-' ? `Rp ${Number(meta.penghasilan_ayah).toLocaleString('id-ID')}` : null} />
+                                  <DCell label="Alamat Rumah Ayah" val={meta.alamat_ayah} />
+                                </div>
+                              </div>
+
+                              {/* Data Ibu */}
+                              <div className="rounded-2xl border border-blue-200/70 bg-white dark:border-blue-800/40 dark:bg-slate-900/40 p-3.5 space-y-2.5 shadow-2xs">
+                                <p className="text-xs font-black text-blue-800 dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-blue-100 dark:border-blue-800/50 pb-2">
+                                  Data Ibu Kandung
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  <DCell label="NIK Ibu" val={meta.nik_ibu} />
+                                  <DCell label="Nama Ibu" val={meta.nama_ibu} />
+                                  <DCell label="Tempat, Tgl Lahir Ibu" val={meta.tempat_lahir_ibu && meta.tgl_lahir_ibu ? `${meta.tempat_lahir_ibu}, ${meta.tgl_lahir_ibu}` : (meta.tempat_lahir_ibu || meta.tgl_lahir_ibu)} />
+                                  <DCell label="Telfon / HP Ibu" val={meta.telfon_ibu || meta.hp_ibu} />
+                                  <DCell label="No WA Ibu" val={meta.nomor_wa_ibu} />
+                                  <DCell label="Pendidikan Terakhir Ibu" val={meta.pendidikan_terakhir_ibu} />
+                                  <DCell label="Pekerjaan Ibu" val={meta.pekerjaan_ibu} />
+                                  <DCell label="Instansi / Jabatan Ibu" val={meta.instansi_pekerjaan_ibu && meta.jabatan_pekerjaan_ibu ? `${meta.instansi_pekerjaan_ibu} — ${meta.jabatan_pekerjaan_ibu}` : (meta.instansi_pekerjaan_ibu || meta.jabatan_pekerjaan_ibu)} />
+                                  <DCell label="Penghasilan Ibu" val={meta.penghasilan_ibu && cleanVal(meta.penghasilan_ibu) !== '-' ? `Rp ${Number(meta.penghasilan_ibu).toLocaleString('id-ID')}` : null} />
+                                  <DCell label="Alamat Rumah Ibu" val={meta.alamat_ibu} />
+                                </div>
+                              </div>
+
+                              {/* Data Wali (jika ada) */}
+                              {(meta.nama_wali || meta.hp_wali) && (
+                                <div className="rounded-2xl border border-slate-200/70 bg-white dark:border-slate-800/40 dark:bg-slate-900/40 p-3.5 space-y-2.5 shadow-2xs">
+                                  <p className="text-xs font-black text-slate-800 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800/50 pb-2">
+                                    Data Wali Siswa
+                                  </p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <DCell label="NIK Wali" val={meta.nik_wali} />
+                                    <DCell label="Nama Wali" val={meta.nama_wali} />
+                                    <DCell label="HP / WA Wali" val={meta.hp_wali || meta.nomor_wa_wali} />
+                                    <DCell label="Pekerjaan Wali" val={meta.pekerjaan_wali} />
+                                    <DCell label="Alamat Wali" val={meta.alamat_wali} fullWidth />
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )
+
                           if (activeDetailTab === 'akademik') return (
-                            <div className="space-y-2">
-                              <DRow label="Unit Pendidikan" val={selectedStudent.unit} />
-                              <DRow label="Kelas" val={selectedStudent.kelas} />
-                              <DRow label="Tahun Ajaran Masuk" val={meta.tahun_ajaran_masuk} />
-                              <DRow label="Tahun Ajaran Berjalan" val={meta.tahun_ajaran_berjalan} />
-                              <DRow label="Status Siswa" val={selectedStudent.status} />
-                              <DRow label="No. Virtual Account (VA BSI)" val={meta.no_va || meta.nis_pembayaran} />
-                              <DRow label="NIS Pembayaran" val={meta.nis_pembayaran || meta.no_va} />
-                              <DRow label="Wali Kelas" val={meta.wali_kelas} />
-                              <DRow label="NIY Wali Kelas" val={meta.niy_wali_kelas} />
-                              <DRow label="Status Orang Tua" val={meta.status_orang_tua} />
-                              <DRow label="NIY Ortu (Jika Pegawai)" val={meta.niy_ortu_jika_pegawai} />
-                              <hr className="border-slate-100 my-2" />
-                              <DRow label="Sekolah Asal" val={meta.sekolah_asal} />
-                              <DRow label="Status Sekolah Asal" val={meta.status_sekolah_asal} />
-                              <DRow label="Nominal SPP" val={meta.nominal_spp ? `Rp ${Number(meta.nominal_spp).toLocaleString('id-ID')}` : null} />
-                              <DRow label="Penerima KPS/PKH" val={meta.penerima_kps_pkh} />
-                              <DRow label="Punya KIP" val={meta.apakah_punya_kip} />
-                              <DRow label="Layak Menerima PIP" val={meta.apakah_layak_menerima_pip} />
-                              <DRow label="Alasan Menolak PIP" val={meta.alasan_menolak_pip} />
+                            <div className="rounded-2xl border border-emerald-200/70 bg-white dark:border-emerald-800/40 dark:bg-slate-900/40 p-3.5 space-y-2.5 shadow-2xs">
+                              <p className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-100 dark:border-emerald-800/50 pb-2">
+                                <GraduationCap className="size-3.5 text-emerald-600" /> Informasi Akademik & Kesiswaan
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <DCell label="Unit Pendidikan" val={selectedStudent.unit} />
+                                <DCell label="Kelas" val={selectedStudent.kelas} />
+                                <DCell label="Tahun Ajaran Masuk" val={meta.tahun_ajaran_masuk} />
+                                <DCell label="Tahun Ajaran Berjalan" val={meta.tahun_ajaran_berjalan} />
+                                <DCell label="Status Siswa" val={selectedStudent.status} />
+                                <DCell label="No. Virtual Account (VA BSI)" val={meta.no_va || meta.nis_pembayaran} />
+                                <DCell label="NIS Pembayaran" val={meta.nis_pembayaran || meta.no_va} />
+                                <DCell label="Wali Kelas" val={meta.wali_kelas} />
+                                <DCell label="NIY Wali Kelas" val={meta.niy_wali_kelas} />
+                                <DCell label="Status Orang Tua" val={meta.status_orang_tua} />
+                                <DCell label="NIY Ortu (Jika Pegawai)" val={meta.niy_ortu_jika_pegawai} />
+                                <DCell label="Sekolah Asal" val={meta.sekolah_asal} />
+                                <DCell label="Status Sekolah Asal" val={meta.status_sekolah_asal} />
+                                <DCell label="Nominal SPP" val={meta.nominal_spp && cleanVal(meta.nominal_spp) !== '-' ? `Rp ${Number(meta.nominal_spp).toLocaleString('id-ID')}` : null} />
+                                <DCell label="Penerima KPS/PKH" val={meta.penerima_kps_pkh} />
+                                <DCell label="Punya KIP" val={meta.apakah_punya_kip} />
+                                <DCell label="Layak Menerima PIP" val={meta.apakah_layak_menerima_pip} />
+                                <DCell label="Alasan Menolak PIP" val={meta.alasan_menolak_pip} />
+                              </div>
                             </div>
                           )
+
                           if (activeDetailTab === 'riwayat') return (
-                            <div className="space-y-2">
-                              <DRow label="Tanggal Masuk" val={meta.tanggal_masuk} />
-                              <DRow label="No Induk Sebelumnya" val={meta.no_induk_sebelumnya} />
-                              <DRow label="Beasiswa" val={meta.beasiswa} />
-                              <DRow label="Catatan" val={meta.catatan} />
-                              <p className="text-slate-400 mt-2">Riwayat keaktifan & kehadiran tercatat di sistem absensi.</p>
+                            <div className="rounded-2xl border border-emerald-200/70 bg-white dark:border-emerald-800/40 dark:bg-slate-900/40 p-3.5 space-y-2.5 shadow-2xs">
+                              <p className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-100 dark:border-emerald-800/50 pb-2">
+                                <Clock className="size-3.5 text-emerald-600" /> Riwayat Siswa & Catatan
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <DCell label="Tanggal Masuk" val={meta.tanggal_masuk} />
+                                <DCell label="No Induk Sebelumnya" val={meta.no_induk_sebelumnya} />
+                                <DCell label="Beasiswa" val={meta.beasiswa} />
+                                <DCell label="Catatan" val={meta.catatan} fullWidth />
+                              </div>
+                              <p className="text-[11px] text-slate-400 mt-2 italic">Riwayat keaktifan harian & presensi siswa tercatat secara real-time pada modul presensi terpadu.</p>
                             </div>
                           )
+
                           if (activeDetailTab === 'dokumen') return (
-                            <div className="space-y-2">
-                              <DRow label="Foto Siswa (URL)" val={meta.foto_url} />
-                              <DRow label="No Registrasi Akta Lahir" val={meta.no_registrasi_akta_lahir} />
-                              <DRow label="No Kartu Keluarga" val={meta.no_kk} />
-                              <p className="text-slate-400 mt-2">Status dokumen fisik dikelola secara manual oleh admin TU.</p>
+                            <div className="rounded-2xl border border-emerald-200/70 bg-white dark:border-emerald-800/40 dark:bg-slate-900/40 p-3.5 space-y-2.5 shadow-2xs">
+                              <p className="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-100 dark:border-emerald-800/50 pb-2">
+                                <FileText className="size-3.5 text-emerald-600" /> Dokumen & Berkas Siswa
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <DCell label="Foto Siswa (URL)" val={meta.foto_url} />
+                                <DCell label="No Registrasi Akta Lahir" val={meta.no_registrasi_akta_lahir} />
+                                <DCell label="No Kartu Keluarga (KK)" val={meta.no_kk} />
+                              </div>
+                              <p className="text-[11px] text-slate-400 mt-2 italic">Status berkas fisik dan ijazah asli dikelola secara manual dan tersimpan di ruang arsip TU unit.</p>
                             </div>
                           )
+
                           return null
                         })()}
                       </div>
@@ -1985,6 +2431,9 @@ export default function StudentsPage() {
               onSubmit={handleFormSubmitCallback}
               classes={rawClasses}
               units={rawUnits}
+              userUnitId={userUnitId}
+              isGlobalManager={isGlobalUser}
+              isUnitManager={!isGlobalUser}
             />
           </Suspense>
         )}
@@ -2141,40 +2590,40 @@ export default function StudentsPage() {
                           </span>
                         </div>
                         <div className="max-h-48 overflow-auto rounded-2xl border border-emerald-200/80 bg-white shadow-2xs dark:border-emerald-900/50 dark:bg-[#182232]">
-                          <table className="w-full text-left text-[11px]">
-                            <thead className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 font-bold text-slate-700 dark:text-slate-200">
-                              <tr>
-                                <th className="py-2 px-3">NIS</th>
-                                <th className="py-2 px-3">NISN</th>
-                                <th className="py-2 px-3">Nama Siswa</th>
-                                <th className="py-2 px-3">JK</th>
-                                <th className="py-2 px-3">Unit</th>
-                                <th className="py-2 px-3">Kelas</th>
-                                <th className="py-2 px-3">Orang Tua</th>
-                                <th className="py-2 px-3">No HP</th>
-                                <th className="py-2 px-3 text-center">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                          <TableRoot className="w-full text-left text-[11px]">
+                            <TableHeader className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 font-bold text-slate-700 dark:text-slate-200">
+                              <TableRow>
+                                <TableHead className="py-2 px-3">NIS</TableHead>
+                                <TableHead className="py-2 px-3">NISN</TableHead>
+                                <TableHead className="py-2 px-3">Nama Siswa</TableHead>
+                                <TableHead className="py-2 px-3">JK</TableHead>
+                                <TableHead className="py-2 px-3">Unit</TableHead>
+                                <TableHead className="py-2 px-3">Kelas</TableHead>
+                                <TableHead className="py-2 px-3">Orang Tua</TableHead>
+                                <TableHead className="py-2 px-3">No HP</TableHead>
+                                <TableHead className="py-2 px-3 text-center">Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                               {importPreviewData.map((row, idx) => (
-                                <tr key={idx} className="hover:bg-emerald-50/30 dark:hover:bg-slate-800/40 transition-colors">
-                                  <td className="py-2 px-3 font-mono font-medium text-slate-700 dark:text-slate-300">{row.nis}</td>
-                                  <td className="py-2 px-3 font-mono text-slate-500 dark:text-slate-400">{row.nisn}</td>
-                                  <td className="py-2 px-3 font-bold text-slate-900 dark:text-white">{row.nama}</td>
-                                  <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{row.gender}</td>
-                                  <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{row.unit}</td>
-                                  <td className="py-2 px-3 font-semibold text-emerald-700 dark:text-emerald-400">{row.kelas}</td>
-                                  <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{row.namaAyah}</td>
-                                  <td className="py-2 px-3 font-mono text-slate-600 dark:text-slate-300">{row.hpAyah}</td>
-                                  <td className="py-2 px-3 text-center">
+                                <TableRow key={idx} className="hover:bg-emerald-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                                  <TableCell className="py-2 px-3 font-mono font-medium text-slate-700 dark:text-slate-300">{row.nis}</TableCell>
+                                  <TableCell className="py-2 px-3 font-mono text-slate-500 dark:text-slate-400">{row.nisn}</TableCell>
+                                  <TableCell className="py-2 px-3 font-bold text-slate-900 dark:text-white">{row.nama}</TableCell>
+                                  <TableCell className="py-2 px-3 text-slate-600 dark:text-slate-300">{row.gender}</TableCell>
+                                  <TableCell className="py-2 px-3 text-slate-600 dark:text-slate-300">{row.unit}</TableCell>
+                                  <TableCell className="py-2 px-3 font-semibold text-emerald-700 dark:text-emerald-400">{row.kelas}</TableCell>
+                                  <TableCell className="py-2 px-3 text-slate-600 dark:text-slate-300">{row.namaAyah}</TableCell>
+                                  <TableCell className="py-2 px-3 font-mono text-slate-600 dark:text-slate-300">{row.hpAyah}</TableCell>
+                                  <TableCell className="py-2 px-3 text-center">
                                     <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80">
                                       {row.status}
                                     </span>
-                                  </td>
-                                </tr>
+                                  </TableCell>
+                                </TableRow>
                               ))}
-                            </tbody>
-                          </table>
+                            </TableBody>
+                          </TableRoot>
                         </div>
                       </div>
                     )}
@@ -2414,21 +2863,21 @@ export default function StudentsPage() {
                 </div>
 
                 <div className="max-h-96 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                  <table className="w-full text-left text-xs">
-                    <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-200 dark:border-slate-700">
-                      <tr>
-                        <th className="p-3">Nama Siswa & NIS/NISN</th>
-                        <th className="p-3">Unit Kerja</th>
-                        <th className="p-3">Kelas</th>
-                        <th className="p-3 text-center">Jenis Kelamin</th>
-                        <th className="p-3 text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <TableRoot className="w-full text-left text-xs">
+                    <TableHeader className="sticky top-0 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-200 dark:border-slate-700">
+                      <TableRow>
+                        <TableHead className="p-3">Nama Siswa & NIS/NISN</TableHead>
+                        <TableHead className="p-3">Unit Kerja</TableHead>
+                        <TableHead className="p-3">Kelas</TableHead>
+                        <TableHead className="p-3 text-center">Jenis Kelamin</TableHead>
+                        <TableHead className="p-3 text-center">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {statModalItems.length > 0 ? (
                         statModalItems.map((std) => (
-                          <tr key={std.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
-                            <td className="p-3">
+                          <TableRow key={std.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                            <TableCell className="p-3">
                               <div className="flex items-center gap-3">
                                 <PersonAvatar src={std.foto} name={std.nama} size="sm" />
                                 <div>
@@ -2436,26 +2885,26 @@ export default function StudentsPage() {
                                   <p className="font-mono text-[10px] text-slate-400">NIS: {std.nis} | NISN: {std.nisn}</p>
                                 </div>
                               </div>
-                            </td>
-                            <td className="p-3 font-semibold text-emerald-700 dark:text-emerald-400">{std.unit}</td>
-                            <td className="p-3 text-slate-600 dark:text-slate-300 font-semibold">{std.kelas}</td>
-                            <td className="p-3 text-center text-slate-600 dark:text-slate-300">{std.gender}</td>
-                            <td className="p-3 text-center">
+                            </TableCell>
+                            <TableCell className="p-3 font-semibold text-emerald-700 dark:text-emerald-400">{std.unit}</TableCell>
+                            <TableCell className="p-3 text-slate-600 dark:text-slate-300 font-semibold">{std.kelas}</TableCell>
+                            <TableCell className="p-3 text-center text-slate-600 dark:text-slate-300">{std.gender}</TableCell>
+                            <TableCell className="p-3 text-center">
                               <AppBadge variant={std.status === 'Aktif' ? 'success' : 'danger'} dot>
                                 {std.status}
                               </AppBadge>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))
                       ) : (
-                        <tr>
-                          <td colSpan={5} className="p-6 text-center text-slate-400 font-semibold">
+                        <TableRow>
+                          <TableCell colSpan={5} className="p-6 text-center text-slate-400 font-semibold">
                             Data siswa tidak ditemukan.
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </TableRoot>
                 </div>
               </div>
 
@@ -3015,21 +3464,24 @@ export default function StudentsPage() {
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                         Unit Pendidikan Tujuan <span className="text-rose-500">*</span>
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={mutasiForm.unit_tujuan_id}
-                        onChange={(e) => setMutasiForm((prev) => ({ ...prev, unit_tujuan_id: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                        required
-                      >
-                        <option value="">-- Pilih Unit Pendidikan Tujuan --</option>
-                        {rawUnits
-                          .filter((u) => String(u.id) !== String(studentToMutate.unit_id || studentToMutate.education_unit_id))
-                          .map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.nama_unit || u.name || u.nama}
-                            </option>
-                          ))}
-                      </select>
+                        onChange={(val) => setMutasiForm((prev) => ({ ...prev, unit_tujuan_id: val }))}
+                        options={[
+                          { value: '', label: '-- Pilih Unit Pendidikan Tujuan --' },
+                          ...rawUnits
+                            .filter((u) => String(u.id) !== String(studentToMutate.unit_id || studentToMutate.education_unit_id))
+                            .map((u) => ({
+                              value: String(u.id),
+                              label: u.nama_unit || u.name || u.nama,
+                              subtext: u.kode_unit ? `Kode: ${u.kode_unit}` : undefined,
+                            })),
+                        ]}
+                        placeholder="Pilih Unit Tujuan..."
+                        icon={Building2}
+                        searchable={rawUnits.length > 5}
+                        ariaLabel="Unit Pendidikan Tujuan"
+                      />
                     </div>
 
                     {/* Alasan Pindah */}
@@ -3288,21 +3740,24 @@ export default function StudentsPage() {
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                         Pilih Kelas Penempatan di Unit Ini <span className="text-rose-500">*</span>
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={approvalKelasId}
-                        onChange={(e) => setApprovalKelasId(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                        required
-                      >
-                        <option value="">-- Pilih Kelas Tujuan --</option>
-                        {rawClasses
-                          .filter((c) => !unitFilter || String(c.unit_pendidikan_id || c.unit_id) === String(unitFilter))
-                          .map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.nama_kelas || c.name || `Kelas ${c.tingkat}`}
-                            </option>
-                          ))}
-                      </select>
+                        onChange={(val) => setApprovalKelasId(val)}
+                        options={[
+                          { value: '', label: '-- Pilih Kelas Tujuan --' },
+                          ...rawClasses
+                            .filter((c) => !unitFilter || String(c.unit_pendidikan_id || c.unit_id) === String(unitFilter))
+                            .map((c) => ({
+                              value: String(c.id),
+                              label: c.nama_kelas || c.name || `Kelas ${c.tingkat}`,
+                              subtext: c.tingkat ? `Tingkat ${c.tingkat}` : undefined,
+                            })),
+                        ]}
+                        placeholder="Pilih Kelas Tujuan..."
+                        icon={GraduationCap}
+                        searchable={rawClasses.length > 5}
+                        ariaLabel="Pilih Kelas Penempatan"
+                      />
                     </div>
 
                     <div>
@@ -3541,6 +3996,9 @@ export default function StudentsPage() {
         </AnimatePresence>
         </MasterDataPage>
       </motion.div>
+
+      {/* Smart Floating Scroll Navigator (Option A) */}
+      <SmartScrollFab targetId="tabel-daftar-siswa" downTooltip="Langsung ke Tabel Siswa" />
 
     </PageContainer>
   )

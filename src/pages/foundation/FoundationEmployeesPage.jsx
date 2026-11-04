@@ -28,11 +28,11 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
-import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
+import { ArrowRightLeft as ArrowBothDirectionHorizontal2 } from 'lucide-react'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import ActionDropdown from '../../components/app/ActionDropdown'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '../../components/tailgrids/core/hover-card'
-import { Avatar, AvatarFallback, AvatarImage } from '../../components/tailgrids/core/avatar'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '../../components/ui/hover-card'
+import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import api from '../../services/api'
 import {
   MasterActionButton,
@@ -56,6 +56,7 @@ import { PersonIdentityCell } from '../../components/ui/PersonIdentityCell'
 import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 import { FoundationExportModal } from '../../components/foundation/FoundationExportModal'
 import { FoundationUnitKpiModal } from '../../components/foundation/FoundationUnitKpiModal'
+import { SmartScrollFab } from '../../components/common'
 
 const containerVariants = {
   hidden: { opacity: 0, y: 15 },
@@ -562,7 +563,7 @@ export function FoundationEmployeesPage() {
         }
       />
 
-      <MasterDataTable className="foundation-table">
+      <MasterDataTable id="tabel-pegawai-guru" className="foundation-table scroll-mt-6">
         <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-700">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Pegawai & Guru</h2>
@@ -793,6 +794,9 @@ export function FoundationEmployeesPage() {
         rows={exportRows}
         filename="Pegawai_Guru_Yayasan"
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-pegawai-guru" downTooltip="Langsung ke Tabel Pegawai" />
       </motion.div>
     </motion.div>
     </MasterDataPage>

@@ -34,7 +34,7 @@ import { studentService } from '../../services/studentService'
 import { educationUnitService } from '../../services/educationUnitService'
 import api from '../../services/api'
 import { useDebounce } from '../../hooks/useDebounce'
-import { Pagination } from '../tailgrids/core/pagination'
+import { Pagination } from '../ui/pagination'
 import { usePengaturanStore, resolveFoundationName } from '../../stores/pengaturanStore'
 
 const DEFAULT_SYSTEM_ROLES = [

@@ -30,8 +30,9 @@ import {
   Check,
   Ban,
 } from 'lucide-react'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { lmsReferensiService } from '../services/lmsReferensiService'
+import { useDebounce } from '../hooks/useDebounce'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
@@ -40,6 +41,14 @@ import {
   SquircleActionButton,
   PrintOptionModal,
 } from '../components/master-data'
+import {
+  TableRoot,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/table'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { RotateCcw, Printer } from 'lucide-react'
@@ -152,6 +161,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
 
   // Filters & Pagination
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [selectedModulAjar, setSelectedModulAjar] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
   const [page, setPage] = useState(1)
@@ -280,7 +290,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
     try {
       const response = await lmsReferensiService.getDaftar({
         page,
-        search,
+        search: debouncedSearch,
         modul_ajar_id: selectedModulAjar,
         status: selectedStatus,
         per_page: 15,
@@ -313,7 +323,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
 
   useEffect(() => {
     fetchDaftarReferensi()
-  }, [page, search, selectedModulAjar, selectedStatus])
+  }, [page, debouncedSearch, selectedModulAjar, selectedStatus])
 
   const handleOpenAddModal = () => {
     setEditingItem(null)
@@ -648,12 +658,27 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
         </motion.div>
       )}
 
-      {/* SEARCH & FILTER BAR (2-Row Layout) */}
-      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
-        {/* Baris 1: Field Pencarian Full-Width */}
-        <div className="w-full">
+      {/* DATA TABLE CONTAINER */}
+      <motion.div variants={itemVariants}>
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]" aria-labelledby="referensi-table-title">
+        {/* Row 1: Table Title and Action Buttons */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
+          <div className="flex items-center gap-3">
+            <div>
+              <h2 id="referensi-table-title" className="text-base font-extrabold text-slate-900 dark:text-white">Data Referensi Pembelajaran</h2>
+              <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Daftar buku acuan, jurnal, dan kepustakaan digital terpadu.</p>
+            </div>
+            <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              {pagination.total || 0} Data
+            </span>
+          </div>
+          {pageActions}
+        </div>
+
+        {/* Row 2: Full-width Search Input */}
+        <div className="p-3 sm:p-4 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 border-b border-emerald-200/80 dark:border-emerald-800/60 dark:from-slate-900/40 dark:via-emerald-950/20 dark:to-slate-900/40">
           <div className="relative w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400" />
             <input
               type="text"
               placeholder="Cari judul, penulis, penerbit, tahun..."
@@ -662,15 +687,15 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
                 setSearch(e.target.value)
                 setPage(1)
               }}
-              className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+              className="h-10 w-full rounded-xl border border-emerald-200/80 bg-white pl-10 pr-4 text-xs font-medium text-slate-700 shadow-inner outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800/60 dark:bg-slate-900 dark:text-slate-200"
             />
           </div>
         </div>
 
-        {/* Baris 2: Dropdown Filter & Sortir */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
-            Filter &amp; Sortir:
+        {/* Row 3: Horizontal Filter Bar */}
+        <div className="flex flex-wrap items-center gap-2.5 px-3 sm:px-4 py-2.5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:border-emerald-800/60 dark:from-slate-900/30 dark:to-slate-900/30">
+          <span className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
+            Filter:
           </span>
 
           <select
@@ -679,7 +704,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
               setSelectedModulAjar(e.target.value)
               setPage(1)
             }}
-            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+            className="h-9 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 dark:border-emerald-800/60 dark:bg-slate-900 dark:text-slate-200"
           >
             <option value="">-- Semua Modul Ajar --</option>
             <option value="umum">-- Referensi Umum (Tanpa Modul) --</option>
@@ -697,7 +722,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
               setSelectedStatus(e.target.value)
               setPage(1)
             }}
-            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+            className="h-9 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 dark:border-emerald-800/60 dark:bg-slate-900 dark:text-slate-200"
           >
             <option value="">-- Semua Status --</option>
             <option value="aktif">Aktif</option>
@@ -712,70 +737,58 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
               setSelectedStatus('')
               setPage(1)
             }}
-            className="inline-flex items-center gap-1.5 px-4 h-12 rounded-[14px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="inline-flex items-center gap-1.5 px-3 h-9 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-emerald-100/50 dark:hover:bg-emerald-950/50 transition cursor-pointer"
             title="Reset Filter"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="size-3.5" />
             <span>Reset</span>
           </button>
         </div>
-      </motion.div>
-
-      {/* DATA TABLE CONTAINER */}
-      <motion.div variants={itemVariants}>
-      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]" aria-labelledby="referensi-table-title">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
-          <div>
-            <h2 id="referensi-table-title" className="text-base font-extrabold text-slate-900 dark:text-white">Data Referensi Pembelajaran</h2>
-            <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Daftar buku acuan, jurnal, dan kepustakaan digital terpadu.</p>
-          </div>
-          {pageActions}
-        </div>
 
         <MasterDataTable className="!rounded-none !border-0 !shadow-none">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-              <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
-                <th className="w-[6%] bg-transparent px-5 sm:px-6 md:px-8 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">No</th>
-                <th className="w-[28%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">Judul Referensi</th>
-                <th className="hidden w-[20%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Penulis &amp; Penerbit</th>
-                <th className="hidden w-[8%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Tahun</th>
-                <th className="hidden w-[20%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Modul Ajar Terkait</th>
-                <th className="hidden w-[8%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
-                <th className="w-[10%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
+          <TableRoot className="w-full text-left text-sm border-collapse">
+            <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+              <TableRow className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+                <TableHead className="w-[6%] bg-transparent px-5 sm:px-6 md:px-8 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">No</TableHead>
+                <TableHead className="w-[28%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">Judul Referensi</TableHead>
+                <TableHead className="hidden w-[20%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Penulis &amp; Penerbit</TableHead>
+                <TableHead className="hidden w-[8%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Tahun</TableHead>
+                <TableHead className="hidden w-[20%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Modul Ajar Terkait</TableHead>
+                <TableHead className="hidden w-[8%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</TableHead>
+                <TableHead className="w-[10%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
               {loading ? (
-                <tr>
-                  <td colSpan="7" className="py-12 text-center text-slate-500 dark:text-slate-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="py-12 text-center text-slate-500 dark:text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <RefreshCw className="w-6 h-6 animate-spin text-[#0E5C44]" />
                       <span>Memuat data Referensi Pembelajaran...</span>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : dataReferensi.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="py-12 text-center text-slate-500 dark:text-slate-400">
+                <TableRow>
+                  <TableCell colSpan={7} className="py-12 text-center text-slate-500 dark:text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <BookMarked className="w-10 h-10 text-slate-300 dark:text-slate-600" />
                       <span className="font-medium text-slate-600 dark:text-slate-300">Belum ada Referensi Pembelajaran</span>
                       <p className="text-xs text-slate-400">Klik tombol "Tambah Referensi" untuk menambahkan data baru.</p>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 dataReferensi.map((item, index) => {
                   const number = (pagination.current_page - 1) * pagination.per_page + index + 1
                   return (
-                    <tr
+                    <TableRow
                       key={item.id}
                       onClick={() => handleOpenPreviewModal(item)}
                       className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
                     >
-                      <td className="py-3.5 px-5 sm:px-6 md:px-8 text-center font-medium text-slate-400">{number}</td>
-                      <td className="py-3.5 px-3">
+                      <TableCell className="py-3.5 px-5 sm:px-6 md:px-8 text-center font-medium text-slate-400">{number}</TableCell>
+                      <TableCell className="py-3.5 px-3">
                         <div className="flex items-start gap-3">
                           <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-[#0E5C44] dark:text-emerald-400 shrink-0 mt-0.5">
                             <BookOpen className="w-4 h-4" />
@@ -797,8 +810,8 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
                             )}
                           </div>
                         </div>
-                      </td>
-                      <td className="hidden py-3.5 px-3 text-slate-600 dark:text-slate-300 md:table-cell">
+                      </TableCell>
+                      <TableCell className="hidden py-3.5 px-3 text-slate-600 dark:text-slate-300 md:table-cell">
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-200 font-medium">
                             <User className="w-3.5 h-3.5 text-slate-400" />
@@ -809,14 +822,14 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
                             <span>{item.penerbit || '-'}</span>
                           </div>
                         </div>
-                      </td>
-                      <td className="hidden py-3.5 px-3 text-slate-600 dark:text-slate-300 sm:table-cell text-center">
+                      </TableCell>
+                      <TableCell className="hidden py-3.5 px-3 text-slate-600 dark:text-slate-300 sm:table-cell text-center">
                         <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                           <Calendar className="w-3 h-3 text-slate-400" />
                           {item.tahun || '-'}
                         </span>
-                      </td>
-                      <td className="hidden py-3.5 px-3 lg:table-cell">
+                      </TableCell>
+                      <TableCell className="hidden py-3.5 px-3 lg:table-cell">
                         {item.modul_ajar ? (
                           <div className="space-y-0.5">
                             <span className="inline-block font-medium text-xs text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-lg border border-emerald-200/60 dark:border-emerald-800/60 line-clamp-1">
@@ -826,48 +839,50 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
                         ) : (
                           <span className="text-xs text-slate-400 italic">Umum / Tanpa Modul</span>
                         )}
-                      </td>
-                      <td className="hidden py-3.5 px-3 text-center sm:table-cell">
+                      </TableCell>
+                      <TableCell className="hidden py-3.5 px-3 text-center sm:table-cell">
                         {getStatusBadge(item.status)}
-                      </td>
-                      <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      </TableCell>
+                      <TableCell className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <ActionDropdown
                           onView={() => handleOpenPreviewModal(item)}
                           onEdit={() => handleOpenEditModal(item)}
                           onDelete={() => handleDelete(item.id, item.judul)}
                         />
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 })
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </TableRoot>
         </MasterDataTable>
 
         {/* Pagination Footer */}
         {pagination.last_page > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 gap-3">
+          <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-gradient-to-r from-emerald-50/30 via-transparent to-emerald-50/30 border-t border-emerald-200/90 dark:border-emerald-800/60 text-xs text-slate-600 dark:text-slate-300 gap-3">
             <span>
-              Menampilkan {pagination.from || 0} - {pagination.to || 0} dari total {pagination.total || 0} referensi
+              Menampilkan <span className="font-bold text-emerald-700 dark:text-emerald-400">{pagination.from || 0} - {pagination.to || 0}</span> dari total <span className="font-bold text-slate-900 dark:text-white">{pagination.total || 0}</span> referensi
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <button
                 disabled={pagination.current_page === 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                aria-label="Halaman Sebelumnya"
+                className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="size-5 text-white" />
               </button>
-              <span className="px-3 py-1 font-semibold text-slate-700 dark:text-slate-200">
+              <span className="text-xs font-bold px-3 py-1.5 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-xl border border-emerald-200 dark:border-emerald-800">
                 Halaman {pagination.current_page} dari {pagination.last_page}
               </span>
               <button
                 disabled={pagination.current_page === pagination.last_page}
                 onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))}
-                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                aria-label="Halaman Selanjutnya"
+                className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="size-5 text-white" />
               </button>
             </div>
           </div>
@@ -907,30 +922,30 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        <th className="py-3 px-4 text-center w-12">No</th>
-                        <th className="py-3 px-4">Judul Referensi</th>
-                        <th className="py-3 px-4">Penulis & Penerbit</th>
-                        <th className="py-3 px-4">Modul Ajar</th>
-                        <th className="py-3 px-4 text-center">Status</th>
-                        <th className="py-3 px-4 text-right">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                  <TableRoot className="w-full text-left border-collapse">
+                    <TableHeader>
+                      <TableRow className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        <TableHead className="py-3 px-4 text-center w-12">No</TableHead>
+                        <TableHead className="py-3 px-4">Judul Referensi</TableHead>
+                        <TableHead className="py-3 px-4">Penulis &amp; Penerbit</TableHead>
+                        <TableHead className="py-3 px-4">Modul Ajar</TableHead>
+                        <TableHead className="py-3 px-4 text-center">Status</TableHead>
+                        <TableHead className="py-3 px-4 text-right">Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
                       {kpiModalCategory.items.map((item, idx) => (
-                        <tr key={item.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                          <td className="py-3 px-4 text-center text-slate-400 text-xs font-medium">{idx + 1}</td>
-                          <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-100">{item.judul}</td>
-                          <td className="py-3 px-4 text-xs text-slate-600 dark:text-slate-300">
+                        <TableRow key={item.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                          <TableCell className="py-3 px-4 text-center text-slate-400 text-xs font-medium">{idx + 1}</TableCell>
+                          <TableCell className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-100">{item.judul}</TableCell>
+                          <TableCell className="py-3 px-4 text-xs text-slate-600 dark:text-slate-300">
                             {item.penulis ? `${item.penulis} (${item.tahun || '-'})` : '-'}
-                          </td>
-                          <td className="py-3 px-4 text-xs text-slate-600 dark:text-slate-300">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-xs text-slate-600 dark:text-slate-300">
                             {item.modul_ajar?.judul_modul || '-'}
-                          </td>
-                          <td className="py-3 px-4 text-center">{getStatusBadge(item.status)}</td>
-                          <td className="py-3 px-4 text-right">
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-center">{getStatusBadge(item.status)}</TableCell>
+                          <TableCell className="py-3 px-4 text-right">
                             <button
                               onClick={() => {
                                 setKpiModalOpen(false)
@@ -940,11 +955,11 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
                             >
                               Detail
                             </button>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </TableRoot>
                 </div>
               )}
             </div>

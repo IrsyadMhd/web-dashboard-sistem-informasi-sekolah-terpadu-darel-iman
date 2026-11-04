@@ -5,6 +5,7 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Save,
   X,
   ArrowLeft,
@@ -34,6 +35,7 @@ import {
 } from 'lucide-react'
 import { getProvinsiList, getKotaOptions, getKecamatanOptions, getKelurahanOptions, getBirthPlaceOptions } from './wilayahData'
 import AddressMap from './AddressMap'
+import { DatePicker } from '@/components/ui/date-picker'
 import { educationUnitService } from '../../services/educationUnitService'
 import { kelasService } from '../../services/kelasService'
 import { tahunAjaranService } from '../../services/tahunAjaranService'
@@ -141,33 +143,49 @@ const Input = ({
         </span>
       )}
     </div>
-    <div className="relative flex items-center">
-      {Icon && (
-        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-          <Icon className="size-4" />
-        </div>
-      )}
-      {isRupiah && (
-        <span className={`absolute ${Icon ? 'left-9' : 'left-3.5'} text-xs font-extrabold text-slate-500 select-none`}>
-          Rp
-        </span>
-      )}
-      <input
-        type={type}
+    {type === 'date' ? (
+      <DatePicker
         name={name}
         value={value ?? ''}
         onChange={onChange}
-        placeholder={placeholder}
         required={required}
-        inputMode={isRupiah ? 'numeric' : undefined}
-        className={`w-full rounded-xl border py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 outline-none hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 ${
+        className="w-full"
+        inputClassName={`py-2.5 text-xs font-semibold ${
           error
             ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-rose-500/20 dark:border-rose-700 dark:bg-rose-950/20'
-            : 'bg-slate-50/50 border-slate-200/90'
-        } ${isRupiah ? (Icon ? 'pl-14 pr-4' : 'pl-10 pr-4') : (Icon ? 'pl-10 pr-4' : 'px-3.5')}`}
-        {...props}
+            : ''
+        }`}
+        placeholder={placeholder || 'Pilih tanggal...'}
       />
-    </div>
+    ) : (
+      <div className="relative flex items-center">
+        {Icon && (
+          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+            <Icon className="size-4" />
+          </div>
+        )}
+        {isRupiah && (
+          <span className={`absolute ${Icon ? 'left-9' : 'left-3.5'} text-xs font-extrabold text-slate-500 select-none`}>
+            Rp
+          </span>
+        )}
+        <input
+          type={type}
+          name={name}
+          value={value ?? ''}
+          onChange={onChange}
+          placeholder={placeholder}
+          required={required}
+          inputMode={isRupiah ? 'numeric' : undefined}
+          className={`w-full rounded-xl border py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 outline-none hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 ${
+            error
+              ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-rose-500/20 dark:border-rose-700 dark:bg-rose-950/20'
+              : 'bg-slate-50/50 border-slate-200/90'
+          } ${isRupiah ? (Icon ? 'pl-14 pr-4' : 'pl-10 pr-4') : (Icon ? 'pl-10 pr-4' : 'px-3.5')}`}
+          {...props}
+        />
+      </div>
+    )}
     {error && (
       <p className="mt-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
         <span>⚠</span> {error}
@@ -187,6 +205,7 @@ const Select = ({
   disabled = false,
   placeholder = '-- Pilih --',
   error,
+  helperText,
   ...props
 }) => {
   const safeOptions = Array.isArray(options)
@@ -199,9 +218,16 @@ const Select = ({
 
   return (
     <div>
-      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-        {label} {required && <span className="text-rose-500">*</span>}
-      </label>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+        {helperText && (
+          <span className={`text-[10px] font-bold ${error ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'}`}>
+            {helperText}
+          </span>
+        )}
+      </div>
       <div className="relative flex items-center">
         {Icon && (
           <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
@@ -214,13 +240,13 @@ const Select = ({
           onChange={onChange}
           required={required}
           disabled={disabled}
-          className={`w-full rounded-xl border py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 outline-none hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer ${
+          className={`w-full appearance-none rounded-xl border py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 outline-none hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer ${
             disabled
               ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed dark:bg-slate-800 dark:border-slate-700'
               : error
               ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-rose-500/20 dark:border-rose-700 dark:bg-rose-950/20'
               : 'bg-slate-50/50 border-slate-200/90'
-          } ${Icon ? 'pl-10 pr-8' : 'px-3.5'}`}
+          } ${Icon ? 'pl-10 pr-9' : 'pl-3.5 pr-9'}`}
           {...props}
         >
           <option value="">{placeholder}</option>
@@ -244,6 +270,9 @@ const Select = ({
             )
           )}
         </select>
+        <div className="pointer-events-none absolute right-3 flex items-center text-slate-400 dark:text-slate-500">
+          <ChevronDown className="size-4" />
+        </div>
       </div>
       {error && (
         <p className="mt-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
@@ -254,12 +283,34 @@ const Select = ({
   )
 }
 
-export default function StudentFormModal({ isOpen, onClose, initialData, onSubmit, classes, units }) {
+export default function StudentFormModal({
+  isOpen,
+  onClose,
+  initialData,
+  onSubmit,
+  classes,
+  units,
+  userUnitId = '',
+  isGlobalManager = true,
+  isUnitManager = false,
+}) {
   const [activeStep, setActiveStep] = useState(0)
   const [formData, setFormData] = useState(defaultForm())
   const [isUploading, setIsUploading] = useState(false)
   const [modalError, setModalError] = useState(null)
+  const [activeUnits, setActiveUnits] = useState(() => (Array.isArray(units) && units.length > 0 ? units : []))
+  const [activeClasses, setActiveClasses] = useState(() => (Array.isArray(classes) && classes.length > 0 ? classes : []))
+  const [academicYears, setAcademicYears] = useState([])
+  const [modaList, setModaList] = useState([])
+  const [occupationList, setOccupationList] = useState([])
+  const [residenceList, setResidenceList] = useState([])
+  const [educationList, setEducationList] = useState([])
+  const [maritalList, setMaritalList] = useState([])
+  const [studentStatusList, setStudentStatusList] = useState([])
   const modalBodyRef = useRef(null)
+
+  // Isolasi Unit: Kunci unit kerja jika bukan global manager atau adalah unit manager
+  const isUnitLocked = (!isGlobalManager || isUnitManager) && Boolean(userUnitId)
 
   const steps = [
     { number: 1, id: 'pribadi', title: 'Informasi Pribadi', desc: 'Identitas & Alamat Siswa', icon: UserCheck },
@@ -402,10 +453,23 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
           niy_wali_kelas: meta.niy_wali_kelas || '',
         })
       } else {
-        setFormData(defaultForm())
+        const fresh = defaultForm()
+        if (isUnitLocked && userUnitId) {
+          fresh.unit_id = String(userUnitId)
+          const allUnits = Array.isArray(activeUnits) && activeUnits.length > 0
+            ? activeUnits
+            : (Array.isArray(units) && units.length > 0 ? units : [])
+          const found = allUnits.find((u) => String(u.id ?? u.unit_id ?? '') === String(userUnitId))
+          if (found) {
+            fresh.unit_pendidikan = found.name || found.nama || found.code || ''
+            const unitMeta = found.metadata || {}
+            fresh.va_bsi_bank = unitMeta.va_bank || unitMeta.bank_name || found.va_bank || 'Bank Syariah Indonesia (BSI)'
+          }
+        }
+        setFormData(fresh)
       }
     }
-  }, [isOpen, initialData])
+  }, [isOpen, initialData, isUnitLocked, userUnitId, activeUnits, units])
 
   const setStepError = (title, message, stepIdx) => {
     setModalError({ title, message, stepIdx })
@@ -569,16 +633,6 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
     setModalError(null)
   }
 
-  const [activeUnits, setActiveUnits] = useState([])
-  const [activeClasses, setActiveClasses] = useState([])
-  const [academicYears, setAcademicYears] = useState([])
-  const [modaList, setModaList] = useState([])
-  const [occupationList, setOccupationList] = useState([])
-  const [residenceList, setResidenceList] = useState([])
-  const [educationList, setEducationList] = useState([])
-  const [maritalList, setMaritalList] = useState([])
-  const [studentStatusList, setStudentStatusList] = useState([])
-
   useEffect(() => {
     let isMounted = true
     const fetchDynamicOptions = async () => {
@@ -669,27 +723,35 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
     let isMounted = true
     const fetchMasters = async () => {
       try {
-        const [uRes, cRes, tRes] = await Promise.all([
-          educationUnitService.getAll(),
-          kelasService.getAll(),
+        const results = await Promise.allSettled([
+          educationUnitService.getAll({ per_page: 100 }),
+          kelasService.getAll({ per_page: 300 }),
           tahunAjaranService.getAll(),
         ])
+
+        const uRes = results[0].status === 'fulfilled' ? results[0].value : null
+        const cRes = results[1].status === 'fulfilled' ? results[1].value : null
+        const tRes = results[2].status === 'fulfilled' ? results[2].value : null
+
         if (isMounted) {
-          if (uRes?.data && Array.isArray(uRes.data)) {
-            setActiveUnits(uRes.data)
-          } else if (units && Array.isArray(units)) {
+          const rawUnits = uRes?.data?.data || uRes?.data || (Array.isArray(uRes) ? uRes : null)
+          if (Array.isArray(rawUnits) && rawUnits.length > 0) {
+            setActiveUnits(rawUnits)
+          } else if (Array.isArray(units) && units.length > 0) {
             setActiveUnits(units)
           }
 
-          if (cRes?.data && Array.isArray(cRes.data)) {
-            setActiveClasses(cRes.data)
-          } else if (classes && Array.isArray(classes)) {
+          const rawClasses = cRes?.data?.data || cRes?.data || (Array.isArray(cRes) ? cRes : null)
+          if (Array.isArray(rawClasses) && rawClasses.length > 0) {
+            setActiveClasses(rawClasses)
+          } else if (Array.isArray(classes) && classes.length > 0) {
             setActiveClasses(classes)
           }
 
-          if (tRes?.data && Array.isArray(tRes.data)) {
-            setAcademicYears(tRes.data)
-            const activeYearObj = tRes.data.find(y => y.is_active) || tRes.data[0]
+          const rawYears = tRes?.data?.data || tRes?.data || (Array.isArray(tRes) ? tRes : null)
+          if (Array.isArray(rawYears) && rawYears.length > 0) {
+            setAcademicYears(rawYears)
+            const activeYearObj = rawYears.find(y => y.is_active) || rawYears[0]
             const activeYearName = activeYearObj?.name || activeYearObj?.tahun || activeYearObj?.tahun_ajaran || ''
             if (activeYearName) {
               setFormData(prev => ({
@@ -703,8 +765,8 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
       } catch (err) {
         console.warn('Fallback data master form', err)
         if (isMounted) {
-          if (units && Array.isArray(units)) setActiveUnits(units)
-          if (classes && Array.isArray(classes)) setActiveClasses(classes)
+          if (Array.isArray(units) && units.length > 0) setActiveUnits(units)
+          if (Array.isArray(classes) && classes.length > 0) setActiveClasses(classes)
         }
       }
     }
@@ -747,13 +809,40 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
     ? kelSekolahQuery.data
     : getKelurahanOptions(formData.kecamatan_sekolah_asal)
 
-  const unitOptions = (activeUnits || []).map(u => {
-    if (typeof u === 'string') return { label: u, value: u }
-    return {
-      label: u.name || u.nama || u.code || 'Unit',
-      value: String(u.id ?? u.unit_id ?? u.value ?? u.code ?? ''),
+  const allUnitList = useMemo(() => {
+    if (Array.isArray(activeUnits) && activeUnits.length > 0) return activeUnits
+    if (Array.isArray(units) && units.length > 0) return units
+    return []
+  }, [activeUnits, units])
+
+  const resolvedUnits = useMemo(() => {
+    if (isUnitLocked) {
+      const scoped = allUnitList.filter((u) => String(u.id ?? u.unit_id ?? '') === String(userUnitId))
+      return scoped.length > 0 ? scoped : (userUnitId ? [{ id: userUnitId, name: 'Unit Pengguna' }] : allUnitList)
     }
-  }).filter(u => u.value !== '')
+    return allUnitList
+  }, [allUnitList, isUnitLocked, userUnitId])
+
+  const unitOptions = useMemo(() => {
+    return resolvedUnits.map((u) => {
+      if (typeof u === 'string') return { label: u, value: u }
+      return {
+        label: u.name || u.nama || u.code || 'Unit',
+        value: String(u.id ?? u.unit_id ?? u.value ?? u.code ?? ''),
+      }
+    }).filter((u) => u.value !== '')
+  }, [resolvedUnits])
+
+  // Opsi seluruh unit yayasan untuk unit asal pindahan internal
+  const allUnitOptions = useMemo(() => {
+    return allUnitList.map((u) => {
+      if (typeof u === 'string') return { label: u, value: u }
+      return {
+        label: u.name || u.nama || u.code || 'Unit',
+        value: String(u.id ?? u.unit_id ?? u.value ?? u.code ?? ''),
+      }
+    }).filter((u) => u.value !== '')
+  }, [allUnitList])
 
   const filteredClasses = (activeClasses || []).filter(c => {
     if (!formData.unit_id) return true
@@ -1001,35 +1090,35 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
   if (!isOpen) return null
 
   return (
-    <div className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md">
+    <div className="overlay modal fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 sm:p-5 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.94, y: 14 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-        className="modal-dialog font-sans my-auto w-full max-w-4xl"
+        className="modal-dialog font-sans my-auto w-full max-w-4xl py-2 sm:py-0"
       >
-        <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+        <div className="modal-content flex max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
 
           {/* Top Accent Gradient Bar */}
           <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
 
           {/* Modal Header — Clean Top with Icon Badge & Title */}
-          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-5 py-4 sm:px-6 dark:border-slate-800 dark:bg-slate-950">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2 text-emerald-700 dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-emerald-300 shrink-0">
-                <GraduationCap className="size-5" />
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800 dark:bg-slate-950">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="flex size-9 sm:size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2 text-emerald-700 dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-emerald-300 shrink-0">
+                <GraduationCap className="size-4 sm:size-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <h2 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate">
                     {initialData ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
                   </h2>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60 shrink-0">
                     <Sparkles className="size-3" /> {initialData ? 'Update Data' : 'Siswa Baru'}
                   </span>
                 </div>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                <p className="mt-0.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">
                   Langkah {activeStep + 1} dari 5 · {steps[activeStep]?.desc || steps[activeStep]?.title}
                 </p>
               </div>
@@ -1038,15 +1127,15 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
               type="button"
               onClick={onClose}
               aria-label="Tutup modal"
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
+              className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer shrink-0 ml-2"
             >
-              <X className="size-5" />
+              <X className="size-4 sm:size-5" />
             </button>
           </div>
 
           {/* Step Wizard Indicator (Standardized Horizontal Bar) */}
-          <div className="shrink-0 border-b border-slate-100 bg-slate-50/70 p-2.5 sm:px-6 dark:border-slate-800 dark:bg-slate-900/50">
-            <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+          <div className="shrink-0 border-b border-slate-100 bg-slate-50/70 p-2 sm:px-6 dark:border-slate-800 dark:bg-slate-900/50">
+            <div className="grid grid-cols-5 gap-1 sm:gap-2">
               {steps.map((step, idx) => {
                 const isActive = activeStep === idx
                 const isDone = activeStep > idx
@@ -1056,7 +1145,7 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                     key={step.id || idx}
                     type="button"
                     onClick={() => handleStepClick(idx)}
-                    className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-2 text-[11px] font-extrabold transition-all duration-200 cursor-pointer ${
+                    className={`flex items-center justify-center gap-1 sm:gap-1.5 rounded-xl py-2 px-1 sm:px-2 text-[10px] sm:text-[11px] font-extrabold transition-all duration-200 cursor-pointer min-w-0 ${
                       isActive
                         ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-none dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600'
                         : isDone
@@ -1065,8 +1154,8 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                     }`}
                   >
                     <StepIcon className={`size-3.5 shrink-0 ${isActive ? 'text-white' : isDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
-                    <span className="truncate hidden md:inline">{step.title}</span>
-                    <span className="truncate md:hidden">Step {idx + 1}</span>
+                    <span className="truncate hidden sm:inline">{step.title}</span>
+                    <span className="truncate sm:hidden">{idx + 1}</span>
                   </button>
                 )
               })}
@@ -1152,7 +1241,16 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input label="Nama Lengkap Siswa" name="full_name" required icon={User} placeholder="Contoh: Fathir Ahmad" {...getProps('full_name')} />
-                    <Select label="Unit Pendidikan" name="unit_id" required icon={School} options={unitOptions} {...getProps('unit_id')} />
+                    <Select
+                      label="Unit Pendidikan"
+                      name="unit_id"
+                      required
+                      icon={School}
+                      options={unitOptions}
+                      disabled={isUnitLocked}
+                      helperText={isUnitLocked ? 'Terkunci sesuai unit kerja Anda' : undefined}
+                      {...getProps('unit_id')}
+                    />
                     <Input label="NIS" name="nis" required icon={Hash} placeholder="Nomor Induk Siswa" {...getProps('nis')} />
                     <Input label="NISN" name="nisn" required icon={Hash} placeholder="10 Digit NISN" {...getProps('nisn')} />
                     <Input
@@ -1315,7 +1413,7 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                           name="unit_asal_id"
                           required
                           icon={School}
-                          options={unitOptions}
+                          options={allUnitOptions}
                           placeholder="-- Pilih Unit Pendidikan Asal --"
                           {...getProps('unit_asal_id')}
                         />
@@ -1531,7 +1629,16 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                 <div className="space-y-6">
                   <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Penempatan Unit & Kelas</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Select label="Unit Pendidikan" name="unit_id" required icon={School} options={unitOptions} {...getProps('unit_id')} />
+                    <Select
+                      label="Unit Pendidikan"
+                      name="unit_id"
+                      required
+                      icon={School}
+                      options={unitOptions}
+                      disabled={isUnitLocked}
+                      helperText={isUnitLocked ? 'Terkunci sesuai unit kerja Anda' : undefined}
+                      {...getProps('unit_id')}
+                    />
                     <Select label="Pilih Kelas" name="kelas_id" icon={Building} options={classOptions} {...getProps('kelas_id')} />
                     {/* Sinergi Virtual Account Bank Syariah Indonesia (BSI) */}
                     <div className="sm:col-span-2 rounded-2xl border border-emerald-500/30 bg-emerald-50/50 p-4 dark:border-emerald-700/40 dark:bg-emerald-950/20">
@@ -1601,25 +1708,27 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
           </div>
 
           {/* Modal Footer — Canonical Vivid Gradient Squircle Actions */}
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white px-5 py-4 sm:px-6 dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex shrink-0 items-center justify-between border-t border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800 dark:bg-slate-950 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-1.5 sm:gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50 shrink-0"
             >
-              <X className="size-3.5 text-slate-500" />
+              <div className="flex size-4 sm:size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                <X className="size-3 sm:size-3.5 text-white" strokeWidth={2.2} />
+              </div>
               <span>Batal</span>
             </button>
 
-            <div className="ml-auto flex items-center gap-2.5">
+            <div className="flex items-center gap-2 sm:gap-2.5">
               {activeStep > 0 && (
                 <button
                   type="button"
                   onClick={() => setActiveStep(prev => prev - 1)}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 text-white px-4 py-2.5 text-xs font-extrabold border border-blue-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-xs shadow-blue-500/20"
+                  className="inline-flex items-center gap-1.5 sm:gap-2 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-extrabold border border-blue-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-xs shadow-blue-500/20"
                 >
-                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                    <ArrowLeft className="size-3.5" strokeWidth={2.2} />
+                  <div className="flex size-4 sm:size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                    <ArrowLeft className="size-3 sm:size-3.5 text-white" strokeWidth={2.2} />
                   </div>
                   <span>Kembali</span>
                 </button>
@@ -1629,21 +1738,21 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                 <button
                   type="button"
                   onClick={handleNextStep}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-md shadow-emerald-500/20"
+                  className="inline-flex items-center gap-1.5 sm:gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-3.5 sm:px-5 py-2 sm:py-2.5 text-xs font-extrabold border border-emerald-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-md shadow-emerald-500/20"
                 >
                   <span>Selanjutnya</span>
-                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                    <ArrowRight className="size-3.5" strokeWidth={2.2} />
+                  <div className="flex size-4 sm:size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                    <ArrowRight className="size-3 sm:size-3.5 text-white" strokeWidth={2.2} />
                   </div>
                 </button>
               ) : (
                 <button
                   type="submit"
                   form="student-main-form"
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-md shadow-emerald-500/20"
+                  className="inline-flex items-center gap-1.5 sm:gap-2 rounded-2xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 text-white px-3.5 sm:px-5 py-2 sm:py-2.5 text-xs font-extrabold border border-emerald-400/50 shadow-md shadow-emerald-700/20 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer"
                 >
-                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                    <Save className="size-3.5" strokeWidth={2.2} />
+                  <div className="flex size-4 sm:size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                    <Save className="size-3 sm:size-3.5 text-white" strokeWidth={2.2} />
                   </div>
                   <span>Simpan Data</span>
                 </button>

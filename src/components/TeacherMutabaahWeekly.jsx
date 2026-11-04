@@ -26,7 +26,7 @@ import {
   RotateCcw,
   Edit3,
 } from 'lucide-react'
-import { Pagination } from '@/components/tailgrids/core/pagination'
+import { Pagination } from '@/components/ui/pagination'
 import { mutabaahService } from '../services/mutabaahService'
 import { printWeeklyMutabaahSheet, resolveSystemLogoUrl } from '../utils/printHelper'
 import { useDebounce } from '../hooks/useDebounce'

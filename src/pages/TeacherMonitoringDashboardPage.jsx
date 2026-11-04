@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
   Calendar,
   Users,
@@ -15,12 +16,9 @@ import {
   CalendarDays,
   RefreshCw,
   Sparkles,
-  ExternalLink,
   ChevronRight,
   GraduationCap,
-  Layers,
   HeartHandshake,
-  CheckCircle,
   Bell,
   MessageSquare,
   ShieldCheck,
@@ -49,32 +47,139 @@ import { useAuthStore } from '../stores/authStore'
 import { usePengaturanStore } from '../stores/pengaturanStore'
 import { resolveFoundationName } from '../utils/printHelper'
 
+// Standard App Components
+import { PageContainer, AppBreadcrumb } from '../components/app'
+
 // TailGrids Core UI Components
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Alert, AlertTitle, AlertDescription } from '@/components/tailgrids/core/alert'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+
+// Framer Motion Animation Variants
+const containerVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, staggerChildren: 0.08 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+}
+
+// Modern TailGrids Card Color Schemes
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/80 bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-white hover:border-emerald-400 dark:border-emerald-700/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-[#1B2433] shadow-xs shadow-emerald-500/10',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300/50',
+    val: 'text-emerald-900 dark:text-emerald-200',
+  },
+  teal: {
+    card: 'border-teal-300/80 bg-gradient-to-br from-teal-50/70 via-emerald-50/40 to-white hover:border-teal-400 dark:border-teal-700/60 dark:from-teal-950/40 dark:via-emerald-950/20 dark:to-[#1B2433] shadow-xs shadow-teal-500/10',
+    glow: 'bg-teal-400/20 group-hover:bg-teal-400/30',
+    iconBox: 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-teal-500/30',
+    tag: 'bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300 border border-teal-300/50',
+    val: 'text-teal-900 dark:text-teal-200',
+  },
+  amber: {
+    card: 'border-amber-300/80 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white hover:border-amber-400 dark:border-amber-700/60 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-[#1B2433] shadow-xs shadow-amber-500/10',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300/50',
+    val: 'text-amber-900 dark:text-amber-200',
+  },
+  indigo: {
+    card: 'border-indigo-300/80 bg-gradient-to-br from-indigo-50/70 via-blue-50/40 to-white hover:border-indigo-400 dark:border-indigo-700/60 dark:from-indigo-950/40 dark:via-blue-950/20 dark:to-[#1B2433] shadow-xs shadow-indigo-500/10',
+    glow: 'bg-indigo-400/20 group-hover:bg-indigo-400/30',
+    iconBox: 'bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-indigo-500/30',
+    tag: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-300/50',
+    val: 'text-indigo-900 dark:text-indigo-200',
+  },
+  rose: {
+    card: 'border-rose-300/80 bg-gradient-to-br from-rose-50/70 via-pink-50/40 to-white hover:border-rose-400 dark:border-rose-700/60 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-[#1B2433] shadow-xs shadow-rose-500/10',
+    glow: 'bg-rose-400/20 group-hover:bg-rose-400/30',
+    iconBox: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-rose-500/30',
+    tag: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300 border border-rose-300/50',
+    val: 'text-rose-900 dark:text-rose-200',
+  },
+}
+
+function ModernTeacherKpiCard({ tag, title, value, subtext, icon: Icon, tone = 'emerald', onClick }) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+
+  return (
+    <motion.button
+      type="button"
+      whileHover={{ y: -2, scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.2 }}
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-[20px] border-2 p-4 text-left transition-all duration-300 hover:shadow-md cursor-pointer ${t.card} min-h-[155px] flex flex-col justify-between`}
+    >
+      <div className={`pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl transition-all duration-500 ${t.glow}`} />
+
+      <div className="relative z-10 space-y-2">
+        <div className="flex items-center justify-between gap-1">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${t.tag}`}>
+            {tag}
+          </span>
+          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl shadow-xs transition-transform duration-300 group-hover:scale-110 ${t.iconBox}`}>
+            <Icon className="h-4 w-4" />
+          </div>
+        </div>
+        <p className="text-xs font-black text-slate-800 dark:text-slate-100 leading-tight">
+          {title}
+        </p>
+      </div>
+
+      <div className="relative z-10 pt-2 border-t border-slate-200/50 dark:border-slate-800/60">
+        <p className={`text-xl sm:text-2xl font-black tracking-tight leading-none ${t.val}`}>
+          {value ?? 0}
+        </p>
+        <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 leading-tight mt-1 truncate">
+          {subtext}
+        </p>
+      </div>
+    </motion.button>
+  )
+}
 
 // Doa & Dzikir Harian Standar Pendidik
 const DEFAULT_TEACHER_DOAS = [
   {
     id: 'doa-belajar',
-    nama: 'Doa Sebelum Belajar & Memohon Tambahan Ilmu',
-    grup: 'Doa Pembelajaran',
-    ar: 'رَبِّ زِدْنِي عِلْمًا وَارْزُقْنِي فَهْمًا',
-    tr: "Rabbi zidnii 'ilman warzuqnii fahman",
-    idn: 'Ya Rabb-ku, tambahkanlah kepadaku ilmu pengetahuan, dan berilah aku rezeki pemahaman yang baik.',
-    tentang: 'Dibaca guru dan siswa sebelum memulai proses KBM agar ilmu yang diajarkan berkah dan mudah diserap.',
-    tag: 'KBM Harian',
+    nama: 'Doa Sebelum Mengajar & Menuntut Ilmu',
+    grup: 'Adab Mengajar',
+    ar: 'رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي وَاحْلُلْ عُقْدَةً مِنْ لِسَانِي يَفْقَهُوا قَوْلِي',
+    tr: 'Rabbisy-syrahlii shadrii, wa yassirlii amrii, wahlul uqdatam-mil-lisaanii, yafqahuu qawlii.',
+    idn: 'Ya Rabbku, lapangkanlah untukku dadaku, dan mudahkanlah untukku urusanku, dan lepaskanlah kekakuan dari lidahku, supaya mereka mengerti perkataanku.',
+    tentang: 'Doa Nabi Musa AS (QS Thaha: 25-28) yang dianjurkan dibaca guru sebelum memulai pelajaran agar materi tersampaikan dengan jelas, hikmah, dan mudah dipahami murid.',
+    tag: 'Pembuka KBM',
   },
   {
-    id: 'sayyidul-istighfar',
-    nama: 'Sayyidul Istighfar (Dzikir Pagi & Petang)',
-    grup: 'Dzikir Pagi & Petang',
-    ar: 'اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ خَلَقْتَنِي وَأَنَا عَبْدُكَ وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ وَأَبُوءُ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لَا يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ',
-    tr: "Allahumma anta rabbii laa ilaaha illaa anta khalaqtanii wa ana 'abduka wa ana 'alaa 'ahdika wa wa'dika mastatha'tu, a'uudzu bika min syarri maa shana'tu, abu'u laka bini'matika 'alayya wa abu'u bidzanbii faghfir lii fainnahu laa yaghfirudz-dzunuuba illaa anta.",
-    idn: 'Ya Allah, Engkaulah Rabb-ku, tiada Tuhan yang berhak disembah selain Engkau. Engkaulah yang menciptakanku dan aku adalah hamba-Mu. Aku senantiasa setia pada perjanjian-Mu semampuku. Aku berlindung dari keburukan yang kuperbuat. Aku mengakui nikmat-Mu dan dosaku, maka ampunilah aku.',
-    tentang: 'Penghulu istighfar harian pendidik. Barangsiapa membacanya di pagi hari lalu meninggal sebelum petang, ia termasuk ahli surga (HR. Bukhari).',
-    tag: 'Dzikir Harian',
+    id: 'doa-ilmu-bermanfaat',
+    nama: 'Doa Memohon Ilmu yang Bermanfaat & Amal Diterima',
+    grup: 'Doa Pagi',
+    ar: 'اللَّهُمَّ إِنِّي أَسْأَلُكَ عِلْمًا نَافِعًا، وَرِزْقًا طَيِّبًا، وَعَمَلًا مُتَقَبَّلًا',
+    tr: 'Allaahumma innii as-aluka ilman naafi’an, wa rizqan thayyiban, wa ‘amalan mutaqabbalan.',
+    idn: 'Ya Allah, sesungguhnya aku memohon kepada-Mu ilmu yang bermanfaat, rezeki yang halal dan baik, serta amalan yang diterima di sisi-Mu.',
+    tentang: 'Dibaca Nabi Muhammad SAW setelah salam shalat Subuh (HR. Ibnu Majah no. 925). Bekal spiritual utama guru sebelum memasuki gerbang sekolah.',
+    tag: 'Dzikir Pagi',
+  },
+  {
+    id: 'doa-kemudahan',
+    nama: 'Doa Menghadapi Kesulitan Murid & Masalah KBM',
+    grup: 'Pengelolaan Kelas',
+    ar: 'اللَّهُمَّ لاَ سَهْلَ إِلاَّ مَا جَعَلْتَهُ سَهْلاً وَأَنْتَ تَجْعَلُ الحَزْنَ إِذَا شِئْتَ سَهْلاً',
+    tr: 'Allaahumma laa sahla illaa maa ja’altahu sahlan, wa anta taj’alul hazna idzaa syi’ta sahlan.',
+    idn: 'Ya Allah, tidak ada kemudahan kecuali apa yang Engkau jadikan mudah. Dan Engkau menjadikan kesedihan/kesulitan, jika Engkau kehendaki, menjadi mudah.',
+    tentang: 'Dibaca saat menghadapi dinamika siswa yang lambat paham, kesulitan manajemen kelas, atau tantangan asesmen (HR. Ibnu Hibban no. 327).',
+    tag: 'Solusi KBM',
   },
   {
     id: 'doa-kafaratul-majelis',
@@ -93,7 +198,7 @@ export default function TeacherMonitoringDashboardPage() {
   const user = useAuthStore((state) => state.user)
   const pengaturan = usePengaturanStore((state) => state.pengaturan)
   const foundationName = resolveFoundationName(pengaturan)
-  
+
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
@@ -243,112 +348,96 @@ export default function TeacherMonitoringDashboardPage() {
 
   if (loading && !dashboardData) {
     return (
-      <div className="min-h-screen bg-slate-50/50 p-6 dark:bg-[#0f172a]/50">
-        <div className="mx-auto max-w-7xl space-y-6 animate-pulse">
-          <div className="h-44 rounded-3xl bg-slate-200 dark:bg-slate-800" />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <PageContainer maxW="7xl">
+        <div className="space-y-6 animate-pulse pb-12">
+          <div className="h-10 w-64 rounded-xl bg-slate-200 dark:bg-slate-800" />
+          <div className="h-44 rounded-[22px] bg-slate-200 dark:bg-slate-800" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-28 rounded-2xl bg-slate-200 dark:bg-slate-800" />
+              <div key={i} className="h-36 rounded-[20px] bg-slate-200 dark:bg-slate-800" />
             ))}
           </div>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="h-96 rounded-3xl bg-slate-200 dark:bg-slate-800 lg:col-span-2" />
-            <div className="h-96 rounded-3xl bg-slate-200 dark:bg-slate-800" />
+            <div className="h-96 rounded-[22px] bg-slate-200 dark:bg-slate-800 lg:col-span-2" />
+            <div className="h-96 rounded-[22px] bg-slate-200 dark:bg-slate-800" />
           </div>
         </div>
-      </div>
+      </PageContainer>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/60 pb-16 pt-3 dark:bg-[#0B1120] text-slate-800 dark:text-slate-100">
-      <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6 lg:px-8">
-        
-        {/* Breadcrumb & Navigation */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-            <Link to="/dashboard" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition">Beranda</Link>
-            <span>/</span>
-            <span className="text-emerald-700 dark:text-emerald-400 font-bold">Dashboard Monitoring Guru</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => fetchDashboardData(true)}
-              disabled={refreshing}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer transition"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 text-emerald-600 ${refreshing ? 'animate-spin' : ''}`} />
-              <span>{refreshing ? 'Memperbarui...' : 'Segarkan Data'}</span>
-            </button>
-            <Link
-              to="/portal-guru/workspace"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:from-emerald-700 hover:to-teal-700 transition cursor-pointer"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Masuk Workspace KBM</span>
-            </Link>
-          </div>
-        </div>
+    <PageContainer maxW="7xl">
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-12">
+        {/* Breadcrumb Navigation Complying with TailGrids Standard */}
+        <motion.div variants={itemVariants} className="print:hidden">
+          <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Dashboard Pendidik & Pembelajaran' }]} />
+        </motion.div>
 
         {error && (
-          <Alert status="error" className="rounded-2xl border-rose-300 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40">
-            <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
-            <div>
-              <AlertTitle className="text-rose-800 dark:text-rose-200">Koneksi Terganggu</AlertTitle>
-              <AlertDescription className="text-rose-700 dark:text-rose-300 text-xs mt-0.5">{error}</AlertDescription>
-            </div>
-          </Alert>
+          <motion.div variants={itemVariants}>
+            <Alert status="error" className="rounded-2xl border-rose-300 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40">
+              <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+              <div>
+                <AlertTitle className="text-rose-800 dark:text-rose-200">Koneksi Terganggu</AlertTitle>
+                <AlertDescription className="text-rose-700 dark:text-rose-300 text-xs mt-0.5">{error}</AlertDescription>
+              </div>
+            </Alert>
+          </motion.div>
         )}
 
-        {/* 1. TAILGRIDS HERO HEADER: DASHBOARD MONITORING GURU */}
-        <div className="relative overflow-hidden rounded-[24px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-6 sm:p-8 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
-          {/* Multi-tone Ambient Glow */}
-          <div className="pointer-events-none absolute -right-16 -top-16 h-72 w-72 rounded-full bg-gradient-to-br from-emerald-400/30 via-teal-300/20 to-transparent blur-3xl dark:from-emerald-600/20" />
-          <div className="pointer-events-none absolute -bottom-16 left-1/3 h-64 w-64 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-300/15 to-transparent blur-3xl" />
+        {/* 1. TAILGRIDS MODERN HERO CARD (GOLD BENCHMARK) */}
+        <motion.div
+          variants={itemVariants}
+          className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden"
+        >
+          {/* Dual Multi-tone Ambient Glow Accent */}
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
-          <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-600/30">
-                <GraduationCap className="h-8 w-8" />
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <GraduationCap className="size-6 sm:size-7 text-white" />
               </div>
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 text-[11px] font-black uppercase tracking-wider text-white shadow-xs">
-                    Dashboard Monitoring Pendidik
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Portal Guru &amp; Pendidik
                   </span>
-                  <span className="rounded-full bg-emerald-100/80 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
-                    Tahun Ajaran {academicContext.academic_year || '2026/2027'} ({academicContext.semester || 'Ganjil'})
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    TA {academicContext.academic_year || '2026/2027'} ({academicContext.semester || 'Ganjil'})
                   </span>
                 </div>
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white truncate">
                   Ahlan wa Sahlan, {teacher.name || user?.name || 'Ustadz / Ustadzah'}
                 </h1>
-                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">
-                  {teacher.education_unit || 'Unit Pendidikan Terpadu'} • NIP/NIY: <span className="font-mono font-semibold">{teacher.nip_niy || '-'}</span>
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {teacher.education_unit || 'Unit Pendidikan Terpadu'} • NIP/NIY: <span className="font-mono font-bold text-slate-900 dark:text-white">{teacher.nip_niy || '-'}</span>
                 </p>
               </div>
             </div>
 
-            {/* Quick Status Pill */}
-            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-500/20 bg-white/70 p-3.5 backdrop-blur-md dark:border-emerald-500/30 dark:bg-slate-800/80 sm:gap-4">
+            {/* Live Clock & Attendance Check-In Status Pill */}
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-500/25 bg-white/80 p-3 backdrop-blur-md dark:border-emerald-500/30 dark:bg-slate-900/80 shadow-xs shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-                  <Clock className="h-5 w-5" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100/90 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">
+                  <Clock className="h-4.5 w-4.5" />
                 </div>
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Waktu Sekolah</div>
                   <div className="text-xs font-black text-slate-800 dark:text-slate-100 font-mono">
-                    {formattedDate} • {formattedTime} WIB
+                    {formattedDate.split(',')[0]}, {formattedTime} WIB
                   </div>
                 </div>
               </div>
 
-              <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
+              <div className="h-7 w-px bg-slate-200 dark:bg-slate-700" />
 
               <div className="flex items-center gap-2.5">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${todayLog ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'}`}>
-                  {todayLog ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+                <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${todayLog ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/20 text-amber-700 dark:text-amber-300'}`}>
+                  {todayLog ? <CheckCircle2 className="h-4.5 w-4.5" /> : <AlertCircle className="h-4.5 w-4.5" />}
                 </div>
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Presensi Guru</div>
@@ -359,139 +448,197 @@ export default function TeacherMonitoringDashboardPage() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* 2. 5 KARTU KPI STATISTIK RINGKAS */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {/* KPI 1: Jadwal Hari Ini */}
-          <div className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-white p-4.5 shadow-xs transition hover:shadow-md dark:border-emerald-900/40 dark:bg-slate-800/90">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Jadwal Mengajar</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
-                <Calendar className="h-4.5 w-4.5" />
-              </div>
-            </div>
-            <div className="mt-2.5 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">
-                {kpis.schedules_today_count || schedulesToday.length || 0}
-              </span>
-              <span className="text-xs font-semibold text-slate-500">sesi hari ini</span>
-            </div>
-            <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium truncate">
-              {kpis.total_classes || 0} Rombel Terbina
+        {/* 2. SOFT PASTEL SQUIRCLE ACTION TOOLBAR HEADER (BENCHMARK TAILGRIDS) */}
+        <motion.div
+          variants={itemVariants}
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-[20px] border-2 border-emerald-500/25 bg-white/95 dark:bg-[#1B2433] shadow-md shadow-emerald-500/5 print:hidden"
+        >
+          <div>
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <Sparkles className="size-4 text-emerald-600" />
+              Aksi Cepat &amp; Pintasan Mengajar
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Pintas cepat presensi harian, modul ajar, tugas LMS, dan jurnal tahfizh
             </p>
           </div>
 
-          {/* KPI 2: Siswa Bimbingan */}
-          <div className="relative overflow-hidden rounded-2xl border border-teal-500/20 bg-white p-4.5 shadow-xs transition hover:shadow-md dark:border-teal-900/40 dark:bg-slate-800/90">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Siswa Diajar</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/60 dark:text-teal-400">
-                <Users className="h-4.5 w-4.5" />
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {/* Input Presensi - Emerald */}
+            <div className="group relative inline-flex">
+              <button
+                type="button"
+                title="Input Presensi Kelas Hari Ini"
+                onClick={() => navigate('/portal-guru/workspace?tab=presensi')}
+                className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+              >
+                <CheckCircle2 className="size-5" />
+              </button>
+              <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                Input Presensi
               </div>
             </div>
-            <div className="mt-2.5 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">
-                {kpis.total_students || 30}
-              </span>
-              <span className="text-xs font-semibold text-slate-500">santri aktif</span>
-            </div>
-            <p className="mt-1 text-[11px] text-teal-600 dark:text-teal-400 font-medium truncate">
-              Rata-rata 30 siswa/kelas
-            </p>
-          </div>
 
-          {/* KPI 3: Tugas Perlu Dinilai */}
-          <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-white p-4.5 shadow-xs transition hover:shadow-md dark:border-amber-900/40 dark:bg-slate-800/90">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tugas Terkumpul</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
-                <FileCheck className="h-4.5 w-4.5" />
+            {/* Modul Ajar - Sky */}
+            <div className="group relative inline-flex">
+              <button
+                type="button"
+                title="Buka Modul & Materi Ajar"
+                onClick={() => navigate('/portal-guru/workspace?tab=materi')}
+                className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-700 hover:bg-sky-200 dark:bg-sky-950/60 dark:text-sky-300 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+              >
+                <BookOpen className="size-5" />
+              </button>
+              <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                Modul &amp; Materi Ajar
               </div>
             </div>
-            <div className="mt-2.5 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
-                {kpis.pending_grading_count || 0}
-              </span>
-              <span className="text-xs font-semibold text-slate-500">perlu koreksi</span>
-            </div>
-            <p className="mt-1 text-[11px] text-slate-500 font-medium truncate">
-              LMS Pengumpulan Tugas
-            </p>
-          </div>
 
-          {/* KPI 4: Setoran Tahfizh Hari Ini */}
-          <div className="relative overflow-hidden rounded-2xl border border-indigo-500/20 bg-white p-4.5 shadow-xs transition hover:shadow-md dark:border-indigo-900/40 dark:bg-slate-800/90">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Setoran Tahfizh</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
-                <BookmarkCheck className="h-4.5 w-4.5" />
+            {/* Buat Tugas LMS - Amber */}
+            <div className="group relative inline-flex">
+              <button
+                type="button"
+                title="Buka & Buat Tugas LMS"
+                onClick={() => navigate('/portal-guru/workspace?tab=penugasan')}
+                className="flex size-10 items-center justify-center rounded-2xl bg-amber-100/90 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-300 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+              >
+                <FileText className="size-5" />
+              </button>
+              <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                Penugasan LMS
               </div>
             </div>
-            <div className="mt-2.5 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">
-                {kpis.tahfizh_today_count || 0}
-              </span>
-              <span className="text-xs font-semibold text-slate-500">santri setor</span>
-            </div>
-            <p className="mt-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-medium truncate">
-              Jurnal Tahfizh Harian
-            </p>
-          </div>
 
-          {/* KPI 5: Mutaba'ah Perlu Verifikasi */}
-          <div className="relative overflow-hidden rounded-2xl border border-rose-500/20 bg-white p-4.5 shadow-xs transition hover:shadow-md dark:border-rose-900/40 dark:bg-slate-800/90">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mutaba'ah Santri</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
-                <HeartHandshake className="h-4.5 w-4.5" />
+            {/* Jurnal Tahfizh - Indigo */}
+            <div className="group relative inline-flex">
+              <button
+                type="button"
+                title="Jurnal Setoran Tahfizh Santri"
+                onClick={() => navigate('/portal-guru/workspace?tab=tahfizh')}
+                className="flex size-10 items-center justify-center rounded-2xl bg-indigo-100/90 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+              >
+                <BookmarkCheck className="size-5" />
+              </button>
+              <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                Jurnal Tahfizh
               </div>
             </div>
-            <div className="mt-2.5 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-rose-600 dark:text-rose-400">
-                {kpis.unverified_mutabaah_count || 0}
-              </span>
-              <span className="text-xs font-semibold text-slate-500">draft verifikasi</span>
-            </div>
-            <p className="mt-1 text-[11px] text-slate-500 font-medium truncate">
-              Amalan Yaumiyyah Santri
-            </p>
-          </div>
-        </div>
 
-        {/* 3. AGENDA HARI INI & PINTASAN WORKSPACE (2 KOLOM GRID) */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {/* Segarkan Data - Violet */}
+            <div className="group relative inline-flex">
+              <button
+                type="button"
+                title="Segarkan Data Real-Time"
+                onClick={() => fetchDashboardData(true)}
+                className="flex size-10 items-center justify-center rounded-2xl bg-purple-100/90 text-purple-700 hover:bg-purple-200 dark:bg-purple-950/60 dark:text-purple-300 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+              >
+                <RefreshCw className={`size-5 ${refreshing ? 'animate-spin' : ''}`} />
+              </button>
+              <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                Segarkan Data
+              </div>
+            </div>
+
+            {/* Tombol Workspace KBM Utama */}
+            <Link
+              to="/portal-guru/workspace"
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 px-4 py-2 text-xs font-black text-white shadow-md shadow-emerald-600/30 hover:from-emerald-700 hover:to-teal-800 transition cursor-pointer"
+            >
+              <Sparkles className="size-4" />
+              <span>Workspace KBM</span>
+            </Link>
+          </div>
+        </motion.div>
+
+        {/* 3. 5 MASTER KPI STATS GRID (TAILGRIDS CARD STANDARD) */}
+        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 items-stretch">
+          <ModernTeacherKpiCard
+            tag="KBM"
+            title="Jadwal Mengajar"
+            value={`${kpis.schedules_today_count ?? schedulesToday.length ?? 0} Sesi`}
+            subtext={`${kpis.total_classes || 0} rombel aktif dibina`}
+            icon={Calendar}
+            tone="emerald"
+            onClick={() => navigate('/portal-guru/workspace?tab=jadwal')}
+          />
+          <ModernTeacherKpiCard
+            tag="SISWA"
+            title="Santri Bimbingan"
+            value={`${kpis.total_students ?? 30} Siswa`}
+            subtext="Rombel aktif mengajar"
+            icon={Users}
+            tone="teal"
+            onClick={() => navigate('/portal-guru/workspace?tab=presensi')}
+          />
+          <ModernTeacherKpiCard
+            tag="LMS"
+            title="Tugas Perlu Koreksi"
+            value={`${kpis.pending_grading_count ?? 0} Berkas`}
+            subtext={`${Number(kpis.graded_count || 0)} tugas telah dinilai`}
+            icon={FileCheck}
+            tone="amber"
+            onClick={() => navigate('/portal-guru/workspace?tab=penilaian')}
+          />
+          <ModernTeacherKpiCard
+            tag="QUR'AN"
+            title="Setoran Tahfizh"
+            value={`${kpis.tahfizh_today_count ?? 0} Santri`}
+            subtext="Jurnal tasmi' harian"
+            icon={BookmarkCheck}
+            tone="indigo"
+            onClick={() => navigate('/portal-guru/workspace?tab=tahfizh')}
+          />
+          <ModernTeacherKpiCard
+            tag="ADAB"
+            title="Verifikasi Mutaba'ah"
+            value={`${kpis.unverified_mutabaah_count ?? 0} Draft`}
+            subtext="Amalan yaumiyyah santri"
+            icon={HeartHandshake}
+            tone="rose"
+            onClick={() => navigate('/portal-guru/workspace?tab=catatan')}
+          />
+        </motion.div>
+
+        {/* 4. AGENDA HARI INI & WIDGET EDUKASI (3 COLUMN LAYOUT) */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-start">
           
-          {/* Kolom Kiri (2 Kolom): Jadwal & Sesi Pelajaran Hari Ini */}
+          {/* Kolom Kiri (2 Kolom Lebar) */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/90">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-700/60">
+            
+            {/* Widget 1: Jadwal Mengajar Hari Ini */}
+            <motion.div
+              variants={itemVariants}
+              className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3 p-5 border-b border-emerald-100/90 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
                 <div>
                   <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                     <CalendarDays className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                     Jadwal Mengajar Hari Ini
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Daftar jam pelajaran yang ditugaskan kepada Anda pada hari {formattedDate.split(',')[0]}
+                    Daftar jam pelajaran tatap muka Anda pada hari {formattedDate.split(',')[0]}
                   </p>
                 </div>
                 <Link
                   to="/portal-guru/workspace?tab=jadwal"
-                  className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 transition"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 transition"
                 >
                   Lihat Jadwal Lengkap <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
 
-              <div className="mt-4 space-y-3">
+              <div className="p-5 space-y-3">
                 {schedulesToday.length === 0 ? (
-                  <div className="py-10 text-center">
-                    <Calendar className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" />
-                    <p className="mt-2 text-xs font-bold text-slate-600 dark:text-slate-300">
+                  <div className="py-12 text-center rounded-2xl border border-dashed border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/20">
+                    <Calendar className="mx-auto h-10 w-10 text-emerald-300 dark:text-emerald-600" />
+                    <p className="mt-2 text-xs font-bold text-slate-700 dark:text-slate-200">
                       Tidak Ada Jadwal Mengajar Hari Ini
                     </p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Anda dapat memeriksa jadwal pekanan atau mempersiapkan modul ajar di Workspace.
+                      Anda dapat memeriksa jadwal pekanan atau merancang materi ajar di Workspace KBM.
                     </p>
                   </div>
                 ) : (
@@ -500,7 +647,6 @@ export default function TeacherMonitoringDashboardPage() {
                     const className = sch.kelas?.name || sch.kelas?.nama_kelas || 'Rombel'
                     const timeRange = `${sch.time_start || '08:00'} - ${sch.time_end || '09:20'}`
                     
-                    // Simple check if schedule is currently active
                     const [sh, sm] = (sch.time_start || '00:00').split(':').map(Number)
                     const [eh, em] = (sch.time_end || '00:00').split(':').map(Number)
                     const curMin = currentTime.getHours() * 60 + currentTime.getMinutes()
@@ -510,9 +656,9 @@ export default function TeacherMonitoringDashboardPage() {
                     return (
                       <div
                         key={sch.id || idx}
-                        className={`group relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border p-4 transition ${
+                        className={`group relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border p-4 transition-all duration-200 ${
                           isNow
-                            ? 'border-emerald-500/50 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent dark:border-emerald-500/60 dark:bg-emerald-950/30 shadow-xs'
+                            ? 'border-emerald-500/60 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent dark:border-emerald-500/60 dark:bg-emerald-950/40 shadow-xs'
                             : isPassed
                             ? 'border-slate-200/60 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/40 opacity-75'
                             : 'border-slate-200 bg-white hover:border-emerald-300 dark:border-slate-700/80 dark:bg-slate-800/60'
@@ -520,9 +666,9 @@ export default function TeacherMonitoringDashboardPage() {
                       >
                         <div className="flex items-start gap-3.5">
                           <div
-                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold text-xs ${
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-black text-xs ${
                               isNow
-                                ? 'bg-emerald-600 text-white shadow-sm'
+                                ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-600/30'
                                 : isPassed
                                 ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
                                 : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300'
@@ -532,14 +678,14 @@ export default function TeacherMonitoringDashboardPage() {
                           </div>
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                                 {subjectName}
                               </h3>
-                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                              <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 text-[10px] font-black text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
                                 {className}
                               </span>
                               {isNow && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white animate-pulse">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold text-white animate-pulse">
                                   Sedang Berlangsung
                                 </span>
                               )}
@@ -560,7 +706,7 @@ export default function TeacherMonitoringDashboardPage() {
                             onClick={() => navigate(`/portal-guru/workspace?tab=presensi&schedule_id=${sch.id}`)}
                             className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer ${
                               isNow
-                                ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm'
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm shadow-emerald-600/20'
                                 : 'border border-emerald-500/30 bg-white text-emerald-700 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-emerald-300'
                             }`}
                           >
@@ -573,10 +719,13 @@ export default function TeacherMonitoringDashboardPage() {
                   })
                 )}
               </div>
-            </div>
+            </motion.div>
 
-            {/* Kartu Doa & Dzikir Harian Pendidik (Yaumiyah) */}
-            <div className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-white p-5 shadow-xs dark:border-emerald-500/30 dark:bg-slate-800/95">
+            {/* Widget 2: Kartu Doa & Dzikir Harian Pendidik (Yaumiyah) */}
+            <motion.div
+              variants={itemVariants}
+              className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-gradient-to-br from-emerald-500/5 via-teal-500/5 to-white p-5 shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 pb-4 dark:border-emerald-500/20">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30">
@@ -585,7 +734,7 @@ export default function TeacherMonitoringDashboardPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="text-base font-black text-slate-900 dark:text-white">
-                        Doa & Dzikir Harian Pendidik
+                        Doa &amp; Dzikir Harian Pendidik
                       </h2>
                       <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
                         Yaumiyah
@@ -616,7 +765,7 @@ export default function TeacherMonitoringDashboardPage() {
               </div>
 
               {/* Tab Navigasi Pilihan Doa */}
-              <div className="mt-4 flex flex-wrap gap-1.5 border-b border-slate-200/60 pb-3 dark:border-slate-700/60">
+              <div className="mt-4 flex flex-wrap gap-1.5 border-b border-emerald-100/80 pb-3 dark:border-slate-700/60">
                 {doaCollection.map((item, idx) => (
                   <button
                     key={item.id || idx}
@@ -664,14 +813,14 @@ export default function TeacherMonitoringDashboardPage() {
                     </div>
 
                     {/* Teks Arab */}
-                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-50/40 p-4 dark:border-emerald-500/20 dark:bg-emerald-950/20">
+                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-50/50 p-4 dark:border-emerald-500/20 dark:bg-emerald-950/20">
                       <p className="text-right font-serif text-xl sm:text-2xl leading-loose font-normal text-slate-900 dark:text-white" dir="rtl">
                         {currentDoa.ar}
                       </p>
                     </div>
 
                     {/* Transliterasi & Terjemahan */}
-                    <div className="space-y-1.5 rounded-2xl bg-white/70 p-3.5 border border-slate-200/60 dark:bg-slate-900/40 dark:border-slate-800">
+                    <div className="space-y-1.5 rounded-2xl bg-white/80 p-3.5 border border-emerald-100 dark:bg-slate-900/60 dark:border-slate-800">
                       <p className="text-xs italic text-emerald-800 dark:text-emerald-300 font-medium">
                         "{currentDoa.tr}"
                       </p>
@@ -685,7 +834,7 @@ export default function TeacherMonitoringDashboardPage() {
                       <div className="flex items-start gap-2 rounded-xl bg-amber-50/80 p-2.5 text-[11px] text-amber-900 border border-amber-200/60 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-900/40">
                         <Sparkles className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
                         <div>
-                          <span className="font-bold">Keutamaan & Riwayat: </span>
+                          <span className="font-bold">Keutamaan &amp; Riwayat: </span>
                           <span>{currentDoa.tentang}</span>
                         </div>
                       </div>
@@ -693,18 +842,21 @@ export default function TeacherMonitoringDashboardPage() {
                   </div>
                 )
               })()}
-            </div>
+            </motion.div>
 
-            {/* Grafik Analitik Kehadiran Siswa */}
-            <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/90">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-700/60">
+            {/* Widget 3: Grafik Analitik Kehadiran Siswa */}
+            <motion.div
+              variants={itemVariants}
+              className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] p-5"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100/90 pb-4 dark:border-emerald-800/60">
                 <div>
                   <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                     Tren Kehadiran Siswa di Kelas Anda
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Monitoring persentase kehadiran siswa sepekan terakhir
+                    Monitoring persentase kehadiran santri sepekan terakhir
                   </p>
                 </div>
                 <div className="flex items-center gap-3 text-xs font-semibold">
@@ -737,20 +889,23 @@ export default function TeacherMonitoringDashboardPage() {
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-slate-400">
-                    <Calendar className="mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
+                    <Calendar className="mb-2 h-8 w-8 text-emerald-300 dark:text-emerald-600" />
                     <p className="font-semibold text-slate-500 dark:text-slate-400">Belum ada rekaman presensi mengajar</p>
                     <p className="text-[11px] text-slate-400">Log kehadiran harian kelas akan ditampilkan di sini.</p>
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           </div>
 
-          {/* Kolom Kanan (1 Kolom): Akses Cepat & Status LMS */}
+          {/* Kolom Kanan (1 Kolom Samping) */}
           <div className="space-y-6">
             
-            {/* Status Penugasan LMS */}
-            <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/90">
+            {/* Widget 4: Status Penugasan LMS */}
+            <motion.div
+              variants={itemVariants}
+              className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] p-5"
+            >
               <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <FileCheck className="h-5 w-5 text-amber-500" />
                 Status Koreksi Tugas
@@ -794,7 +949,7 @@ export default function TeacherMonitoringDashboardPage() {
                 )}
               </div>
 
-              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700/60">
+              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex items-center justify-between text-xs font-semibold">
                   <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                     <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Sudah Selesai Dinilai
@@ -815,16 +970,19 @@ export default function TeacherMonitoringDashboardPage() {
                 <button
                   type="button"
                   onClick={() => navigate('/portal-guru/workspace?tab=penilaian')}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 py-2.5 text-xs font-bold text-white hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 transition cursor-pointer"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition cursor-pointer"
                 >
                   <FileText className="h-4 w-4" /> Buka Menu Penilaian
                 </button>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Papan Pengumuman Sekolah */}
-            <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/90">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-700/60">
+            {/* Widget 5: Papan Pengumuman Sekolah */}
+            <motion.div
+              variants={itemVariants}
+              className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] p-5"
+            >
+              <div className="flex items-center justify-between border-b border-emerald-100/90 pb-3 dark:border-emerald-800/60">
                 <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                   <Bell className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   Pengumuman Sekolah
@@ -836,7 +994,7 @@ export default function TeacherMonitoringDashboardPage() {
                   <p className="text-xs text-slate-400 py-4 text-center">Belum ada pengumuman terbaru.</p>
                 ) : (
                   announcements.slice(0, 3).map((item, idx) => (
-                    <div key={item.id || idx} className="rounded-2xl bg-slate-50/80 p-3 dark:bg-slate-900/50">
+                    <div key={item.id || idx} className="rounded-2xl border border-emerald-100/80 bg-emerald-50/30 p-3 dark:border-slate-800 dark:bg-slate-900/50">
                       <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
                         <Building2 className="h-3 w-3" /> {item.target_unit || foundationName}
                       </div>
@@ -850,15 +1008,18 @@ export default function TeacherMonitoringDashboardPage() {
                   ))
                 )}
               </div>
-            </div>
+            </motion.div>
 
-            {/* Pintasan Aksi Cepat ke Modul Workspace & Ibadah */}
-            <div className="rounded-3xl border border-slate-200/80 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/90">
+            {/* Widget 6: Pintasan Belajar & Ibadah */}
+            <motion.div
+              variants={itemVariants}
+              className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-white p-5 shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]"
+            >
               <h3 className="text-xs font-black uppercase tracking-wider text-emerald-900 dark:text-emerald-300">
-                Pintasan Belajar & Ibadah
+                Pintasan Belajar &amp; Ibadah
               </h3>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Akses cepat modul pengajaran & ibadah harian:
+                Akses cepat modul pengajaran &amp; ibadah harian:
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
@@ -896,7 +1057,7 @@ export default function TeacherMonitoringDashboardPage() {
                 <button
                   type="button"
                   onClick={() => navigate('/dashboard/master-quran-surah')}
-                  className="col-span-2 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/5 p-2.5 text-left text-xs font-bold text-slate-800 hover:border-emerald-500 hover:bg-emerald-50/80 dark:border-emerald-700/60 dark:bg-slate-800 dark:text-slate-200 transition cursor-pointer flex items-center justify-between"
+                  className="col-span-2 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-500/5 p-2.5 text-left text-xs font-bold text-slate-800 hover:border-emerald-500 hover:bg-emerald-50/80 dark:border-emerald-700/60 dark:bg-slate-800 dark:text-slate-200 transition cursor-pointer flex items-center justify-between"
                 >
                   <div className="flex items-center gap-2">
                     <BookOpen className="h-4 w-4 text-emerald-600" />
@@ -910,7 +1071,7 @@ export default function TeacherMonitoringDashboardPage() {
                   className="rounded-xl border border-slate-200 bg-white p-2.5 text-left text-xs font-bold text-slate-800 hover:border-emerald-500 hover:bg-emerald-50/50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition cursor-pointer"
                 >
                   <Heart className="h-4 w-4 text-rose-500 mb-1" />
-                  <span>Doa & Dzikir</span>
+                  <span>Doa &amp; Dzikir</span>
                 </button>
                 <button
                   type="button"
@@ -921,13 +1082,13 @@ export default function TeacherMonitoringDashboardPage() {
                   <span>Jadwal Sholat</span>
                 </button>
               </div>
-            </div>
+            </motion.div>
 
           </div>
 
         </div>
 
-      </div>
-    </div>
+      </motion.div>
+    </PageContainer>
   )
 }

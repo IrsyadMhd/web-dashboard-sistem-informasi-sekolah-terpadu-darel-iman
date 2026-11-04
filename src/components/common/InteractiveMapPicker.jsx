@@ -473,7 +473,10 @@ export default function InteractiveMapPicker({
   // Browser Geolocation
   const handleUseMyLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      alert('Geolocation tidak didukung oleh browser Anda.')
+      setSearchFeedback({
+        type: 'warning',
+        text: 'Fitur Geolocation tidak didukung atau tidak diizinkan oleh peramban Anda.',
+      })
       return
     }
 
@@ -496,7 +499,10 @@ export default function InteractiveMapPicker({
       },
       (err) => {
         setIsSearching(false)
-        alert('Gagal mengambil lokasi GPS: ' + err.message)
+        setSearchFeedback({
+          type: 'error',
+          text: 'Gagal mengambil lokasi GPS: ' + (err.message || 'Pastikan izin lokasi telah diaktifkan.'),
+        })
       },
       { enableHighAccuracy: true, timeout: 10000 }
     )

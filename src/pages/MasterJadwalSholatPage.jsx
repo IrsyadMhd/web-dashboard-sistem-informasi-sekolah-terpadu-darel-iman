@@ -26,6 +26,7 @@ import {
   RotateCcw,
   CheckCircle2,
   ChevronRight,
+  ChevronDown,
   Filter,
   Info,
 } from 'lucide-react'
@@ -34,7 +35,7 @@ import ActionDropdown from '../components/app/ActionDropdown'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { useDebounce } from '../hooks/useDebounce'
-import { Pagination } from '../components/tailgrids/core/pagination'
+import { Pagination } from '../components/ui/pagination'
 import { printCleanTable, resolveFoundationName } from '../utils/printHelper'
 import { usePengaturanStore } from '../stores/pengaturanStore'
 import {
@@ -42,39 +43,351 @@ import {
   MasterDataPage,
 } from '../components/master-data'
 
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = React.useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          disabled
+            ? 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-800/60 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== undefined && value !== null && value !== 'all'
+            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-500/15 text-emerald-900 font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ── HEROUI MODAL/FORM SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  label = null,
+  required = false,
+  icon: IconComponent = null,
+  disabled = false,
+  searchable = false,
+  className = '',
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = React.useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative w-full ${className}`} ref={containerRef}>
+      {label && (
+        <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3 py-2 text-xs font-medium transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-xs'
+            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[95] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400">
+                  Tidak ada opsi yang sesuai
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-500/15 text-emerald-900 font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 const MODERN_CARD_TONES = {
   emerald: {
-    badgeBg: 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-500/20',
+    card: 'border-emerald-300/80 bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-white hover:border-emerald-400 hover:shadow-emerald-500/10 dark:border-emerald-700/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-[#1B2433]',
+    badgeBg: 'bg-emerald-500/10 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-500/30',
     iconGradient: 'from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-500/25',
-    glow: 'bg-emerald-500/15 group-hover:bg-emerald-500/25',
-    border: 'hover:border-emerald-400/60 dark:hover:border-emerald-500/40',
+    glow: 'bg-emerald-500/20 group-hover:bg-emerald-500/30',
+    title: 'text-emerald-800 dark:text-emerald-300',
+    value: 'text-emerald-950 dark:text-emerald-100',
+    subtext: 'text-emerald-700/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600 dark:text-emerald-400',
   },
   blue: {
-    badgeBg: 'bg-sky-500/10 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300 border-sky-500/20',
+    card: 'border-sky-300/80 bg-gradient-to-br from-sky-50/70 via-blue-50/40 to-white hover:border-sky-400 hover:shadow-sky-500/10 dark:border-sky-700/60 dark:from-sky-950/40 dark:via-blue-950/20 dark:to-[#1B2433]',
+    badgeBg: 'bg-sky-500/10 text-sky-800 dark:bg-sky-500/20 dark:text-sky-300 border-sky-500/30',
     iconGradient: 'from-sky-500 via-blue-600 to-indigo-700 shadow-sky-500/25',
-    glow: 'bg-sky-500/15 group-hover:bg-sky-500/25',
-    border: 'hover:border-sky-400/60 dark:hover:border-sky-500/40',
+    glow: 'bg-sky-500/20 group-hover:bg-sky-500/30',
+    title: 'text-sky-800 dark:text-sky-300',
+    value: 'text-sky-950 dark:text-sky-100',
+    subtext: 'text-sky-700/80 dark:text-sky-400/80',
+    cta: 'text-sky-600 dark:text-sky-400',
   },
   purple: {
-    badgeBg: 'bg-purple-500/10 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 border-purple-500/20',
+    card: 'border-purple-300/80 bg-gradient-to-br from-purple-50/70 via-violet-50/40 to-white hover:border-purple-400 hover:shadow-purple-500/10 dark:border-purple-700/60 dark:from-purple-950/40 dark:via-violet-950/20 dark:to-[#1B2433]',
+    badgeBg: 'bg-purple-500/10 text-purple-800 dark:bg-purple-500/20 dark:text-purple-300 border-purple-500/30',
     iconGradient: 'from-purple-500 via-violet-600 to-indigo-700 shadow-purple-500/25',
-    glow: 'bg-purple-500/15 group-hover:bg-purple-500/25',
-    border: 'hover:border-purple-400/60 dark:hover:border-purple-500/40',
+    glow: 'bg-purple-500/20 group-hover:bg-purple-500/30',
+    title: 'text-purple-800 dark:text-purple-300',
+    value: 'text-purple-950 dark:text-purple-100',
+    subtext: 'text-purple-700/80 dark:text-purple-400/80',
+    cta: 'text-purple-600 dark:text-purple-400',
   },
   amber: {
-    badgeBg: 'bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border-amber-500/20',
+    card: 'border-amber-300/80 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white hover:border-amber-400 hover:shadow-amber-500/10 dark:border-amber-700/60 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-[#1B2433]',
+    badgeBg: 'bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border-amber-500/30',
     iconGradient: 'from-amber-500 via-orange-600 to-amber-700 shadow-amber-500/25',
-    glow: 'bg-amber-500/15 group-hover:bg-amber-500/25',
-    border: 'hover:border-amber-400/60 dark:hover:border-amber-500/40',
+    glow: 'bg-amber-500/20 group-hover:bg-amber-500/30',
+    title: 'text-amber-800 dark:text-amber-300',
+    value: 'text-amber-950 dark:text-amber-100',
+    subtext: 'text-amber-700/80 dark:text-amber-400/80',
+    cta: 'text-amber-600 dark:text-amber-400',
   },
 }
 
-function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', tag = 'METRIK' }) {
+function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', tag = 'METRIK', onClick }) {
   const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
   return (
     <motion.div
       whileHover={{ y: -3, transition: { duration: 0.2 } }}
-      className={`group relative overflow-hidden rounded-[20px] border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-300 hover:shadow-lg dark:border-slate-800/80 dark:bg-[#1B2433] ${t.border}`}
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-[20px] border-2 p-4.5 sm:p-5 shadow-xs transition-all duration-300 hover:shadow-lg ${t.card} ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all duration-500 ${t.glow}`} />
       <div className="relative z-10 flex items-start justify-between gap-3">
@@ -84,7 +397,7 @@ function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', ta
               {tag}
             </span>
           </div>
-          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 pt-0.5">{title}</p>
+          <p className={`text-xs font-bold pt-0.5 ${t.title}`}>{title}</p>
         </div>
         <div className={`flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-md transition-transform duration-300 group-hover:scale-105 ${t.iconGradient}`}>
           {Icon && <Icon className="size-5 text-white" />}
@@ -92,14 +405,14 @@ function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', ta
       </div>
       <div className="relative z-10 mt-3 flex items-baseline justify-between gap-2">
         <div>
-          <p className="text-3xl sm:text-4xl font-black tabular-nums tracking-tight text-slate-900 dark:text-white">
+          <p className={`text-3xl sm:text-4xl font-black tabular-nums tracking-tight ${t.value}`}>
             {value}
           </p>
           {subtext && (
-            <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{subtext}</p>
+            <p className={`mt-1 text-xs font-medium ${t.subtext}`}>{subtext}</p>
           )}
         </div>
-        <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className={`flex items-center gap-1 text-[11px] font-bold opacity-0 group-hover:opacity-100 transition-opacity ${t.cta}`}>
           <span>Detail</span>
           <ChevronRight className="size-3" />
         </div>
@@ -504,6 +817,17 @@ export default function MasterJadwalSholatPage() {
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ]
 
+  const provinsiOptions = useMemo(() => provinsiList.map((p) => ({ value: p, label: p })), [provinsiList])
+  const kabkotaOptions = useMemo(() => kabkotaList.map((k) => ({ value: k, label: k })), [kabkotaList])
+  const bulanOptions = useMemo(() => [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ].map((name, idx) => ({ value: idx + 1, label: `${idx + 1} - ${name}` })), [])
+  const filterProvinsiOptions = useMemo(() => [
+    { value: '', label: 'Semua Provinsi' },
+    ...provinsiList.map((p) => ({ value: p, label: p }))
+  ], [provinsiList])
+
   // Pagination calculation
   const totalPages = Math.max(1, Math.ceil(masterList.length / perPage))
   const paginatedList = useMemo(() => {
@@ -513,7 +837,9 @@ export default function MasterJadwalSholatPage() {
 
   return (
     <PageContainer maxW="7xl">
-      <AppBreadcrumb className="mb-6" items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Jadwal Sholat' }]} />
+      <div className="mb-4">
+        <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Jadwal Sholat' }]} />
+      </div>
 
       {/* Modern Hero Header Banner */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 mb-6">
@@ -584,11 +910,11 @@ export default function MasterJadwalSholatPage() {
         </div>
 
         {/* Interactive Testing & API Pull Panel (Postman-style) */}
-        <div className="bg-white dark:bg-[#1B2433] rounded-[22px] border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/60 dark:bg-slate-900/40">
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+          <div className="p-5 border-b border-emerald-200/90 dark:border-emerald-800/60 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <FileCode className="w-5 h-5" />
+              <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30">
+                <FileCode className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Testing Interaktif & Tarik Data API EQuran.id</h2>
@@ -648,17 +974,13 @@ export default function MasterJadwalSholatPage() {
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
                       Provinsi (Wajib)
                     </label>
-                    <select
+                    <HeroUiModalSelect
                       value={selectedProvinsi}
-                      onChange={(e) => setSelectedProvinsi(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                    >
-                      {provinsiList.map((prov, i) => (
-                        <option key={i} value={prov}>
-                          {prov}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setSelectedProvinsi}
+                      options={provinsiOptions}
+                      placeholder="Pilih Provinsi..."
+                      searchable={true}
+                    />
                   </div>
                 )}
 
@@ -668,17 +990,13 @@ export default function MasterJadwalSholatPage() {
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
                       Kabupaten / Kota (Wajib)
                     </label>
-                    <select
+                    <HeroUiModalSelect
                       value={selectedKabkota}
-                      onChange={(e) => setSelectedKabkota(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                    >
-                      {kabkotaList.map((kab, i) => (
-                        <option key={i} value={kab}>
-                          {kab}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setSelectedKabkota}
+                      options={kabkotaOptions}
+                      placeholder="Pilih Kab / Kota..."
+                      searchable={true}
+                    />
                   </div>
                 )}
 
@@ -689,17 +1007,13 @@ export default function MasterJadwalSholatPage() {
                       <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
                         Bulan
                       </label>
-                      <select
+                      <HeroUiModalSelect
                         value={selectedBulan}
-                        onChange={(e) => setSelectedBulan(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      >
-                        {bulanNames.map((name, idx) => (
-                          <option key={idx + 1} value={idx + 1}>
-                            {idx + 1} - {name}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => setSelectedBulan(Number(val))}
+                        options={bulanOptions}
+                        placeholder="Pilih Bulan..."
+                        searchable={false}
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
@@ -924,16 +1238,16 @@ export default function MasterJadwalSholatPage() {
               </div>
 
               {/* Filter Provinsi */}
-              <select
+              <HeroUiFilterSelect
                 value={filterProvinsi}
-                onChange={(e) => setFilterProvinsi(e.target.value)}
-                className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">Semua Provinsi</option>
-                {provinsiList.map((p, idx) => (
-                  <option key={idx} value={p}>{p}</option>
-                ))}
-              </select>
+                onChange={(val) => {
+                  setFilterProvinsi(val)
+                  setCurrentPage(1)
+                }}
+                options={filterProvinsiOptions}
+                placeholder="Semua Provinsi"
+                searchable={true}
+              />
 
               {/* Reset Filter Button */}
               {(filterSearch || filterProvinsi || filterKabkota) && (
@@ -1056,7 +1370,7 @@ export default function MasterJadwalSholatPage() {
                   currentPage={currentPage}
                   totalPages={totalPages}
                   onPageChange={(page) => setCurrentPage(page)}
-                  sideLayout="icon"
+                  sideLayout="full"
                 />
               </div>
             </div>

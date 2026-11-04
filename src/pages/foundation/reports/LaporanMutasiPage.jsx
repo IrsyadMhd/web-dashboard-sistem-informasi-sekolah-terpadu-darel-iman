@@ -17,9 +17,10 @@ import { ReadOnlyDetailModal } from '../../../components/reports/ReadOnlyDetailM
 import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { printCleanTable } from '../../../utils/printHelper'
 import { usePengaturanStore } from '../../../stores/pengaturanStore'
+import { SmartScrollFab } from '../../../components/common'
 
 const ChartDarkTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -411,7 +412,7 @@ export function LaporanMutasiPage() {
       </motion.div>
 
       {/* 7. Rekap Per Unit */}
-      <motion.div variants={itemVariants}>
+      <motion.div variants={itemVariants} id="tabel-rekap-mutasi" className="scroll-mt-6">
         <ReportRecapTable
           title="Rekapitulasi Mutasi Siswa per Unit Pendidikan"
           columns={recapColumns}
@@ -461,6 +462,9 @@ export function LaporanMutasiPage() {
         title="Detail Permohonan & Riwayat Mutasi"
         data={detailModalData}
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-rekap-mutasi" downTooltip="Langsung ke Tabel Mutasi" />
     </motion.div>
   )
 }

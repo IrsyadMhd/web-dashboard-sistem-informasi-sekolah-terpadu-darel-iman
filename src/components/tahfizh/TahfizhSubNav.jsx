@@ -20,7 +20,7 @@ export function TahfizhSubNav() {
   const roles = user?.roles || []
   const userRoles = Array.isArray(roles) ? roles.map((r) => (typeof r === 'string' ? r : r?.name || '')) : []
   const isTeacher = userRoles.some((r) => /guru|musyrif|wali_kelas/i.test(r))
-  const isGuruTahfizhScope = userRoles.some((r) => /guru[_\s-]?tahfizh|musyrif/i.test(r))
+  const isGuruTahfizhScope = userRoles.some((r) => /guru[_\s-]?tahfizh|musyrif|kepala[_\s-]?sekolah|kepsek/i.test(r))
   const isParent = isParentRole(roles)
   const isStudent = isStudentRole(roles)
 

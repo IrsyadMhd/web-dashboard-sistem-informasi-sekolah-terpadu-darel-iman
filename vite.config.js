@@ -53,8 +53,9 @@ export default defineConfig({
             return 'vendor-motion'
           }
 
-          // 4. Komponen TailGrids & UI Primitives (React Aria, Base UI, Tailwind Utilities)
+          // 4. Komponen HeroUI & UI Primitives (HeroUI, React Aria, Base UI, Tailwind Utilities)
           if (
+            id.includes('@heroui') ||
             id.includes('@base-ui') ||
             id.includes('react-aria') ||
             id.includes('@floating-ui') ||
@@ -65,8 +66,8 @@ export default defineConfig({
             return 'vendor-ui'
           }
 
-          // 5. Ikon (TailGrids & Lucide)
-          if (id.includes('lucide-react') || id.includes('@tailgrids/icons')) {
+          // 5. Ikon (Lucide React & LineIcons)
+          if (id.includes('lucide-react') || id.includes('@lineiconshq')) {
             return 'vendor-icons'
           }
 

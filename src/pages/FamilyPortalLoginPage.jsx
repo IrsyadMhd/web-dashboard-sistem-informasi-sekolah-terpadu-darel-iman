@@ -4,9 +4,9 @@ import { BookOpenCheck, Eye, EyeOff, GraduationCap, HeartHandshake, LockKeyhole,
 import { authService } from '../services/authService'
 import { useAuthStore } from '../stores/authStore'
 import { usePengaturanStore } from '../stores/pengaturanStore'
-import { Button } from '@/components/tailgrids/core/button'
-import { Spinner } from '@/components/tailgrids/core/spinner'
-import { Alert, AlertContent, AlertDescription, AlertIndicator, AlertTitle } from '@/components/tailgrids/core/alert'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@heroui/react'
+import { Alert, AlertContent, AlertDescription, AlertIndicator, AlertTitle } from '@/components/ui/alert'
 import AuthToast, { showAuthToast } from '../components/ui/AuthToast'
 
 export default function FamilyPortalLoginPage() {

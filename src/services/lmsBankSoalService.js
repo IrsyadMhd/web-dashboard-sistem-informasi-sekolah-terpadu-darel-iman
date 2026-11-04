@@ -45,4 +45,11 @@ export const lmsBankSoalService = {
     const response = await api.get('/lms/bank-soal/options', { params })
     return response.data
   },
+
+  import: async (formData) => {
+    const response = await api.post('/lms/bank-soal/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
 }

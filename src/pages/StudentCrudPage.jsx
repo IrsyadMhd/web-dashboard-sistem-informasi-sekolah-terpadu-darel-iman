@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { educationUnitService } from '../services/educationUnitService'
 import {
   useStudents,
@@ -10,9 +10,9 @@ import {
 } from '../hooks/useStudentCrud'
 import { DataTable } from '../components/common/DataTable'
 import { StudentFormModal } from '../components/crud/StudentFormModal'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/tailgrids/core/card'
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
   LuPlus,
   LuPencil,

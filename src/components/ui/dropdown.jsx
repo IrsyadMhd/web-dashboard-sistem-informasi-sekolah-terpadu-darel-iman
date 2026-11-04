@@ -1,8 +1,78 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PropTypes from 'prop-types'
+import {
+  Button as AriaButton,
+  Header as AriaHeader,
+  Menu as AriaMenu,
+  MenuItem as AriaMenuItem,
+  MenuSection as AriaMenuSection,
+  MenuTrigger as AriaMenuTrigger,
+  Popover as AriaPopover,
+  Separator as AriaSeparator,
+} from 'react-aria-components'
 import { cn } from '../../lib/utils'
 
+export function DropdownMenu(props) {
+  return <AriaMenuTrigger {...props} />
+}
+
+export function DropdownMenuTrigger({ className, ...props }) {
+  return <AriaButton className={cn('outline-none cursor-pointer', className)} {...props} />
+}
+
+export function DropdownMenuContent({ children, className, ...props }) {
+  return (
+    <AriaPopover {...props}>
+      <AriaMenu
+        className={cn(
+          'outline-none shadow-xl rounded-2xl overflow-hidden min-w-44 bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 p-1 text-slate-800 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-100',
+          className
+        )}
+      >
+        {children}
+      </AriaMenu>
+    </AriaPopover>
+  )
+}
+
+export function DropdownMenuItem({ className, ...props }) {
+  return (
+    <AriaMenuItem
+      {...props}
+      className={cn(
+        'group text-slate-700 dark:text-slate-200 text-xs font-semibold focus:text-emerald-950 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 dark:focus:text-emerald-200 flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 outline-none transition-colors data-[disabled]:opacity-50 data-[disabled]:pointer-events-none',
+        className
+      )}
+    />
+  )
+}
+
+export function DropdownMenuSection({ className, ...props }) {
+  return <AriaMenuSection {...props} className={cn('py-1', className)} />
+}
+
+export function DropdownMenuHeader({ className, ...props }) {
+  return (
+    <AriaHeader
+      {...props}
+      className={cn('px-3 py-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider', className)}
+    />
+  )
+}
+
+export function DropdownMenuSeparator({ className, ...props }) {
+  return (
+    <AriaSeparator
+      className={cn('h-px my-1 bg-slate-100 dark:bg-slate-800 border-none', className)}
+      {...props}
+    />
+  )
+}
+
+/**
+ * Convenience higher-level Dropdown component
+ */
 export function Dropdown({ trigger, items, align = 'right', className }) {
   const [isOpen, setIsOpen] = useState(false)
   const [coords, setCoords] = useState({ top: 0, left: 0, right: 0, bottom: 0 })
@@ -86,12 +156,6 @@ export function Dropdown({ trigger, items, align = 'right', className }) {
     }
   }
 
-  const alignClasses = {
-    right: 'right-0',
-    left: 'left-0',
-    center: 'left-1/2 -translate-x-1/2',
-  }
-
   const portalContent = isOpen && (
     <div
       role="menu"
@@ -173,3 +237,5 @@ Dropdown.propTypes = {
   align: PropTypes.oneOf(['right', 'left', 'center']),
   className: PropTypes.string,
 }
+
+export default Dropdown

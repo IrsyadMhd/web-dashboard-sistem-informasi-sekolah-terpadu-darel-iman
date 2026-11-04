@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { attendanceService } from '../services/attendanceService'
 import { DataTable } from '../components/common/DataTable'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/tailgrids/core/card'
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Input } from '@/components/tailgrids/core/input'
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/tailgrids/core/dialog'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import {
   LuClipboardCheck,
   LuUserCheck,
@@ -271,13 +272,12 @@ export default function AttendancePage() {
       <Card>
         <CardContent className="p-4 flex flex-wrap items-center gap-4">
           <div className="flex items-center space-x-2">
-            <LuCalendar className="h-4 w-4 text-emerald-400" />
             <label className="text-xs font-medium text-slate-300">Tanggal:</label>
-            <Input
-              type="date"
+            <DatePicker
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="h-9 text-xs w-40 bg-slate-950"
+              className="w-40"
+              inputClassName="h-9 text-xs bg-slate-950"
             />
           </div>
 

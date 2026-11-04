@@ -36,6 +36,9 @@ import PageContainer from '../components/app/PageContainer'
 import { useToast } from '../components/app'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppDataTable from '../components/app/AppDataTable'
+import { useAuthStore } from '../stores/authStore'
+import { hasRoleLevel, ROLE_LEVELS, isFoundationUser } from '../auth/portalResolver'
+import { SmartScrollFab } from '../components/common'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { handleApiExport, downloadFileFromApi } from '../utils/exportUtils'
 import {
@@ -136,6 +139,10 @@ export default function MasterTahunAjaranPage({
   hideBreadcrumb = false,
 }) {
   const queryClient = useQueryClient()
+  const user = useAuthStore((state) => state.user)
+  const isFoundation = isFoundationUser(user)
+  const canManage = !isFoundation && hasRoleLevel(user, ROLE_LEVELS.OPERATOR)
+
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 350)
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('')
@@ -260,6 +267,7 @@ export default function MasterTahunAjaranPage({
   const filtersAreClear = !search && !selectedStatusFilter && !denganSampahFilter
 
   const openAdd = () => {
+    if (!canManage) return
     setSelectedForEdit(null)
     setIsFormModalOpen(true)
   }
@@ -330,21 +338,23 @@ export default function MasterTahunAjaranPage({
       </div>
 
       {/* 2. Import Button (Vivid Sky Blue Squircle) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Import Data Tahun Ajaran"
-          aria-label="Import Data Tahun Ajaran"
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-sky-500/20"
-          onClick={() => setIsImportModalOpen(true)}
-        >
-          <Upload className="size-5 text-white" strokeWidth={2.2} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Import Data
+      {canManage && (
+        <div className="group relative inline-flex">
+          <button
+            type="button"
+            title="Import Data Tahun Ajaran"
+            aria-label="Import Data Tahun Ajaran"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-sky-500/20"
+            onClick={() => setIsImportModalOpen(true)}
+          >
+            <Upload className="size-5 text-white" strokeWidth={2.2} />
+          </button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Import Data
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 3. Export / Download Button (Vivid Amber / Orange Squircle) */}
       <div className="group relative inline-flex">
@@ -364,21 +374,23 @@ export default function MasterTahunAjaranPage({
       </div>
 
       {/* 4. Tambah Tahun Ajaran Button (Vivid Emerald / Teal Squircle) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Tambah Tahun Ajaran Baru"
-          aria-label="Tambah Tahun Ajaran Baru"
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-emerald-500/20"
-          onClick={openAdd}
-        >
-          <Plus className="size-5 text-white" strokeWidth={2.5} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Tambah Periode
+      {canManage && (
+        <div className="group relative inline-flex">
+          <button
+            type="button"
+            title="Tambah Tahun Ajaran Baru"
+            aria-label="Tambah Tahun Ajaran Baru"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-emerald-500/20"
+            onClick={openAdd}
+          >
+            <Plus className="size-5 text-white" strokeWidth={2.5} />
+          </button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Tambah Periode
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 
@@ -501,7 +513,8 @@ export default function MasterTahunAjaranPage({
       </div>
 
       {/* ── CANONICAL APPDATATABLE EMERALD OUTER CONTAINER ───────────────────── */}
-      <AppDataTable
+      <div id="tabel-tahun-ajaran" className="scroll-mt-6">
+        <AppDataTable
         title="Daftar Tahun Ajaran"
         icon={CalendarDays}
         iconClassName="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 border border-emerald-300/40 shadow-emerald-600/30"
@@ -572,16 +585,17 @@ export default function MasterTahunAjaranPage({
             page={page}
             perPage={perPage}
             onDetail={setSelectedForDetail}
-            onEdit={(item) => {
+            onEdit={canManage ? ((item) => {
               setSelectedForEdit(item)
               setIsFormModalOpen(true)
-            }}
-            onSetAktif={(item) => setAktifMutation.mutate(item.id)}
-            onDelete={setDeleteTarget}
-            onRestore={(item) => pulihkanMutation.mutate(item.id)}
+            }) : undefined}
+            onSetAktif={canManage ? ((item) => setAktifMutation.mutate(item.id)) : undefined}
+            onDelete={canManage ? setDeleteTarget : undefined}
+            onRestore={canManage ? ((item) => pulihkanMutation.mutate(item.id)) : undefined}
           />
         )}
       />
+    </div>
 
       {/* ── FORM MODAL TAMBAH / UBAH TAHUN AJARAN ───────────────────────────── */}
       <TahunAjaranFormModal
@@ -1040,6 +1054,9 @@ export default function MasterTahunAjaranPage({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Smart Floating Scroll Navigator (Opsi A) */}
+      <SmartScrollFab targetId="tabel-tahun-ajaran" downTooltip="Langsung ke Tabel Tahun Ajaran" />
     </PageContainer>
   )
 }

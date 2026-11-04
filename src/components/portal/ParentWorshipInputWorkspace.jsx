@@ -17,6 +17,7 @@ import {
   Button as HeroButton,
 } from '@heroui/react'
 import { cn } from '../../lib/utils'
+import { DatePicker } from '@/components/ui/date-picker'
 import api from '../../services/api'
 
 // Status option structure — not hardcoded labels, but structured status mappings
@@ -190,12 +191,11 @@ export default function ParentWorshipInputWorkspace({ studentId }) {
             </div>
           </div>
           <div className="flex items-center gap-2.5 shrink-0">
-            <Calendar className="h-4 w-4 text-purple-500 dark:text-purple-400" />
-            <input
-              type="date"
+            <DatePicker
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="rounded-xl border-2 border-purple-200/80 bg-white/80 px-3 py-2 text-xs font-bold text-slate-700 shadow-xs transition-colors focus:border-purple-400 focus:ring-2 focus:ring-purple-200/50 focus:outline-none dark:border-purple-800/60 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-purple-800/40"
+              className="w-40"
+              inputClassName="py-2 text-xs font-bold"
             />
           </div>
         </div>

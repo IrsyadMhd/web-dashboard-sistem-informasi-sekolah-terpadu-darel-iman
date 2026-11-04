@@ -13,9 +13,9 @@ import { BsQrCode } from 'react-icons/bs'
 import { authService } from '../../services/authService'
 import { useAuthStore } from '../../stores/authStore'
 import { usePengaturanStore } from '../../stores/pengaturanStore'
-import { Button } from '@/components/tailgrids/core/button'
-import { Spinner } from '@/components/tailgrids/core/spinner'
-import { Alert, AlertContent, AlertDescription, AlertIndicator, AlertTitle } from '@/components/tailgrids/core/alert'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
+import { Alert, AlertContent, AlertDescription, AlertIndicator, AlertTitle } from '@/components/ui/alert'
 import { showAuthPopup } from '../ui/AuthPopup'
 
 export default function LoginCard({ onNavigate, onLoginSuccess }) {

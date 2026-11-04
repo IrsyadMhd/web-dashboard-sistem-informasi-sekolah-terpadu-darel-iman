@@ -138,7 +138,10 @@ export default function KpiCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="line-clamp-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <p
+            title={title}
+            className="line-clamp-2 min-h-[2.4em] leading-snug text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500"
+          >
             {title}
           </p>
           <div className="flex flex-wrap items-baseline gap-2">
@@ -148,7 +151,12 @@ export default function KpiCard({
             {badge && <AppBadge variant={badgeVariant} dot>{badge}</AppBadge>}
           </div>
           {subtitle && (
-            <p className="line-clamp-1 text-xs text-slate-400 dark:text-slate-500">{subtitle}</p>
+            <p
+              title={subtitle}
+              className="line-clamp-2 min-h-[1.6em] leading-normal text-xs text-slate-400 dark:text-slate-500"
+            >
+              {subtitle}
+            </p>
           )}
         </div>
 

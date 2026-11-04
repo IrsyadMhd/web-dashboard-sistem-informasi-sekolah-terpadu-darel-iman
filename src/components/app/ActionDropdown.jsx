@@ -5,8 +5,15 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '../tailgrids/core/dropdown'
-import { Eye, MenuMeatballs1, Pencil1, Trash1, ClockThree } from '@tailgrids/icons'
+} from '../ui/dropdown'
+import {
+  Eye,
+  MoreVertical as MenuMeatballs1,
+  Pencil as Pencil1,
+  Trash2 as Trash1,
+  Clock as ClockThree,
+} from 'lucide-react'
+import { Tooltip } from '../ui/tooltip'
 import { useAuthStore } from '../../stores/authStore'
 import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS } from '../../auth/portalResolver'
 
@@ -62,9 +69,11 @@ export default function ActionDropdown({
         aria-label="Menu Aksi"
         className="flex size-9 sm:size-10 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 cursor-pointer"
       >
-        <span title="Menu Aksi" className="flex items-center justify-center size-full">
-          {trigger || <MenuMeatballs1 className="size-5 text-white" />}
-        </span>
+        <Tooltip content="Menu Aksi">
+          <span className="flex items-center justify-center size-full">
+            {trigger || <MenuMeatballs1 className="size-5 text-white" />}
+          </span>
+        </Tooltip>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="p-1.5 border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 min-w-36 shadow-lg rounded-xl">
         {canView && (

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Printer, Download, ShieldCheck, Building2 } from 'lucide-react'
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogClose } from '@/components/tailgrids/core/dialog'
-import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogClose } from '@/components/ui/dialog'
+import { Backdrop, OverlayWrapper } from '@/components/ui/overlay'
 import { Button } from '../ui/button'
 
 export function ReportPreviewModal({ isOpen, onClose, reportData, onPrint, onExportPdf }) {

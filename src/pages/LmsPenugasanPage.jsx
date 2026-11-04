@@ -1,5 +1,5 @@
 import { useToast } from '../components/app/ToastProvider'
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import PersonAvatar from '../components/ui/PersonAvatar'
@@ -43,8 +43,9 @@ import {
   ExternalLink,
   Mic,
   Video,
-  Layers,
   Bookmark,
+  ChevronDown,
+  School,
 } from 'lucide-react'
 import { lmsPenugasanService } from '../services/lmsPenugasanService'
 import { subjectService } from '../services/subjectService'
@@ -59,6 +60,14 @@ import {
   SquircleActionButton,
   PrintOptionModal,
 } from '../components/master-data'
+import {
+  TableRoot,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/table'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import { useDebounce } from '../hooks/useDebounce'
 import { downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
@@ -178,6 +187,306 @@ function useNotifications() {
   return { items: [], push, dismiss }
 }
 
+// ── HEROUI MODAL SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  label,
+  value,
+  onChange,
+  options = [],
+  placeholder = '-- Pilih Opsi --',
+  disabled = false,
+  required = false,
+  helperText = '',
+  icon: IconComponent = null,
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      {label && (
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+            : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[90] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {/* Search Input jika searchable */}
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* List options */}
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div>{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 font-normal">{opt.subtext}</div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {helperText && (
+        <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          {helperText}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen((prev) => !prev)
+          setSearch('')
+        }}
+        className={`h-9 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== undefined && value !== null
+            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 // ── 3. HARMONIZED BATCH EXPORT MODAL ──
 function HarmonizedBatchExportModal({
@@ -389,8 +698,23 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
     return candidateIds.length > 0 ? String(candidateIds[0]) : null
   }, [user])
 
+  const isSuperAdminOrYayasan = useMemo(() => {
+    const roles = (user?.roles || []).map((r) => (typeof r === 'string' ? r : r.name || ''))
+    return roles.some((r) => ['super_admin', 'Super Admin', 'super-admin', 'yayasan', 'Yayasan', 'pengurus_yayasan', 'ketua_yayasan'].includes(r))
+  }, [user])
+
+  const isDivisiPendidikan = useMemo(() => {
+    const roles = (user?.roles || []).map((r) => (typeof r === 'string' ? r : r.name || ''))
+    return roles.some((r) => ['Divisi Pendidikan', 'divisi_pendidikan', 'divisi-pendidikan', 'Kepala Bidang Pendidikan', 'kepala_bidang_pendidikan', 'Divisi Kurikulum', 'Divisi Kesiswaan'].includes(r))
+  }, [user])
+
+  const canSelectUnit = isSuperAdminOrYayasan || isDivisiPendidikan
+  const userUnitName = user?.unit_name || user?.employee?.unit?.nama_unit || user?.employee?.unit?.name || 'Unit Anda'
+  const [selectedUnit, setSelectedUnit] = useState(canSelectUnit ? '' : (userUnitId ? String(userUnitId) : ''))
+
   const [dataPenugasan, setDataPenugasan] = useState([])
   const [options, setOptions] = useState({
+    units: [],
     modul_ajar: [],
     kelas: [],
     guru: [],
@@ -582,16 +906,17 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
   useEffect(() => {
     fetchOptions()
     fetchStats()
-  }, [userUnitId, activeUnit, isTeacherOnly, currentTeacherId, selectedGuru])
+  }, [userUnitId, activeUnit, selectedUnit, isTeacherOnly, currentTeacherId, selectedGuru])
 
   useEffect(() => {
     fetchPenugasan()
-  }, [page, debouncedSearch, selectedModulAjar, selectedTipe, selectedStatus, selectedKelas, selectedGuru, userUnitId, activeUnit, isTeacherOnly, currentTeacherId])
+  }, [page, debouncedSearch, selectedUnit, selectedModulAjar, selectedTipe, selectedStatus, selectedKelas, selectedGuru, userUnitId, activeUnit, isTeacherOnly, currentTeacherId])
 
   const fetchOptions = async () => {
     try {
       const params = {}
-      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
+      if (effectiveUnit) params.unit_pendidikan_id = effectiveUnit
       if (activeUnit) params.jenjang = activeUnit
 
       const [resOptions, resSubjects] = await Promise.allSettled([
@@ -606,7 +931,8 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
       let dbSubjects = Array.isArray(dbSubjectsRaw) ? dbSubjectsRaw.filter((s) => {
         if (!s) return false
         const sUnitId = s.unit_pendidikan_id || s.unit_id || s.education_unit_id
-        if (userUnitId && sUnitId) return String(sUnitId) === String(userUnitId)
+        if (!canSelectUnit && userUnitId && sUnitId) return String(sUnitId) === String(userUnitId)
+        if (canSelectUnit && selectedUnit && sUnitId) return String(sUnitId) === String(selectedUnit)
         if (activeUnit && s.jenjang) return s.jenjang === activeUnit || s.jenjang === 'All'
         return true
       }) : []
@@ -614,12 +940,14 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
       if (data) {
         setOptions((prev) => ({
           ...prev,
+          units: data.units || [],
           modul_ajar: data.modul_ajar || data.modulAjar || [],
           kelas: data.kelas || data.classes || [],
           guru: data.guru || data.teachers || [],
           subjects: dbSubjects.length > 0 ? dbSubjects : (data.subjects || []).filter((s) => {
             const sUnitId = s.unit_pendidikan_id || s.unit_id
-            if (userUnitId && sUnitId) return String(sUnitId) === String(userUnitId)
+            if (!canSelectUnit && userUnitId && sUnitId) return String(sUnitId) === String(userUnitId)
+            if (canSelectUnit && selectedUnit && sUnitId) return String(sUnitId) === String(selectedUnit)
             return true
           }),
           semesters: data.semesters || [],
@@ -634,7 +962,8 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
   const fetchStats = async () => {
     try {
       const params = {}
-      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
+      if (effectiveUnit) params.unit_pendidikan_id = effectiveUnit
       if (activeUnit) params.jenjang = activeUnit
       if (isTeacherOnly && currentTeacherId) {
         params.guru_id = currentTeacherId
@@ -663,7 +992,8 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
         status: selectedStatus,
         kelas_id: selectedKelas,
       }
-      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      const effectiveUnit = canSelectUnit ? (selectedUnit || undefined) : (userUnitId || undefined)
+      if (effectiveUnit) params.unit_pendidikan_id = effectiveUnit
       if (activeUnit) params.jenjang = activeUnit
       if (isTeacherOnly && currentTeacherId) {
         params.guru_id = currentTeacherId
@@ -677,7 +1007,10 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
       let filteredList = list.filter((item) => {
         if (!item) return false
         const itemUnitId = item.unit_pendidikan_id || item.unit_id || item.mata_pelajaran?.unit_pendidikan_id
-        if (userUnitId && itemUnitId && String(itemUnitId) !== String(userUnitId)) {
+        if (!canSelectUnit && userUnitId && itemUnitId && String(itemUnitId) !== String(userUnitId)) {
+          return false
+        }
+        if (canSelectUnit && selectedUnit && itemUnitId && String(itemUnitId) !== String(selectedUnit)) {
           return false
         }
         if (isTeacherOnly) {
@@ -1208,97 +1541,131 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
           {/* ── TOOLBAR BARIS 3: Horizontal Filter Bar (Responsive Grid on Mobile) ── */}
           <div className="px-3.5 py-3 sm:px-6 md:px-8 border-b border-emerald-200/80 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-emerald-950/30 mt-3">
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
-              <select
-                aria-label="Filter Modul Ajar"
-                value={selectedModulAjar}
-                onChange={(e) => {
-                  setSelectedModulAjar(e.target.value)
-                  setPage(1)
-                }}
-                className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-emerald-300/80 bg-white/95 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-2xs outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-[#111827] dark:text-slate-200 cursor-pointer"
-              >
-                <option value="">Semua Modul Ajar</option>
-                {(options.modul_ajar || []).map((m) => (
-                  <option key={m.value || m.id} value={m.value || m.id}>
-                    {m.label || m.judul || m.judul_modul}
-                  </option>
-                ))}
-              </select>
-
-              {!isTeacherOnly && (
-                <select
-                  aria-label="Filter Guru"
-                  value={selectedGuru}
-                  onChange={(e) => {
-                    setSelectedGuru(e.target.value)
+              {/* Unit Dropdown (Divisi Pendidikan / Global) atau Locked Unit Badge */}
+              {canSelectUnit ? (
+                <HeroUiFilterSelect
+                  value={selectedUnit}
+                  onChange={(val) => {
+                    setSelectedUnit(val)
                     setPage(1)
                   }}
-                  className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-emerald-300/80 bg-white/95 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-2xs outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-[#111827] dark:text-slate-200 cursor-pointer"
+                  placeholder={`Semua Unit (${options.units?.length || 'SIT'})`}
+                  icon={School}
+                  popoverWidth="min-w-[220px]"
+                  searchable={(options.units?.length || 0) > 5}
+                  options={[
+                    { value: '', label: `Semua Unit (${options.units?.length || 'SIT'})` },
+                    ...(options.units || []).map((u) => ({ value: String(u.id || u.value), label: u.name || u.label || u.nama_unit })),
+                  ]}
+                />
+              ) : (
+                <div
+                  title="Terkunci: Menampilkan data khusus unit wewenang Anda"
+                  className="col-span-2 sm:col-span-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300/80 bg-emerald-50 text-[11px] font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
                 >
-                  <option value="">Semua Guru</option>
-                  {(options.guru || []).map((g) => (
-                    <option key={g.value || g.id} value={g.value || g.id}>
-                      {g.label || g.nama || g.nama_lengkap}
-                    </option>
-                  ))}
-                </select>
+                  <School className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>{userUnitName}</span>
+                  <Lock className="size-3 text-emerald-500 ml-0.5 opacity-80" />
+                </div>
+              )}
+              <HeroUiFilterSelect
+                value={selectedModulAjar}
+                onChange={(val) => {
+                  setSelectedModulAjar(val)
+                  setPage(1)
+                }}
+                placeholder="Semua Modul Ajar"
+                icon={BookOpen}
+                popoverWidth="min-w-[240px]"
+                searchable
+                options={[
+                  { value: '', label: 'Semua Modul Ajar' },
+                  ...(options.modul_ajar || []).map((m) => ({
+                    value: m.value || m.id,
+                    label: m.label || m.judul || m.judul_modul,
+                  })),
+                ]}
+              />
+
+              {!isTeacherOnly && (
+                <HeroUiFilterSelect
+                  value={selectedGuru}
+                  onChange={(val) => {
+                    setSelectedGuru(val)
+                    setPage(1)
+                  }}
+                  placeholder="Semua Guru"
+                  icon={GraduationCap}
+                  popoverWidth="min-w-[200px]"
+                  searchable
+                  options={[
+                    { value: '', label: 'Semua Guru' },
+                    ...(options.guru || []).map((g) => ({
+                      value: g.value || g.id,
+                      label: g.label || g.nama || g.nama_lengkap,
+                    })),
+                  ]}
+                />
               )}
 
-              <select
-                aria-label="Filter Kelas"
+              <HeroUiFilterSelect
                 value={selectedKelas}
-                onChange={(e) => {
-                  setSelectedKelas(e.target.value)
+                onChange={(val) => {
+                  setSelectedKelas(val)
                   setPage(1)
                 }}
-                className="h-9 w-full sm:w-auto min-w-[130px] rounded-xl border border-emerald-300/80 bg-white/95 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-2xs outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-[#111827] dark:text-slate-200 cursor-pointer"
-              >
-                <option value="">Semua Kelas</option>
-                {(options.kelas || []).map((k) => (
-                  <option key={k.value || k.id} value={k.value || k.id}>
-                    {k.label || k.nama_kelas || k.name}
-                  </option>
-                ))}
-              </select>
+                placeholder="Semua Kelas"
+                icon={Layers}
+                popoverWidth="min-w-[170px]"
+                options={[
+                  { value: '', label: 'Semua Kelas' },
+                  ...(options.kelas || []).map((k) => ({
+                    value: k.value || k.id,
+                    label: k.label || k.nama_kelas || k.name,
+                  })),
+                ]}
+              />
 
-              <select
-                aria-label="Filter Tipe"
+              <HeroUiFilterSelect
                 value={selectedTipe}
-                onChange={(e) => {
-                  setSelectedTipe(e.target.value)
+                onChange={(val) => {
+                  setSelectedTipe(val)
                   setPage(1)
                 }}
-                className="h-9 w-full sm:w-auto min-w-[120px] rounded-xl border border-emerald-300/80 bg-white/95 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-2xs outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-[#111827] dark:text-slate-200 cursor-pointer"
-              >
-                <option value="">Semua Tipe</option>
-                {options.tipe.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
+                placeholder="Semua Tipe"
+                icon={FileText}
+                popoverWidth="min-w-[150px]"
+                options={[
+                  { value: '', label: 'Semua Tipe' },
+                  ...options.tipe.map((t) => ({
+                    value: t.value,
+                    label: t.label,
+                  })),
+                ]}
+              />
 
-              <select
-                aria-label="Filter Status"
+              <HeroUiFilterSelect
                 value={selectedStatus}
-                onChange={(e) => {
-                  setSelectedStatus(e.target.value)
+                onChange={(val) => {
+                  setSelectedStatus(val)
                   setPage(1)
                 }}
-                className="h-9 w-full sm:w-auto min-w-[130px] rounded-xl border border-emerald-300/80 bg-white/95 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-2xs outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-[#111827] dark:text-slate-200 cursor-pointer"
-              >
-                <option value="">Semua Status</option>
-                {options.status.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+                placeholder="Semua Status"
+                popoverWidth="min-w-[150px]"
+                options={[
+                  { value: '', label: 'Semua Status' },
+                  ...options.status.map((s) => ({
+                    value: s.value,
+                    label: s.label,
+                  })),
+                ]}
+              />
 
-              {(searchInput || selectedModulAjar || selectedKelas || selectedTipe || selectedStatus || selectedGuru) && (
+              {((canSelectUnit && selectedUnit) || searchInput || selectedModulAjar || selectedKelas || selectedTipe || selectedStatus || selectedGuru) && (
                 <button
                   type="button"
                   onClick={() => {
+                    if (canSelectUnit) setSelectedUnit('')
                     setSearchInput('')
                     setSelectedModulAjar('')
                     setSelectedKelas('')
@@ -1449,21 +1816,21 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
 
                 {/* ── DESKTOP & TABLET VIEW: Canonical Table (hidden on < md, min-w-[850px]) ── */}
                 <div className="hidden md:block overflow-x-auto min-h-[340px] pb-12">
-                  <table className="w-full min-w-[850px] text-left border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-xs font-black text-slate-800 dark:text-emerald-200 uppercase tracking-wider">
-                        <th className="py-3.5 px-4 w-[32%]">Penugasan &amp; Modul Ajar</th>
-                        <th className="py-3.5 px-4 w-[18%]">Kelas &amp; Guru</th>
-                        <th className="py-3.5 px-4 w-[14%]">Tipe &amp; Jenis</th>
-                        <th className="py-3.5 px-4 w-[14%]">Deadline</th>
-                        <th className="py-3.5 px-4 w-[11%]">Pengumpulan</th>
-                        <th className="py-3.5 px-4 w-[11%]">Status</th>
-                        <th className="py-3.5 px-4 text-center w-16">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
+                  <TableRoot className="w-full min-w-[850px] text-left border-collapse">
+                    <TableHeader>
+                      <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-xs font-black text-slate-800 dark:text-emerald-200 uppercase tracking-wider">
+                        <TableHead className="py-3.5 px-4 w-[32%]">Penugasan &amp; Modul Ajar</TableHead>
+                        <TableHead className="py-3.5 px-4 w-[18%]">Kelas &amp; Guru</TableHead>
+                        <TableHead className="py-3.5 px-4 w-[14%]">Tipe &amp; Jenis</TableHead>
+                        <TableHead className="py-3.5 px-4 w-[14%]">Deadline</TableHead>
+                        <TableHead className="py-3.5 px-4 w-[11%]">Pengumpulan</TableHead>
+                        <TableHead className="py-3.5 px-4 w-[11%]">Status</TableHead>
+                        <TableHead className="py-3.5 px-4 text-center w-16">Aksi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
                       {dataPenugasan.map((item) => (
-                        <tr
+                        <TableRow
                           key={item.id}
                           className="group relative hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition-colors cursor-pointer"
                           onClick={(e) => {
@@ -1473,7 +1840,7 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                           }}
                         >
                           {/* Judul & Modul Ajar */}
-                          <td className="py-4 px-4">
+                          <TableCell className="py-4 px-4">
                             <div className="font-semibold text-slate-800 dark:text-white line-clamp-2">
                               {item.judul || item.judul_tugas}
                             </div>
@@ -1489,20 +1856,20 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                                 <span className="truncate max-w-[200px]">{item.lampiran}</span>
                               </div>
                             )}
-                          </td>
+                          </TableCell>
 
                           {/* Kelas & Guru */}
-                          <td className="py-4 px-4">
+                          <TableCell className="py-4 px-4">
                             <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                               {item.kelas?.nama_kelas || 'Semua Kelas'}
                             </div>
                             <div className="text-[11px] text-slate-500 mt-0.5">
                               Guru: {item.guru?.nama || '-'}
                             </div>
-                          </td>
+                          </TableCell>
 
                           {/* Tipe & Jenis */}
-                          <td className="py-4 px-4">
+                          <TableCell className="py-4 px-4">
                             <div className="flex flex-col gap-1 items-start">
                               <span
                                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
@@ -1517,10 +1884,10 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                                 {item.jenis_tugas || 'tugas'} ({item.nilai_maksimal || 100} poin)
                               </span>
                             </div>
-                          </td>
+                          </TableCell>
 
                           {/* Tanggal Mulai & Deadline */}
-                          <td className="py-4 px-4">
+                          <TableCell className="py-4 px-4">
                             <div className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-1">
                               <Clock size={12} className="text-slate-400 shrink-0" />
                               <span>{item.deadline || item.tanggal_selesai || '-'}</span>
@@ -1528,10 +1895,10 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                             <div className="text-[11px] text-slate-400 mt-0.5">
                               Mulai: {item.tanggal_mulai || '-'}
                             </div>
-                          </td>
+                          </TableCell>
 
                           {/* Pengumpulan */}
-                          <td className="py-4 px-4">
+                          <TableCell className="py-4 px-4">
                             <div className="flex items-center gap-2">
                               <div className="text-xs font-semibold text-slate-800 dark:text-white">
                                 {item.total_pengumpulan ?? 0} Siswa
@@ -1542,10 +1909,10 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                                 </span>
                               )}
                             </div>
-                          </td>
+                          </TableCell>
 
                           {/* Status */}
-                          <td className="py-4 px-4">
+                          <TableCell className="py-4 px-4">
                             <button
                               onClick={() => handleTogglePublish(item)}
                               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
@@ -1566,20 +1933,20 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                                 </>
                               )}
                             </button>
-                          </td>
+                          </TableCell>
 
                           {/* Actions */}
-                          <td className="py-4 px-4 text-center w-16">
+                          <TableCell className="py-4 px-4 text-center w-16">
                             <ActionDropdown
                               onView={() => handleOpenDetail(item)}
                               onEdit={() => handleOpenEditModal(item)}
                               onDelete={() => handleRequestDelete(item)}
                             />
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </TableRoot>
                 </div>
               </>
             )}
@@ -1669,41 +2036,40 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
 
               {/* Modul Ajar Relasi */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Tautkan ke Modul Ajar (1 : N)
-                </label>
-                <select
+                <HeroUiModalSelect
+                  label="Tautkan ke Modul Ajar (1 : N)"
                   value={formData.modul_ajar_id}
-                  onChange={(e) => setFormData({ ...formData, modul_ajar_id: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="">-- Opsional: Pilih Modul Ajar --</option>
-                  {(options.modul_ajar || []).map((m) => (
-                    <option key={m.value || m.id} value={m.value || m.id}>
-                      {m.label || m.judul || m.judul_modul}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormData({ ...formData, modul_ajar_id: val })}
+                  placeholder="-- Opsional: Pilih Modul Ajar --"
+                  icon={BookOpen}
+                  searchable
+                  options={[
+                    { value: '', label: '-- Opsional: Pilih Modul Ajar --' },
+                    ...(options.modul_ajar || []).map((m) => ({
+                      value: m.value || m.id,
+                      label: m.label || m.judul || m.judul_modul,
+                    })),
+                  ]}
+                />
               </div>
 
               {/* Grid 2 Kolom: Kelas & Guru */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Target Kelas / Rombel
-                  </label>
-                  <select
+                  <HeroUiModalSelect
+                    label="Target Kelas / Rombel"
                     value={formData.kelas_id}
-                    onChange={(e) => setFormData({ ...formData, kelas_id: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="">-- Pilih Kelas --</option>
-                    {(options.kelas || []).map((k) => (
-                      <option key={k.value || k.id} value={k.value || k.id}>
-                        {k.label || k.nama_kelas || k.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, kelas_id: val })}
+                    placeholder="-- Pilih Kelas --"
+                    icon={Layers}
+                    options={[
+                      { value: '', label: '-- Pilih Kelas --' },
+                      ...(options.kelas || []).map((k) => ({
+                        value: k.value || k.id,
+                        label: k.label || k.nama_kelas || k.name,
+                      })),
+                    ]}
+                  />
                 </div>
 
                 <div>
@@ -1717,56 +2083,50 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                       </span>
                     )}
                   </div>
-                  <select
+                  <HeroUiModalSelect
                     value={formData.guru_id}
                     disabled={isTeacherOnly}
-                    onChange={(e) => setFormData({ ...formData, guru_id: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-80 disabled:cursor-not-allowed"
-                  >
-                    <option value="">-- Pilih Guru --</option>
-                    {(options.guru || []).map((g) => (
-                      <option key={g.value || g.id} value={g.value || g.id}>
-                        {g.label || g.nama || g.nama_lengkap}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, guru_id: val })}
+                    placeholder="-- Pilih Guru --"
+                    icon={GraduationCap}
+                    searchable
+                    options={[
+                      { value: '', label: '-- Pilih Guru --' },
+                      ...(options.guru || []).map((g) => ({
+                        value: g.value || g.id,
+                        label: g.label || g.nama || g.nama_lengkap,
+                      })),
+                    ]}
+                  />
                 </div>
               </div>
 
               {/* Grid 2 Kolom: Tipe & Jenis */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Tipe Pengerjaan
-                  </label>
-                  <select
+                  <HeroUiModalSelect
+                    label="Tipe Pengerjaan"
                     value={formData.tipe}
-                    onChange={(e) => setFormData({ ...formData, tipe: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    {options.tipe.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, tipe: val })}
+                    placeholder="Pilih Tipe"
+                    options={options.tipe.map((t) => ({
+                      value: t.value,
+                      label: t.label,
+                    }))}
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Jenis Tugas (8 Ragam Asesmen)
-                  </label>
-                  <select
+                  <HeroUiModalSelect
+                    label="Jenis Tugas (8 Ragam Asesmen)"
                     value={formData.jenis_tugas}
-                    onChange={(e) => setFormData({ ...formData, jenis_tugas: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-emerald-50/70 dark:bg-slate-900 border-2 border-emerald-400 dark:border-emerald-600 rounded-xl text-sm font-bold text-emerald-950 dark:text-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    {options.jenis.map((j) => (
-                      <option key={j.value} value={j.value}>
-                        {j.label} [{j.penilaian || 'Manual'}]
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, jenis_tugas: val })}
+                    placeholder="Pilih Jenis Tugas"
+                    options={options.jenis.map((j) => ({
+                      value: j.value,
+                      label: `${j.label} [${j.penilaian || 'Manual'}]`,
+                    }))}
+                  />
                 </div>
               </div>
 
@@ -2088,17 +2448,16 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
 
               {/* Status Publikasi */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Status Publikasi
-                </label>
-                <select
+                <HeroUiModalSelect
+                  label="Status Publikasi"
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="dipublikasikan">Dipublikasikan (Dapat diakses Siswa)</option>
-                  <option value="draft">Draft (Simpan Sementara)</option>
-                </select>
+                  onChange={(val) => setFormData({ ...formData, status: val })}
+                  placeholder="Pilih Status"
+                  options={[
+                    { value: 'dipublikasikan', label: 'Dipublikasikan (Dapat diakses Siswa)' },
+                    { value: 'draft', label: 'Draft (Simpan Sementara)' },
+                  ]}
+                />
               </div>
 
               {/* Action Buttons */}

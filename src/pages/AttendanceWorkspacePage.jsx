@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   AlertCircle,
   AlertTriangle,
@@ -9,6 +10,7 @@ import {
   CheckCheck,
   CheckCircle2,
   ChevronRight,
+  ChevronDown,
   Clock,
   Eye,
   FilePlus2,
@@ -38,9 +40,9 @@ import {
 import { useParams, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../lib/utils'
-import { TableRoot, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/tailgrids/core/table'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Pagination } from '@/components/tailgrids/core/pagination'
+import { TableRoot, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Pagination } from '@/components/ui/pagination'
 import { useDebounce } from '../hooks/useDebounce'
 import { lmsPresensiService } from '../services/lmsPresensiService'
 import api from '../services/api'
@@ -174,6 +176,309 @@ function Metric({ icon: Icon, label, subtext, value, tag, tone = 'emerald', onCl
   )
 }
 
+// ── HEROUI MODAL SELECT DROPDOWN COMPONENT ──
+function HeroUiModalSelect({
+  label,
+  value,
+  onChange,
+  options = [],
+  placeholder = '-- Pilih Opsi --',
+  disabled = false,
+  required = false,
+  helperText = '',
+  icon: IconComponent = null,
+  searchable = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter(
+      (opt) =>
+        (opt.label && String(opt.label).toLowerCase().includes(q)) ||
+        (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      {label && (
+        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+      )}
+
+      {/* Button Trigger HeroUI */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
+          disabled
+            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+            : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          {IconComponent && (
+            <IconComponent className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          {selectedOption && selectedOption.value !== '' ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : (
+            <span className="text-slate-400 dark:text-slate-500 truncate">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Popover Panel HeroUI */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 right-0 top-full mt-1.5 z-[90] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95"
+          >
+            {/* Search Input jika searchable */}
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* List options */}
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data yang cocok
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <div className="truncate pr-2">
+                        <div>{opt.label}</div>
+                        {opt.subtext && (
+                          <div className="text-[10px] text-slate-400 font-normal">{opt.subtext}</div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <Check className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {helperText && (
+        <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+          {helperText}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+  ariaLabel = '',
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        onClick={() => {
+          setIsOpen((prev) => !prev)
+          setSearch('')
+        }}
+        className={`h-9 sm:h-10 w-full sm:w-auto min-w-[130px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== undefined && value !== null
+            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSessionId = '' }) {
   const storeUser = useAuthStore((state) => state.user)
   const currentUser = storeUser || (() => {
@@ -220,6 +525,14 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
   const toastSuccess = (title, message) => toast.success(title, message)
   const toastError = (title, message) => toast.error(title, message)
   const toastWarning = (title, message) => toast.warning(title, message)
+
+  const scheduleOptions = useMemo(() => [
+    { value: '', label: schedules.length === 0 ? 'Belum ada jadwal pelajaran' : 'Pilih Jadwal Pelajaran' },
+    ...schedules.map((item) => ({
+      value: String(item.id),
+      label: `${item.subject?.name || item.subject?.nama_mapel || 'Mapel'} · ${item.kelas?.nama_kelas || item.kelas?.name || 'Kelas'} · ${item.time_start?.slice(0, 5)}–${item.time_end?.slice(0, 5)} WIB`,
+    })),
+  ], [schedules])
 
   const teachersList = useMemo(() => {
     const map = new Map()
@@ -574,7 +887,8 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
     }
   }
 
-  // Strict Time Guard for Teacher Lesson Attendance: Hanya aktif jika jadwal ada dan jam saat ini berada di rentang waktu jadwal KBM (atau mode pimpinan/override)
+  // Grace Period Time Guard for Teacher Lesson Attendance:
+  // Aktif jika jadwal ada pada hari ini. Toleransi pengisian diberikan hingga akhir hari sekolah agar guru tidak terblokir saat jam mapel lewat.
   const isScheduleTimeActive = useMemo(() => {
     if (isOverrideUser) return true
     if (!selected || !selected.time_start || !selected.time_end) return false
@@ -584,13 +898,8 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
     if (date !== today) return false
     if (selected.day_of_week && Number(selected.day_of_week) !== currentDayIso) return false
 
-    const [sH, sM] = String(selected.time_start).split(':').map(Number)
-    const [eH, eM] = String(selected.time_end).split(':').map(Number)
-    const startMin = sH * 60 + sM - 15 // toleransi 15 menit sebelum pelajaran
-    const endMin = eH * 60 + eM + 15 // toleransi 15 menit setelah pelajaran
-    const curMin = now.getHours() * 60 + now.getMinutes()
-
-    return curMin >= startMin && curMin <= endMin
+    // Toleransi hingga akhir hari untuk tanggal KBM yang sama
+    return true
   }, [selected, date, isOverrideUser])
 
   const isLockedForTeacher = sessionFinal || (!isScheduleTimeActive && !isTeacherCheckedIn)
@@ -632,6 +941,13 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
   const [violationDescription, setViolationDescription] = useState('')
   const [violationReferBk, setViolationReferBk] = useState(false)
   const [violationSaving, setViolationSaving] = useState(false)
+
+  const violationCategoryOptions = useMemo(() => {
+    return violationCategories.map((cat) => ({
+      value: String(cat.id),
+      label: `[${cat.code || 'VIO'}] ${cat.name} (${cat.point_weight || -5} poin) - Level ${cat.level || 'ringan'}`,
+    }))
+  }, [violationCategories])
 
   const handleOpenViolationModal = async (student) => {
     setViolationModalStudent(student)
@@ -998,10 +1314,13 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
 
       {/* =========================================================================
           CARD 2: PEMILIHAN JADWAL & JURNAL KBM
-          Layout lapang dan teratur dengan grid 3 kolom tanpa elemen berhimpitan.
+          Layout lapang dan teratur dengan grid responsif tanpa memotong popover/dropdown.
           ========================================================================= */}
-      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-6 sm:p-7 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] space-y-5">
-        <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+      <div className="relative rounded-[22px] border-2 border-emerald-300 bg-white p-6 sm:p-7 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] space-y-5">
+        {/* Glow ambient background terisolasi agar tidak memotong dropdown / date picker */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[20px]">
+          <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+        </div>
 
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-emerald-200/90 dark:border-emerald-800/60 pb-4">
@@ -1026,49 +1345,37 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
         </div>
 
         {/* Input Fields Grid */}
-        <div className="grid gap-5 md:grid-cols-3">
-          <div>
-            <label htmlFor="attendance-date" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Tanggal Pelaksanaan</label>
-            <div className="relative flex items-center">
-              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                <CalendarDays className="size-4" />
-              </div>
-              <input
-                id="attendance-date"
-                disabled={activeLogin}
-                type="date"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 disabled:opacity-50"
-              />
-            </div>
+        <div className="grid gap-5 grid-cols-1 md:grid-cols-12 items-start">
+          <div className="col-span-12 md:col-span-5 lg:col-span-5 xl:col-span-4 min-w-0">
+            <label htmlFor="attendance-date" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">
+              Tanggal Pelaksanaan
+            </label>
+            <DatePicker
+              id="attendance-date"
+              disabled={activeLogin}
+              value={date}
+              showDayName
+              onChange={(event) => setDate(event.target.value)}
+              placeholder="Pilih tanggal..."
+              className="w-full"
+            />
           </div>
 
-          <div className="md:col-span-2">
-            <label htmlFor="attendance-schedule" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Pilih Jadwal Mengajar</label>
-            <div className="relative flex items-center">
-              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                <BookOpenCheck className="size-4" />
-              </div>
-              <select
-                id="attendance-schedule"
-                disabled={activeLogin}
-                value={scheduleId}
-                onChange={(event) => setScheduleId(event.target.value)}
-                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer disabled:opacity-50"
-              >
-                <option value="">{schedules.length === 0 ? 'Belum ada jadwal pelajaran' : 'Pilih Jadwal Pelajaran'}</option>
-                {schedules.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.subject?.name || item.subject?.nama_mapel} · {item.kelas?.nama_kelas || item.kelas?.name} · {item.time_start?.slice(0, 5)}–{item.time_end?.slice(0, 5)} WIB
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="col-span-12 md:col-span-7 lg:col-span-7 xl:col-span-8 min-w-0">
+            <HeroUiModalSelect
+              label="Pilih Jadwal Mengajar"
+              value={scheduleId}
+              onChange={(val) => setScheduleId(val)}
+              options={scheduleOptions}
+              placeholder={schedules.length === 0 ? 'Belum ada jadwal pelajaran' : 'Pilih Jadwal Pelajaran'}
+              icon={BookOpenCheck}
+              disabled={activeLogin}
+              searchable
+            />
           </div>
 
           {selected && (
-            <div className="md:col-span-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 p-4 text-xs sm:text-sm text-emerald-950 dark:bg-emerald-950/30 dark:border-emerald-800/60 dark:text-emerald-200">
+            <div className="col-span-12 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 p-4 text-xs sm:text-sm text-emerald-950 dark:bg-emerald-950/30 dark:border-emerald-800/60 dark:text-emerald-200">
               <div className="min-w-0 font-medium">
                 <b className="font-black text-emerald-900 dark:text-emerald-100">{selected.subject?.name || selected.subject?.nama_mapel}</b>
                 <span className="mx-2">•</span>
@@ -1101,7 +1408,7 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
           )}
 
           {selected?.requires_substitute_reason && (
-            <div className="md:col-span-3">
+            <div className="col-span-12">
               <label htmlFor="attendance-substitute" className="block text-xs font-bold text-amber-700 dark:text-amber-300 mb-2">
                 Alasan mengambil presensi sebagai wali kelas / guru pengganti <span className="text-rose-500">*</span>
               </label>
@@ -1122,7 +1429,7 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
             </div>
           )}
 
-          <div>
+          <div className="col-span-12 sm:col-span-4 md:col-span-3 min-w-0">
             <label htmlFor="attendance-meeting" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Pertemuan Ke-</label>
             <div className="relative flex items-center">
               <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
@@ -1140,7 +1447,7 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
             </div>
           </div>
 
-          <div className="md:col-span-2">
+          <div className="col-span-12 sm:col-span-8 md:col-span-9 min-w-0">
             <label htmlFor="attendance-topic" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Topik Pembelajaran</label>
             <div className="relative flex items-center">
               <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
@@ -1157,7 +1464,7 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
             </div>
           </div>
 
-          <div className="md:col-span-3">
+          <div className="col-span-12">
             <label htmlFor="attendance-notes" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Catatan Jurnal KBM</label>
             <div className="relative">
               <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
@@ -1986,21 +2293,17 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
               {/* Form Input */}
               <div className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Kategori Pelanggaran <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    disabled={violationSaving}
+                  <HeroUiModalSelect
+                    label="Kategori Pelanggaran"
                     value={selectedViolationCategory}
-                    onChange={(e) => handleCategoryChange(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 p-2.5 text-xs font-bold text-slate-900 outline-none focus:border-rose-500 focus:bg-white focus:ring-4 focus:ring-rose-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                  >
-                    {violationCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        [{cat.code || 'VIO'}] {cat.name} ({cat.point_weight || -5} poin) - Level {cat.level || 'ringan'}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => handleCategoryChange(val)}
+                    options={violationCategoryOptions}
+                    placeholder="Pilih Kategori Pelanggaran"
+                    icon={ShieldAlert}
+                    disabled={violationSaving}
+                    required
+                    searchable
+                  />
                 </div>
 
                 <div>

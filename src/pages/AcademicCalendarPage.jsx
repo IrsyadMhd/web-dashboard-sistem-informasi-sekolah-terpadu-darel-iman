@@ -19,14 +19,15 @@ import {
 } from 'lucide-react'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
-import { Button } from '@/components/tailgrids/core/button'
+import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   Dialog,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/components/tailgrids/core/dialog'
+} from '@/components/ui/dialog'
 import { useAuthStore } from '../stores/authStore'
 import { academicCalendarService } from '../services/academicCalendarService'
 import { tahunAjaranService } from '../services/tahunAjaranService'
@@ -792,24 +793,22 @@ export default function AcademicCalendarPage() {
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Tanggal Mulai *
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     required
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    inputClassName="px-3 py-2 text-xs"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Tanggal Selesai *
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     required
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    inputClassName="px-3 py-2 text-xs"
                   />
                 </div>
               </div>

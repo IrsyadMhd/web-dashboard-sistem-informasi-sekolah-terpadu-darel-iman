@@ -44,12 +44,12 @@ export function Pagination({
         size="sm"
         disabled={currentPage <= 1}
         aria-label="Halaman sebelumnya"
+        title="Halaman sebelumnya"
         onPress={() => onPageChange && onPageChange(currentPage - 1)}
         onClick={() => onPageChange && onPageChange(currentPage - 1)}
         className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:disabled:bg-emerald-950/40 dark:disabled:text-white/30 cursor-pointer p-0"
       >
         <ChevronLeft className="size-5 shrink-0 text-white" />
-        {sideLayout === 'full' && <span className="hidden sm:inline font-bold text-xs ml-1">Sebelumnya</span>}
       </Button>
 
       <div className="flex items-center gap-1">
@@ -87,11 +87,11 @@ export function Pagination({
         size="sm"
         disabled={currentPage >= totalPages}
         aria-label="Halaman berikutnya"
+        title="Halaman berikutnya"
         onPress={() => onPageChange && onPageChange(currentPage + 1)}
         onClick={() => onPageChange && onPageChange(currentPage + 1)}
         className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:disabled:bg-emerald-950/40 dark:disabled:text-white/30 cursor-pointer p-0"
       >
-        {sideLayout === 'full' && <span className="hidden sm:inline font-bold text-xs mr-1">Selanjutnya</span>}
         <ChevronRight className="size-5 shrink-0 text-white" />
       </Button>
     </nav>

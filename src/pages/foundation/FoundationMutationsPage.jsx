@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
+import { ArrowRightLeft as ArrowBothDirectionHorizontal2 } from 'lucide-react'
 import { ArrowRightLeft, Award, FileSpreadsheet, GraduationCap, RefreshCcw, ShieldAlert, UserCheck, UserMinus, UserPlus, UserRound, UsersRound } from 'lucide-react'
 import ActionDropdown from '../../components/app/ActionDropdown'
 import api from '../../services/api'
@@ -22,6 +22,7 @@ import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 import { FoundationExportModal } from '../../components/foundation/FoundationExportModal'
 import { FoundationUnitKpiModal } from '../../components/foundation/FoundationUnitKpiModal'
 import { SquircleActionButton } from '../../components/master-data'
+import { SmartScrollFab } from '../../components/common'
 
 const MUTATION_VARIANTS = {
   masuk: { label: 'Pindah Masuk', variant: 'success' },
@@ -281,7 +282,7 @@ export function FoundationMutationsPage() {
         }
       />
 
-      <MasterDataTable className="foundation-table">
+      <MasterDataTable id="tabel-mutasi-siswa" className="foundation-table scroll-mt-6">
         <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-700">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Mutasi Siswa</h2>
@@ -430,6 +431,9 @@ export function FoundationMutationsPage() {
         rows={exportRows}
         filename="Mutasi_Siswa_Yayasan"
       />
+
+      {/* Smart Floating Scroll Navigator */}
+      <SmartScrollFab targetId="tabel-mutasi-siswa" downTooltip="Langsung ke Tabel Mutasi" />
     </MasterDataPage>
   )
 }

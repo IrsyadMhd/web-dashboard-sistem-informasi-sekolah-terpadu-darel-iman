@@ -31,7 +31,7 @@ import PageContainer from '../components/app/PageContainer'
 import { useToast } from '../components/app'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { useDebounce } from '../hooks/useDebounce'
-import { Pagination } from '../components/tailgrids/core/pagination'
+import { Pagination } from '../components/ui/pagination'
 import { printCleanTable, resolveFoundationName } from '../utils/printHelper'
 import { usePengaturanStore } from '../stores/pengaturanStore'
 import {
@@ -42,6 +42,148 @@ import {
   MasterStatsGrid,
   MasterStatCard,
 } from '../components/master-data'
+
+// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  icon: IconComponent = null,
+  className = '',
+  popoverWidth = 'min-w-[180px]',
+  searchable = false,
+  disabled = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = React.useRef(null)
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const selectedOption = useMemo(() => {
+    return options.find((opt) => String(opt.value) === String(value))
+  }, [options, value])
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.toLowerCase()
+    return options.filter((opt) =>
+      opt.label && String(opt.label).toLowerCase().includes(q)
+    )
+  }, [options, search, searchable])
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+          disabled
+            ? 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-800/60 cursor-not-allowed'
+            : isOpen
+            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            : value !== '' && value !== undefined && value !== null && value !== 'all'
+            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 truncate">
+          {IconComponent && (
+            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          )}
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+          >
+            {searchable && options.length > 5 && (
+              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari..."
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-3 text-center text-xs text-slate-400">
+                  Tidak ada data
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-500/15 text-emerald-900 font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
+                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5" />
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 // ── DEFINISI TONE WARNA KARTU KPI MODERN (TAILGRIDS SPEC) ──
 const MODERN_CARD_TONES = {
@@ -303,6 +445,22 @@ export default function MasterDoaPage() {
   const [tagFilter, setTagFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
+
+  const formattedGrupOptions = useMemo(() => [
+    { value: 'all', label: 'Semua Kategori / Grup' },
+    ...grupOptions.map((g) => ({ value: g, label: g })),
+  ], [grupOptions])
+
+  const formattedTagOptions = useMemo(() => [
+    { value: 'all', label: 'Semua Tag' },
+    ...tagOptions.map((t) => ({ value: t, label: `#${t}` })),
+  ], [tagOptions])
+
+  const perPageOptions = useMemo(() => [
+    { value: 10, label: '10 Baris' },
+    { value: 25, label: '25 Baris' },
+    { value: 50, label: '50 Baris' },
+  ], [])
 
   // Modal State for Add / Edit
   const [showModal, setShowModal] = useState(false)
@@ -814,52 +972,39 @@ export default function MasterDoaPage() {
               </span>
 
               {/* Grup/Kategori Filter */}
-              <div className="relative min-w-[160px]">
-                <select
-                  value={grupFilter}
-                  onChange={(e) => { setGrupFilter(e.target.value); setCurrentPage(1) }}
-                  className="w-full h-9 appearance-none cursor-pointer rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                >
-                  <option value="all">Semua Kategori / Grup</option>
-                  {grupOptions.map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
-              </div>
+              <HeroUiFilterSelect
+                value={grupFilter}
+                onChange={(val) => { setGrupFilter(val); setCurrentPage(1) }}
+                options={formattedGrupOptions}
+                placeholder="Kategori / Grup"
+                icon={BookOpen}
+                className="w-full sm:w-auto min-w-[190px]"
+                popoverWidth="w-64"
+                searchable={formattedGrupOptions.length > 5}
+              />
 
               {/* Tag Filter */}
-              <div className="relative min-w-[140px]">
-                <select
-                  value={tagFilter}
-                  onChange={(e) => { setTagFilter(e.target.value); setCurrentPage(1) }}
-                  className="w-full h-9 appearance-none cursor-pointer rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 capitalize"
-                >
-                  <option value="all">Semua Tag</option>
-                  {tagOptions.map((t) => (
-                    <option key={t} value={t}>
-                      #{t}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
-              </div>
+              <HeroUiFilterSelect
+                value={tagFilter}
+                onChange={(val) => { setTagFilter(val); setCurrentPage(1) }}
+                options={formattedTagOptions}
+                placeholder="Pilih Tag"
+                icon={Sparkles}
+                className="w-full sm:w-auto min-w-[150px]"
+                popoverWidth="w-56"
+                searchable={formattedTagOptions.length > 5}
+              />
 
               {/* Per Page Selector */}
-              <div className="relative min-w-[120px]">
-                <select
-                  value={perPage}
-                  onChange={(e) => { setPerPage(Number(e.target.value)); setCurrentPage(1) }}
-                  className="w-full h-9 appearance-none cursor-pointer rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                >
-                  <option value={10}>10 Baris</option>
-                  <option value={25}>25 Baris</option>
-                  <option value={50}>50 Baris</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
-              </div>
+              <HeroUiFilterSelect
+                value={perPage}
+                onChange={(val) => { setPerPage(Number(val)); setCurrentPage(1) }}
+                options={perPageOptions}
+                placeholder="Per Halaman"
+                icon={Layers}
+                className="w-full sm:w-auto min-w-[120px]"
+                popoverWidth="w-32"
+              />
             </div>
 
             {/* Reset Filter Button */}

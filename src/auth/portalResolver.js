@@ -530,6 +530,9 @@ export const getTierForRole = (roleName) => {
  * @returns {{ allowed: boolean, scope: 'global'|'own_unit'|null }}
  */
 export const canEditRole = (userRoles = [], targetRoleName = '') => {
+  if (isFoundationUser(userRoles)) {
+    return { allowed: false, scope: null }
+  }
   if (hasAnyRole(userRoles, ROLES.SUPER_ADMIN)) {
     return { allowed: true, scope: 'global' }
   }
@@ -537,7 +540,7 @@ export const canEditRole = (userRoles = [], targetRoleName = '') => {
   if (!tier || !hasAnyRole(userRoles, tier.canEditBy)) {
     return { allowed: false, scope: null }
   }
-  const isGlobalEditor = hasAnyRole(userRoles, [...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.YAYASAN])
+  const isGlobalEditor = hasAnyRole(userRoles, [...ROLES.SUPER_ADMIN, ...ROLES.ADMIN])
   return { allowed: true, scope: isGlobalEditor ? 'global' : 'own_unit' }
 }
 
@@ -549,11 +552,29 @@ export const canEditRole = (userRoles = [], targetRoleName = '') => {
  * @returns {Array<{ tier: object, scope: 'global'|'own_unit' }>}
  */
 export const getEditableTiers = (userRoles = []) => {
+  if (isFoundationUser(userRoles)) {
+    return []
+  }
   if (hasAnyRole(userRoles, ROLES.SUPER_ADMIN)) {
     return ROLE_TIERS.map((tier) => ({ tier, scope: 'global' }))
   }
-  const isGlobalEditor = hasAnyRole(userRoles, [...ROLES.ADMIN, ...ROLES.YAYASAN])
+  const isGlobalEditor = hasAnyRole(userRoles, ROLES.ADMIN)
   return ROLE_TIERS
     .filter((tier) => hasAnyRole(userRoles, tier.canEditBy))
     .map((tier) => ({ tier, scope: isGlobalEditor ? 'global' : 'own_unit' }))
+}
+
+/**
+ * Memeriksa apakah pengguna memiliki peran Yayasan (monitoring / read-only eksekutif).
+ * Termasuk: Yayasan, Ketua Yayasan, Pengurus Yayasan, Sekretaris Yayasan, Bendahara Yayasan.
+ * User Super Admin dan Admin TIDAK dianggap foundation monitoring.
+ *
+ * @param {object|string[]|null} userOrRoles
+ * @returns {boolean}
+ */
+export const isFoundationUser = (userOrRoles = null) => {
+  if (!userOrRoles) return false
+  const userLevel = getUserRoleLevel(userOrRoles)
+  if (userLevel === ROLE_LEVELS.SUPER_ADMIN || userLevel === ROLE_LEVELS.ADMIN) return false
+  return userLevel === ROLE_LEVELS.YAYASAN || hasAnyRole(userOrRoles, ROLES.YAYASAN)
 }

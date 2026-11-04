@@ -21,6 +21,7 @@ import {
   Users,
   Camera,
   CameraOff,
+  Check,
   X,
   Wifi,
   ChevronDown,
@@ -43,6 +44,14 @@ import AppSkeleton from '../components/app/AppSkeleton'
 import AppEmptyState from '../components/app/AppEmptyState'
 import { SquircleActionButton, MasterActionButton, MasterActionIconButton } from '../components/master-data'
 import AppTabs from '../components/app/AppTabs'
+import {
+  TableRoot,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/table'
 
 
 // ── SUB-KOMPONEN MODERN KPI CARDS (§C Tailgrids_Pengaturan_Halaman) ──
@@ -164,6 +173,213 @@ function GateKpiCard({ icon: Icon, title, value, subtext, tag, tone = 'emerald',
   )
 }
 
+function HeroUiFilterSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  disabled = false,
+  searchable = false,
+  widthClass = 'min-w-[150px]',
+  icon: Icon = null,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedOption = options.find((opt) => String(opt.value) === String(value))
+  const filteredOptions = searchable || options.length > 5
+    ? options.filter((opt) => String(opt.label).toLowerCase().includes(search.toLowerCase()))
+    : options
+
+  return (
+    <div ref={containerRef} className={`relative ${widthClass}`}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`w-full flex items-center justify-between gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs transition-all hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer`}
+      >
+        <span className="flex items-center gap-2 truncate">
+          {Icon && <Icon className="size-3.5 text-slate-400 shrink-0" />}
+          <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
+        </span>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
+            isOpen ? 'rotate-180 text-emerald-600' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 top-full z-[80] mt-1.5 w-full min-w-[200px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40"
+          >
+            {(searchable || options.length > 5) && (
+              <div className="mb-1.5 px-1 pt-1">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari..."
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  autoFocus
+                />
+              </div>
+            )}
+            <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="py-2 text-center text-xs text-slate-400">Tidak ada pilihan</div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-700 font-bold dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60 font-medium'
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && <Check className="size-3.5 text-emerald-600 shrink-0" />}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function HeroUiModalSelect({
+  value,
+  onChange,
+  options = [],
+  placeholder = 'Pilih...',
+  disabled = false,
+  searchable = false,
+  icon: Icon = null,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedOption = options.find((opt) => String(opt.value) === String(value))
+  const filteredOptions = searchable || options.length > 5
+    ? options.filter((opt) => String(opt.label).toLowerCase().includes(search.toLowerCase()))
+    : options
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="w-full flex items-center justify-between gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 shadow-xs transition-all hover:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+      >
+        <span className="flex items-center gap-2.5 truncate">
+          {Icon && <Icon className="size-4 text-slate-400 shrink-0" />}
+          <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
+        </span>
+        <ChevronDown
+          className={`size-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
+            isOpen ? 'rotate-180 text-emerald-600' : ''
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute left-0 top-full z-[80] mt-1.5 w-full min-w-[200px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40"
+          >
+            {(searchable || options.length > 5) && (
+              <div className="mb-1.5 px-1 pt-1">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari..."
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  autoFocus
+                />
+              </div>
+            )}
+            <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+              {filteredOptions.length === 0 ? (
+                <div className="py-2 text-center text-xs text-slate-400">Tidak ada pilihan</div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(value)
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value)
+                        setIsOpen(false)
+                        setSearch('')
+                      }}
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50 text-emerald-700 font-bold dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60 font-medium'
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && <Check className="size-3.5 text-emerald-600 shrink-0" />}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export default function GateAttendancePage() {
   const navigate = useNavigate()
   const storeUser = useAuthStore((state) => state.user)
@@ -250,6 +466,21 @@ export default function GateAttendancePage() {
   const [allUnitsSchedules, setAllUnitsSchedules] = useState([])
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [savingSchedule, setSavingSchedule] = useState(false)
+
+  const unitFilterOptions = useMemo(() => {
+    if (!isMultiUnitUser) {
+      return units.map((u) => ({ value: String(u.id), label: u.nama || u.name }))
+    }
+    return [
+      { value: '', label: 'Semua Unit Pendidikan' },
+      ...units.map((u) => ({ value: String(u.id), label: u.nama || u.name }))
+    ]
+  }, [isMultiUnitUser, units])
+
+  const targetUnitConfigOptions = useMemo(() => [
+    { value: '', label: '-- Default Global (Seluruh Unit) --' },
+    ...units.map((u) => ({ value: String(u.id), label: u.nama || u.name }))
+  ], [units])
 
   const [stats, setStats] = useState({
     total_siswa: 0,
@@ -833,36 +1064,15 @@ export default function GateAttendancePage() {
           {/* Action Controls: Unit Filter & Schedule Config Button */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap z-10">
             {/* Unit Filter Field */}
-            <div className="relative inline-flex items-center">
-              <div className="pointer-events-none absolute left-3 flex items-center text-slate-400 dark:text-slate-500">
-                {isMultiUnitUser ? (
-                  <Building2 className="h-4 w-4 text-slate-400" />
-                ) : (
-                  <Lock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                )}
-              </div>
-              <select
-                disabled={!isMultiUnitUser}
-                aria-label="Filter unit pendidikan"
-                className={`h-10 appearance-none rounded-xl border pl-9 pr-8 text-xs font-semibold shadow-xs transition-all focus:outline-none ${
-                  isMultiUnitUser
-                    ? 'border-emerald-500/30 bg-white/90 text-slate-800 hover:border-emerald-500 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-slate-900 dark:text-slate-100 cursor-pointer'
-                    : 'border-emerald-200/80 bg-emerald-50/70 text-emerald-900 font-bold dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 cursor-not-allowed'
-                }`}
-                value={selectedUnit}
-                onChange={(e) => setSelectedUnit(e.target.value)}
-              >
-                {isMultiUnitUser && <option value="">Semua Unit Pendidikan</option>}
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.nama || u.name}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute right-2.5 flex items-center text-slate-400 dark:text-slate-500">
-                <ChevronDown className="h-3.5 w-3.5" />
-              </div>
-            </div>
+            <HeroUiFilterSelect
+              disabled={!isMultiUnitUser}
+              value={selectedUnit}
+              onChange={(val) => setSelectedUnit(val)}
+              options={unitFilterOptions}
+              placeholder="Semua Unit Pendidikan"
+              icon={isMultiUnitUser ? Building2 : Lock}
+              widthClass="min-w-[210px]"
+            />
 
             {/* Schedule Config Button (§H.5 squircle) */}
             <SquircleActionButton
@@ -1350,22 +1560,22 @@ export default function GateAttendancePage() {
                 <AppEmptyState title="Belum ada data presensi gerbang" description="Log pemindaian akan tampil di sini setelah ada aktivitas scan masuk atau pulang." />
               ) : (
               <div className="overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
-              <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-                <thead className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 text-xs uppercase font-black text-emerald-950 dark:text-emerald-200">
-                  <tr>
-                    <th className="px-4 py-2.5 text-[11px]">Siswa</th>
-                    <th className="hidden sm:table-cell px-4 py-2.5 text-[11px]">Unit / Kelas</th>
-                    <th className="px-4 py-2.5 text-[11px]">Jam Masuk</th>
-                    <th className="hidden md:table-cell px-4 py-2.5 text-[11px]">Status Masuk</th>
-                    <th className="hidden md:table-cell px-4 py-2.5 text-[11px]">Jam Pulang</th>
-                    <th className="hidden lg:table-cell px-4 py-2.5 text-[11px]">Status Pulang</th>
-                    <th className="hidden lg:table-cell px-4 py-2.5 text-[11px]">Metode</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+              <TableRoot className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+                <TableHeader className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 text-xs uppercase font-black text-emerald-950 dark:text-emerald-200">
+                  <TableRow>
+                    <TableHead className="px-4 py-2.5 text-[11px]">Siswa</TableHead>
+                    <TableHead className="hidden sm:table-cell px-4 py-2.5 text-[11px]">Unit / Kelas</TableHead>
+                    <TableHead className="px-4 py-2.5 text-[11px]">Jam Masuk</TableHead>
+                    <TableHead className="hidden md:table-cell px-4 py-2.5 text-[11px]">Status Masuk</TableHead>
+                    <TableHead className="hidden md:table-cell px-4 py-2.5 text-[11px]">Jam Pulang</TableHead>
+                    <TableHead className="hidden lg:table-cell px-4 py-2.5 text-[11px]">Status Pulang</TableHead>
+                    <TableHead className="hidden lg:table-cell px-4 py-2.5 text-[11px]">Metode</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                   {logs.map((log) => (
-                      <tr key={log.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
-                        <td className="px-4 py-3.5 align-top sm:align-middle">
+                      <TableRow key={log.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
+                        <TableCell className="px-4 py-3.5 align-top sm:align-middle">
                           <p className="font-bold text-sm text-slate-900 dark:text-white line-clamp-2">{log.student?.nama_lengkap || 'Siswa'}</p>
                           <p className="text-[11px] text-slate-400 font-mono line-clamp-1 mt-0.5">{log.student?.nisn || '-'}</p>
                           <div className="sm:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
@@ -1376,27 +1586,27 @@ export default function GateAttendancePage() {
                               {log.status || '-'}
                             </span>
                           </div>
-                        </td>
-                        <td className="hidden sm:table-cell px-4 py-3.5 align-middle text-xs font-medium text-slate-700 dark:text-slate-300">{log.education_unit?.nama || '-'}</td>
-                        <td className="px-4 py-3.5 align-middle text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell px-4 py-3.5 align-middle text-xs font-medium text-slate-700 dark:text-slate-300">{log.education_unit?.nama || '-'}</TableCell>
+                        <TableCell className="px-4 py-3.5 align-middle text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">
                           {log.check_in_time ? new Date(log.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                        </td>
-                        <td className="hidden md:table-cell px-4 py-3.5 align-middle">
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell px-4 py-3.5 align-middle">
                           <AppBadge variant={log.status === 'HADIR' ? 'success' : log.status === 'TERLAMBAT' ? 'warning' : 'danger'}>
                             {log.status || '-'}
                           </AppBadge>
-                        </td>
-                        <td className="hidden md:table-cell px-4 py-3.5 align-middle text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell px-4 py-3.5 align-middle text-xs font-bold text-slate-800 dark:text-slate-200 tabular-nums">
                           {log.check_out_time
                             ? new Date(log.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                             : '-'}
-                        </td>
-                        <td className="hidden lg:table-cell px-4 py-3.5 align-middle text-xs font-semibold text-slate-500">{log.check_out_status || '-'}</td>
-                        <td className="hidden lg:table-cell px-4 py-3.5 align-middle text-xs font-semibold text-slate-500">{log.attendance_method || '-'}</td>
-                      </tr>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell px-4 py-3.5 align-middle text-xs font-semibold text-slate-500">{log.check_out_status || '-'}</TableCell>
+                        <TableCell className="hidden lg:table-cell px-4 py-3.5 align-middle text-xs font-semibold text-slate-500">{log.attendance_method || '-'}</TableCell>
+                      </TableRow>
                     ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </TableRoot>
               </div>
               )}
             </div>
@@ -1454,29 +1664,18 @@ export default function GateAttendancePage() {
               <div className="modal-body min-h-0 flex-1 overflow-y-auto p-6 space-y-6">
                 {/* Unit Target Selector */}
                 <div>
-                  <label htmlFor="gate-config-unit" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                     Pilih Unit Pendidikan Target
                   </label>
-                  <div className="relative flex items-center">
-                    <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                      <Building2 className="size-4" />
-                    </div>
-                    <select
-                      id="gate-config-unit"
-                      disabled={!isMultiUnitUser}
-                      className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer disabled:opacity-50"
-                      value={targetUnitForConfig}
-                      onChange={(e) => setTargetUnitForConfig(e.target.value)}
-                    >
-                      <option value="">-- Default Global (Seluruh Unit) --</option>
-                      {units.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.nama || u.name}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
-                  </div>
+                  <HeroUiModalSelect
+                    disabled={!isMultiUnitUser}
+                    value={targetUnitForConfig}
+                    onChange={(val) => setTargetUnitForConfig(val)}
+                    options={targetUnitConfigOptions}
+                    placeholder="-- Default Global (Seluruh Unit) --"
+                    icon={Building2}
+                    searchable={true}
+                  />
                 </div>
 
                 {/* Form Input for Selected Unit */}
@@ -1591,40 +1790,40 @@ export default function GateAttendancePage() {
                     <Layers className="h-4 w-4 text-emerald-600" /> Ringkasan Jam Absensi Seluruh Unit
                   </h4>
                   <div className="overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
-                    <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-                      <thead className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 uppercase text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300">
-                        <tr>
-                          <th className="px-4 py-2.5">Unit Pendidikan</th>
-                          <th className="px-4 py-2.5">Jam Masuk</th>
-                          <th className="px-4 py-2.5">Toleransi</th>
-                          <th className="px-4 py-2.5">Jam Pulang</th>
-                          <th className="px-4 py-2.5">Cutoff Alpha</th>
-                          <th className="px-4 py-2.5 text-right">Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                    <TableRoot className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+                      <TableHeader className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 uppercase text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300">
+                        <TableRow>
+                          <TableHead className="px-4 py-2.5">Unit Pendidikan</TableHead>
+                          <TableHead className="px-4 py-2.5">Jam Masuk</TableHead>
+                          <TableHead className="px-4 py-2.5">Toleransi</TableHead>
+                          <TableHead className="px-4 py-2.5">Jam Pulang</TableHead>
+                          <TableHead className="px-4 py-2.5">Cutoff Alpha</TableHead>
+                          <TableHead className="px-4 py-2.5 text-right">Aksi</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                         {allUnitsSchedules.length === 0 ? (
-                          <tr>
-                            <td colSpan="6" className="px-4 py-8 text-center">
+                          <TableRow>
+                            <TableCell colSpan={6} className="px-4 py-8 text-center">
                               <AppEmptyState title="Belum ada data unit" description="Konfigurasi jadwal per unit akan tampil di sini." />
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ) : (
                           allUnitsSchedules.map((u) => (
-                            <tr key={u.unit_id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
-                              <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
+                            <TableRow key={u.unit_id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
+                              <TableCell className="px-4 py-3 font-bold text-slate-900 dark:text-white">
                                 {u.unit_name}
                                 {u.has_custom_schedule && (
                                   <span className="ml-2 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
                                     Kustom
                                   </span>
                                 )}
-                              </td>
-                              <td className="px-4 py-3 font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{u.schedule.jam_masuk}</td>
-                              <td className="px-4 py-3 tabular-nums">{u.schedule.toleransi_menit} Menit</td>
-                              <td className="px-4 py-3 font-bold text-indigo-700 dark:text-indigo-400 tabular-nums">{u.schedule.jam_pulang}</td>
-                              <td className="px-4 py-3 tabular-nums">{u.schedule.jam_cutoff_alpha}</td>
-                              <td className="px-4 py-3 text-right">
+                              </TableCell>
+                              <TableCell className="px-4 py-3 font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{u.schedule.jam_masuk}</TableCell>
+                              <TableCell className="px-4 py-3 tabular-nums">{u.schedule.toleransi_menit} Menit</TableCell>
+                              <TableCell className="px-4 py-3 font-bold text-indigo-700 dark:text-indigo-400 tabular-nums">{u.schedule.jam_pulang}</TableCell>
+                              <TableCell className="px-4 py-3 tabular-nums">{u.schedule.jam_cutoff_alpha}</TableCell>
+                              <TableCell className="px-4 py-3 text-right">
                                 <MasterActionIconButton
                                   variant="edit"
                                   label="Edit Unit Ini"
@@ -1633,12 +1832,12 @@ export default function GateAttendancePage() {
                                     setScheduleConfig(u.schedule)
                                   }}
                                 />
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           ))
                         )}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </TableRoot>
                   </div>
                 </div>
               </div>
@@ -1969,42 +2168,42 @@ export default function GateAttendancePage() {
                   />
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 uppercase text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300">
-                        <tr>
-                          <th className="px-4 py-2.5">NO</th>
-                          <th className="px-4 py-2.5">SISWA</th>
-                          <th className="px-4 py-2.5">KELAS / UNIT</th>
-                          <th className="px-4 py-2.5">JAM MASUK</th>
-                          <th className="px-4 py-2.5">JAM PULANG</th>
-                          <th className="px-4 py-2.5 text-center">STATUS PRESENSI</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-emerald-100/80 font-medium text-slate-700 dark:divide-emerald-900/40 dark:text-slate-300">
+                    <TableRoot className="w-full text-left text-xs">
+                      <TableHeader className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 uppercase text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300">
+                        <TableRow>
+                          <TableHead className="px-4 py-2.5">NO</TableHead>
+                          <TableHead className="px-4 py-2.5">SISWA</TableHead>
+                          <TableHead className="px-4 py-2.5">KELAS / UNIT</TableHead>
+                          <TableHead className="px-4 py-2.5">JAM MASUK</TableHead>
+                          <TableHead className="px-4 py-2.5">JAM PULANG</TableHead>
+                          <TableHead className="px-4 py-2.5 text-center">STATUS PRESENSI</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody className="divide-y divide-emerald-100/80 font-medium text-slate-700 dark:divide-emerald-900/40 dark:text-slate-300">
                         {filteredKpiData.map((item, idx) => (
-                          <tr key={item.student_id || item.id || idx} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
-                            <td className="px-4 py-3 font-bold text-slate-400 tabular-nums">{idx + 1}</td>
-                            <td className="px-4 py-3">
+                          <TableRow key={item.student_id || item.id || idx} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
+                            <TableCell className="px-4 py-3 font-bold text-slate-400 tabular-nums">{idx + 1}</TableCell>
+                            <TableCell className="px-4 py-3">
                               <p className="font-bold text-slate-900 dark:text-white line-clamp-2">{item.nama_lengkap || item.full_name || item.student?.nama_lengkap || 'Siswa'}</p>
                               <p className="text-[11px] text-slate-400 font-mono line-clamp-1 mt-0.5">NIS: {item.nis || item.nisn || item.student?.nis || '-'}</p>
-                            </td>
-                            <td className="px-4 py-3">
+                            </TableCell>
+                            <TableCell className="px-4 py-3">
                               <p className="font-semibold text-slate-800 dark:text-slate-200">{item.kelas_name || item.school_class?.name || item.school_class?.nama_kelas || '-'}</p>
                               <p className="text-[10px] text-slate-400 line-clamp-1">{item.unit_name || item.education_unit?.name || '-'}</p>
-                            </td>
-                            <td className="px-4 py-3 font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                            </TableCell>
+                            <TableCell className="px-4 py-3 font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                               {item.check_in_time ? item.check_in_time.slice(0, 5) : '-'}
-                            </td>
-                            <td className="px-4 py-3 font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
+                            </TableCell>
+                            <TableCell className="px-4 py-3 font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
                               {item.check_out_time ? item.check_out_time.slice(0, 5) : '-'}
-                            </td>
-                            <td className="px-4 py-3 text-center">
+                            </TableCell>
+                            <TableCell className="px-4 py-3 text-center">
                               {renderStatusBadge(item.status, item.check_out_time)}
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </TableRoot>
                   </div>
                 )}
               </div>

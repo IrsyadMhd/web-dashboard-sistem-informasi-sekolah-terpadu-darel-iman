@@ -4,7 +4,7 @@ import {
   Clock3, Copy, FileDown, FileSpreadsheet, History, ListChecks, Loader2,
   NotebookPen, Pencil, Plus, Printer, Save, Trash2, UserRound, X,
 } from 'lucide-react'
-import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import Swal from '@/components/ui/compat/swal-heroui'
 import { useLocation, useSearchParams, Navigate } from 'react-router-dom'
 import { mutabaahService } from '../services/mutabaahService'
 import { useAuthStore } from '../stores/authStore'
@@ -14,7 +14,8 @@ import MutabaahDailySpreadsheet from './MutabaahDailySpreadsheet'
 import MutabaahAnalyticsPage from './MutabaahAnalyticsPage'
 import MutabaahFamilyPortal from './MutabaahFamilyPortal'
 import { printOfficialMutabaahSheet } from '../utils/printHelper'
-import { Button } from '@/components/tailgrids/core/button'
+import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui'
 import {
   Dialog,
   DialogBody,
@@ -23,8 +24,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/tailgrids/core/dialog'
-import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
+} from '@/components/ui/dialog'
+import { Backdrop, OverlayWrapper } from '@/components/ui/dialog'
 import {
   MasterDataPage,
   MasterStatCard,
@@ -281,7 +282,7 @@ function LegacyMutabaahPage() {
 
           <section className="mutabaah-toolbar">
             <LabeledSelect label="Pilih Siswa" icon={<UserRound size={17} />} value={studentId} onChange={setStudentId} options={options.students.map((s) => ({ value: s.id, label: `${s.name} — ${s.nis}` }))} />
-            <label className="field"><span>Tanggal</span><div className="field-control"><CalendarDays size={17} /><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div></label>
+            <div className="field"><span>Tanggal</span><DatePicker value={date} onChange={(e) => setDate(e.target.value)} /></div>
             <LabeledSelect label="Pilih Guru / Musyrif" icon={<BookHeart size={17} />} value={mentorId} onChange={setMentorId} options={options.mentors.map((m) => ({ value: m.id, label: `${m.name}${m.position ? ` — ${m.position}` : ''}` }))} />
             <button className="outline-action" onClick={() => Swal.fire({ title: 'Riwayat siswa', text: 'Pilih tanggal pada minggu yang ingin dilihat.', icon: 'info' })}><History size={18} /> Riwayat Siswa</button>
             <button className="outline-action note-action" onClick={() => document.querySelector('.daily-note')?.focus()}><NotebookPen size={18} /> Catatan Harian</button>
@@ -359,8 +360,8 @@ function LegacyMutabaahPage() {
         <label><span>Nomor Urut</span><input type="number" min="0" value={agendaForm.sort_order} onChange={(e) => setAgendaForm({ ...agendaForm, sort_order: Number(e.target.value) })} /></label>
         <label className="full"><span>Rincian Agenda *</span><input required value={agendaForm.name} onChange={(e) => setAgendaForm({ ...agendaForm, name: e.target.value })} placeholder="Contoh: Sholat Subuh berjamaah" /></label>
         <label className="full"><span>Petunjuk / Deskripsi</span><textarea value={agendaForm.description || ''} onChange={(e) => setAgendaForm({ ...agendaForm, description: e.target.value })} /></label>
-        <label><span>Berlaku Mulai</span><input type="date" value={agendaForm.effective_from || ''} onChange={(e) => setAgendaForm({ ...agendaForm, effective_from: e.target.value })} /></label>
-        <label><span>Berlaku Sampai</span><input type="date" value={agendaForm.effective_until || ''} onChange={(e) => setAgendaForm({ ...agendaForm, effective_until: e.target.value })} /></label>
+        <div><span className="block text-xs font-semibold mb-1">Berlaku Mulai</span><DatePicker value={agendaForm.effective_from || ''} onChange={(e) => setAgendaForm({ ...agendaForm, effective_from: e.target.value })} /></div>
+        <div><span className="block text-xs font-semibold mb-1">Berlaku Sampai</span><DatePicker value={agendaForm.effective_until || ''} onChange={(e) => setAgendaForm({ ...agendaForm, effective_until: e.target.value })} /></div>
         <label className="toggle full"><input type="checkbox" checked={agendaForm.is_active} onChange={(e) => setAgendaForm({ ...agendaForm, is_active: e.target.checked })} /><span>Agenda aktif dan ditampilkan kepada pembimbing</span></label>
       </div><div className="modal-actions"><button type="button" onClick={() => setAgendaModal(false)}>Batal</button><button className="primary-action" disabled={saving}>{saving ? <Loader2 className="spin" /> : <Save />} Simpan Agenda</button></div></form></div>}
     </div>
@@ -617,9 +618,9 @@ function MutabaahOverviewPage({ view }) {
         </section>
 
         {/* 🟢 TAILGRIDS DIALOG: MODAL TAMBAH & EDIT TARGET MUTABA'AH */}
-        <OverlayWrapper>
+        <OverlayWrapper isOpen={Boolean(targetModal)} onOpenChange={() => setTargetModal(null)}>
           <Backdrop isOpen={Boolean(targetModal)} onOpenChange={() => setTargetModal(null)} isDismissable={true}>
-            <Dialog className="max-w-md rounded-2xl bg-white p-6 dark:bg-[#1B2433] shadow-2xl">
+            <Dialog isOpen={Boolean(targetModal)} onClose={() => setTargetModal(null)} className="max-w-md rounded-2xl bg-white p-6 dark:bg-[#1B2433] shadow-2xl">
               <DialogHeader className="border-b border-slate-100 pb-3 dark:border-slate-800">
                 <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white">
                   {targetModal?.mode === 'edit' ? 'Edit Target Mutaba’ah' : 'Tambah Target Mutaba’ah Baru'}
@@ -730,9 +731,9 @@ function MutabaahOverviewPage({ view }) {
         </OverlayWrapper>
 
         {/* 🟢 TAILGRIDS DIALOG: MODAL LIHAT DETAIL EVALUASI SISWA */}
-        <OverlayWrapper>
+        <OverlayWrapper isOpen={Boolean(selectedItem)} onOpenChange={() => setSelectedItem(null)}>
           <Backdrop isOpen={Boolean(selectedItem)} onOpenChange={() => setSelectedItem(null)} isDismissable={true}>
-            <Dialog className="max-w-md rounded-2xl bg-white p-6 dark:bg-[#1B2433] shadow-2xl">
+            <Dialog isOpen={Boolean(selectedItem)} onClose={() => setSelectedItem(null)} className="max-w-md rounded-2xl bg-white p-6 dark:bg-[#1B2433] shadow-2xl">
               <DialogHeader className="border-b border-slate-100 pb-3 dark:border-slate-800">
                 <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white">
                   Detail Evaluasi Siswa

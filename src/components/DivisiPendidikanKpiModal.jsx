@@ -22,13 +22,13 @@ import {
   Avatar,
   AvatarImage,
   AvatarFallback,
-} from '@/components/tailgrids/core/avatar'
+} from '@/components/ui/avatar'
 
 import {
   HoverCard,
   HoverCardTrigger,
   HoverCardContent,
-} from '@/components/tailgrids/core/hover-card'
+} from '@/components/ui/hover-card'
 
 import { Modal } from './ui/modal'
 import { Skeleton } from './ui/skeleton'
@@ -240,7 +240,7 @@ function SummaryPills({ summary, keys, labels }) {
   )
 }
 
-export default function DivisiPendidikanKpiModal({ type, isOpen, onClose }) {
+export default function DivisiPendidikanKpiModal({ type, isOpen, onClose, unitId = '' }) {
   const config = MODAL_CONFIG[type]
 
   const [loading, setLoading] = useState(false)
@@ -265,6 +265,9 @@ export default function DivisiPendidikanKpiModal({ type, isOpen, onClose }) {
           page: targetPage,
           per_page: targetPerPage,
         }
+        if (unitId && unitId !== 'all') {
+          params.unit_id = unitId
+        }
 
         const res = await managementDashboardService.getDivisiPendidikanKpiDetail(type, params)
         if (res && res.data) {
@@ -281,7 +284,7 @@ export default function DivisiPendidikanKpiModal({ type, isOpen, onClose }) {
         setLoading(false)
       }
     },
-    [type, config, perPage]
+    [type, config, perPage, unitId]
   )
 
   useEffect(() => {
@@ -429,13 +432,67 @@ export default function DivisiPendidikanKpiModal({ type, isOpen, onClose }) {
     return <span className="truncate block font-medium">{value ?? '-'}</span>
   }
 
+const MODAL_TONES = {
+  unit_monitored: {
+    iconBg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
+    topBorder: 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600',
+  },
+  total_siswa: {
+    iconBg: 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300',
+    topBorder: 'bg-gradient-to-r from-sky-500 via-blue-400 to-indigo-600',
+  },
+  total_guru: {
+    iconBg: 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300',
+    topBorder: 'bg-gradient-to-r from-purple-500 via-violet-400 to-indigo-600',
+  },
+  laporan_bulanan_masuk: {
+    iconBg: 'bg-teal-100 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300',
+    topBorder: 'bg-gradient-to-r from-teal-500 via-emerald-400 to-cyan-600',
+  },
+  laporan_bulanan_belum: {
+    iconBg: 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300',
+    topBorder: 'bg-gradient-to-r from-rose-500 via-pink-400 to-red-600',
+  },
+  total_prestasi: {
+    iconBg: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
+    topBorder: 'bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600',
+  },
+  monitoring_non_pesantren: {
+    iconBg: 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300',
+    topBorder: 'bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-600',
+  },
+  monitoring_divisi: {
+    iconBg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
+    topBorder: 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600',
+  },
+  master_kurikulum: {
+    iconBg: 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300',
+    topBorder: 'bg-gradient-to-r from-violet-500 via-purple-400 to-indigo-600',
+  },
+  verifikasi_prestasi: {
+    iconBg: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
+    topBorder: 'bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600',
+  },
+  laporan_lintas_unit: {
+    iconBg: 'bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300',
+    topBorder: 'bg-gradient-to-r from-pink-500 via-rose-400 to-red-600',
+  },
+  laporan_akademik: {
+    iconBg: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300',
+    topBorder: 'bg-gradient-to-r from-indigo-500 via-purple-400 to-violet-600',
+  },
+}
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <div className="flex flex-col max-h-[85vh] bg-white dark:bg-[#1B2433] rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+        {/* Harmonized Top Accent Gradient Line */}
+        <div className={`h-1.5 w-full shrink-0 ${MODAL_TONES[type]?.topBorder || 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600'}`} />
+
         {/* Header */}
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
           <div className="flex items-center gap-3.5">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-2xs">
+            <div className={`flex size-11 items-center justify-center rounded-2xl ${MODAL_TONES[type]?.iconBg || 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'} shadow-2xs`}>
               <IconComponent className="size-6 shrink-0" />
             </div>
             <div>
