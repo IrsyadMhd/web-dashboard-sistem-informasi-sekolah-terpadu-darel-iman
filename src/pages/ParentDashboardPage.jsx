@@ -69,12 +69,20 @@ export default function ParentDashboardPage() {
   const getChildVa = (child) => {
     if (!child) return '-'
     const meta = child.metadata || {}
+    const pemb = meta.pembiayaan || {}
     const va = meta.no_va || meta.nis_pembayaran || child.no_va || child.nis_pembayaran
     if (va) return va
     const prefix = pengaturan?.bsi_va_prefix || '9023'
-    const rawNis = child.nis || ''
-    const cleanNis = String(rawNis).replace(/\D/g, '')
-    return cleanNis ? `${prefix}${cleanNis}` : '-'
+    const rawId =
+      pemb.nip_pembayaran ||
+      pemb.nis_pembayaran ||
+      meta.no_pendaftaran ||
+      child.nis ||
+      child.nisn ||
+      ''
+    const cleanId = String(rawId).replace(/\D/g, '')
+    if (!cleanId) return '-'
+    return cleanId.startsWith(prefix) ? cleanId : `${prefix}${cleanId}`
   }
 
   const copyVa = (va) => {
@@ -1370,15 +1378,28 @@ export default function ParentDashboardPage() {
                           const isPaid = String(b.status).toUpperCase() === 'PAID'
                           const payments = Array.isArray(b.payments) ? b.payments : []
                           return (
-                            <div key={b.id} className="rounded-xl border border-slate-200 p-3.5 bg-white text-xs dark:border-slate-800 dark:bg-slate-800/50 space-y-2">
+                            <div
+                              key={b.id}
+                              className={`rounded-xl border p-3.5 text-xs space-y-2 transition-all ${
+                                isPaid
+                                  ? 'bg-emerald-50/70 border-emerald-200/90 border-l-4 border-l-emerald-600 dark:border-emerald-800/80 dark:bg-emerald-950/25'
+                                  : 'bg-amber-50/70 border-amber-200/90 border-l-4 border-l-amber-500 dark:border-amber-800/80 dark:bg-amber-950/25'
+                              }`}
+                            >
                               <div className="flex items-start justify-between">
                                 <div>
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase">{b.fee_category?.name || 'SPP'}</span>
-                                  <h4 className="font-bold text-slate-900 dark:text-white mt-0.5">{b.title}</h4>
-                                  <p className="text-[11px] text-slate-500">Jatuh Tempo: {formatDate(b.due_date)}</p>
+                                  <span className={`text-[10px] font-bold uppercase ${isPaid ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-400'}`}>
+                                    {b.fee_category?.name || 'SPP'}
+                                  </span>
+                                  <h4 className={`font-bold mt-0.5 ${isPaid ? 'text-emerald-950 dark:text-white' : 'text-slate-900 dark:text-white'}`}>{b.title}</h4>
+                                  <p className={`text-[11px] ${isPaid ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-300'}`}>
+                                    Jatuh Tempo: {formatDate(b.due_date)}
+                                  </p>
                                 </div>
                                 <div className="text-right">
-                                  <span className="text-sm font-black text-slate-900 dark:text-white">{formatRupiah(b.amount)}</span>
+                                  <span className={`text-sm font-black ${isPaid ? 'text-emerald-800 dark:text-emerald-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                                    {formatRupiah(b.amount)}
+                                  </span>
                                   <div className="mt-1">
                                     <Badge color={isPaid ? 'success' : 'warning'} size="xs" className="font-bold">
                                       {isPaid ? 'LUNAS' : 'BELUM LUNAS'}
