@@ -313,6 +313,38 @@ export const isUnitAccessManager = (roles = []) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Pimpinan Lembaga, Yayasan, Divisi Pendidikan, & Kepala Sekolah.
+ * Supervisi lintas unit, eksekutif, dan analitik performa sekolah (Level 1, 2, 4).
+ * Otomatis dinamis: role baru apapun di DB dengan level pimpinan / nama pimpinan otomatis dikenali.
+ */
+export const isLeaderRole = (userOrRoles = null) => {
+  if (!userOrRoles) return false
+  const level = getUserRoleLevel(userOrRoles)
+  if (
+    level === ROLE_LEVELS.SUPER_ADMIN ||
+    level === ROLE_LEVELS.ADMIN ||
+    level === ROLE_LEVELS.YAYASAN ||
+    level === ROLE_LEVELS.KEPALA_SEKOLAH ||
+    level === ROLE_LEVELS.DIVISI_PENDIDIKAN
+  ) {
+    return true
+  }
+
+  const roles = Array.isArray(userOrRoles)
+    ? userOrRoles
+    : (userOrRoles.roles || (userOrRoles.role ? [userOrRoles.role] : []))
+
+  if (hasAnyRole(roles, [...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.YAYASAN, ...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH])) {
+    return true
+  }
+
+  return roles.some((r) => {
+    const name = typeof r === 'string' ? r : r?.name || ''
+    return /kepala[\s_]*sekolah|kepsek|yayasan|divisi|kabid[\s_]*pendidikan|pimpinan|direktur|super[\s_]*admin/i.test(name)
+  })
+}
+
+/**
  * § 1 Dashboard Monitoring Kepala Sekolah & Divisi (Level 4)
  */
 export const isKepsekOrDivisi = (roles = []) => {

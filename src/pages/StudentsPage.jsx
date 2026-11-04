@@ -49,7 +49,7 @@ import { businessOptionService } from '../services/businessOptionService'
 import { studentStatusService } from '../services/studentStatusService'
 import PersonAvatar, { resolveAvatarUrl } from '../components/ui/PersonAvatar'
 import PersonIdentityCell from '../components/ui/PersonIdentityCell'
-import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS, ROLES, isFoundationUser } from '../auth/portalResolver'
+import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS, ROLES, isFoundationUser, isLeaderRole as checkIsLeaderRole } from '../auth/portalResolver'
 import { SmartScrollFab } from '../components/common'
 import { useAuthStore } from '../stores/authStore'
 import { usePengaturanStore, useTerminology } from '../stores/pengaturanStore'
@@ -458,6 +458,11 @@ export default function StudentsPage() {
       userRoles.some((r) => /divisi|bidang[\s_]*pendidikan|pengawasan[\s_]*akademik/i.test(r))
     )
   }, [userLevel, userRoles, isSuperAdminOrYayasan])
+
+  // Deteksi role pimpinan (Super Admin, Yayasan, Divisi Pendidikan, Kepala Sekolah)
+  const isLeaderRole = useMemo(() => {
+    return isSuperAdminOrYayasan || isKepalaSekolah || isDivisiPendidikan || checkIsLeaderRole(user)
+  }, [isSuperAdminOrYayasan, isKepalaSekolah, isDivisiPendidikan, user])
 
   // Divisi Pendidikan, Super Admin, Admin, dan Yayasan dapat memilih seluruh unit pendidikan (Semua Unit)
   const canSelectUnit = isSuperAdminOrYayasan || isDivisiPendidikan
