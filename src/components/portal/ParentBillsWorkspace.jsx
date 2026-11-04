@@ -64,10 +64,24 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
   const foundationName = resolveFoundationName(pengaturan)
 
   const studentMeta = student?.metadata || {}
+  const studentPemb = studentMeta.pembiayaan || {}
   const studentName = student?.nama_lengkap || student?.full_name || student?.name || 'Ananda'
-  const studentNis = student?.nis || studentMeta.nis || ''
   const bsiPrefix = pengaturan?.bsi_va_prefix || '9023'
-  const studentVa = studentMeta.no_va || studentMeta.nis_pembayaran || student?.no_va || (studentNis ? `${bsiPrefix}${String(studentNis).replace(/\D/g, '')}` : '')
+  const rawPaymentId =
+    studentMeta.no_va ||
+    studentMeta.nis_pembayaran ||
+    student?.no_va ||
+    studentPemb.nip_pembayaran ||
+    studentPemb.nis_pembayaran ||
+    studentMeta.no_pendaftaran ||
+    student?.nis ||
+    studentMeta.nis ||
+    student?.nisn ||
+    ''
+  const cleanPaymentId = String(rawPaymentId).replace(/\D/g, '')
+  const studentVa = cleanPaymentId
+    ? (cleanPaymentId.startsWith(bsiPrefix) ? cleanPaymentId : `${bsiPrefix}${cleanPaymentId}`)
+    : ''
 
   const handleCopyVa = (val = studentVa) => {
     if (!val) return
@@ -423,7 +437,7 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
       </div>
 
       {/* 4. LIST TAGIHAN DENGAN CHECKBOX PEMBAYARAN */}
-      <div className="space-y-3">
+      <div className={`space-y-3.5 transition-all ${selectedBillIds.length > 0 ? 'pb-28' : 'pb-6'}`}>
         {filteredBills.map((b) => {
           const status = String(b.status || 'UNPAID').toUpperCase()
           const isPaid = status === 'PAID'
@@ -437,11 +451,15 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
               <Card
                 className={`rounded-[20px] border p-5 shadow-xs transition-all ${
                   isSelected
-                    ? 'border-emerald-500 bg-emerald-50/30 shadow-md shadow-emerald-500/10 dark:border-emerald-500/60 dark:bg-emerald-950/20'
-                    : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900'
+                    ? 'border-emerald-500 bg-emerald-100/60 shadow-md shadow-emerald-500/15 border-l-4 border-l-emerald-700 dark:border-emerald-500/80 dark:bg-emerald-950/40'
+                    : isPaid
+                    ? 'border-emerald-200/90 bg-emerald-50/70 border-l-4 border-l-emerald-600 shadow-sm shadow-emerald-500/5 dark:border-emerald-800/80 dark:bg-emerald-950/25'
+                    : isOverdue
+                    ? 'border-rose-200/90 bg-rose-50/70 border-l-4 border-l-rose-600 shadow-sm shadow-rose-500/5 dark:border-rose-800/80 dark:bg-rose-950/25'
+                    : 'border-amber-200/90 bg-amber-50/70 border-l-4 border-l-amber-500 shadow-sm shadow-amber-500/5 dark:border-amber-800/80 dark:bg-amber-950/25'
                 }`}
               >
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100/80 pb-4 dark:border-slate-800/80">
                   <div className="flex items-start gap-3">
                     {!isPaid && (
                       <button
@@ -460,7 +478,7 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
                     )}
                     <div>
                       <div className="flex items-center gap-2">
-                        <Badge color="cyan" size="sm" className="font-bold">
+                        <Badge color={isPaid ? 'success' : isOverdue ? 'error' : 'warning'} size="sm" className="font-bold">
                           {categoryName}
                         </Badge>
                         {b.source === 'sipdei' && (
@@ -469,16 +487,16 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
                             SIPDEI
                           </span>
                         )}
-                        <span className="text-[11px] text-slate-400">
+                        <span className={`text-[11px] font-medium ${isPaid ? 'text-emerald-700 dark:text-emerald-400' : isOverdue ? 'text-rose-700 dark:text-rose-400' : 'text-amber-800 dark:text-amber-400'}`}>
                           Jatuh Tempo: {formatDate(b.due_date)}
                         </span>
                       </div>
-                      <h3 className="mt-2 text-base font-bold text-slate-900 dark:text-white">{b.title}</h3>
+                      <h3 className={`mt-2 text-base font-bold ${isPaid ? 'text-emerald-950 dark:text-white' : 'text-slate-900 dark:text-white'}`}>{b.title}</h3>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <p className="text-lg font-black text-slate-900 dark:text-white">
+                    <p className={`text-lg font-black ${isPaid ? 'text-emerald-800 dark:text-emerald-300' : isOverdue ? 'text-rose-700 dark:text-rose-300' : 'text-amber-800 dark:text-amber-300'}`}>
                       {formatRupiah(b.remaining_amount || b.amount)}
                     </p>
                     {b.paid_amount > 0 && !isPaid && (
