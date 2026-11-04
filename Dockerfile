@@ -13,7 +13,9 @@ WORKDIR /app
 # Variabel VITE_* ditanam saat build. Isi lewat Easypanel > Build Args
 # (atau --build-arg). Env di shell mengalahkan file .env.
 ARG VITE_API_BASE_URL
+ARG VITE_WS_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
+    VITE_WS_URL=$VITE_WS_URL \
     NODE_OPTIONS="--max-old-space-size=4096"
 
 COPY package.json package-lock.json ./

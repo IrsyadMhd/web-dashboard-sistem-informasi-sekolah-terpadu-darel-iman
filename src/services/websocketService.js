@@ -14,6 +14,10 @@ class WebRealtimeWebSocketService {
   }
 
   getWebSocketUrl() {
+    // Produksi (Easypanel): isi VITE_WS_URL, mis. wss://ws.domain.com
+    const explicitUrl = import.meta.env.VITE_WS_URL;
+    if (explicitUrl) return explicitUrl;
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const hostname = window.location.hostname || 'localhost';
     const port = import.meta.env.VITE_WS_PORT || 6001;
