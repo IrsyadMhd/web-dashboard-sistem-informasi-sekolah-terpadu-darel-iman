@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.gitignore
+Dockerfile
+.dockerignore
+*.log
+oxlint_out.json
+parse_results.txt
+tahfizh_parse.txt
+scratch_*.json
