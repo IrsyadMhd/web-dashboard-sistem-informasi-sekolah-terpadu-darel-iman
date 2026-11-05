@@ -621,14 +621,27 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
 
   // Role options calculation depending on method and entityCategory
   const currentRoles = useMemo(() => {
+    if (editing && user) {
+      const userRole = getUserRoleName(user)
+      const list = Array.from(
+        new Set([
+          userRole,
+          ...(Array.isArray(roles) && roles.length > 0 ? roles : []),
+          ...DEFAULT_SYSTEM_ROLES,
+        ])
+      ).filter(Boolean)
+      return list
+    }
     if (method === 'manual') {
-      return STANDALONE_ADMIN_ROLES
+      return Array.isArray(roles) && roles.length > 0
+        ? Array.from(new Set([...STANDALONE_ADMIN_ROLES, ...roles, ...DEFAULT_SYSTEM_ROLES]))
+        : DEFAULT_SYSTEM_ROLES
     }
     if (entityCategory === 'employee') return EMPLOYEE_ROLES
     if (entityCategory === 'student') return STUDENT_ROLES
     if (entityCategory === 'parent') return PARENT_ROLES
-    return DEFAULT_SYSTEM_ROLES
-  }, [method, entityCategory])
+    return Array.isArray(roles) && roles.length > 0 ? roles : DEFAULT_SYSTEM_ROLES
+  }, [editing, user, method, entityCategory, roles])
 
   // Sync Form State when Modal opens
   useEffect(() => {
@@ -650,6 +663,8 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
         is_active: Boolean(user.is_active ?? true),
         person_type: user.person_type || 'standalone',
         person_id: user.person_id || null,
+        password: '',
+        password_confirmation: '',
       })
       setMethod('manual')
     } else {
@@ -657,6 +672,8 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
         ...emptyForm,
         role: 'Guru',
         person_type: 'employee',
+        password: '',
+        password_confirmation: '',
       })
       setMethod('linked')
       setEntityCategory('employee')
@@ -725,6 +742,17 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
       return
     }
 
+    if (editing && form.password) {
+      if (form.password.length < 8) {
+        setFormError('Password baru minimal 8 karakter.')
+        return
+      }
+      if (form.password !== form.password_confirmation) {
+        setFormError('Password baru dan konfirmasi password harus sama.')
+        return
+      }
+    }
+
     if (!editing && method === 'linked' && !selectedEntity) {
       setFormError('Silakan pilih salah satu nama Pegawai/Guru, Siswa, atau Orang Tua dari daftar.')
       return
@@ -738,7 +766,14 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
           email: form.email,
           phone: form.phone || null,
           role: form.role,
+          additional_roles: form.additional_roles || [],
           is_active: form.is_active,
+          ...(form.password
+            ? {
+                password: form.password,
+                password_confirmation: form.password_confirmation,
+              }
+            : {}),
         }
       : {
           ...form,
@@ -1036,29 +1071,45 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
               </div>
             )}
 
-            {!roleOnly && !editing && (
+            {!roleOnly && (
               <>
                 <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
-                  Password Awal
+                  {editing ? (
+                    <span>
+                      Ubah Password <span className="font-normal text-slate-400">(Opsional, kosongkan jika tidak diubah)</span>
+                    </span>
+                  ) : (
+                    <span>
+                      Password Awal <span className="text-rose-500">*</span>
+                    </span>
+                  )}
                   <input
-                    required
+                    required={!editing}
                     minLength={8}
                     type="password"
                     value={form.password}
                     onChange={(e) => change('password', e.target.value)}
-                    placeholder="Minimal 8 karakter"
+                    placeholder={editing ? 'Ketik password baru jika ingin mengubah...' : 'Minimal 8 karakter'}
                     className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600"
                   />
                 </label>
                 <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
-                  Konfirmasi Password
+                  {editing ? (
+                    <span>
+                      Konfirmasi Password Baru <span className="font-normal text-slate-400">(Jika password diisi)</span>
+                    </span>
+                  ) : (
+                    <span>
+                      Konfirmasi Password <span className="text-rose-500">*</span>
+                    </span>
+                  )}
                   <input
-                    required
+                    required={!editing || Boolean(form.password)}
                     minLength={8}
                     type="password"
                     value={form.password_confirmation}
                     onChange={(e) => change('password_confirmation', e.target.value)}
-                    placeholder="Ulangi password awal"
+                    placeholder={editing ? 'Ulangi password baru...' : 'Ulangi password awal'}
                     className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600"
                   />
                 </label>
