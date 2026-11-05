@@ -158,7 +158,8 @@ export default function SystemMaintenanceDataHubPage() {
       setStatusData(data)
     } catch (err) {
       console.error('Failed to fetch status:', err)
-      showToast('Gagal memuat status sistem: ' + (err?.message || 'Error'), 'error')
+      const errorMsg = err?.response?.data?.message || err?.message || 'Error'
+      showToast('Gagal memuat status sistem: ' + errorMsg, 'error')
     } finally {
       setLoading(false)
       setRefreshing(false)
