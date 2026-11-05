@@ -903,13 +903,17 @@ export default function SystemMaintenanceDataHubPage() {
                       </div>
 
                       {importModal.result.errors?.length > 0 && (
-                        <div className="mt-2 text-[11px] text-rose-600 dark:text-rose-400 space-y-0.5">
-                          <span className="font-bold">Catatan Kesalahan:</span>
-                          <ul className="list-disc pl-4 space-y-0.5">
-                            {importModal.result.errors.slice(0, 3).map((err, idx) => (
-                              <li key={idx}>{err}</li>
-                            ))}
-                          </ul>
+                        <div className="mt-2 text-[11px] text-rose-600 dark:text-rose-400 space-y-1">
+                          <span className="font-bold flex items-center justify-between">
+                            <span>Catatan Data Dilewati / Duplikat ({importModal.result.errors.length}):</span>
+                          </span>
+                          <div className="max-h-36 overflow-y-auto rounded-lg border border-rose-200/90 dark:border-rose-900/50 p-2 bg-rose-50/60 dark:bg-rose-950/20">
+                            <ul className="list-disc pl-4 space-y-1 text-slate-700 dark:text-rose-200">
+                              {importModal.result.errors.map((err, idx) => (
+                                <li key={idx} className="leading-snug">{err}</li>
+                              ))}
+                            </ul>
+                          </div>
                         </div>
                       )}
                     </div>
