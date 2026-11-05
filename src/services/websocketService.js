@@ -15,11 +15,17 @@ class WebRealtimeWebSocketService {
 
   getWebSocketUrl() {
     // Produksi (Easypanel): isi VITE_WS_URL, mis. wss://ws.domain.com
-    const explicitUrl = import.meta.env.VITE_WS_URL;
-    if (explicitUrl) return explicitUrl;
+    const configuredWsUrl = import.meta.env.VITE_WS_URL;
+    if (configuredWsUrl) {
+      return configuredWsUrl;
+    }
+
+    const hostname = window.location.hostname || 'localhost';
+    if (hostname.includes('dareliman.sch.id')) {
+      return 'wss://ws.dareliman.sch.id';
+    }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const hostname = window.location.hostname || 'localhost';
     const port = import.meta.env.VITE_WS_PORT || 6001;
     return `${protocol}//${hostname}:${port}`;
   }

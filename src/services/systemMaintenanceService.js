@@ -33,6 +33,7 @@ export const systemMaintenanceService = {
   downloadExport: async (table = 'all') => {
     const response = await api.get(`/v1/system-maintenance/export/${table}`, {
       responseType: 'blob',
+      timeout: 180000,
     })
     const blob = new Blob([response.data], {
       type: response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -56,6 +57,7 @@ export const systemMaintenanceService = {
   downloadTemplate: async (table) => {
     const response = await api.get(`/v1/system-maintenance/template/${table}`, {
       responseType: 'blob',
+      timeout: 180000,
     })
     const blob = new Blob([response.data], {
       type: response.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -84,6 +86,7 @@ export const systemMaintenanceService = {
     }
     const { data } = await api.post(`/v1/system-maintenance/import/${table}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 300000,
     })
     return data
   },
