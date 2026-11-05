@@ -27,7 +27,10 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
+  HeartHandshake,
+  RotateCcw,
 } from 'lucide-react'
+import { Chip as HeroChip, Button as HeroButton } from '@heroui/react'
 import { hakAksesService } from '../../services/hakAksesService'
 import { employeeService } from '../../services/employeeService'
 import { studentService } from '../../services/studentService'
@@ -618,14 +621,27 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
 
   // Role options calculation depending on method and entityCategory
   const currentRoles = useMemo(() => {
+    if (editing && user) {
+      const userRole = getUserRoleName(user)
+      const list = Array.from(
+        new Set([
+          userRole,
+          ...(Array.isArray(roles) && roles.length > 0 ? roles : []),
+          ...DEFAULT_SYSTEM_ROLES,
+        ])
+      ).filter(Boolean)
+      return list
+    }
     if (method === 'manual') {
-      return STANDALONE_ADMIN_ROLES
+      return Array.isArray(roles) && roles.length > 0
+        ? Array.from(new Set([...STANDALONE_ADMIN_ROLES, ...roles, ...DEFAULT_SYSTEM_ROLES]))
+        : DEFAULT_SYSTEM_ROLES
     }
     if (entityCategory === 'employee') return EMPLOYEE_ROLES
     if (entityCategory === 'student') return STUDENT_ROLES
     if (entityCategory === 'parent') return PARENT_ROLES
-    return DEFAULT_SYSTEM_ROLES
-  }, [method, entityCategory])
+    return Array.isArray(roles) && roles.length > 0 ? roles : DEFAULT_SYSTEM_ROLES
+  }, [editing, user, method, entityCategory, roles])
 
   // Sync Form State when Modal opens
   useEffect(() => {
@@ -647,6 +663,8 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
         is_active: Boolean(user.is_active ?? true),
         person_type: user.person_type || 'standalone',
         person_id: user.person_id || null,
+        password: '',
+        password_confirmation: '',
       })
       setMethod('manual')
     } else {
@@ -654,6 +672,8 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
         ...emptyForm,
         role: 'Guru',
         person_type: 'employee',
+        password: '',
+        password_confirmation: '',
       })
       setMethod('linked')
       setEntityCategory('employee')
@@ -722,6 +742,17 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
       return
     }
 
+    if (editing && form.password) {
+      if (form.password.length < 8) {
+        setFormError('Password baru minimal 8 karakter.')
+        return
+      }
+      if (form.password !== form.password_confirmation) {
+        setFormError('Password baru dan konfirmasi password harus sama.')
+        return
+      }
+    }
+
     if (!editing && method === 'linked' && !selectedEntity) {
       setFormError('Silakan pilih salah satu nama Pegawai/Guru, Siswa, atau Orang Tua dari daftar.')
       return
@@ -735,7 +766,14 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
           email: form.email,
           phone: form.phone || null,
           role: form.role,
+          additional_roles: form.additional_roles || [],
           is_active: form.is_active,
+          ...(form.password
+            ? {
+                password: form.password,
+                password_confirmation: form.password_confirmation,
+              }
+            : {}),
         }
       : {
           ...form,
@@ -1033,29 +1071,45 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
               </div>
             )}
 
-            {!roleOnly && !editing && (
+            {!roleOnly && (
               <>
                 <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
-                  Password Awal
+                  {editing ? (
+                    <span>
+                      Ubah Password <span className="font-normal text-slate-400">(Opsional, kosongkan jika tidak diubah)</span>
+                    </span>
+                  ) : (
+                    <span>
+                      Password Awal <span className="text-rose-500">*</span>
+                    </span>
+                  )}
                   <input
-                    required
+                    required={!editing}
                     minLength={8}
                     type="password"
                     value={form.password}
                     onChange={(e) => change('password', e.target.value)}
-                    placeholder="Minimal 8 karakter"
+                    placeholder={editing ? 'Ketik password baru jika ingin mengubah...' : 'Minimal 8 karakter'}
                     className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600"
                   />
                 </label>
                 <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
-                  Konfirmasi Password
+                  {editing ? (
+                    <span>
+                      Konfirmasi Password Baru <span className="font-normal text-slate-400">(Jika password diisi)</span>
+                    </span>
+                  ) : (
+                    <span>
+                      Konfirmasi Password <span className="text-rose-500">*</span>
+                    </span>
+                  )}
                   <input
-                    required
+                    required={!editing || Boolean(form.password)}
                     minLength={8}
                     type="password"
                     value={form.password_confirmation}
                     onChange={(e) => change('password_confirmation', e.target.value)}
-                    placeholder="Ulangi password awal"
+                    placeholder={editing ? 'Ulangi password baru...' : 'Ulangi password awal'}
                     className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600"
                   />
                 </label>
@@ -1264,6 +1318,8 @@ export default function UserAccountManagement({
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 350)
   const [page, setPage] = useState(1)
+  const [categoryFilter, setCategoryFilter] = useState('semua')
+  const [selectedUnitFilter, setSelectedUnitFilter] = useState(unitId || '')
   const [modalOpen, setModalOpen] = useState(false)
   const [selected, setSelected] = useState(null)
   const [printModalOpen, setPrintModalOpen] = useState(false)
@@ -1271,13 +1327,33 @@ export default function UserAccountManagement({
   const [deleteTargetUser, setDeleteTargetUser] = useState(null)
   const [isResetting, setIsResetting] = useState(false)
 
+  useEffect(() => {
+    setSelectedUnitFilter(unitId || '')
+  }, [unitId])
+
   const toast = useToast()
   const toastSuccess = (title, message) => toast.success(title, message)
   const toastError = (title, message) => toast.error(title, message)
 
+  const { data: unitsData } = useQuery({
+    queryKey: ['education-units-list'],
+    queryFn: () => educationUnitService.getDaftar({ per_page: 100 }),
+    staleTime: 5 * 60 * 1000,
+  })
+  const educationUnits = useMemo(() => {
+    const list = unitsData?.data || unitsData || []
+    return Array.isArray(list) ? list : []
+  }, [unitsData])
+
   const { data = {}, isLoading } = useQuery({
-    queryKey: ['hak-akses-users', debouncedSearch, page, unitId],
-    queryFn: () => hakAksesService.getUsers({ search: debouncedSearch, page, unit_id: unitId }),
+    queryKey: ['hak-akses-users', debouncedSearch, page, selectedUnitFilter, categoryFilter],
+    queryFn: () =>
+      hakAksesService.getUsers({
+        search: debouncedSearch,
+        page,
+        unit_id: selectedUnitFilter,
+        category: categoryFilter,
+      }),
   })
 
   const finish = (response) => {
@@ -1427,6 +1503,88 @@ export default function UserAccountManagement({
           </div>
         </div>
 
+        {/* Toolbar Baris 3: Filter Bar (Hero UI Chips & Unit Selector) */}
+        <div className="bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-emerald-50/70 border-b border-emerald-200/80 dark:border-emerald-800/60 p-3 sm:p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Hero UI Chip Filter Kategori */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+              <Filter className="size-3 text-emerald-600" />
+              <span>Peran:</span>
+            </span>
+
+            {[
+              { id: 'semua', label: 'Semua', icon: Users, color: 'default' },
+              { id: 'orangtua', label: 'Orang Tua / Wali', icon: HeartHandshake, color: 'success' },
+              { id: 'siswa', label: 'Siswa / Santri', icon: GraduationCap, color: 'primary' },
+              { id: 'guru', label: 'Guru / Pendidik', icon: Briefcase, color: 'warning' },
+              { id: 'pegawai', label: 'Pegawai / Staf', icon: Building2, color: 'default' },
+              { id: 'standalone', label: 'Admin Standalone', icon: ShieldCheck, color: 'secondary' },
+            ].map((cat) => {
+              const Icon = cat.icon
+              const isSelected = categoryFilter === cat.id
+              return (
+                <HeroChip
+                  key={cat.id}
+                  size="sm"
+                  variant={isSelected ? 'solid' : 'bordered'}
+                  color={isSelected ? cat.color : 'default'}
+                  onClick={() => {
+                    setCategoryFilter(cat.id)
+                    setPage(1)
+                  }}
+                  className={`cursor-pointer font-bold transition-all text-xs select-none hover:scale-105 active:scale-95 ${
+                    isSelected
+                      ? 'shadow-xs ring-1 ring-emerald-500/30'
+                      : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-emerald-500'
+                  }`}
+                  startContent={<Icon className="size-3.5" />}
+                >
+                  {cat.label}
+                </HeroChip>
+              )
+            })}
+          </div>
+
+          {/* Filter Unit Pendidikan (Termasuk Unit Pendidikan Anak) */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative">
+              <select
+                value={selectedUnitFilter}
+                onChange={(e) => {
+                  setSelectedUnitFilter(e.target.value)
+                  setPage(1)
+                }}
+                className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 pl-3 pr-8 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 shadow-2xs outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              >
+                <option value="">Semua Unit (Termasuk Unit Anak)</option>
+                {educationUnits.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name || u.nama_unit || u.code}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {(categoryFilter !== 'semua' || selectedUnitFilter !== '' || search) && (
+              <HeroButton
+                size="sm"
+                variant="light"
+                color="danger"
+                onClick={() => {
+                  setCategoryFilter('semua')
+                  setSelectedUnitFilter('')
+                  setSearch('')
+                  setPage(1)
+                }}
+                className="text-xs font-bold gap-1 h-8 rounded-xl cursor-pointer"
+              >
+                <RotateCcw className="size-3" />
+                <span>Reset</span>
+              </HeroButton>
+            )}
+          </div>
+        </div>
+
         {/* Datatable Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -1505,20 +1663,48 @@ export default function UserAccountManagement({
                             <span>Standalone Admin</span>
                           </span>
                         ) : personType === 'student' ? (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800/60 px-2.5 py-1 rounded-full">
-                            <GraduationCap className="size-3.5 text-sky-600" />
-                            <span>Entitas Siswa</span>
-                          </span>
+                          <div>
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800/60 px-2.5 py-1 rounded-full">
+                              <GraduationCap className="size-3.5 text-sky-600" />
+                              <span>Entitas Siswa</span>
+                            </span>
+                            {user.unit?.nama && (
+                              <p className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                                Unit: {user.unit.nama}
+                              </p>
+                            )}
+                          </div>
                         ) : personType === 'parent' ? (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800/60 px-2.5 py-1 rounded-full">
-                            <Users className="size-3.5 text-violet-600" />
-                            <span>Entitas Orang Tua</span>
-                          </span>
+                          <div>
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800/60 px-2.5 py-1 rounded-full">
+                              <HeartHandshake className="size-3.5 text-violet-600" />
+                              <span>Entitas Orang Tua</span>
+                            </span>
+                            {user.unit?.nama && (
+                              <div className="mt-1">
+                                <HeroChip
+                                  size="sm"
+                                  variant="soft"
+                                  color="success"
+                                  className="text-[10px] h-5 px-1.5 font-bold"
+                                >
+                                  {user.unit.is_parent_unit ? `Anak di: ${user.unit.nama}` : user.unit.nama}
+                                </HeroChip>
+                              </div>
+                            )}
+                          </div>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 rounded-full">
-                            <Briefcase className="size-3.5 text-emerald-600" />
-                            <span>Pegawai / Guru</span>
-                          </span>
+                          <div>
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-2.5 py-1 rounded-full">
+                              <Briefcase className="size-3.5 text-emerald-600" />
+                              <span>Pegawai / Guru</span>
+                            </span>
+                            {user.unit?.nama && (
+                              <p className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                                Unit: {user.unit.nama}
+                              </p>
+                            )}
+                          </div>
                         )}
                       </td>
 
