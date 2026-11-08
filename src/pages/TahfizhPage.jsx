@@ -59,6 +59,14 @@ import AppErrorState from '../components/app/AppErrorState'
 import { useToast } from '../components/app'
 import TahfizhSubNav from '../components/tahfizh/TahfizhSubNav'
 
+// HeroUI Components
+import {
+  Button as HeroButton,
+  Chip as HeroChip,
+  Card as HeroCard,
+  Tooltip as HeroTooltip,
+} from '@heroui/react'
+
 // TailGrids Core Components
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -2559,9 +2567,9 @@ export default function TahfizhPage() {
                 type="button"
                 onClick={() => setShowStudentModal(false)}
                 aria-label="Tutup modal"
-                className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0"
+                className="size-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors shrink-0"
               >
-                <X className="size-4 text-white" strokeWidth={2.25} />
+                <X className="size-5" />
               </button>
             </DialogHeader>
 
@@ -2662,16 +2670,17 @@ export default function TahfizhPage() {
               <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
                 Total {filteredStudentsInModal.length} Siswa Terdaftar
               </span>
-              <button
-                type="button"
-                onClick={() => setShowStudentModal(false)}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              <HeroButton
+                size="sm"
+                variant="flat"
+                color="default"
+                radius="full"
+                startContent={<X className="size-4" />}
+                onPress={() => setShowStudentModal(false)}
+                className="font-bold text-slate-700 dark:text-slate-200"
               >
-                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                  <X className="size-3.5 text-white" strokeWidth={2.2} />
-                </div>
-                <span>Tutup Modal</span>
-              </button>
+                Tutup
+              </HeroButton>
             </DialogFooter>
           </Dialog>
         </Backdrop>
@@ -2704,9 +2713,9 @@ export default function TahfizhPage() {
                 type="button"
                 onClick={() => setShowStudentDetailModal(false)}
                 aria-label="Tutup modal"
-                className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0"
+                className="size-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors shrink-0"
               >
-                <X className="size-4 text-white" strokeWidth={2.25} />
+                <X className="size-5" />
               </button>
             </DialogHeader>
 
@@ -2778,31 +2787,36 @@ export default function TahfizhPage() {
             </DialogBody>
 
             <DialogFooter className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/40">
-              <MasterActionButton
-                variant="primary"
-                icon={BookOpen}
-                onClick={() => {
+              <HeroButton
+                size="sm"
+                variant="solid"
+                color="success"
+                radius="full"
+                startContent={<BookOpen className="size-4 text-white" />}
+                endContent={<ArrowRight className="size-3.5 text-white" />}
+                onPress={() => {
                   const sId = detailStudentObj.id || detailStudentObj.student_id
                   setSelectedStudentId(sId)
                   setShowStudentDetailModal(false)
                   setShowStudentModal(false)
                   setShowSheetModal(true)
                 }}
+                className="font-bold text-white shadow-md shadow-emerald-600/20"
               >
-                <span>Kelola Setoran Siswa Ini</span>
-                <ArrowRight className="size-3.5" />
-              </MasterActionButton>
+                Kelola Setoran Siswa Ini
+              </HeroButton>
 
-              <button
-                type="button"
-                onClick={() => setShowStudentDetailModal(false)}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              <HeroButton
+                size="sm"
+                variant="flat"
+                color="default"
+                radius="full"
+                startContent={<X className="size-4" />}
+                onPress={() => setShowStudentDetailModal(false)}
+                className="font-bold text-slate-700 dark:text-slate-200"
               >
-                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                  <X className="size-3.5 text-white" strokeWidth={2.2} />
-                </div>
-                <span>Tutup</span>
-              </button>
+                Tutup
+              </HeroButton>
             </DialogFooter>
           </Dialog>
         </Backdrop>
@@ -2842,29 +2856,38 @@ export default function TahfizhPage() {
             </DialogBody>
 
             <DialogFooter className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-2.5 dark:bg-slate-900/40 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setShowSaveConfirm(false)}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              <HeroButton
+                size="sm"
+                variant="flat"
+                color="default"
+                radius="full"
+                startContent={<X className="size-4" />}
+                onPress={() => setShowSaveConfirm(false)}
+                className="font-bold text-slate-700 dark:text-slate-200"
               >
-                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                  <X className="size-3.5 text-white" strokeWidth={2.2} />
-                </div>
-                <span>Batal</span>
-              </button>
+                Batal
+              </HeroButton>
 
-              <MasterActionButton variant="primary" icon={Save} onClick={handleConfirmSave}>
-                <span>Ya, Simpan Log</span>
-              </MasterActionButton>
+              <HeroButton
+                size="sm"
+                variant="solid"
+                color="success"
+                radius="full"
+                startContent={<Save className="size-4 text-white" />}
+                onPress={handleConfirmSave}
+                className="font-bold text-white shadow-md shadow-emerald-600/20"
+              >
+                Ya, Simpan Log
+              </HeroButton>
             </DialogFooter>
           </Dialog>
         </Backdrop>
       )}
 
-      {/* MODAL TARIK MASTER AL-QUR'AN & SELEKSI JUZ / SURAH / AYAT (STATIC 2-COLUMN LAYOUT WITH SCROLLING BODIES) */}
+      {/* MODAL TARIK MASTER AL-QUR'AN & SELEKSI JUZ / SURAH / AYAT (HEROUI 2-COLUMN LAYOUT WITH MUSHAF VIEWER) */}
       {showQuranModal && (
-        <Backdrop isOpen={showQuranModal} onOpenChange={setShowQuranModal} className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
-          <Dialog showCloseButton={false} className="max-w-5xl w-full h-[88vh] max-h-[88vh] flex flex-col rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl overflow-hidden dark:border-slate-800 dark:bg-[#1B2433]">
+        <Backdrop isOpen={showQuranModal} onOpenChange={setShowQuranModal} className="z-[80] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+          <Dialog showCloseButton={false} className="max-w-5xl w-full h-[88vh] max-h-[88vh] flex flex-col rounded-3xl border border-emerald-300/80 bg-white p-0 shadow-2xl overflow-hidden dark:border-slate-800 dark:bg-[#1B2433]">
             <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
             <DialogHeader className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950 shrink-0">
               <div className="flex items-center gap-3">
@@ -2874,14 +2897,13 @@ export default function TahfizhPage() {
                 <div>
                   <DialogTitle className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                     <span>Pilih Hafalan Al-Qur'an (Juz, Surah, Ayat, Baris)</span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
-                      <BookOpen className="size-3" />
+                    <HeroChip size="sm" variant="flat" color="success" className="font-extrabold text-[10px]">
                       Mushaf
-                    </span>
+                    </HeroChip>
                   </DialogTitle>
                   <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     {currentStudentObj ? (
-                      <span>Siswa Terpilih: <strong>{getStudentName(currentStudentObj)}</strong> (NIS: {getStudentNis(currentStudentObj)}) · {currentClassObj?.nama_kelas || 'Rombel'}</span>
+                      <span>Siswa Terpilih: <strong className="text-slate-800 dark:text-slate-200">{getStudentName(currentStudentObj)}</strong> (NIS: {getStudentNis(currentStudentObj)}) · {currentClassObj?.nama_kelas || 'Rombel'}</span>
                     ) : (
                       'Pilih Juz, Surah, rentang Ayat, dan jumlah baris halaman Al-Qur\'an secara interaktif atau manual.'
                     )}
@@ -2890,15 +2912,17 @@ export default function TahfizhPage() {
               </div>
 
               <div className="flex items-center gap-2.5 shrink-0">
-                {/* Switcher Mode Interactive vs Manual */}
+                {/* Switcher Mode Interactive vs Manual (HeroUI Segmented Tabs) */}
                 <div className="bg-slate-100 p-1 rounded-2xl border border-slate-200/80 flex items-center gap-1 dark:bg-slate-900 dark:border-slate-800" role="tablist" aria-label="Mode input mushaf">
                   <button
                     type="button"
                     role="tab"
                     aria-selected={quranInputMode === 'interactive'}
                     onClick={() => setQuranInputMode('interactive')}
-                    className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
-                      quranInputMode === 'interactive' ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer ${
+                      quranInputMode === 'interactive'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
                     }`}
                   >
                     Interaktif
@@ -2908,22 +2932,27 @@ export default function TahfizhPage() {
                     role="tab"
                     aria-selected={quranInputMode === 'manual'}
                     onClick={() => setQuranInputMode('manual')}
-                    className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
-                      quranInputMode === 'manual' ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer ${
+                      quranInputMode === 'manual'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
                     }`}
                   >
                     Manual
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowQuranModal(false)}
+                <HeroButton
+                  isIconOnly
+                  size="sm"
+                  variant="flat"
+                  color="default"
+                  onPress={() => setShowQuranModal(false)}
                   aria-label="Tutup modal"
-                  className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0"
+                  className="rounded-xl size-9 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-transform active:scale-95"
                 >
-                  <X className="size-4 text-white" strokeWidth={2.25} />
-                </button>
+                  <X className="size-4" strokeWidth={2.2} />
+                </HeroButton>
               </div>
             </DialogHeader>
 
@@ -2969,36 +2998,39 @@ export default function TahfizhPage() {
                       <label className="block text-xs font-bold text-slate-700 mb-1.5 dark:text-slate-300">
                         Pilih Surah ({filteredQuranSurahs.length} Surah Ditemukan):
                       </label>
-                      <div className="max-h-44 overflow-y-auto border rounded-xl divide-y divide-slate-100 bg-slate-50/50 dark:divide-slate-800 dark:bg-slate-900/50 dark:border-slate-700">
-                        {filteredQuranSurahs.map((s) => (
-                          <button
-                            key={s.nomor}
-                            type="button"
-                            onClick={() => {
-                              setModalSurah(s)
-                              setModalAyahStart(1)
-                              setModalAyahEnd(Math.min(10, s.jumlah_ayat || 7))
-                              setModalBarisCount(5)
-                            }}
-                            className={`w-full px-3.5 py-2.5 text-left text-xs flex items-center justify-between transition-colors ${
-                              modalSurah?.nomor === s.nomor
-                                ? 'bg-emerald-100 font-extrabold text-emerald-950 border-l-4 border-emerald-600 dark:bg-emerald-950 dark:text-emerald-200'
-                                : 'hover:bg-emerald-50 text-slate-800 dark:text-slate-200 dark:hover:bg-slate-800'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-md bg-emerald-200/60 text-emerald-900 font-bold text-[11px] flex items-center justify-center dark:bg-emerald-900 dark:text-emerald-200">
-                                {s.nomor}
-                              </span>
-                              <span className="font-extrabold">{s.nama_latin}</span>
-                              <span className="text-[10px] text-slate-400">({getJuzDisplayForSurah(s.nomor, s.jumlah_ayat)})</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-[11px] text-slate-500 font-medium">({s.jumlah_ayat} Ayat)</span>
-                              <span className="font-serif text-base font-extrabold text-emerald-800 dark:text-emerald-400 dir-rtl">{s.nama}</span>
-                            </div>
-                          </button>
-                        ))}
+                      <div className="max-h-44 overflow-y-auto border border-slate-200/90 rounded-2xl divide-y divide-slate-100 bg-slate-50/50 dark:divide-slate-800 dark:bg-slate-900/50 dark:border-slate-800">
+                        {filteredQuranSurahs.map((s) => {
+                          const isSelected = modalSurah?.nomor === s.nomor
+                          return (
+                            <button
+                              key={s.nomor}
+                              type="button"
+                              onClick={() => {
+                                setModalSurah(s)
+                                setModalAyahStart(1)
+                                setModalAyahEnd(Math.min(10, s.jumlah_ayat || 7))
+                                setModalBarisCount(5)
+                              }}
+                              className={`w-full px-3.5 py-2.5 text-left text-xs flex items-center justify-between transition-colors ${
+                                isSelected
+                                  ? 'bg-emerald-100/90 font-extrabold text-emerald-950 border-l-4 border-emerald-600 dark:bg-emerald-950 dark:text-emerald-200'
+                                  : 'hover:bg-emerald-50/60 text-slate-800 dark:text-slate-200 dark:hover:bg-slate-800/60'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className="w-6 h-6 rounded-lg bg-emerald-200/70 text-emerald-900 font-black text-[11px] flex items-center justify-center dark:bg-emerald-900 dark:text-emerald-200 shrink-0">
+                                  {s.nomor}
+                                </span>
+                                <span className="font-extrabold text-slate-900 dark:text-white">{s.nama_latin}</span>
+                                <span className="text-[10px] text-slate-400 font-medium">({getJuzDisplayForSurah(s.nomor, s.jumlah_ayat)})</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-[11px] text-slate-500 font-medium">({s.jumlah_ayat} Ayat)</span>
+                                <span className="font-serif text-base font-extrabold text-emerald-800 dark:text-emerald-400 dir-rtl">{s.nama}</span>
+                              </div>
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
                   ) : (
@@ -3031,9 +3063,9 @@ export default function TahfizhPage() {
                           <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
                           <span>Detail Surah: Surah {modalSurah.nomor}. {modalSurah.nama_latin} ({modalSurah.jumlah_ayat} Ayat)</span>
                         </div>
-                        <Badge color="emerald" size="sm">
+                        <HeroChip size="sm" variant="flat" color="primary" className="font-extrabold text-[10px]">
                           Juz {getQuranJuz(modalSurah.nomor, modalAyahStart)}
-                        </Badge>
+                        </HeroChip>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -3091,54 +3123,51 @@ export default function TahfizhPage() {
                         </div>
                       </div>
 
-                      {/* Tombol Shortcut Penambahan Ayat Cepat */}
+                      {/* Tombol Shortcut Penambahan Ayat Cepat (HeroUI Buttons) */}
                       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-emerald-200/80 dark:border-emerald-900">
                         <span className="text-[11px] font-extrabold text-emerald-900 dark:text-emerald-300">
                           Penambahan Ayat Cepat:
                         </span>
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            appearance="outline"
-                            size="xs"
-                            onClick={() => {
+                          <HeroButton
+                            size="sm"
+                            variant="flat"
+                            color="primary"
+                            onPress={() => {
                               const newEnd = Math.min(Number(modalAyahEnd) + 5, modalSurah.jumlah_ayat)
                               setModalAyahEnd(newEnd)
                               setModalBarisCount(Math.max(1, Math.ceil((newEnd - Number(modalAyahStart) + 1) * 0.75)))
                             }}
-                            className="h-8 px-3 text-[11px] font-black rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 shadow-xs dark:bg-slate-900 dark:text-emerald-300 dark:border-emerald-800"
+                            className="h-8 font-extrabold text-xs"
                           >
                             +5 Ayat
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            appearance="outline"
-                            size="xs"
-                            onClick={() => {
+                          </HeroButton>
+                          <HeroButton
+                            size="sm"
+                            variant="flat"
+                            color="primary"
+                            onPress={() => {
                               const newEnd = Math.min(Number(modalAyahEnd) + 10, modalSurah.jumlah_ayat)
                               setModalAyahEnd(newEnd)
                               setModalBarisCount(Math.max(1, Math.ceil((newEnd - Number(modalAyahStart) + 1) * 0.75)))
                             }}
-                            className="h-8 px-3 text-[11px] font-black rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 shadow-xs dark:bg-slate-900 dark:text-emerald-300 dark:border-emerald-800"
+                            className="h-8 font-extrabold text-xs"
                           >
                             +10 Ayat
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="success"
-                            appearance="fill"
-                            size="xs"
-                            onClick={() => {
+                          </HeroButton>
+                          <HeroButton
+                            size="sm"
+                            variant="solid"
+                            color="success"
+                            onPress={() => {
                               setModalAyahStart(1)
                               setModalAyahEnd(modalSurah.jumlah_ayat)
                               setModalBarisCount(Math.max(1, Math.ceil(modalSurah.jumlah_ayat * 0.75)))
                             }}
-                            className="h-8 px-3 text-[11px] font-black rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all duration-200 hover:scale-105 active:scale-95"
+                            className="h-8 font-extrabold text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
                           >
                             Semua ({modalSurah.jumlah_ayat} Ayat)
-                          </Button>
+                          </HeroButton>
                         </div>
                       </div>
                     </div>
@@ -3150,7 +3179,7 @@ export default function TahfizhPage() {
                 </div>
 
                 {/* KOLOM KANAN (RIGHT COLUMN - LIVE MUSHAF ARABIC & LATIN TEXT READER WITH AYAH ASSESSMENT) */}
-                <div className="lg:col-span-6 flex flex-col h-full bg-amber-50/50 p-4 rounded-2xl border border-emerald-200/80 shadow-inner dark:bg-slate-900/80 dark:border-emerald-900 overflow-hidden">
+                <div className="lg:col-span-6 flex flex-col h-full bg-slate-50/70 p-4 rounded-2xl border border-emerald-200/80 shadow-inner dark:bg-slate-900/80 dark:border-emerald-900 overflow-hidden">
                   <div className="flex flex-wrap items-center justify-between pb-3 border-b border-emerald-200/80 dark:border-slate-800 shrink-0 gap-2">
                     <div className="flex items-center gap-2">
                       <BookOpen className="w-4 h-4 text-emerald-700 shrink-0 dark:text-emerald-400" />
@@ -3160,23 +3189,21 @@ export default function TahfizhPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {/* Tombol Tampilkan / Sembunyikan Field Penilaian */}
-                      <Button
-                        type="button"
-                        onClick={() => setShowAyahPenilaianField((prev) => !prev)}
-                        variant={showAyahPenilaianField ? 'success' : 'ghost'}
-                        appearance={showAyahPenilaianField ? 'fill' : 'outline'}
-                        size="xs"
+                      <HeroButton
+                        size="sm"
+                        variant={showAyahPenilaianField ? 'solid' : 'flat'}
+                        color={showAyahPenilaianField ? 'success' : 'default'}
+                        onPress={() => setShowAyahPenilaianField((prev) => !prev)}
+                        startContent={<Award className="size-3.5" />}
                         className="font-extrabold text-[11px] h-7"
                       >
-                        <Award className="w-3.5 h-3.5 mr-1" />
-                        <span>{showAyahPenilaianField ? 'Tutup Field Penilaian' : 'Field Penilaian Hafalan'}</span>
-                      </Button>
+                        {showAyahPenilaianField ? 'Tutup Field Penilaian' : 'Field Penilaian Hafalan'}
+                      </HeroButton>
 
                       {modalSurah && (
-                        <Badge color="emerald" size="sm" className="font-extrabold">
+                        <HeroChip size="sm" variant="flat" color="success" className="font-extrabold text-[10px]">
                           {modalSurah.nama_latin} ({modalSurah.nama})
-                        </Badge>
+                        </HeroChip>
                       )}
                     </div>
                   </div>
@@ -3232,13 +3259,14 @@ export default function TahfizhPage() {
                               </div>
 
                               <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                <Badge
-                                  color={currentPredikat === 'mumtaz' ? 'success' : currentPredikat === 'jayyid' ? 'warning' : 'error'}
+                                <HeroChip
                                   size="sm"
+                                  variant="flat"
+                                  color={currentPredikat === 'mumtaz' ? 'success' : currentPredikat === 'jayyid' ? 'warning' : 'danger'}
                                   className="font-extrabold text-[10px]"
                                 >
                                   {currentPredikat === 'mumtaz' ? 'Mumtaz (Lancar)' : currentPredikat === 'jayyid' ? 'Jayyid (Cukup)' : 'Perlu Murajaah'}
-                                </Badge>
+                                </HeroChip>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -3250,7 +3278,7 @@ export default function TahfizhPage() {
                                       },
                                     }))
                                   }}
-                                  className="text-[10px] font-extrabold text-emerald-700 hover:text-emerald-900 underline dark:text-emerald-400"
+                                  className="text-[10px] font-extrabold text-emerald-700 hover:text-emerald-900 underline dark:text-emerald-400 cursor-pointer"
                                 >
                                   {isPenilaianOpen ? 'Tutup Penilaian' : '+ Penilaian Ayat'}
                                 </button>
@@ -3258,7 +3286,7 @@ export default function TahfizhPage() {
                             </div>
 
                             {/* Teks Arab Harakat */}
-                            <div className="text-right text-xl sm:text-2xl font-serif leading-loose text-emerald-950 dark:text-emerald-200 font-bold dir-rtl">
+                            <div className="text-right text-2xl sm:text-3xl font-serif leading-loose text-emerald-950 dark:text-emerald-200 font-bold dir-rtl">
                               {a.teks_arab || a.teksArab}
                             </div>
 
@@ -3269,7 +3297,7 @@ export default function TahfizhPage() {
                               </div>
                             )}
 
-                            {/* 📝 FIELD PENILAIAN HAFALAN PER AYAT */}
+                            {/* 📝 FIELD PENILAIAN HAFALAN PER AYAT (HEROUI BUTTONS) */}
                             {isPenilaianOpen && (
                               <div
                                 onClick={(e) => e.stopPropagation()}
@@ -3284,54 +3312,48 @@ export default function TahfizhPage() {
 
                                 {/* Opsi Kualitas Bacaan */}
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
+                                  <HeroButton
+                                    size="sm"
+                                    variant={currentPredikat === 'mumtaz' ? 'solid' : 'flat'}
+                                    color={currentPredikat === 'mumtaz' ? 'success' : 'default'}
+                                    onPress={() =>
                                       setActiveAyahPenilaianMap((prev) => ({
                                         ...prev,
                                         [aNum]: { ...prev[aNum], predikat: 'mumtaz' },
                                       }))
                                     }
-                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
-                                      currentPredikat === 'mumtaz'
-                                        ? 'bg-emerald-600 text-white shadow-sm'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-emerald-100 dark:bg-slate-800 dark:text-slate-300'
-                                    }`}
+                                    className="h-7 text-[10px] font-black"
                                   >
                                     🟢 Mumtaz (Lancar)
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
+                                  </HeroButton>
+                                  <HeroButton
+                                    size="sm"
+                                    variant={currentPredikat === 'jayyid' ? 'solid' : 'flat'}
+                                    color={currentPredikat === 'jayyid' ? 'warning' : 'default'}
+                                    onPress={() =>
                                       setActiveAyahPenilaianMap((prev) => ({
                                         ...prev,
                                         [aNum]: { ...prev[aNum], predikat: 'jayyid' },
                                       }))
                                     }
-                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
-                                      currentPredikat === 'jayyid'
-                                        ? 'bg-amber-500 text-white shadow-sm'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-amber-100 dark:bg-slate-800 dark:text-slate-300'
-                                    }`}
+                                    className="h-7 text-[10px] font-black"
                                   >
                                     🟡 Jayyid (Terbata)
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
+                                  </HeroButton>
+                                  <HeroButton
+                                    size="sm"
+                                    variant={currentPredikat === 'rasib' ? 'solid' : 'flat'}
+                                    color={currentPredikat === 'rasib' ? 'danger' : 'default'}
+                                    onPress={() =>
                                       setActiveAyahPenilaianMap((prev) => ({
                                         ...prev,
                                         [aNum]: { ...prev[aNum], predikat: 'rasib' },
                                       }))
                                     }
-                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
-                                      currentPredikat === 'rasib'
-                                        ? 'bg-rose-600 text-white shadow-sm'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-rose-100 dark:bg-slate-800 dark:text-slate-300'
-                                    }`}
+                                    className="h-7 text-[10px] font-black"
                                   >
                                     🔴 Perlu Murajaah
-                                  </button>
+                                  </HeroButton>
                                 </div>
 
                                 {/* Input Catatan Evaluasi Ayat */}
@@ -3362,41 +3384,45 @@ export default function TahfizhPage() {
             </DialogBody>
 
             <DialogFooter className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/40 shrink-0">
-              <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Pratinjau mushaf & pilihan surah</span>
+              <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Pratinjau mushaf & konfigurasi ayat</span>
               <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setShowQuranModal(false)}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+                <HeroButton
+                  variant="flat"
+                  color="default"
+                  onPress={() => setShowQuranModal(false)}
+                  startContent={<X className="size-4" />}
+                  className="font-bold text-xs"
                 >
-                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                    <X className="size-3.5 text-white" strokeWidth={2.2} />
-                  </div>
-                  <span>Batal</span>
-                </button>
+                  Batal
+                </HeroButton>
 
-                <MasterActionButton
-                  variant="primary"
-                  icon={BookOpen}
-                  onClick={handleApplyQuranSelection}
-                  disabled={!modalSurah}
+                <HeroButton
+                  color="primary"
+                  onPress={handleApplyQuranSelection}
+                  isDisabled={!modalSurah}
+                  startContent={<BookOpen className="size-4" />}
+                  className="font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
                 >
-                  <span>Terapkan ke Form Tahfizh</span>
-                </MasterActionButton>
+                  Terapkan ke Form Tahfizh
+                </HeroButton>
               </div>
             </DialogFooter>
           </Dialog>
         </Backdrop>
       )}
 
-      {/* 🟢 MODAL POP-UP DIALOG: FORMULIR TAHFIZH & MURAJAAH HARIAN SISWA (STATIC HEIGHT WITH SCROLLING BODY) */}
+
+      {/* 🟢 MODAL POP-UP DIALOG: FORMULIR TAHFIZH & MURAJAAH HARIAN SISWA (HEROUI SENIOR UI/UX STANDARD) */}
       {showSheetModal && currentStudentObj && (() => {
-        const studentName = currentStudentObj.nama_lengkap || currentStudentObj.nama || currentStudentObj.full_name || currentStudentObj.name || currentStudentObj.user?.name || currentStudentObj.siswa?.nama_lengkap || currentStudentObj.siswa?.nama || 'Siswa'
-        const studentNis = currentStudentObj.nis || currentStudentObj.nisn || '-'
+        const studentName = getStudentName(currentStudentObj)
+        const studentNis = getStudentNis(currentStudentObj)
+        const totalAyatMemorized = Number(currentStudentObj.total_ayats_memorized || currentStudentObj.total_ayat || 0)
+        const totalSurahMemorized = Number(currentStudentObj.total_surah_memorized || currentStudentObj.total_surah || 0)
+        const progress30Juz = Math.min(100, Math.round((totalAyatMemorized / 6236) * 100 * 10) / 10)
 
         return (
-          <Backdrop isOpen={showSheetModal} onOpenChange={setShowSheetModal} className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
-            <Dialog showCloseButton={false} className="w-full max-w-5xl h-[90vh] max-h-[90vh] flex flex-col rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl overflow-hidden dark:border-slate-800 dark:bg-[#1B2433]">
+          <Backdrop isOpen={showSheetModal} onOpenChange={setShowSheetModal} className="z-[70] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+            <Dialog showCloseButton={false} className="w-full max-w-5xl h-[92vh] max-h-[92vh] flex flex-col rounded-3xl border border-emerald-300/80 bg-white p-0 shadow-2xl overflow-hidden dark:border-slate-800 dark:bg-[#1B2433]">
               <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
               {/* HEADER MODAL */}
               <DialogHeader className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950 shrink-0">
@@ -3406,100 +3432,92 @@ export default function TahfizhPage() {
                   </div>
                   <div>
                     <DialogTitle className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                      <span className="truncate">Formulir Tahfizh & Murajaah Harian ({getStudentName(currentStudentObj)})</span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60 shrink-0">
-                        <Sparkles className="size-3" />
-                        Setoran
-                      </span>
+                      <span className="truncate">Formulir Tahfizh & Murajaah Harian</span>
+                      <HeroChip size="sm" variant="flat" color="success" className="font-extrabold text-[10px]">
+                        <Sparkles className="size-3 mr-1 inline" />
+                        Setoran Pekanan
+                      </HeroChip>
                     </DialogTitle>
                     <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Siswa: {getStudentName(currentStudentObj)} · NIS: {getStudentNis(currentStudentObj)} · Periode Pekan: Senin, {currentMonday} · Rombel: {currentClassObj?.nama_kelas || 'Kelas Aktif'}
+                      Siswa: <strong className="text-slate-800 dark:text-slate-200">{studentName}</strong> · NIS: {studentNis} · Periode: Senin, {currentMonday} · Rombel: {currentClassObj?.nama_kelas || 'Kelas Aktif'}
                     </DialogDescription>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowSheetModal(false)}
+                <HeroButton
+                  isIconOnly
+                  size="sm"
+                  variant="flat"
+                  color="default"
+                  onPress={() => setShowSheetModal(false)}
                   aria-label="Tutup modal"
-                  className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0"
+                  className="rounded-xl size-9 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-transform active:scale-95 cursor-pointer shrink-0"
                 >
-                  <X className="size-4 text-white" strokeWidth={2.25} />
-                </button>
+                  <X className="size-4 text-slate-600 dark:text-slate-300" strokeWidth={2.2} />
+                </HeroButton>
               </DialogHeader>
 
             <DialogBody className="p-4 sm:p-6 flex-1 overflow-y-auto min-h-0 space-y-4">
-              {/* 1. Detail Hafalan Status Siswa (Juz, Surah, Ayat, Baris) */}
-              <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-emerald-950 dark:bg-emerald-950/40 dark:border-emerald-900 dark:text-emerald-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white font-extrabold flex items-center justify-center text-sm shadow-sm shrink-0">
-                    📖
-                  </div>
-                  <div>
-                    <div className="font-extrabold text-sm text-emerald-900 dark:text-white flex items-center gap-2">
-                      <span>Detail Hafalan Aktif: {currentStudentObj.last_surah_memorized || '-'}</span>
-                      {currentStudentObj.last_surah_number ? (
-                        <Badge color="emerald" size="sm">
-                          Juz {getQuranJuz(currentStudentObj.last_surah_number, currentStudentObj.last_ayah_start || currentStudentObj.last_ayah_end || 1)}
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <div className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
-                      Rentang Ayat: {currentStudentObj.last_ayah_range || '-'} · Total Baris: {currentStudentObj.total_baris != null ? currentStudentObj.total_baris : 0} Baris · Total Ayat: {currentStudentObj.total_ayats_memorized || 0} Ayat
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Badge color="indigo" size="md">
-                    {currentStudentObj.total_surah_memorized || 0} Surah Dihafal
-                  </Badge>
-                </div>
-              </div>
-
-              {/* 👤 2. CARD BARU: DATA SISWA TERPILIH (DIBAWAH DETAIL HAFALAN AKTIF) */}
-              <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm dark:bg-slate-900 dark:border-slate-800 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
+              {/* 👤 1. UNIFIED HEROUI SUMMARY CARD: SISWA & STATUS HAFALAN AKTIF */}
+              <div className="relative overflow-hidden rounded-2xl border border-emerald-300/80 bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-emerald-50/70 p-4 shadow-xs dark:border-emerald-800/70 dark:bg-slate-900/90">
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                  {/* Left: Identity */}
+                  <div className="flex items-center gap-3.5 min-w-0">
                     <Avatar size="md" status="online">
-                      <AvatarFallback className="bg-emerald-600 text-white font-black text-sm shadow-sm">
-                        {getStudentName(currentStudentObj).charAt(0).toUpperCase()}
+                      <AvatarFallback className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white font-black text-sm shadow-sm">
+                        {studentName.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-black text-slate-900 dark:text-white">{getStudentName(currentStudentObj)}</span>
-                        <Badge color="success" size="sm" className="font-extrabold">Siswa Aktif</Badge>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">{studentName}</span>
+                        <HeroChip size="sm" variant="flat" color="success" className="font-extrabold text-[10px]">
+                          Siswa Aktif
+                        </HeroChip>
+                        {currentStudentObj.last_surah_number ? (
+                          <HeroChip size="sm" variant="flat" color="primary" className="font-extrabold text-[10px]">
+                            Juz {getQuranJuz(currentStudentObj.last_surah_number, currentStudentObj.last_ayah_start || currentStudentObj.last_ayah_end || 1)}
+                          </HeroChip>
+                        ) : null}
                       </div>
-                      <div className="text-xs text-slate-500 font-semibold mt-0.5 flex items-center gap-2">
-                        <span>NIS: <strong className="text-slate-700 dark:text-slate-300">{getStudentNis(currentStudentObj)}</strong></span>
+                      <div className="text-xs text-slate-500 font-semibold mt-1 flex flex-wrap items-center gap-2">
+                        <span>NIS: <strong className="text-slate-800 dark:text-slate-200">{studentNis}</strong></span>
                         <span>•</span>
-                        <span>Rombel: <strong className="text-slate-700 dark:text-slate-300">{currentClassObj?.nama_kelas || 'Kelas Aktif'}</strong></span>
+                        <span>Rombel: <strong className="text-slate-800 dark:text-slate-200">{currentClassObj?.nama_kelas || 'Kelas Aktif'}</strong></span>
+                        <span>•</span>
+                        <span className="text-emerald-800 dark:text-emerald-300 font-bold">
+                          Hafalan Terakhir: <strong>{currentStudentObj.last_surah_memorized || 'Belum Ada'}</strong> {currentStudentObj.last_ayah_range ? `(${currentStudentObj.last_ayah_range})` : ''}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Ringkasan Statistik Hafalan Siswa */}
-                  <div className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100 dark:bg-slate-800/60 dark:border-slate-800 text-xs">
-                    <div>
-                      <span className="text-[10px] text-slate-400 block font-medium">Total Hafalan:</span>
-                      <span className="font-extrabold text-emerald-700 dark:text-emerald-400">
-                        {Number(currentStudentObj.total_ayats_memorized || currentStudentObj.total_ayat || 0).toLocaleString('id-ID')} Ayat
+                  {/* Right: Key Stats Pills */}
+                  <div className="flex items-center gap-2.5 flex-wrap self-stretch lg:self-auto justify-end shrink-0">
+                    <div className="bg-white/90 dark:bg-slate-800/90 px-3.5 py-1.5 rounded-xl border border-emerald-200/80 dark:border-slate-700 text-center shadow-xs">
+                      <span className="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Total Hafalan</span>
+                      <span className="font-black text-sm text-emerald-700 dark:text-emerald-400">
+                        {totalAyatMemorized.toLocaleString('id-ID')} <span className="text-xs font-bold text-slate-500">Ayat</span>
                       </span>
                     </div>
-                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-                    <div>
-                      <span className="text-[10px] text-slate-400 block font-medium">Total Surah:</span>
-                      <span className="font-extrabold text-indigo-700 dark:text-indigo-400">
-                        {Number(currentStudentObj.total_surah_memorized || currentStudentObj.total_surah || 0)} Surah
+                    <div className="bg-white/90 dark:bg-slate-800/90 px-3.5 py-1.5 rounded-xl border border-indigo-200/80 dark:border-slate-700 text-center shadow-xs">
+                      <span className="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Total Surah</span>
+                      <span className="font-black text-sm text-indigo-700 dark:text-indigo-400">
+                        {totalSurahMemorized} <span className="text-xs font-bold text-slate-500">Surah</span>
+                      </span>
+                    </div>
+                    <div className="bg-white/90 dark:bg-slate-800/90 px-3.5 py-1.5 rounded-xl border border-teal-200/80 dark:border-slate-700 text-center shadow-xs min-w-[100px]">
+                      <span className="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Progres 30 Juz</span>
+                      <span className="font-black text-sm text-teal-700 dark:text-teal-400">
+                        {progress30Juz}%
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* 📅 INTERACTIVE DAY SELECTOR BAR (SENIN - AHAD) & HIGHLIGHT HARI INI */}
-              <div className="bg-gradient-to-r from-emerald-900/90 to-teal-900/90 p-4 rounded-2xl border border-emerald-700/80 text-white shadow-lg space-y-2.5">
+              {/* 📅 2. INTERACTIVE DAY SELECTOR BAR (SENIN - AHAD) & HIGHLIGHT HARI INI */}
+              <div className="bg-gradient-to-r from-emerald-950/90 via-teal-950/90 to-emerald-950/90 p-3.5 sm:p-4 rounded-2xl border border-emerald-700/80 text-white shadow-lg space-y-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-emerald-300 shrink-0" />
@@ -3507,7 +3525,7 @@ export default function TahfizhPage() {
                       Pilih Hari Setoran Pekan Ini ({currentMonday} s/d {weeklySheet[6]?.record_date || '-'}):
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-emerald-950/80 px-2.5 py-1 rounded-xl border border-emerald-600/60 text-[11px] font-bold">
+                  <div className="flex items-center gap-1.5 bg-emerald-900/80 px-2.5 py-1 rounded-xl border border-emerald-500/50 text-[11px] font-bold">
                     <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
                     <span className="text-emerald-200">Hari Ini: <strong className="text-white font-extrabold">{todayFormatted}</strong></span>
                   </div>
@@ -3525,9 +3543,9 @@ export default function TahfizhPage() {
                         key={row.record_date}
                         type="button"
                         onClick={() => setSelectedDayDate(row.record_date)}
-                        className={`px-3 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 flex flex-col items-center justify-center gap-1 border relative ${
+                        className={`px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200 flex flex-col items-center justify-center gap-1 border relative cursor-pointer ${
                           isActiveDay
-                            ? 'bg-emerald-500 text-white border-emerald-300 shadow-md shadow-emerald-900/40 scale-105 ring-2 ring-white/40'
+                            ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-emerald-300 shadow-md shadow-emerald-900/40 scale-105 ring-2 ring-white/50'
                             : isToday
                             ? 'bg-emerald-800/90 text-emerald-100 border-amber-400/90 hover:bg-emerald-700'
                             : 'bg-emerald-950/60 text-emerald-200/80 border-emerald-700/50 hover:bg-emerald-800/60 hover:text-white'
@@ -3541,64 +3559,97 @@ export default function TahfizhPage() {
 
                         <div className="flex items-center gap-1">
                           <span>{row.day_name}</span>
-                          {row.isSaved && <CheckCircle2 className="w-3 h-3 text-emerald-300" />}
+                          {row.isSaved && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />}
                         </div>
-                        <span className="text-[10px] opacity-80">{dayDateShort}</span>
+                        <span className="text-[10px] opacity-80 font-semibold">{dayDateShort}</span>
                       </button>
                     )
                   })}
                 </div>
               </div>
 
-              {/* Quick Controls inside Modal */}
+              {/* ⚡ 3. QUICK ACTION TOOLBAR (HEROUI BUTTONS) */}
               <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800">
                 <div className="flex items-center gap-2">
-                  <Button onClick={handlePrevWeek} variant="ghost" appearance="outline" size="xs" iconOnly title="Pekan Sebelumnya">
+                  <HeroButton
+                    isIconOnly
+                    size="sm"
+                    variant="flat"
+                    color="default"
+                    onPress={handlePrevWeek}
+                    aria-label="Pekan Sebelumnya"
+                    className="rounded-xl"
+                  >
                     <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <div className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs font-extrabold text-emerald-900 dark:text-emerald-300 flex items-center gap-2">
+                  </HeroButton>
+                  <div className="px-3.5 py-1.5 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs font-extrabold text-emerald-900 dark:text-emerald-300 flex items-center gap-2 shadow-xs">
                     <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>Pekan: {currentMonday}</span>
                   </div>
-                  <Button onClick={handleNextWeek} variant="ghost" appearance="outline" size="xs" iconOnly title="Pekan Selanjutnya">
+                  <HeroButton
+                    isIconOnly
+                    size="sm"
+                    variant="flat"
+                    color="default"
+                    onPress={handleNextWeek}
+                    aria-label="Pekan Selanjutnya"
+                    className="rounded-xl"
+                  >
                     <ChevronRight className="w-4 h-4" />
-                  </Button>
+                  </HeroButton>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button variant="primary" appearance="fill" size="xs" onClick={handleOpenAddSetoranModal} className="font-extrabold">
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    <span>Tambah Setoran</span>
-                  </Button>
-                  <Button variant="ghost" appearance="outline" size="xs" onClick={handleContinueHafalan} className="font-extrabold text-violet-700 border-violet-300 bg-violet-50 hover:bg-violet-100 dark:bg-violet-950 dark:text-violet-300">
-                    <Sparkles className="w-3.5 h-3.5 mr-1 text-violet-600" />
-                    <span>Lanjutkan Hafalan</span>
-                  </Button>
-                  <Button variant="ghost" appearance="outline" size="xs" onClick={handleRepeatHafalan} className="font-extrabold text-orange-700 border-orange-300 bg-orange-50 hover:bg-orange-100 dark:bg-orange-950 dark:text-orange-300">
-                    <RefreshCcw className="w-3.5 h-3.5 mr-1 text-orange-600" />
-                    <span>Mengulangi Tahfizh</span>
-                  </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <HeroButton
+                    size="sm"
+                    color="primary"
+                    onPress={handleOpenAddSetoranModal}
+                    startContent={<Plus className="w-3.5 h-3.5" />}
+                    className="font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                  >
+                    Tambah Setoran
+                  </HeroButton>
+                  <HeroButton
+                    size="sm"
+                    variant="flat"
+                    color="secondary"
+                    onPress={handleContinueHafalan}
+                    startContent={<Sparkles className="w-3.5 h-3.5" />}
+                    className="font-extrabold"
+                  >
+                    Lanjutkan Hafalan
+                  </HeroButton>
+                  <HeroButton
+                    size="sm"
+                    variant="flat"
+                    color="warning"
+                    onPress={handleRepeatHafalan}
+                    startContent={<RefreshCcw className="w-3.5 h-3.5" />}
+                    className="font-extrabold"
+                  >
+                    Mengulangi Tahfizh
+                  </HeroButton>
                 </div>
               </div>
 
-              {/* Table Data Pekanan */}
+              {/* 📊 4. TABLE DATA SETORAN PEKANAN */}
               {loadingSheet ? (
                 <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-3">
                   <Loader2 className="w-9 h-9 animate-spin text-emerald-600" />
-                  <span className="text-sm font-semibold text-slate-600">Memuat lembar data Tahfizh pekan ini...</span>
+                  <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">Memuat lembar data Tahfizh pekan ini...</span>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                <div className="overflow-x-auto rounded-2xl border border-emerald-200/90 dark:border-slate-800 shadow-xs">
                   <TableRoot fullBleed={false}>
-                    <TableHeader className="bg-emerald-100/70 border-b border-emerald-200 text-emerald-950 font-extrabold uppercase text-[11px] tracking-wider dark:bg-emerald-950/60 dark:text-emerald-200">
+                    <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 text-emerald-950 font-extrabold uppercase text-[11px] tracking-wider dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200">
                       <TableRow>
                         <TableHead className="px-3 py-3 text-center border-r border-emerald-200/60 w-12">No</TableHead>
                         <TableHead className="px-3 py-3 border-r border-emerald-200/60 w-36">Hari / Tanggal</TableHead>
                         <TableHead className="px-3 py-3 border-r border-emerald-200/60 w-44">Tilawah</TableHead>
                         <TableHead className="px-2 py-3 border-r border-emerald-200/60 text-center w-16">Baris</TableHead>
-                        <TableHead className="px-3 py-3 border-r border-emerald-200/60">Hafalan Baru</TableHead>
+                        <TableHead className="px-3 py-3 border-r border-emerald-200/60 min-w-[210px]">Hafalan Baru (Ziyadah)</TableHead>
                         <TableHead className="px-2 py-3 border-r border-emerald-200/60 text-center w-16">Baris</TableHead>
-                        <TableHead className="px-3 py-3 border-r border-emerald-200/60">Murajaah & Audio Sound</TableHead>
+                        <TableHead className="px-3 py-3 border-r border-emerald-200/60 min-w-[220px]">Murajaah & Audio</TableHead>
                         <TableHead className="px-2 py-3 border-r border-emerald-200/60 text-center w-16">Lembar</TableHead>
                         <TableHead className="px-3 py-3 border-r border-emerald-200/60 text-center w-28">Status</TableHead>
                         <TableHead className="px-3 py-3 text-center w-20">Aksi</TableHead>
@@ -3614,229 +3665,253 @@ export default function TahfizhPage() {
                             key={row.record_date}
                             className={`transition-all duration-200 ${
                               isActiveDay
-                                ? 'bg-emerald-100/90 font-extrabold dark:bg-emerald-950/70 border-l-4 border-l-emerald-600'
+                                ? 'bg-emerald-100/70 font-semibold dark:bg-emerald-950/60 border-l-4 border-l-emerald-600'
                                 : row.isSaved
                                 ? 'bg-emerald-50/20 dark:bg-emerald-950/20'
                                 : ''
                             }`}
                           >
-                            <TableCell className="px-3 py-3 text-center font-extrabold text-slate-700 border-r">{idx + 1}</TableCell>
+                            <TableCell className="px-3 py-3 text-center font-extrabold text-slate-700 border-r dark:text-slate-300">{idx + 1}</TableCell>
                             <TableCell className="px-3 py-3 border-r font-bold">
                               <div className="flex items-center gap-1.5">
                                 <span className="text-sm font-extrabold text-emerald-900 dark:text-emerald-400">{row.day_name}</span>
                                 {isToday && (
-                                  <Badge color="warning" size="sm" className="text-[9px] px-1.5 py-0 font-black">
+                                  <HeroChip size="sm" variant="flat" color="warning" className="text-[9px] px-1.5 py-0 font-black">
                                     Hari Ini
-                                  </Badge>
+                                  </HeroChip>
                                 )}
                               </div>
-                              <div className="text-[11px] text-slate-500">{row.record_date}</div>
+                              <div className="text-[11px] text-slate-500 font-mono mt-0.5">{row.record_date}</div>
                             </TableCell>
                             <TableCell className="px-2 py-2 border-r">
-                            <input
-                              type="text"
-                              value={row.tilawah_text}
-                              onChange={(e) => handleCellChange(idx, 'tilawah_text', e.target.value)}
-                              placeholder="Contoh: Surah 2 (Ayat 1-10)"
-                              readOnly={viewMode === 'ortu'}
-                              className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-emerald-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
-                            />
-                          </TableCell>
-                          <TableCell className="px-1.5 py-2 border-r text-center">
-                            <input
-                              type="number"
-                              min="0"
-                              value={row.tilawah_baris}
-                              onChange={(e) => handleCellChange(idx, 'tilawah_baris', e.target.value)}
-                              readOnly={viewMode === 'ortu'}
-                              className="w-full px-1 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-emerald-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
-                            />
-                          </TableCell>
-                          <TableCell className="px-2 py-2 border-r">
-                            <div className="flex flex-col gap-1.5">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <div className="group relative inline-flex">
+                              <input
+                                type="text"
+                                value={row.tilawah_text}
+                                onChange={(e) => handleCellChange(idx, 'tilawah_text', e.target.value)}
+                                placeholder="Contoh: Al-Baqarah 1-10"
+                                readOnly={viewMode === 'ortu'}
+                                className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                              />
+                            </TableCell>
+                            <TableCell className="px-1.5 py-2 border-r text-center">
+                              <input
+                                type="number"
+                                min="0"
+                                value={row.tilawah_baris}
+                                onChange={(e) => handleCellChange(idx, 'tilawah_baris', e.target.value)}
+                                readOnly={viewMode === 'ortu'}
+                                className="w-full px-1 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                              />
+                            </TableCell>
+                            <TableCell className="px-2.5 py-2 border-r">
+                              <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                   <button
                                     type="button"
                                     onClick={() => handleOpenQuranModal(idx)}
                                     disabled={viewMode === 'ortu'}
-                                    title="Pilih Surah & Ayat Al-Qur'an"
-                                    className="flex h-8 px-3 items-center justify-center gap-1.5 rounded-xl bg-emerald-100/90 text-emerald-900 font-black text-[11px] hover:bg-emerald-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-xs disabled:opacity-50 dark:bg-emerald-950/80 dark:text-emerald-200"
+                                    title="Klik untuk memilih atau mengubah Surah & Ayat Al-Qur'an"
+                                    className="inline-flex h-8 px-3 items-center justify-center gap-1.5 rounded-xl bg-emerald-100/90 text-emerald-900 font-black text-[11px] hover:bg-emerald-600 hover:text-white transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer shadow-xs disabled:opacity-50 dark:bg-emerald-950/80 dark:text-emerald-200"
                                   >
                                     <BookOpen className="size-3.5" />
-                                    <span>{row.hafalan_surah_name ? row.hafalan_surah_name : 'Pilih Surah'}</span>
+                                    <span>{row.hafalan_surah_name ? row.hafalan_surah_name : '+ Pilih Surah & Ayat'}</span>
                                   </button>
-                                  <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                                    <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
-                                    Pilih Surah & Ayat Al-Qur'an
-                                  </div>
+                                  {row.hafalan_surah_number && (
+                                    <HeroChip size="sm" variant="flat" color="default" className="font-bold text-[10px]">
+                                      Ayat {row.hafalan_ayah_start}-{row.hafalan_ayah_end}
+                                    </HeroChip>
+                                  )}
+                                  {row.hafalan_predikat && (
+                                    <HeroChip
+                                      size="sm"
+                                      variant="flat"
+                                      color={row.hafalan_predikat === 'Mumtaz' ? 'success' : row.hafalan_predikat === 'Jayyid' ? 'warning' : 'danger'}
+                                      className="font-black text-[9px]"
+                                    >
+                                      {row.hafalan_predikat}
+                                    </HeroChip>
+                                  )}
                                 </div>
-                                {row.hafalan_surah_number && (
-                                  <Badge color="gray" size="sm" className="font-bold">
-                                    Ayat {row.hafalan_ayah_start}-{row.hafalan_ayah_end}
-                                  </Badge>
-                                )}
-                                {row.hafalan_predikat && (
-                                  <Badge
-                                    color={row.hafalan_predikat === 'Mumtaz' ? 'success' : row.hafalan_predikat === 'Jayyid' ? 'warning' : 'error'}
-                                    size="sm"
-                                    className="font-black text-[9px]"
-                                  >
-                                    {row.hafalan_predikat}
-                                  </Badge>
+                                {row.hafalan_notes && (
+                                  <div className="text-[10px] text-emerald-900 font-semibold bg-emerald-50/90 p-1.5 rounded-lg border border-emerald-200/80 dark:bg-slate-900 dark:text-emerald-300 dark:border-slate-800">
+                                    📝 {row.hafalan_notes}
+                                  </div>
                                 )}
                               </div>
-                              {row.hafalan_notes && (
-                                <div className="text-[10px] text-emerald-900 font-semibold bg-emerald-50/90 p-1.5 rounded-md border border-emerald-200/80 dark:bg-slate-900 dark:text-emerald-300 dark:border-slate-800">
-                                  📝 {row.hafalan_notes}
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="px-1.5 py-2 border-r text-center">
-                            <input
-                              type="number"
-                              min="0"
-                              value={row.hafalan_baris}
-                              onChange={(e) => handleCellChange(idx, 'hafalan_baris', e.target.value)}
-                              readOnly={viewMode === 'ortu'}
-                              className="w-full px-1 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-emerald-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
-                            />
-                          </TableCell>
-                          <TableCell className="px-2 py-2 border-r">
-                            <div className="flex items-center gap-2">
+                            </TableCell>
+                            <TableCell className="px-1.5 py-2 border-r text-center">
                               <input
-                                type="text"
-                                value={row.murajaah_text}
-                                onChange={(e) => handleCellChange(idx, 'murajaah_text', e.target.value)}
-                                placeholder="Juz / Surah Murajaah..."
+                                type="number"
+                                min="0"
+                                value={row.hafalan_baris}
+                                onChange={(e) => handleCellChange(idx, 'hafalan_baris', e.target.value)}
                                 readOnly={viewMode === 'ortu'}
-                                className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-emerald-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                                className="w-full px-1 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
                               />
-                              {row.audio_url && (
-                                <Button
-                                  type="button"
-                                  onClick={() => handlePlayAudio(row.audio_url)}
-                                  variant="primary"
-                                  appearance="fill"
-                                  size="xs"
-                                  iconOnly
-                                  title="Putar Audio Murajaah"
-                                >
-                                  {playingAudioUrl === row.audio_url ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                                </Button>
+                            </TableCell>
+                            <TableCell className="px-2 py-2 border-r">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={row.murajaah_text}
+                                  onChange={(e) => handleCellChange(idx, 'murajaah_text', e.target.value)}
+                                  placeholder="Juz / Surah Murajaah..."
+                                  readOnly={viewMode === 'ortu'}
+                                  className="flex-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                                />
+                                {row.audio_url && (
+                                  <HeroButton
+                                    isIconOnly
+                                    size="sm"
+                                    color="primary"
+                                    onPress={() => handlePlayAudio(row.audio_url)}
+                                    aria-label="Putar Audio Murajaah"
+                                    className="rounded-xl size-8"
+                                  >
+                                    {playingAudioUrl === row.audio_url ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                                  </HeroButton>
+                                )}
+                                {(viewMode === 'ortu' || isSuperAdminOrAdmin) && (
+                                  <>
+                                    {isRecording && recordingRowIndex === idx ? (
+                                      <HeroButton
+                                        size="sm"
+                                        color="danger"
+                                        onPress={stopRecording}
+                                        startContent={<MicOff className="w-3.5 h-3.5" />}
+                                        className="font-extrabold animate-pulse h-8 text-[11px]"
+                                      >
+                                        {recordingSeconds}s Stop
+                                      </HeroButton>
+                                    ) : (
+                                      <HeroButton
+                                        isIconOnly
+                                        size="sm"
+                                        variant="flat"
+                                        color="default"
+                                        onPress={() => startRecording(idx)}
+                                        aria-label="Rekam Suara Live"
+                                        className="rounded-xl size-8"
+                                      >
+                                        <Mic className="w-3.5 h-3.5 text-rose-600" />
+                                      </HeroButton>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="px-1.5 py-2 border-r text-center">
+                              <input
+                                type="number"
+                                min="0"
+                                value={row.murajaah_lembar}
+                                onChange={(e) => handleCellChange(idx, 'murajaah_lembar', e.target.value)}
+                                readOnly={viewMode === 'ortu'}
+                                className="w-full px-1 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                              />
+                            </TableCell>
+                            <TableCell className="px-3 py-3 border-r text-center">
+                              {row.isSaved ? (
+                                <HeroChip size="sm" variant="flat" color="success" className="font-extrabold text-[10px]">
+                                  Tersimpan
+                                </HeroChip>
+                              ) : (
+                                <HeroChip size="sm" variant="flat" color="default" className="font-bold text-[10px]">
+                                  Draft
+                                </HeroChip>
                               )}
-                              {(viewMode === 'ortu' || isSuperAdminOrAdmin) && (
-                                <>
-                                  {isRecording && recordingRowIndex === idx ? (
-                                    <Button type="button" onClick={stopRecording} variant="danger" size="xs" className="font-extrabold animate-pulse">
-                                      <MicOff className="w-3.5 h-3.5 mr-1" />
-                                      <span>{recordingSeconds}s Stop</span>
-                                    </Button>
-                                  ) : (
-                                    <Button type="button" onClick={() => startRecording(idx)} variant="ghost" appearance="outline" size="xs" iconOnly title="Rekam Suara Live">
-                                      <Mic className="w-3.5 h-3.5 text-rose-600" />
-                                    </Button>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="px-1.5 py-2 border-r text-center">
-                            <input
-                              type="number"
-                              min="0"
-                              value={row.murajaah_lembar}
-                              onChange={(e) => handleCellChange(idx, 'murajaah_lembar', e.target.value)}
-                              readOnly={viewMode === 'ortu'}
-                              className="w-full px-1 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-center focus:ring-2 focus:ring-emerald-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
-                            />
-                          </TableCell>
-                          <TableCell className="px-3 py-3 border-r text-center">
-                            {row.isSaved ? (
-                              <Badge color="success" size="sm">Tersimpan</Badge>
-                            ) : (
-                              <Badge color="gray" size="sm">Draft</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="px-2 py-2 text-center">
-                            <Button
-                              type="button"
-                              onClick={() => promptSaveConfirmation(idx)}
-                              variant={row.isSaved ? 'ghost' : 'success'}
-                              appearance="fill"
-                              size="xs"
-                              iconOnly
-                              title="Simpan Hari Ini"
-                            >
-                              <Save className="w-3.5 h-3.5" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
+                            </TableCell>
+                            <TableCell className="px-2 py-2 text-center">
+                              <HeroButton
+                                isIconOnly
+                                size="sm"
+                                variant={row.isSaved ? 'flat' : 'solid'}
+                                color={row.isSaved ? 'default' : 'success'}
+                                onPress={() => promptSaveConfirmation(idx)}
+                                aria-label="Simpan Hari Ini"
+                                className="rounded-xl size-8"
+                              >
+                                <Save className="w-3.5 h-3.5" />
+                              </HeroButton>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
                     </TableBody>
                   </TableRoot>
                 </div>
               )}
 
-              {/* Catatan Evaluasi Guru & Ortu */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Catatan Evaluasi Guru / Musyrif:
-                  </label>
+              {/* 📝 5. CATATAN EVALUASI GURU & ORTU (HEROUI CARDS) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                <div className="space-y-1.5 rounded-2xl border border-slate-200/90 bg-slate-50/60 p-3.5 dark:border-slate-800 dark:bg-slate-900/60">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <BookOpenCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Catatan Evaluasi Guru / Musyrif:</span>
+                    </label>
+                    <HeroChip size="sm" variant="flat" color="primary" className="text-[9px] font-black">
+                      Ustadz/Musyrif
+                    </HeroChip>
+                  </div>
                   <textarea
                     rows={2}
                     value={summaryTeacherNotes}
                     onChange={(e) => setSummaryTeacherNotes(e.target.value)}
-                    placeholder="Tuliskan catatan tajwid/kelancaran siswa pekan ini..."
+                    placeholder="Tuliskan catatan tajwid, makhraj, atau kelancaran hafalan siswa pekan ini..."
                     readOnly={viewMode === 'ortu'}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:border-[#0E5C44] focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-[#0E5C44] focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-400"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                    Catatan Evaluasi Orang Tua:
-                  </label>
+                <div className="space-y-1.5 rounded-2xl border border-slate-200/90 bg-slate-50/60 p-3.5 dark:border-slate-800 dark:bg-slate-900/60">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Heart className="w-4 h-4 text-rose-500" />
+                      <span>Catatan Pendampingan Rumah (Orang Tua):</span>
+                    </label>
+                    <HeroChip size="sm" variant="flat" color="warning" className="text-[9px] font-black">
+                      Wali Santri
+                    </HeroChip>
+                  </div>
                   <textarea
                     rows={2}
                     value={summaryParentNotes}
                     onChange={(e) => setSummaryParentNotes(e.target.value)}
-                    placeholder="Tuliskan catatan pendampingan dari rumah..."
+                    placeholder="Tuliskan catatan pendampingan murojaah dari rumah..."
                     readOnly={viewMode === 'guru' || viewMode === 'musyrif'}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:border-[#0E5C44] focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                    className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:border-[#0E5C44] focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200 transition-all placeholder:text-slate-400"
                   />
                 </div>
               </div>
             </DialogBody>
 
-            <DialogFooter className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 bg-slate-50/50 px-6 py-4 shrink-0 dark:bg-slate-900/40 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setShowSheetModal(false)}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+            <DialogFooter className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 bg-slate-50/70 px-6 py-4 shrink-0 dark:bg-slate-900/60 dark:border-slate-800">
+              <HeroButton
+                variant="flat"
+                color="default"
+                onPress={() => setShowSheetModal(false)}
+                startContent={<X className="size-4" />}
+                className="font-bold text-xs"
               >
-                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                  <X className="size-3.5 text-white" strokeWidth={2.2} />
-                </div>
-                <span>Tutup Modal</span>
-              </button>
+                Tutup Modal
+              </HeroButton>
 
-              <MasterActionButton
-                variant="primary"
-                icon={Save}
-                onClick={() => promptSaveConfirmation(null)}
-                disabled={savingAll || !selectedStudentId}
-                loading={savingAll}
+              <HeroButton
+                color="primary"
+                onPress={() => promptSaveConfirmation(null)}
+                isDisabled={savingAll || !selectedStudentId}
+                isLoading={savingAll}
+                startContent={!savingAll && <Save className="size-4" />}
+                className="font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 px-5 py-2.5 h-10"
               >
-                <span>Simpan Seluruh Pekan Ini</span>
-              </MasterActionButton>
+                Simpan Seluruh Pekan Ini
+              </HeroButton>
             </DialogFooter>
           </Dialog>
         </Backdrop>
         )
       })()}
+
       {/* Print Option Modal (TailGrids Standard) */}
       <PrintOptionModal
         isOpen={showPrintModal}

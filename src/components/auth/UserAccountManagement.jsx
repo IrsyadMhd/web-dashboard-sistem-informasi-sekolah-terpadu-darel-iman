@@ -33,6 +33,9 @@ import {
   Download,
   FileSpreadsheet,
   AlertCircle,
+  Eye,
+  EyeOff,
+  Loader2,
 } from 'lucide-react'
 import { Chip as HeroChip, Button as HeroButton } from '@heroui/react'
 import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
@@ -539,6 +542,8 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
 
   const [form, setForm] = useState(emptyForm)
   const [formError, setFormError] = useState(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
   const editing = Boolean(user?.id)
 
   // Fetch real entity list whenever entityCategory or open changes
@@ -685,6 +690,8 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
       setEntityCategory('employee')
       setSelectedEntity(null)
       setEntitySearch('')
+      setShowPassword(false)
+      setShowPasswordConfirm(false)
     }
   }, [open, user, editing])
 
@@ -1089,15 +1096,25 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
                       Password Awal <span className="text-rose-500">*</span>
                     </span>
                   )}
-                  <input
-                    required={!editing}
-                    minLength={8}
-                    type="password"
-                    value={form.password}
-                    onChange={(e) => change('password', e.target.value)}
-                    placeholder={editing ? 'Ketik password baru jika ingin mengubah...' : 'Minimal 8 karakter'}
-                    className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600"
-                  />
+                  <div className="relative mt-1">
+                    <input
+                      required={!editing}
+                      minLength={8}
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={(e) => change('password', e.target.value)}
+                      placeholder={editing ? 'Ketik password baru jika ingin mengubah...' : 'Minimal 8 karakter'}
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 pl-3.5 pr-10 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 transition-colors"
+                      title={showPassword ? 'Sembunyikan password' : 'Lihat ketikan password'}
+                    >
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
                 </label>
                 <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
                   {editing ? (
@@ -1109,15 +1126,25 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
                       Konfirmasi Password <span className="text-rose-500">*</span>
                     </span>
                   )}
-                  <input
-                    required={!editing || Boolean(form.password)}
-                    minLength={8}
-                    type="password"
-                    value={form.password_confirmation}
-                    onChange={(e) => change('password_confirmation', e.target.value)}
-                    placeholder={editing ? 'Ulangi password baru...' : 'Ulangi password awal'}
-                    className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600"
-                  />
+                  <div className="relative mt-1">
+                    <input
+                      required={!editing || Boolean(form.password)}
+                      minLength={8}
+                      type={showPasswordConfirm ? 'text' : 'password'}
+                      value={form.password_confirmation}
+                      onChange={(e) => change('password_confirmation', e.target.value)}
+                      placeholder={editing ? 'Ulangi password baru...' : 'Ulangi password awal'}
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 pl-3.5 pr-10 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 transition-colors"
+                      title={showPasswordConfirm ? 'Sembunyikan password' : 'Lihat ketikan password'}
+                    >
+                      {showPasswordConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
                 </label>
               </>
             )}
@@ -1164,7 +1191,19 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
 function ResetPasswordModal({ isOpen, onClose, onConfirm, user, isSubmitting }) {
   const [password, setPassword] = useState('')
   const [passwordConfirmation, setPasswordConfirmation] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (isOpen) {
+      setPassword('')
+      setPasswordConfirmation('')
+      setShowPassword(false)
+      setShowPasswordConfirm(false)
+      setError(null)
+    }
+  }, [isOpen])
 
   if (!isOpen || !user) return null
 
@@ -1217,27 +1256,47 @@ function ResetPasswordModal({ isOpen, onClose, onConfirm, user, isSubmitting }) 
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
                 Password Baru
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Minimal 8 karakter..."
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Minimal 8 karakter..."
+                  className="w-full rounded-xl border border-slate-200 pl-3.5 pr-10 py-2 text-xs font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 transition-colors"
+                  title={showPassword ? 'Sembunyikan password' : 'Lihat ketikan password'}
+                >
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
                 Konfirmasi Password
               </label>
-              <input
-                type="password"
-                value={passwordConfirmation}
-                onChange={(e) => setPasswordConfirmation(e.target.value)}
-                placeholder="Ulangi password baru..."
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPasswordConfirm ? 'text' : 'password'}
+                  value={passwordConfirmation}
+                  onChange={(e) => setPasswordConfirmation(e.target.value)}
+                  placeholder="Ulangi password baru..."
+                  className="w-full rounded-xl border border-slate-200 pl-3.5 pr-10 py-2 text-xs font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-amber-500"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 transition-colors"
+                  title={showPasswordConfirm ? 'Sembunyikan password' : 'Lihat ketikan password'}
+                >
+                  {showPasswordConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1597,6 +1656,95 @@ function HarmonizedDuplicateModal({ data, onClose }) {
   )
 }
 
+function HarmonizedSyncResultModal({ data, onClose }) {
+  if (!data) return null
+  const totalBaru = data.total_baru || 0
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md">
+      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232]">
+        <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 p-5 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20">
+              <Sparkles className="size-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Hasil Sinkronisasi Akun Otomatis
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Pembaruan akun login terintegrasi untuk entitas terdaftar
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition cursor-pointer"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          {/* KPI Summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-3 text-center dark:border-emerald-800/60 dark:bg-emerald-950/30">
+              <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Total Baru</p>
+              <p className="text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{totalBaru}</p>
+            </div>
+            <div className="rounded-2xl border border-teal-200/80 bg-teal-50/50 p-3 text-center dark:border-teal-800/60 dark:bg-teal-950/30">
+              <p className="text-[10px] font-bold text-teal-800 dark:text-teal-300 uppercase tracking-wider">Pegawai/Guru</p>
+              <p className="text-lg font-black text-teal-700 dark:text-teal-300 mt-0.5">{data.pegawai || 0}</p>
+            </div>
+            <div className="rounded-2xl border border-sky-200/80 bg-sky-50/50 p-3 text-center dark:border-sky-800/60 dark:bg-sky-950/30">
+              <p className="text-[10px] font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider">Siswa/Santri</p>
+              <p className="text-lg font-black text-sky-700 dark:text-sky-300 mt-0.5">{data.siswa || 0}</p>
+            </div>
+            <div className="rounded-2xl border border-violet-200/80 bg-violet-50/50 p-3 text-center dark:border-violet-800/60 dark:bg-violet-950/30">
+              <p className="text-[10px] font-bold text-violet-800 dark:text-violet-300 uppercase tracking-wider">Orang Tua</p>
+              <p className="text-lg font-black text-violet-700 dark:text-violet-300 mt-0.5">{data.orang_tua || 0}</p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/50 space-y-2 text-xs">
+            <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-bold">
+              <Info className="size-4 text-emerald-600 shrink-0" />
+              <span>Ketentuan Akun Hasil Sinkronisasi:</span>
+            </div>
+            <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1 pl-1">
+              <li>
+                Password Default Awal: <code className="font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-1.5 py-0.5 rounded">{data.default_password || 'Password123!'}</code>
+              </li>
+              <li>
+                Status Keamanan: <span className="font-semibold text-amber-700 dark:text-amber-400">Password Default (Wajib Ganti)</span>.
+              </li>
+              <li>
+                Akun yang sudah ada sebelumnya <strong>aman dan tidak diubah</strong>.
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end border-t border-slate-100 bg-slate-50/50 px-6 py-3.5 dark:border-slate-800 dark:bg-slate-900/30">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white px-5 py-2 text-xs font-bold shadow-md hover:from-emerald-700 hover:to-teal-800 transition cursor-pointer"
+          >
+            <span>Tutup &amp; Tinjau Daftar Akun</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function UserAccountManagement({
   roles = [],
   unitId = '',
@@ -1620,6 +1768,24 @@ export default function UserAccountManagement({
   const [overwriteExisting, setOverwriteExisting] = useState(false)
   const [duplicateModalData, setDuplicateModalData] = useState(null)
   const [isImporting, setIsImporting] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncResultModalData, setSyncResultModalData] = useState(null)
+
+  const syncEntitiesMutation = useMutation({
+    mutationFn: hakAksesService.syncEntities,
+    onSuccess: (res) => {
+      setIsSyncing(false)
+      queryClient.invalidateQueries({ queryKey: ['hak-akses-users'] })
+      queryClient.invalidateQueries({ queryKey: ['hak-akses-roles'] })
+      const resData = res?.data || res || {}
+      setSyncResultModalData(resData)
+      toastSuccess('Sinkronisasi Selesai', res?.message || 'Akun pengguna berhasil disinkronkan.')
+    },
+    onError: (err) => {
+      setIsSyncing(false)
+      toastError('Gagal Sinkronisasi', err?.response?.data?.message || err?.message || 'Gagal menyinkronkan akun.')
+    },
+  })
 
   useEffect(() => {
     setSelectedUnitFilter(unitId || '')
@@ -1778,6 +1944,27 @@ export default function UserAccountManagement({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
+            {/* Tombol Sinkronisasi Akun Otomatis */}
+            {canManageGlobalAccess && (
+              <button
+                type="button"
+                disabled={isSyncing}
+                onClick={() => {
+                  setIsSyncing(true)
+                  syncEntitiesMutation.mutate()
+                }}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-300 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-emerald-800 dark:from-emerald-950/60 dark:to-teal-950/60 dark:border-emerald-700 dark:text-emerald-300 px-3.5 py-2 text-xs font-black transition-all shadow-xs hover:shadow-md cursor-pointer hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                title="Tarik & perbarui akun login otomatis untuk seluruh pegawai, siswa, dan orang tua baru yang belum punya akun"
+              >
+                {isSyncing ? (
+                  <Loader2 className="size-3.5 animate-spin text-emerald-600" />
+                ) : (
+                  <Sparkles className="size-3.5 text-emerald-600" />
+                )}
+                <span>{isSyncing ? 'Menyinkronkan...' : '⚡ Sinkronkan Akun Otomatis'}</span>
+              </button>
+            )}
+
             {/* Import Data Akun Button */}
             {canManageGlobalAccess && (
               <button
@@ -1943,6 +2130,7 @@ export default function UserAccountManagement({
                 <th className="px-4 sm:px-6 py-3.5">Pengguna</th>
                 <th className="px-4 py-3.5 hidden md:table-cell">Tipe &amp; Entitas</th>
                 <th className="px-4 py-3.5 hidden sm:table-cell">Role</th>
+                <th className="px-4 py-3.5 hidden lg:table-cell">Keamanan Password</th>
                 <th className="px-4 py-3.5 hidden sm:table-cell">Status</th>
                 <th className="px-4 py-3.5 text-center w-16">Aksi</th>
               </tr>
@@ -1950,7 +2138,7 @@ export default function UserAccountManagement({
             <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center text-xs text-slate-400">
+                  <td colSpan={6} className="p-12 text-center text-xs text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <div className="size-6 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
                       <span>Memuat data akun pengguna...</span>
@@ -1959,7 +2147,7 @@ export default function UserAccountManagement({
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center text-xs text-slate-400">
+                  <td colSpan={6} className="p-12 text-center text-xs text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Info className="size-8 text-slate-300 dark:text-slate-600" />
                       <span className="font-bold text-slate-600 dark:text-slate-300">Akun tidak ditemukan</span>
@@ -1992,6 +2180,15 @@ export default function UserAccountManagement({
                               <span className="rounded-lg bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
                                 {roleDisplay}
                               </span>
+                              {user.must_change_password ? (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-100/80 dark:bg-amber-950/80 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300">
+                                  <AlertTriangle className="size-3 text-amber-600" /> Pass Default
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100/80 dark:bg-emerald-950/80 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
+                                  <ShieldCheck className="size-3 text-emerald-600" /> Pass Mandiri
+                                </span>
+                              )}
                               {user.is_active ? (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
                                   <UserCheck className="size-3" /> Aktif
@@ -2062,6 +2259,38 @@ export default function UserAccountManagement({
                         <span className="inline-flex items-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/60 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-300">
                           {roleDisplay}
                         </span>
+                      </td>
+
+                      <td className="px-4 py-3.5 hidden lg:table-cell">
+                        {user.must_change_password ? (
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100/80 dark:bg-amber-950/80 px-2.5 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/80">
+                              <AlertTriangle className="size-3.5 text-amber-600 shrink-0" />
+                              <span>Password Default</span>
+                            </span>
+                            <p className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold pl-1">
+                              Belum diganti pengguna
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/80 dark:bg-emerald-950/80 px-2.5 py-1 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80">
+                              <ShieldCheck className="size-3.5 text-emerald-600 shrink-0" />
+                              <span>Sudah Diganti</span>
+                            </span>
+                            {user.password_changed_at ? (
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 pl-1 font-mono">
+                                Diubah {new Date(user.password_changed_at).toLocaleDateString('id-ID', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })}
+                              </p>
+                            ) : (
+                              <p className="text-[10px] text-slate-400 pl-1">Mandiri / Diperbarui</p>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       <td className="px-4 py-3.5 hidden sm:table-cell">
@@ -2177,6 +2406,11 @@ export default function UserAccountManagement({
       <HarmonizedDuplicateModal
         data={duplicateModalData}
         onClose={() => setDuplicateModalData(null)}
+      />
+
+      <HarmonizedSyncResultModal
+        data={syncResultModalData}
+        onClose={() => setSyncResultModalData(null)}
       />
     </div>
   )

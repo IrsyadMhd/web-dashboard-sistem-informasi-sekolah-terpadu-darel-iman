@@ -135,4 +135,9 @@ export const hakAksesService = {
     link.remove()
     window.URL.revokeObjectURL(url)
   },
+
+  syncEntities: async (payload = {}) => {
+    const { data } = await api.post('/hak-akses/users/sync-entities', payload)
+    return data
+  },
 }
