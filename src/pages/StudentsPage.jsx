@@ -525,6 +525,8 @@ export default function StudentsPage() {
   const [importFile, setImportFile] = useState(null)
   const [importPreviewData, setImportPreviewData] = useState([])
   const [isImporting, setIsImporting] = useState(false)
+  const [overwriteExisting, setOverwriteExisting] = useState(false)
+  const [duplicateModalData, setDuplicateModalData] = useState(null)
 
   // Selected student data
   const [selectedStudent, setSelectedStudent] = useState(null)
@@ -956,20 +958,27 @@ export default function StudentsPage() {
     try {
       const formData = new FormData()
       formData.append('file', importFile)
+      formData.append('overwrite', overwriteExisting ? '1' : '0')
 
       const response = await api.post('/students/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
       const resData = response.data
-      const { total, berhasil, duplikat, gagal, errors = [] } = resData.data || {}
+      const innerData = resData.data || {}
+      const totalBerhasil = (innerData.berhasil || 0) + (innerData.diperbarui || 0)
+      const { duplikat = 0, gagal = 0, errors = [] } = innerData
 
-      if (gagal > 0 && berhasil === 0) {
+      if (gagal > 0 && totalBerhasil === 0) {
         pushToast('Impor Gagal', `Seluruh baris (${gagal}) gagal diimpor.${errors.length ? ' Catatan: ' + errors[0] : ''}`, 'error')
-      } else if (duplikat > 0 || gagal > 0) {
-        pushToast('Impor Selesai dengan Catatan', `Berhasil: ${berhasil || 0}, Duplikat: ${duplikat || 0}, Gagal: ${gagal || 0}`, 'warning')
+      } else if (duplikat > 0 || gagal > 0 || (innerData.diperbarui || 0) > 0) {
+        pushToast('Impor Selesai', `Berhasil: ${innerData.berhasil || 0} baru, ${innerData.diperbarui || 0} ditimpa, ${duplikat} duplikat dilewati, ${gagal} gagal.`, 'success')
       } else {
-        pushToast('Impor Berhasil', `Sebanyak ${berhasil || 0} data siswa berhasil diimpor ke sistem.`, 'success')
+        pushToast('Impor Berhasil', `Sebanyak ${totalBerhasil} data siswa berhasil diimpor ke sistem.`, 'success')
+      }
+
+      if ((innerData.duplicates && innerData.duplicates.length > 0) || (innerData.errors && innerData.errors.length > 0) || innerData.diperbarui > 0 || innerData.duplikat > 0) {
+        setDuplicateModalData(innerData)
       }
 
       if (typeof refetch === 'function') {
@@ -2633,6 +2642,40 @@ export default function StudentsPage() {
                       </div>
                     )}
 
+                    {/* Opsi Timpa Data Jika Ada yang Sama */}
+                    <div className={cn(
+                      "rounded-2xl border p-4 transition-all duration-200",
+                      overwriteExisting
+                        ? "border-amber-300/80 bg-amber-50/70 dark:border-amber-700/60 dark:bg-amber-950/25"
+                        : "border-slate-200/80 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30"
+                    )}>
+                      <label className="flex items-start gap-3 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={overwriteExisting}
+                          onChange={(e) => setOverwriteExisting(e.target.checked)}
+                          className="mt-0.5 h-4.5 w-4.5 rounded-lg border-slate-300 text-amber-600 focus:ring-amber-500 dark:border-slate-700 dark:bg-slate-800 cursor-pointer"
+                        />
+                        <div className="flex-1 text-xs">
+                          <span className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                            <span>Timpa data jika NIS atau NISN sudah terdaftar</span>
+                            {overwriteExisting ? (
+                              <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-[10px] font-extrabold text-amber-900 dark:bg-amber-900/80 dark:text-amber-200">
+                                Mode Timpa Aktif
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                Lewati Duplikat
+                              </span>
+                            )}
+                          </span>
+                          <p className="mt-1 text-slate-500 dark:text-slate-400 leading-relaxed text-[11px]">
+                            Jika dicentang, profil siswa dengan NIS atau NISN yang cocok akan diperbarui (ditimpa) dengan isi data terbaru dari berkas. Jika tidak dicentang, baris duplikat akan dilewati dengan aman.
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+
                     {/* Guidance Banner */}
                     <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-3.5 dark:border-emerald-800/50 dark:bg-emerald-950/30 flex items-start gap-2.5">
                       <ShieldCheck className="size-4.5 text-[#0E5C44] dark:text-emerald-400 shrink-0 mt-0.5" />
@@ -2676,6 +2719,176 @@ export default function StudentsPage() {
                           <span>Proses Import Data</span>
                         </>
                       )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* ── MODAL HASIL IMPOR & PEMBERITAHUAN DATA DUPLIKAT SISWA ── */}
+        <AnimatePresence>
+          {duplicateModalData && (
+            <div
+              className="overlay modal fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-md"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="siswa-duplicate-report-title"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="modal-dialog font-sans my-auto w-full max-w-2xl"
+              >
+                <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                  {/* Top Accent Gradient Bar */}
+                  <div className={cn(
+                    "h-1.5 w-full shrink-0",
+                    duplicateModalData.diperbarui > 0
+                      ? "bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600"
+                      : duplicateModalData.duplikat > 0
+                        ? "bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-500"
+                        : "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600"
+                  )} />
+
+                  {/* Header */}
+                  <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "rounded-2xl p-2.5 text-white shadow-md shrink-0 border",
+                        duplicateModalData.diperbarui > 0
+                          ? "bg-gradient-to-br from-amber-500 to-orange-600 border-amber-300/30 shadow-amber-500/30"
+                          : "bg-gradient-to-br from-emerald-500 to-teal-700 border-emerald-300/30 shadow-emerald-500/30"
+                      )}>
+                        {duplicateModalData.diperbarui > 0 ? (
+                          <RefreshCcw className="h-5 w-5 text-white" strokeWidth={2.25} />
+                        ) : (
+                          <CheckCircle2 className="h-5 w-5 text-white" strokeWidth={2.25} />
+                        )}
+                      </div>
+                      <div>
+                        <h3 id="siswa-duplicate-report-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Hasil Impor & Pemberitahuan Data Siswa</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            Total {duplicateModalData.total || 0} Data
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Ringkasan sinkronisasi dan status pemrosesan data siswa/santri
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDuplicateModalData(null)}
+                      aria-label="Tutup ringkasan impor"
+                      className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 transition cursor-pointer"
+                    >
+                      <X className="size-4" strokeWidth={2.25} />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div className="modal-body min-h-0 flex-1 space-y-4 overflow-y-auto p-6 text-sm text-slate-700 dark:text-slate-200">
+                    {/* KPI Summary Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="p-3 rounded-2xl border border-emerald-200/80 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/30 text-center">
+                        <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">Baru Ditambah</p>
+                        <p className="text-xl font-black text-emerald-700 dark:text-emerald-400 mt-0.5">{duplicateModalData.berhasil || 0}</p>
+                      </div>
+                      <div className="p-3 rounded-2xl border border-amber-200/80 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/30 text-center">
+                        <p className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase">Ditimpa / Diupdate</p>
+                        <p className="text-xl font-black text-amber-700 dark:text-amber-400 mt-0.5">{duplicateModalData.diperbarui || 0}</p>
+                      </div>
+                      <div className="p-3 rounded-2xl border border-sky-200/80 bg-sky-50/50 dark:border-sky-900/40 dark:bg-sky-950/30 text-center">
+                        <p className="text-[10px] font-bold text-sky-800 dark:text-sky-300 uppercase">Duplikat Dilewati</p>
+                        <p className="text-xl font-black text-sky-700 dark:text-sky-400 mt-0.5">{duplicateModalData.duplikat || 0}</p>
+                      </div>
+                      <div className="p-3 rounded-2xl border border-rose-200/80 bg-rose-50/50 dark:border-rose-900/40 dark:bg-rose-950/30 text-center">
+                        <p className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase">Gagal Diproses</p>
+                        <p className="text-xl font-black text-rose-700 dark:text-rose-400 mt-0.5">{duplicateModalData.gagal || 0}</p>
+                      </div>
+                    </div>
+
+                    {/* Duplicate Detail Table if exists */}
+                    {duplicateModalData.duplicates && duplicateModalData.duplicates.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                            <AlertTriangle className="size-3.5 text-amber-600 dark:text-amber-400" />
+                            <span>Daftar Data yang Sama (NIS / NISN Terdaftar)</span>
+                            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                              {duplicateModalData.duplicates.length} baris
+                            </span>
+                          </p>
+                        </div>
+                        <div className="max-h-56 overflow-auto rounded-2xl border border-slate-200/80 bg-white shadow-2xs dark:border-slate-800 dark:bg-[#182232]">
+                          <TableRoot className="w-full text-left text-[11px]">
+                            <TableHeader className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-800 font-bold text-slate-700 dark:text-slate-300">
+                              <TableRow>
+                                <TableHead className="px-3 py-2 w-14">Baris</TableHead>
+                                <TableHead className="px-3 py-2">NIS</TableHead>
+                                <TableHead className="px-3 py-2">Nama Siswa</TableHead>
+                                <TableHead className="px-3 py-2">Status Aksi</TableHead>
+                                <TableHead className="px-3 py-2">Keterangan</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {duplicateModalData.duplicates.map((item, idx) => (
+                                <TableRow key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40">
+                                  <TableCell className="px-3 py-2 font-mono text-slate-500">{item.baris}</TableCell>
+                                  <TableCell className="px-3 py-2 font-mono font-bold text-slate-800 dark:text-slate-200">{item.kode || '-'}</TableCell>
+                                  <TableCell className="px-3 py-2 font-semibold text-slate-900 dark:text-white">{item.nama}</TableCell>
+                                  <TableCell className="px-3 py-2">
+                                    <span className={cn(
+                                      "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                      item.status === 'Ditimpa'
+                                        ? "bg-amber-100 text-amber-800 border border-amber-300/80 dark:bg-amber-950 dark:text-amber-300"
+                                        : "bg-sky-100 text-sky-800 border border-sky-300/80 dark:bg-sky-950 dark:text-sky-300"
+                                    )}>
+                                      {item.status}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell className="px-3 py-2 text-slate-600 dark:text-slate-400 text-[10px]">{item.keterangan}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </TableRoot>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Error List if exists */}
+                    {duplicateModalData.errors && duplicateModalData.errors.length > 0 && (
+                      <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3.5 dark:border-rose-900/50 dark:bg-rose-950/30 text-xs">
+                        <p className="font-bold text-rose-800 dark:text-rose-300 flex items-center gap-1.5 mb-1.5">
+                          <XCircle className="size-3.5" />
+                          <span>Catatan Kesalahan Baris Data:</span>
+                        </p>
+                        <ul className="list-disc list-inside space-y-1 text-rose-700 dark:text-rose-400 text-[11px]">
+                          {duplicateModalData.errors.slice(0, 5).map((err, i) => (
+                            <li key={i}>{typeof err === 'string' ? err : JSON.stringify(err)}</li>
+                          ))}
+                          {duplicateModalData.errors.length > 5 && (
+                            <li className="font-semibold italic">...dan {duplicateModalData.errors.length - 5} kesalahan lainnya.</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="modal-footer flex items-center justify-end border-t border-slate-100 bg-slate-50/50 px-6 py-3.5 dark:border-slate-800 dark:bg-slate-900/30">
+                    <button
+                      type="button"
+                      onClick={() => setDuplicateModalData(null)}
+                      className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 text-xs font-bold transition shadow-sm cursor-pointer"
+                    >
+                      <Check className="size-3.5" strokeWidth={2.2} />
+                      <span>Tutup & Mengerti</span>
                     </button>
                   </div>
                 </div>

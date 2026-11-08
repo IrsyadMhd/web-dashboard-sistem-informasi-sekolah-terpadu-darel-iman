@@ -59,6 +59,7 @@ import {
   Scan,
   ScanFace,
   Search,
+  ShieldAlert,
   Sparkles,
   Trash2,
   TrendingUp,
@@ -144,6 +145,8 @@ function HeroUiWorkspaceSelect({
   searchable = false,
   disabled = false,
   badge = null,
+  align = 'left',
+  placement = 'bottom',
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -195,7 +198,7 @@ function HeroUiWorkspaceSelect({
   const hasValue = value !== '' && value !== 'all' && value !== 'semua' && value !== undefined && value !== null
 
   return (
-    <div className={`relative ${className}`} ref={containerRef} id={id ? `${id}-container` : undefined}>
+    <div className={`relative ${isOpen ? 'z-50' : 'z-10'} ${className}`} ref={containerRef} id={id ? `${id}-container` : undefined}>
       <button
         type="button"
         id={id}
@@ -206,17 +209,17 @@ function HeroUiWorkspaceSelect({
             setSearch('')
           }
         }}
-        className={`h-9.5 flex items-center justify-between gap-2.5 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`h-9.5 flex items-center justify-between gap-2.5 rounded-xl border px-3 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 shadow-2xs ${
           isOpen
-            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/25 dark:border-emerald-400 dark:bg-slate-900 dark:ring-emerald-400/25 text-slate-900 dark:text-white shadow-xs'
             : hasValue
-            ? 'border-emerald-300 bg-emerald-50/90 text-emerald-950 dark:border-emerald-700/80 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold shadow-2xs'
-            : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-400 hover:bg-slate-50/80 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-500/60 shadow-2xs'
+            ? 'border-emerald-500/80 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50 text-emerald-950 dark:border-emerald-600/80 dark:bg-gradient-to-r dark:from-emerald-950/60 dark:via-teal-950/40 dark:to-emerald-950/60 dark:text-emerald-200 font-extrabold shadow-emerald-500/10'
+            : 'border-slate-200 dark:border-slate-800 bg-white text-slate-700 hover:border-emerald-400 dark:bg-[#111827] dark:text-slate-200 dark:hover:border-emerald-600'
         } ${buttonClassName}`}
       >
         <div className="flex items-center gap-2 min-w-0">
           {IconComponent && (
-            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <IconComponent className={`size-3.5 shrink-0 ${hasValue ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`} />
           )}
           {label && (
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
@@ -227,7 +230,7 @@ function HeroUiWorkspaceSelect({
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           {badge && (
-            <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+            <span className="shrink-0 rounded-md bg-emerald-100/90 text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-700/60 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider">
               {badge}
             </span>
           )}
@@ -242,32 +245,34 @@ function HeroUiWorkspaceSelect({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            initial={{ opacity: 0, scale: 0.96, y: placement === 'top' ? 4 : -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            exit={{ opacity: 0, scale: 0.96, y: placement === 'top' ? 4 : -4 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute left-0 top-full mt-1.5 z-[100] ${popoverWidth} min-w-[220px] max-w-sm overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-1.5 shadow-2xl shadow-slate-900/15 dark:shadow-black/50`}
+            className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} ${
+              placement === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+            } z-[100] ${popoverWidth} min-w-[220px] max-w-sm overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/50 dark:shadow-black/60`}
           >
             {shouldSearch && (
-              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-800 mb-1">
                 <div className="relative">
                   <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Cari..."
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/80 pl-8 pr-2.5 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-2xs"
                     autoFocus
                   />
                 </div>
               </div>
             )}
 
-            <div className="max-h-60 overflow-y-auto space-y-0.5">
+            <div className="max-h-60 overflow-y-auto space-y-0.5 pr-0.5">
               {filteredOptions.length === 0 ? (
-                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
-                  Tidak ada data
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+                  Tidak ada data yang cocok
                 </div>
               ) : (
                 filteredOptions.map((opt) => {
@@ -281,22 +286,31 @@ function HeroUiWorkspaceSelect({
                         setIsOpen(false)
                         setSearch('')
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-bold transition-all text-left cursor-pointer ${
                         isSelected
-                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
-                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                          ? 'bg-gradient-to-r from-emerald-50 to-teal-50/70 text-emerald-950 dark:from-emerald-950/80 dark:to-teal-950/50 dark:text-emerald-200 font-black'
+                          : 'text-slate-700 hover:bg-emerald-50/60 hover:text-emerald-900 dark:text-slate-200 dark:hover:bg-slate-800/80 dark:hover:text-emerald-300'
                       }`}
                     >
-                      <div className="truncate pr-2">
-                        <div className="truncate font-semibold">{opt.label}</div>
+                      <div className="truncate pr-2 flex-1">
+                        <div className="truncate flex items-center gap-1.5">
+                          <span className="truncate">{opt.label}</span>
+                          {opt.badge && (
+                            <span className="shrink-0 text-[9.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/40">
+                              {opt.badge}
+                            </span>
+                          )}
+                        </div>
                         {opt.subtext && (
-                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                          <div className="text-[10.5px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5">
                             {opt.subtext}
                           </div>
                         )}
                       </div>
                       {isSelected && (
-                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <div className="size-5 rounded-md bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                          <Check className="size-3.5" strokeWidth={3} />
+                        </div>
                       )}
                     </button>
                   )
@@ -819,8 +833,11 @@ export default function TeacherTeachingWorkspacePage() {
   const [selectedTahfizhUnit, setSelectedTahfizhUnit] = useState('semua')
   const [tahfizhSearch, setTahfizhSearch] = useState('')
   const debouncedTahfizhSearch = useDebounce(tahfizhSearch, 350)
-  const [tahfizhPage, setTahfizhPage] = useState(1)
+  const [tahfizhFilterClass, setTahfizhFilterClass] = useState('all')
+  const [tahfizhSortOrder, setTahfizhSortOrder] = useState('highest')
   const TAHFIZH_PER_PAGE = 10
+  const [tahfizhPerPage, setTahfizhPerPage] = useState(10)
+  const [tahfizhPage, setTahfizhPage] = useState(1)
 
   // Primary data states
   const [classes, setClasses] = useState([])
@@ -1122,6 +1139,22 @@ export default function TeacherTeachingWorkspacePage() {
   const [editingSoalIdx, setEditingSoalIdx] = useState(null)
   const emptyCatatanForm = { student_id: '', date: new Date().toLocaleDateString('en-CA'), category: 'Akademik', title: '', content: '', priority: 'medium', follow_up: '', visible_to_parent: true, visible_to_student: true }
   const [catatanForm, setCatatanForm] = useState(emptyCatatanForm)
+  const emptyPelanggaranForm = {
+    student_id: '',
+    category_id: '',
+    points: 0,
+    custom_points: 0,
+    transaction_date: new Date().toLocaleDateString('en-CA'),
+    description: '',
+    status: 'tercatat',
+    follow_up: '',
+    refer_bk: false,
+  }
+  const [pelanggaranForm, setPelanggaranForm] = useState(emptyPelanggaranForm)
+  const [disciplineCategories, setDisciplineCategories] = useState([])
+  const [loadingDisciplineCategories, setLoadingDisciplineCategories] = useState(false)
+  const [savingPelanggaran, setSavingPelanggaran] = useState(false)
+  const [pelanggaranCategorySearch, setPelanggaranCategorySearch] = useState('')
   const [tahfizhForm, setTahfizhForm] = useState({ student_id: '', class_id: '', type: 'Ziyadah', juz: 30, surah_number: '', ayat_start: 1, ayat_end: 1, kelancaran: 'Sangat Lancar', tajwid: 'Baik', makhraj: 'Baik', notes_teacher: '' })
 
   // Weekly Schedule & Filters State
@@ -1283,7 +1316,7 @@ export default function TeacherTeachingWorkspacePage() {
 
   useEffect(() => {
     setTahfizhPage(1)
-  }, [selectedClass, selectedTahfizhUnit, debouncedTahfizhSearch, activeTab])
+  }, [selectedClass, selectedTahfizhUnit, debouncedTahfizhSearch, tahfizhFilterClass, tahfizhSortOrder, tahfizhPerPage, activeTab])
 
   useEffect(() => {
     if (activeTab !== 'catatan') return undefined
@@ -1532,6 +1565,7 @@ export default function TeacherTeachingWorkspacePage() {
               nilai_uts: item.nilai_uts ?? item.score_midterm ?? '',
               nilai_uas: item.nilai_uas ?? item.score_final ?? '',
               nilai_akhir: item.nilai_akhir ?? item.final_score ?? '',
+              catatan: item.notes ?? item.catatan ?? item.metadata?.notes ?? '',
             }
           }
         })
@@ -1783,6 +1817,52 @@ export default function TeacherTeachingWorkspacePage() {
     } : { ...emptyCatatanForm, student_id: student?.id || '' })
     setModalType('catatan')
     setShowModal(true)
+  }
+
+  const loadDisciplineCategories = useCallback(async () => {
+    try {
+      setLoadingDisciplineCategories(true)
+      const res = await api.get('/teacher/discipline-categories?type=violation')
+      const items = res.data?.data || []
+      setDisciplineCategories(items)
+      return items
+    } catch (err) {
+      console.warn('Gagal memuat master pasal kedisiplinan TU:', err)
+      return []
+    } finally {
+      setLoadingDisciplineCategories(false)
+    }
+  }, [])
+
+  const openPelanggaranModal = async (student = null) => {
+    let cats = disciplineCategories
+    if (cats.length === 0) {
+      cats = await loadDisciplineCategories()
+    }
+    const defaultCat = cats.length > 0 ? cats[0] : null
+    const targetStudentId = student?.id || (students.length > 0 ? students[0].id : '')
+    setPelanggaranForm({
+      ...emptyPelanggaranForm,
+      student_id: targetStudentId,
+      category_id: defaultCat?.id || '',
+      points: Math.abs(defaultCat?.point_weight || 5),
+      custom_points: Math.abs(defaultCat?.point_weight || 5),
+      transaction_date: new Date().toLocaleDateString('en-CA'),
+    })
+    setPelanggaranCategorySearch('')
+    setModalType('pelanggaran')
+    setShowModal(true)
+  }
+
+  const handlePelanggaranCategoryChange = (catId) => {
+    const found = disciplineCategories.find((c) => String(c.id) === String(catId))
+    const pts = Math.abs(found?.point_weight || found?.default_points || 5)
+    setPelanggaranForm((prev) => ({
+      ...prev,
+      category_id: catId,
+      points: pts,
+      custom_points: pts,
+    }))
   }
 
   const openCatatanDetail = (note) => {
@@ -3556,6 +3636,8 @@ export default function TeacherTeachingWorkspacePage() {
             nilai_uts: g.nilai_uts !== '' && g.nilai_uts !== undefined && g.nilai_uts !== null ? Number(g.nilai_uts) : null,
             nilai_uas: g.nilai_uas !== '' && g.nilai_uas !== undefined && g.nilai_uas !== null ? Number(g.nilai_uas) : null,
             nilai_akhir: g.nilai_akhir !== '' && g.nilai_akhir !== undefined && g.nilai_akhir !== null ? Number(g.nilai_akhir) : null,
+            catatan: g.catatan || g.notes || '',
+            notes: g.catatan || g.notes || '',
           }
         }),
       }
@@ -3945,6 +4027,53 @@ export default function TeacherTeachingWorkspacePage() {
       addToast('error', 'Gagal Simpan', err?.response?.data?.message || 'Gagal menyimpan catatan siswa.')
     } finally {
       setSavingStudentNote(false)
+    }
+  }
+
+  const handleSavePelanggaran = async (e) => {
+    e?.preventDefault()
+    if (!pelanggaranForm.student_id) {
+      addToast('warning', 'Pilih Santri', 'Silakan pilih siswa/santri terlebih dahulu.')
+      return
+    }
+    if (!pelanggaranForm.category_id) {
+      addToast('warning', 'Pilih Pasal Tata Tertib', 'Silakan tentukan pasal penilaian perilaku yang diatur TU.')
+      return
+    }
+    if (!pelanggaranForm.description.trim()) {
+      addToast('warning', 'Isi Kronologi Perilaku', 'Silakan masukkan deskripsi atau kronologi penilaian perilaku santri.')
+      return
+    }
+
+    setSavingPelanggaran(true)
+    try {
+      const activeClassId = getCurrentClassId()
+      const payload = {
+        student_id: pelanggaranForm.student_id,
+        category_id: pelanggaranForm.category_id,
+        points: -Math.abs(pelanggaranForm.points || 5),
+        custom_points: Math.abs(pelanggaranForm.points || 5),
+        description: pelanggaranForm.description.trim(),
+        transaction_date: pelanggaranForm.transaction_date || new Date().toISOString().split('T')[0],
+        status: pelanggaranForm.refer_bk ? 'dirujuk_bk' : (pelanggaranForm.status || 'tercatat'),
+        follow_up: pelanggaranForm.refer_bk ? 'Dirujuk ke Guru BK / Wali Kelas' : (pelanggaranForm.follow_up || null),
+        class_id: activeClassId || null,
+        schedule_id: activeSchedule?.id || null,
+      }
+
+      await api.post('/teacher/discipline-violations', payload)
+      setShowModal(false)
+      setPelanggaranForm(emptyPelanggaranForm)
+      await fetchStudentNotes()
+      addToast(
+        'success',
+        'Penilaian Perilaku Tersimpan',
+        `Catatan perilaku santri berhasil dicatat (-${Math.abs(pelanggaranForm.points || 5)} poin) sesuai ketentuan TU dan disinkronkan ke Buku Poin & Orang Tua.`
+      )
+    } catch (err) {
+      addToast('error', 'Gagal Simpan', err?.response?.data?.message || 'Gagal menyimpan penilaian perilaku santri.')
+    } finally {
+      setSavingPelanggaran(false)
     }
   }
 
@@ -5429,11 +5558,12 @@ export default function TeacherTeachingWorkspacePage() {
       return { student, latest, totalAyat, completedSurahs, totalSetoran: studentLogs.length, unitName, className }
     })
 
-    // Filter by selectedClass if specific rombel chosen (strict: only students matching the selected rombel)
-    if (selectedClass && selectedClass !== 'all') {
+    // Filter by rombel (either via explicit tahfizhFilterClass or fallback to workspace selectedClass)
+    const activeClassFilter = tahfizhFilterClass !== 'all' ? tahfizhFilterClass : (selectedClass !== 'all' ? selectedClass : null)
+    if (activeClassFilter) {
       list = list.filter((item) => {
         const sClassId = item.student?.kelas_id || item.student?.class_id || item.student?.kelas?.id
-        return !!sClassId && String(sClassId) === String(selectedClass)
+        return !!sClassId && String(sClassId) === String(activeClassFilter)
       })
     }
 
@@ -5475,15 +5605,31 @@ export default function TeacherTeachingWorkspacePage() {
       )
     }
 
-    // Sort descending by highest Tahfizh hafalan with deterministic tie-breaking
+    // Dynamic Sorting based on tahfizhSortOrder
     return list.sort((a, b) => {
+      if (tahfizhSortOrder === 'surah') {
+        if (b.completedSurahs !== a.completedSurahs) return b.completedSurahs - a.completedSurahs
+        return b.totalAyat - a.totalAyat
+      }
+      if (tahfizhSortOrder === 'name_asc') {
+        return (a.student.nama_lengkap || '').localeCompare(b.student.nama_lengkap || '')
+      }
+      if (tahfizhSortOrder === 'name_desc') {
+        return (b.student.nama_lengkap || '').localeCompare(a.student.nama_lengkap || '')
+      }
+      if (tahfizhSortOrder === 'recent') {
+        const dateA = a.latest?.record_date || ''
+        const dateB = b.latest?.record_date || ''
+        return dateB.localeCompare(dateA)
+      }
+      // Default: highest (pencapaian ayat terbanyak)
       if (b.totalAyat !== a.totalAyat) return b.totalAyat - a.totalAyat
       if (b.completedSurahs !== a.completedSurahs) return b.completedSurahs - a.completedSurahs
       const nameCompare = (a.student.nama_lengkap || '').localeCompare(b.student.nama_lengkap || '')
       if (nameCompare !== 0) return nameCompare
       return (a.student.id || '').localeCompare(b.student.id || '')
     })
-  }, [students, tahfizhLogs, selectedTahfizhUnit, debouncedTahfizhSearch, isPengurusYayasan, isKepalaSekolahOrDivisiPendidikan, teacherProfile, user, selectedClassName, quranSurahs])
+  }, [students, tahfizhLogs, selectedTahfizhUnit, debouncedTahfizhSearch, tahfizhFilterClass, tahfizhSortOrder, selectedClass, isPengurusYayasan, isKepalaSekolahOrDivisiPendidikan, teacherProfile, user, selectedClassName, quranSurahs])
 
   const top5TahfizhStudents = React.useMemo(() => {
     return sortedTahfizhLeaderboard
@@ -5511,12 +5657,18 @@ export default function TeacherTeachingWorkspacePage() {
     })
   }, [sortedTahfizhLeaderboard])
 
-  const totalTahfizhPages = Math.max(1, Math.ceil(sortedTahfizhLeaderboard.length / TAHFIZH_PER_PAGE))
+  const totalTahfizhPages = React.useMemo(() => {
+    if (tahfizhPerPage === 'all') return 1
+    const perPage = Number(tahfizhPerPage) || 10
+    return Math.max(1, Math.ceil(sortedTahfizhLeaderboard.length / perPage))
+  }, [sortedTahfizhLeaderboard.length, tahfizhPerPage])
 
   const paginatedTahfizhLeaderboard = React.useMemo(() => {
-    const start = (tahfizhPage - 1) * TAHFIZH_PER_PAGE
-    return sortedTahfizhLeaderboard.slice(start, start + TAHFIZH_PER_PAGE)
-  }, [sortedTahfizhLeaderboard, tahfizhPage])
+    if (tahfizhPerPage === 'all') return sortedTahfizhLeaderboard
+    const perPage = Number(tahfizhPerPage) || 10
+    const start = (tahfizhPage - 1) * perPage
+    return sortedTahfizhLeaderboard.slice(start, start + perPage)
+  }, [sortedTahfizhLeaderboard, tahfizhPage, tahfizhPerPage])
 
   const tahfizhByStudent = paginatedTahfizhLeaderboard
 
@@ -7412,9 +7564,9 @@ export default function TeacherTeachingWorkspacePage() {
                 />
               </div>
 
-              <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+              <div className="relative z-20 rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
                 {/* Toolbar Header */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-[20px] border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm">
                       <BookOpen className="h-5 w-5" />
@@ -7441,7 +7593,7 @@ export default function TeacherTeachingWorkspacePage() {
                 </div>
 
                 {/* Filter Bar */}
-                <div className="border-b border-emerald-500/15 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 p-4 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 sm:p-5">
+                <div className="rounded-b-[20px] bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 p-4 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 sm:p-5">
 
                 {/* Baris 1: Search + Filter Utama */}
                 <div className="mt-1 flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -8189,7 +8341,7 @@ export default function TeacherTeachingWorkspacePage() {
                       printCleanTable({
                         title: 'Buku Nilai Harian & Rapor Siswa',
                         subtitle: `Rombel: ${selectedClassName} | Semester Ganjil 2026/2027`,
-                        headers: ['No', 'NIS', 'Nama Siswa', 'Nilai Tugas (20%)', 'Nilai Kuis (20%)', 'Nilai UTS (30%)', 'Nilai UAS (30%)', 'Nilai Akhir'],
+                        headers: ['No', 'NIS', 'Nama Siswa', 'Nilai Tugas (20%)', 'Nilai Kuis (20%)', 'Nilai UTS (30%)', 'Nilai UAS (30%)', 'Nilai Akhir', 'Catatan Guru'],
                         rows: students.map((st, idx) => {
                           const row = gradesData[st.id] || {}
                           const tugas = row.nilai_tugas ?? '-'
@@ -8199,7 +8351,8 @@ export default function TeacherTeachingWorkspacePage() {
                           const akhir = (row.nilai_tugas != null || row.nilai_kuis != null || row.nilai_uts != null || row.nilai_uas != null)
                             ? Math.round(Number(row.nilai_tugas || 0) * 0.2 + Number(row.nilai_kuis || 0) * 0.2 + Number(row.nilai_uts || 0) * 0.3 + Number(row.nilai_uas || 0) * 0.3)
                             : '-'
-                          return [idx + 1, st.nis || st.student_id || '-', st.name || st.full_name || '-', tugas, kuis, uts, uas, akhir]
+                          const catatan = row.catatan || row.notes || '-'
+                          return [idx + 1, st.nis || st.student_id || '-', st.name || st.full_name || '-', tugas, kuis, uts, uas, akhir, catatan]
                         }),
                         user,
                         unit: teacherProfile?.unit || user?.employee?.unit || user?.unit,
@@ -8374,6 +8527,15 @@ export default function TeacherTeachingWorkspacePage() {
                           )}
                         </div>
                       </th>
+                      <th
+                        className="px-3 py-3 font-bold text-left min-w-[220px]"
+                        title="Catatan evaluasi guru / feedback rapor siswa"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Catatan Penilaian Guru</span>
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -8381,7 +8543,7 @@ export default function TeacherTeachingWorkspacePage() {
                       .slice((penilaianPage - 1) * penilaianPerPage, penilaianPage * penilaianPerPage)
                       .map((st, idx) => {
                       const absoluteIndex = (penilaianPage - 1) * penilaianPerPage + idx + 1
-                      const grade = gradesData[st.id] || { nilai_tugas: '', nilai_kuis: '', nilai_uts: '', nilai_uas: '', nilai_akhir: '' }
+                      const grade = gradesData[st.id] || { nilai_tugas: '', nilai_kuis: '', nilai_uts: '', nilai_uas: '', nilai_akhir: '', catatan: '' }
                       return (
                         <tr key={st.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
                           <td className="p-3 text-slate-400 font-mono text-[11px]">{absoluteIndex}</td>
@@ -8443,6 +8605,21 @@ export default function TeacherTeachingWorkspacePage() {
                           </td>
                           <td className="p-3 text-center font-extrabold text-emerald-700 dark:text-emerald-400 text-sm">
                             {grade.nilai_akhir !== '' && grade.nilai_akhir !== undefined && grade.nilai_akhir !== null ? grade.nilai_akhir : '-'}
+                          </td>
+                          <td className="p-3">
+                            <input
+                              type="text"
+                              value={grade.catatan ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setGradesData({
+                                  ...gradesData,
+                                  [st.id]: { ...grade, catatan: val, notes: val },
+                                })
+                              }}
+                              className="w-full min-w-[200px] px-2.5 py-1 text-xs border rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-400"
+                              placeholder="Catatan capaian / evaluasi siswa..."
+                            />
                           </td>
                         </tr>
                       )
@@ -8812,7 +8989,8 @@ export default function TeacherTeachingWorkspacePage() {
                 </div>
 
                 {/* Filter & Search Bar */}
-                <div className="bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 border-b border-emerald-200/80 dark:border-emerald-800/60 p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 border-b border-emerald-200/80 dark:border-emerald-800/60 p-3 sm:p-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+                  {/* Search Input */}
                   <div className="relative flex-1 w-full max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                     <input
@@ -8820,45 +8998,152 @@ export default function TeacherTeachingWorkspacePage() {
                       value={tahfizhSearch}
                       onChange={(e) => setTahfizhSearch(e.target.value)}
                       placeholder="Cari nama santri, NIS, unit, atau kelas..."
-                      className="w-full pl-9 pr-8 py-2 rounded-xl text-xs bg-white dark:bg-[#151D2A] border border-emerald-300/80 dark:border-emerald-700/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-slate-900 dark:text-white placeholder:text-slate-400"
+                      className="w-full pl-9 pr-8 py-2 rounded-xl text-xs bg-white dark:bg-[#151D2A] border border-emerald-300/80 dark:border-emerald-700/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-slate-900 dark:text-white placeholder:text-slate-400 shadow-2xs"
                     />
                     {tahfizhSearch && (
                       <button
                         type="button"
                         onClick={() => setTahfizhSearch('')}
                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        title="Hapus pencarian"
                       >
                         <X className="size-3.5" />
                       </button>
                     )}
                   </div>
 
-                  {(isPengurusYayasan || isKepalaSekolahOrDivisiPendidikan) && (
-                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                      <label htmlFor="filter-unit-tahfizh" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                        Filter Unit:
+                  {/* Filter Dropdowns List (Unit, Rombel, Urutkan, Limit, Reset) */}
+                  <div className="flex flex-wrap items-center gap-2.5 self-stretch lg:self-center">
+                    {(isPengurusYayasan || isKepalaSekolahOrDivisiPendidikan) && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <label htmlFor="filter-unit-tahfizh" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                          Unit:
+                        </label>
+                        <HeroUiFilterSelect
+                          id="filter-unit-tahfizh"
+                          value={selectedTahfizhUnit}
+                          onChange={(val) => setSelectedTahfizhUnit(val)}
+                          options={[
+                            { value: 'semua', label: '✨ Semua Unit Pendidikan' },
+                            ...educationUnits.map((u) => ({
+                              value: String(u.nama || u.name || u.id),
+                              label: u.nama || u.name,
+                            })),
+                          ]}
+                          placeholder="Semua Unit"
+                          ariaLabel="Filter Unit Pendidikan Tahfizh"
+                          popoverWidth="min-w-[210px]"
+                          searchable
+                          align="right"
+                        />
+                      </div>
+                    )}
+
+                    {/* Filter Rombel */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <label htmlFor="filter-rombel-tahfizh" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                        Rombel:
                       </label>
-                      <select
-                        id="filter-unit-tahfizh"
-                        value={selectedTahfizhUnit}
-                        onChange={(e) => setSelectedTahfizhUnit(e.target.value)}
-                        className="h-9 rounded-xl border border-emerald-300/80 bg-white px-3 text-xs font-semibold text-slate-800 dark:border-emerald-700/80 dark:bg-[#151D2A] dark:text-white outline-none cursor-pointer"
-                      >
-                        <option value="semua">✨ Semua Unit Pendidikan</option>
-                        {educationUnits.map((u) => (
-                          <option key={u.id || u.nama || u.name} value={u.nama || u.name || u.id}>
-                            {u.nama || u.name}
-                          </option>
-                        ))}
-                      </select>
+                      <HeroUiFilterSelect
+                        id="filter-rombel-tahfizh"
+                        value={tahfizhFilterClass}
+                        onChange={(val) => {
+                          setTahfizhFilterClass(val)
+                          setTahfizhPage(1)
+                        }}
+                        options={[
+                          { value: 'all', label: '✨ Semua Rombel' },
+                          ...classes.map((cls) => ({
+                            value: String(cls.id),
+                            label: `${cls.nama_kelas || cls.name}${cls.kode_kelas ? ` · ${cls.kode_kelas}` : ''}`,
+                          })),
+                        ]}
+                        placeholder="Semua Rombel"
+                        ariaLabel="Filter Rombel Tahfizh"
+                        popoverWidth="min-w-[210px]"
+                        searchable
+                        align="right"
+                      />
                     </div>
-                  )}
+
+                    {/* Filter Urutkan */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <label htmlFor="filter-sort-tahfizh" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                        Urutkan:
+                      </label>
+                      <HeroUiFilterSelect
+                        id="filter-sort-tahfizh"
+                        value={tahfizhSortOrder}
+                        onChange={(val) => {
+                          setTahfizhSortOrder(val)
+                          setTahfizhPage(1)
+                        }}
+                        options={[
+                          { value: 'highest', label: '🏆 Hafalan Terbanyak (Rank #1)' },
+                          { value: 'surah', label: '📖 Total Surah Terbanyak' },
+                          { value: 'name_asc', label: '🔤 Nama Santri (A-Z)' },
+                          { value: 'name_desc', label: '🔤 Nama Santri (Z-A)' },
+                          { value: 'recent', label: '🕒 Setoran Terbaru' },
+                        ]}
+                        placeholder="Urutkan..."
+                        ariaLabel="Urutkan Leaderboard Tahfizh"
+                        popoverWidth="min-w-[230px]"
+                        align="right"
+                      />
+                    </div>
+
+                    {/* Filter Limit Per Halaman */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <label htmlFor="filter-limit-tahfizh" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                        Tampilkan:
+                      </label>
+                      <HeroUiFilterSelect
+                        id="filter-limit-tahfizh"
+                        value={String(tahfizhPerPage)}
+                        onChange={(val) => {
+                          setTahfizhPerPage(val === 'all' ? 'all' : Number(val))
+                          setTahfizhPage(1)
+                        }}
+                        options={[
+                          { value: '10', label: '10 data per halaman' },
+                          { value: '25', label: '25 data per halaman' },
+                          { value: '50', label: '50 data per halaman' },
+                          { value: 'all', label: 'Semua Data' },
+                        ]}
+                        placeholder="10 data"
+                        ariaLabel="Tampilkan per halaman"
+                        popoverWidth="min-w-[170px]"
+                        align="right"
+                      />
+                    </div>
+
+                    {/* Tombol Reset Filter jika ada filter aktif */}
+                    {(tahfizhSearch || selectedTahfizhUnit !== 'semua' || tahfizhFilterClass !== 'all' || tahfizhSortOrder !== 'highest' || tahfizhPerPage !== 10) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTahfizhSearch('')
+                          setSelectedTahfizhUnit('semua')
+                          setTahfizhFilterClass('all')
+                          setTahfizhSortOrder('highest')
+                          setTahfizhPerPage(10)
+                          setTahfizhPage(1)
+                        }}
+                        className="inline-flex items-center gap-1 rounded-xl border border-rose-300 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                        title="Reset Semua Filter"
+                      >
+                        <RefreshCw className="size-3 text-rose-600 dark:text-rose-400" />
+                        <span>Reset</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Mobile Card View */}
                 <div className="divide-y divide-emerald-100/80 md:hidden dark:divide-emerald-900/40">
                   {paginatedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, totalSetoran, unitName, className }, index) => {
-                    const absoluteIndex = (tahfizhPage - 1) * TAHFIZH_PER_PAGE + index
+                    const currentPerPage = tahfizhPerPage === 'all' ? sortedTahfizhLeaderboard.length : (Number(tahfizhPerPage) || TAHFIZH_PER_PAGE)
+                    const absoluteIndex = (tahfizhPage - 1) * currentPerPage + index
                     const isTop1 = absoluteIndex === 0
                     const isTop2 = absoluteIndex === 1
                     const isTop3 = absoluteIndex === 2
@@ -8940,7 +9225,8 @@ export default function TeacherTeachingWorkspacePage() {
                   </thead>
                   <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                     {paginatedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, totalSetoran, unitName, className }, index) => {
-                      const absoluteIndex = (tahfizhPage - 1) * TAHFIZH_PER_PAGE + index
+                      const currentPerPage = tahfizhPerPage === 'all' ? sortedTahfizhLeaderboard.length : (Number(tahfizhPerPage) || TAHFIZH_PER_PAGE)
+                      const absoluteIndex = (tahfizhPage - 1) * currentPerPage + index
                       const isTop1 = absoluteIndex === 0
                       const isTop2 = absoluteIndex === 1
                       const isTop3 = absoluteIndex === 2
@@ -9043,7 +9329,7 @@ export default function TeacherTeachingWorkspacePage() {
                 {/* Footer Pagination Controls */}
                 <div className="w-full border-t border-emerald-200/80 dark:border-emerald-800/60 px-4 py-3.5 sm:px-6 bg-gradient-to-r from-emerald-50/30 via-teal-50/20 to-transparent flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                    Menampilkan <span className="font-bold text-slate-800 dark:text-slate-200">{sortedTahfizhLeaderboard.length > 0 ? (tahfizhPage - 1) * TAHFIZH_PER_PAGE + 1 : 0}</span> s.d. <span className="font-bold text-slate-800 dark:text-slate-200">{Math.min(tahfizhPage * TAHFIZH_PER_PAGE, sortedTahfizhLeaderboard.length)}</span> dari <span className="font-bold text-slate-800 dark:text-slate-200">{sortedTahfizhLeaderboard.length}</span> santri binaan
+                    Menampilkan <span className="font-bold text-slate-800 dark:text-slate-200">{sortedTahfizhLeaderboard.length > 0 ? (tahfizhPage - 1) * (tahfizhPerPage === 'all' ? sortedTahfizhLeaderboard.length : Number(tahfizhPerPage)) + 1 : 0}</span> s.d. <span className="font-bold text-slate-800 dark:text-slate-200">{tahfizhPerPage === 'all' ? sortedTahfizhLeaderboard.length : Math.min(tahfizhPage * Number(tahfizhPerPage), sortedTahfizhLeaderboard.length)}</span> dari <span className="font-bold text-slate-800 dark:text-slate-200">{sortedTahfizhLeaderboard.length}</span> santri binaan
                   </div>
                   {totalTahfizhPages > 1 && (
                     <div className="w-full sm:w-auto">
@@ -9145,6 +9431,22 @@ export default function TeacherTeachingWorkspacePage() {
                     title="Cetak rekapitulasi catatan perkembangan siswa"
                   >
                     <Printer className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Cetak Catatan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/dashboard/tata-tertib')}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50/80 px-3 py-1.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300 cursor-pointer shadow-xs active:scale-95"
+                    title="Buku Tata Tertib & Poin Kedisiplinan Siswa"
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Tata Tertib & Poin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openPelanggaranModal(null)}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 via-rose-700 to-red-800 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:brightness-110 cursor-pointer active:scale-95"
+                    title="Input Catatan Penilaian Perilaku Santri (Standar Master TU)"
+                  >
+                    <ShieldAlert className="h-3.5 w-3.5 text-white" /> + Penilaian Perilaku TU
                   </button>
                   <span className="inline-flex items-center rounded-lg bg-emerald-50 border border-emerald-300 px-2.5 py-1 text-xs font-black text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-700 dark:text-emerald-300">
                     {students.length} siswa
@@ -9289,6 +9591,14 @@ export default function TeacherTeachingWorkspacePage() {
                           >
                             <Plus className="h-3.5 w-3.5" /> Catatan
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => openPelanggaranModal(student)}
+                            title="Catat Penilaian Perilaku / Pelanggaran Tata Tertib TU"
+                            className="inline-flex h-8 items-center justify-center gap-1 rounded-xl border border-rose-300 bg-rose-50 px-2.5 text-[10px] font-bold text-rose-700 hover:bg-rose-100 transition dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                          >
+                            <ShieldAlert className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Perilaku
+                          </button>
                           {latest?.teacher_id === teacherProfile?.id && (
                             <>
                               <button
@@ -9426,6 +9736,14 @@ export default function TeacherTeachingWorkspacePage() {
                                 className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#0E5C44] px-2.5 text-[10px] font-bold text-white hover:bg-emerald-800 transition"
                               >
                                 <Plus className="h-3.5 w-3.5 shrink-0" /> Catatan
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openPelanggaranModal(student)}
+                                title="Catat Penilaian Perilaku / Pelanggaran Tata Tertib TU"
+                                className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-2.5 text-[10px] font-bold text-rose-700 hover:bg-rose-100 transition dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                              >
+                                <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-rose-600 dark:text-rose-400" /> Perilaku
                               </button>
                               {latest?.teacher_id === teacherProfile?.id && (
                                 <>
@@ -11985,7 +12303,7 @@ export default function TeacherTeachingWorkspacePage() {
               ? 'bg-white dark:bg-[#1B2433] w-full max-w-3xl rounded-[26px] p-5 sm:p-7 shadow-2xl border border-emerald-500/30 dark:border-emerald-600/30 relative my-auto max-h-[92vh] overflow-y-auto space-y-4'
               : [
                   'bg-white dark:bg-[#1B2433] w-full rounded-[22px] p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 relative my-auto max-h-[92vh] overflow-y-auto space-y-4',
-                  modalType === 'tugas' ? 'max-w-3xl' : 'max-w-lg',
+                  modalType === 'tugas' || modalType === 'pelanggaran' ? 'max-w-2xl' : 'max-w-lg',
                 ].join(' ')
           }>
             {modalType !== 'materi' && (
@@ -12791,52 +13109,54 @@ export default function TeacherTeachingWorkspacePage() {
                         {classes.length > 1 && (
                           <div className="flex items-center gap-2 self-start sm:self-auto">
                             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Rombel:</span>
-                            <select
+                            <HeroUiFilterSelect
                               value={tahfizhModalClass}
-                              onChange={(e) => {
-                                const newClass = e.target.value
+                              onChange={(newClass) => {
                                 setTahfizhModalClass(newClass)
                                 setTahfizhForm((prev) => ({ ...prev, class_id: newClass, student_id: '' }))
                                 if (newClass && newClass !== 'all') {
                                   fetchStudentsForClass(newClass)
                                 }
                               }}
-                              className="h-8 rounded-xl border border-emerald-300/80 bg-white px-2.5 text-[11px] font-bold text-emerald-800 shadow-sm outline-none focus:border-emerald-500 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300"
-                            >
-                              <option value="all">Semua Rombel ({classes.length})</option>
-                              {classes.map((cls) => (
-                                <option key={cls.id} value={cls.id}>
-                                  {cls.nama_kelas || cls.name}
-                                </option>
-                              ))}
-                            </select>
+                              options={[
+                                { value: 'all', label: `Semua Rombel (${classes.length})` },
+                                ...classes.map((cls) => ({
+                                  value: String(cls.id),
+                                  label: cls.nama_kelas || cls.name,
+                                })),
+                              ]}
+                              size="sm"
+                              placeholder="Pilih Rombel"
+                              popoverWidth="min-w-[190px]"
+                            />
                           </div>
                         )}
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <select
-                          id="tahfizh-siswa"
-                          required
-                          value={tahfizhForm.student_id}
-                          onChange={(e) => {
-                            const sid = e.target.value
-                            const stu = students.find((s) => String(s.id) === String(sid))
-                            setTahfizhForm({
-                              ...tahfizhForm,
-                              student_id: sid,
-                              class_id: stu?.kelas_id || stu?.class_id || stu?.kelas?.id || tahfizhForm.class_id,
-                            })
-                          }}
-                          className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-800 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                        >
-                          <option value="">-- Pilih Siswa / Santri ({filteredTahfizhStudents.length} santri) --</option>
-                          {filteredTahfizhStudents.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.nama_lengkap} (NIS: {s.nis || s.nisn || '-'}) {s.kelas?.nama_kelas ? `• ${s.kelas.nama_kelas}` : ''}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex-1">
+                          <HeroUiFilterSelect
+                            id="tahfizh-siswa"
+                            value={tahfizhForm.student_id}
+                            onChange={(sid) => {
+                              const stu = students.find((s) => String(s.id) === String(sid))
+                              setTahfizhForm({
+                                ...tahfizhForm,
+                                student_id: sid,
+                                class_id: stu?.kelas_id || stu?.class_id || stu?.kelas?.id || tahfizhForm.class_id,
+                              })
+                            }}
+                            options={filteredTahfizhStudents.map((s) => ({
+                              value: String(s.id),
+                              label: `${s.nama_lengkap} (NIS: ${s.nis || s.nisn || '-'})`,
+                              subtext: s.kelas?.nama_kelas ? `Kelas: ${s.kelas.nama_kelas}` : undefined,
+                            }))}
+                            placeholder={`-- Pilih Siswa / Santri (${filteredTahfizhStudents.length} santri) --`}
+                            ariaLabel="Pilih Siswa / Santri Tahfizh"
+                            searchable
+                            popoverWidth="w-full min-w-[280px]"
+                          />
+                        </div>
 
                         <div className="relative group">
                           <button
@@ -12845,7 +13165,7 @@ export default function TeacherTeachingWorkspacePage() {
                               setStudentModalSearch('')
                               setShowStudentSearchModal(true)
                             }}
-                            className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-sky-400 via-sky-500 to-sky-600 text-white shadow-md shadow-sky-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
+                            className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 via-sky-500 to-sky-600 text-white shadow-md shadow-sky-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
                             aria-label="Pencarian Nama Siswa Rombel"
                           >
                             <UserCheck className="w-5 h-5" />
@@ -12958,26 +13278,30 @@ export default function TeacherTeachingWorkspacePage() {
                           Jenis Setoran <span className="text-rose-500">*</span>
                         </label>
                         <div className="flex items-center gap-2">
-                          <select
-                            id="tahfizh-jenis"
-                            value={tahfizhForm.type}
-                            onChange={(e) => setTahfizhForm({ ...tahfizhForm, type: e.target.value })}
-                            className="h-11 flex-1 border rounded-xl bg-white px-3 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500"
-                          >
-                            {['Ziyadah', 'Murajaah', 'Tasmi', 'Ujian'].map((type) => (
-                              <option key={type} value={type}>
-                                {type === 'Ziyadah' ? 'Ziyadah (Hafalan Baru)' : type === 'Murajaah' ? 'Murajaah (Pengulangan)' : type === 'Tasmi' ? 'Tasmi\' (Uji Simakan)' : 'Ujian Tahfizh'}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex-1">
+                            <HeroUiFilterSelect
+                              id="tahfizh-jenis"
+                              value={tahfizhForm.type}
+                              onChange={(val) => setTahfizhForm({ ...tahfizhForm, type: val })}
+                              options={[
+                                { value: 'Ziyadah', label: 'Ziyadah (Hafalan Baru)' },
+                                { value: 'Murajaah', label: 'Murajaah (Pengulangan)' },
+                                { value: 'Tasmi', label: 'Tasmi\' (Uji Simakan)' },
+                                { value: 'Ujian', label: 'Ujian Tahfizh' },
+                              ]}
+                              placeholder="Pilih Jenis Setoran"
+                              ariaLabel="Jenis Setoran Tahfizh"
+                              popoverWidth="w-full min-w-[220px]"
+                            />
+                          </div>
                           <div className="relative group">
                             <button
                               type="button"
                               onClick={() => setShowSetoranTypeModal(true)}
-                              className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
+                              className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
                               aria-label="Pilih Cepat Jenis Setoran"
                             >
-                              <Zap className="w-5 h-5" />
+                              <Zap className="w-4.5 h-4.5" />
                             </button>
                             <div className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-lg z-20">
                               Pilih Cepat Jenis Setoran
@@ -12991,16 +13315,18 @@ export default function TeacherTeachingWorkspacePage() {
                         <label htmlFor="tahfizh-juz" className="font-bold block mb-1 text-slate-700 dark:text-slate-200">
                           Juz Capaian <span className="text-rose-500">*</span>
                         </label>
-                        <select
+                        <HeroUiFilterSelect
                           id="tahfizh-juz"
-                          value={tahfizhForm.juz}
-                          onChange={(e) => setTahfizhForm({ ...tahfizhForm, juz: Number(e.target.value) })}
-                          className="h-11 w-full border rounded-xl bg-white px-3 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500"
-                        >
-                          {Array.from({ length: 30 }, (_, index) => index + 1).map((juz) => (
-                            <option key={juz} value={juz}>Juz {juz}</option>
-                          ))}
-                        </select>
+                          value={String(tahfizhForm.juz)}
+                          onChange={(val) => setTahfizhForm({ ...tahfizhForm, juz: Number(val) })}
+                          options={Array.from({ length: 30 }, (_, index) => ({
+                            value: String(index + 1),
+                            label: `Juz ${index + 1}`,
+                          }))}
+                          placeholder="Pilih Juz"
+                          ariaLabel="Juz Capaian Tahfizh"
+                          popoverWidth="w-full min-w-[180px]"
+                        />
                       </div>
                     </div>
 
@@ -13017,24 +13343,26 @@ export default function TeacherTeachingWorkspacePage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <select
-                          id="tahfizh-surah"
-                          required
-                          disabled={loadingSurahs}
-                          value={tahfizhForm.surah_number}
-                          onChange={(e) => {
-                            const surahNumber = Number(e.target.value)
-                            setTahfizhForm({ ...tahfizhForm, surah_number: surahNumber, ayat_start: 1, ayat_end: 1, juz: getQuranJuz(surahNumber, 1) })
-                          }}
-                          className="h-11 flex-1 border rounded-xl bg-white px-3 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-100"
-                        >
-                          <option value="">{loadingSurahs ? 'Memuat Master Al-Qur’an...' : '-- Pilih Surah Master --'}</option>
-                          {quranSurahs.map((surah) => (
-                            <option key={surah.nomor} value={surah.nomor}>
-                              {surah.nomor}. {surah.nama_latin} ({surah.jumlah_ayat} ayat) - {surah.arti}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex-1">
+                          <HeroUiFilterSelect
+                            id="tahfizh-surah"
+                            value={String(tahfizhForm.surah_number)}
+                            disabled={loadingSurahs}
+                            onChange={(val) => {
+                              const surahNumber = Number(val)
+                              setTahfizhForm({ ...tahfizhForm, surah_number: surahNumber, ayat_start: 1, ayat_end: 1, juz: getQuranJuz(surahNumber, 1) })
+                            }}
+                            options={quranSurahs.map((surah) => ({
+                              value: String(surah.nomor),
+                              label: `${surah.nomor}. ${surah.nama_latin}`,
+                              subtext: `${surah.jumlah_ayat} ayat • ${surah.arti}`,
+                            }))}
+                            placeholder={loadingSurahs ? 'Memuat Master Al-Qur’an...' : '-- Pilih Surah Master --'}
+                            ariaLabel="Surah Al-Qur'an"
+                            searchable
+                            popoverWidth="w-full min-w-[280px]"
+                          />
+                        </div>
                         <div className="relative group">
                           <button
                             type="button"
@@ -13042,10 +13370,10 @@ export default function TeacherTeachingWorkspacePage() {
                               setSurahModalSearch('')
                               setShowSurahSearchModal(true)
                             }}
-                            className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
+                            className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
                             aria-label="Master Surah Al-Qur'an"
                           >
-                            <BookMarked className="w-5 h-5" />
+                            <BookMarked className="w-4.5 h-4.5" />
                           </button>
                           <div className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-lg z-20">
                             Master Surah Al-Qur'an
@@ -13060,20 +13388,23 @@ export default function TeacherTeachingWorkspacePage() {
                         <label htmlFor="tahfizh-ayat-awal" className="font-bold block mb-1 text-slate-700 dark:text-slate-200">
                           Ayat Awal <span className="text-rose-500">*</span>
                         </label>
-                        <select
+                        <HeroUiFilterSelect
                           id="tahfizh-ayat-awal"
                           disabled={!selectedTahfizhSurah}
-                          value={tahfizhForm.ayat_start}
-                          onChange={(e) => {
-                            const value = Number(e.target.value)
+                          value={String(tahfizhForm.ayat_start)}
+                          onChange={(val) => {
+                            const value = Number(val)
                             setTahfizhForm({ ...tahfizhForm, ayat_start: value, ayat_end: Math.max(value, Number(tahfizhForm.ayat_end)), juz: getQuranJuz(tahfizhForm.surah_number, value) })
                           }}
-                          className="h-11 w-full border rounded-xl bg-white px-3 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-                        >
-                          {Array.from({ length: selectedTahfizhSurah?.jumlah_ayat || 1 }, (_, index) => index + 1).map((ayat) => (
-                            <option key={ayat} value={ayat}>Ayat {ayat}</option>
-                          ))}
-                        </select>
+                          options={Array.from({ length: selectedTahfizhSurah?.jumlah_ayat || 1 }, (_, index) => ({
+                            value: String(index + 1),
+                            label: `Ayat ${index + 1}`,
+                          }))}
+                          placeholder="Ayat Awal"
+                          ariaLabel="Ayat Awal"
+                          searchable={(selectedTahfizhSurah?.jumlah_ayat || 1) > 10}
+                          popoverWidth="w-full min-w-[150px]"
+                        />
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
@@ -13086,19 +13417,22 @@ export default function TeacherTeachingWorkspacePage() {
                             </span>
                           )}
                         </div>
-                        <select
+                        <HeroUiFilterSelect
                           id="tahfizh-ayat-akhir"
                           disabled={!selectedTahfizhSurah}
-                          value={tahfizhForm.ayat_end}
-                          onChange={(e) => setTahfizhForm({ ...tahfizhForm, ayat_end: Number(e.target.value) })}
-                          className="h-11 w-full border rounded-xl bg-white px-3 font-extrabold text-emerald-800 dark:text-emerald-300 dark:bg-slate-800 border-emerald-400 dark:border-emerald-600 shadow-sm focus:ring-2 focus:ring-emerald-500/30"
-                        >
-                          {Array.from({ length: selectedTahfizhSurah?.jumlah_ayat || 1 }, (_, index) => index + 1)
+                          value={String(tahfizhForm.ayat_end)}
+                          onChange={(val) => setTahfizhForm({ ...tahfizhForm, ayat_end: Number(val) })}
+                          options={Array.from({ length: selectedTahfizhSurah?.jumlah_ayat || 1 }, (_, index) => index + 1)
                             .filter((ayat) => ayat >= Number(tahfizhForm.ayat_start))
-                            .map((ayat) => (
-                              <option key={ayat} value={ayat}>Ayat {ayat}</option>
-                            ))}
-                        </select>
+                            .map((ayat) => ({
+                              value: String(ayat),
+                              label: `Ayat ${ayat}`,
+                            }))}
+                          placeholder="Ayat Terakhir"
+                          ariaLabel="Ayat Terakhir"
+                          searchable={(selectedTahfizhSurah?.jumlah_ayat || 1) > 10}
+                          popoverWidth="w-full min-w-[150px]"
+                        />
                       </div>
                     </div>
 
@@ -13110,16 +13444,16 @@ export default function TeacherTeachingWorkspacePage() {
                         ['makhraj', 'Makhraj', ['Sangat Baik', 'Baik', 'Perlu Bimbingan']],
                       ].map(([key, label, options]) => (
                         <div key={key}>
-                          <label className="font-bold block mb-1 text-slate-700 dark:text-slate-200">{label}</label>
-                          <select
+                          <label htmlFor={`tahfizh-${key}`} className="font-bold block mb-1 text-slate-700 dark:text-slate-200">{label}</label>
+                          <HeroUiFilterSelect
+                            id={`tahfizh-${key}`}
                             value={tahfizhForm[key]}
-                            onChange={(e) => setTahfizhForm({ ...tahfizhForm, [key]: e.target.value })}
-                            className="h-11 w-full border rounded-xl bg-white px-2.5 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500"
-                          >
-                            {options.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
+                            onChange={(val) => setTahfizhForm({ ...tahfizhForm, [key]: val })}
+                            options={options.map((opt) => ({ value: opt, label: opt }))}
+                            placeholder={`Pilih ${label}`}
+                            ariaLabel={label}
+                            popoverWidth="w-full min-w-[160px]"
+                          />
                         </div>
                       ))}
                     </div>
@@ -13419,6 +13753,26 @@ export default function TeacherTeachingWorkspacePage() {
                         </div>
                       </div>
                     </div>
+                    {(catatanForm.category === 'Perilaku' || catatanForm.category === 'Kedisiplinan') && (
+                      <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/90 p-2.5 dark:border-amber-900/50 dark:bg-amber-950/40">
+                        <div className="flex items-center gap-2">
+                          <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <p className="text-[11px] text-amber-800 dark:text-amber-200">
+                            Gunakan standar resmi <b>122 Pasal Tata Tertib & Poin Kedisiplinan TU</b>?
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const curStudent = students.find((s) => s.id === catatanForm.student_id)
+                            openPelanggaranModal(curStudent)
+                          }}
+                          className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1 text-[10px] font-bold text-white shadow-xs hover:bg-amber-700 cursor-pointer"
+                        >
+                          Pilih Pasal TU
+                        </button>
+                      </div>
+                    )}
                     <div>
                       <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-200">Judul Catatan</label>
                       <input
@@ -13469,6 +13823,224 @@ export default function TeacherTeachingWorkspacePage() {
                       </button>
                       <button type="submit" disabled={savingStudentNote} className="inline-flex min-w-36 items-center justify-center gap-2 rounded-xl bg-[#0E5C44] px-4 py-2 font-bold text-white shadow-md disabled:opacity-60">
                         {savingStudentNote && <RefreshCw className="h-4 w-4 animate-spin" />}{savingStudentNote ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan Catatan'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {modalType === 'pelanggaran' && (
+                  <form onSubmit={handleSavePelanggaran} className="space-y-4 text-xs">
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-rose-100 pb-3 dark:border-slate-800">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/20">
+                          <ShieldAlert className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                            Catat Penilaian Perilaku Siswa
+                          </h3>
+                          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                            Standar 122 Pasal Tata Tertib & Buku Poin Kedisiplinan TU
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Siswa Selector / Info */}
+                    <div>
+                      <label className="mb-1 block font-bold text-slate-700 dark:text-slate-200">
+                        Target Siswa / Santri
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={pelanggaranForm.student_id}
+                          onChange={(e) => setPelanggaranForm({ ...pelanggaranForm, student_id: e.target.value })}
+                          className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-9 text-xs font-bold text-slate-800 transition hover:border-slate-300 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                          <option value="" disabled>-- Pilih Siswa dari Rombel {selectedClassName} --</option>
+                          {students.map((st) => (
+                            <option key={st.id} value={st.id}>
+                              {st.nama_lengkap || st.full_name || st.name} ({st.nis || 'Tanpa NIS'})
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                          <ChevronDown className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tanggal & Poin */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1 block font-bold text-slate-700 dark:text-slate-200">Tanggal Kejadian</label>
+                        <DatePicker
+                          required
+                          value={pelanggaranForm.transaction_date}
+                          onChange={(e) => setPelanggaranForm({ ...pelanggaranForm, transaction_date: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block font-bold text-slate-700 dark:text-slate-200">Bobot Pengurangan Poin</label>
+                        <div className="flex h-10 items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-3.5 dark:border-rose-900/60 dark:bg-rose-950/40">
+                          <span className="font-semibold text-rose-700 dark:text-rose-300">Poin Pelanggaran:</span>
+                          <span className="rounded-lg bg-rose-600 px-2 py-0.5 text-xs font-black text-white shadow-xs">
+                            -{Math.abs(pelanggaranForm.points || 0)} Poin
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Master Pasal Tata Tertib TU (122 Pasal Dinamis) */}
+                    <div>
+                      <div className="mb-1 flex items-center justify-between">
+                        <label className="font-bold text-slate-700 dark:text-slate-200">
+                          Pasal Tata Tertib & Perilaku (Master TU)
+                        </label>
+                        {loadingDisciplineCategories && (
+                          <span className="text-[10px] text-emerald-600 flex items-center gap-1 font-semibold">
+                            <RefreshCw className="h-3 w-3 animate-spin" /> Memuat master TU...
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Filter / Search Pasal jika banyak */}
+                      <div className="relative mb-2">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={pelanggaranCategorySearch}
+                          onChange={(e) => setPelanggaranCategorySearch(e.target.value)}
+                          placeholder="Cari pasal / nama pelanggaran TU (contoh: seragam, terlambat, adab)..."
+                          className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8.5 pr-3 text-[11px] outline-none transition focus:border-rose-500 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div className="relative">
+                        <select
+                          value={pelanggaranForm.category_id}
+                          onChange={(e) => handlePelanggaranCategoryChange(e.target.value)}
+                          className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-9 text-xs font-bold text-slate-800 transition hover:border-slate-300 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                          <option value="" disabled>-- Pilih Pasal Tata Tertib Resmi TU --</option>
+                          {disciplineCategories
+                            .filter((cat) => {
+                              if (!pelanggaranCategorySearch.trim()) return true
+                              const q = pelanggaranCategorySearch.toLowerCase()
+                              return (
+                                cat.name?.toLowerCase().includes(q) ||
+                                cat.code?.toLowerCase().includes(q) ||
+                                cat.cluster?.toLowerCase().includes(q) ||
+                                cat.description?.toLowerCase().includes(q)
+                              )
+                            })
+                            .map((cat) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.code ? `[${cat.code}] ` : ''}{cat.name} ({cat.point_weight ? `-${Math.abs(cat.point_weight)} Poin` : '0 Poin'}) {cat.cluster ? `• ${cat.cluster}` : ''}
+                              </option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                          <ChevronDown className="h-4 w-4" />
+                        </div>
+                      </div>
+
+                      {/* Selected Category Detail Card */}
+                      {(() => {
+                        const selCat = disciplineCategories.find((c) => String(c.id) === String(pelanggaranForm.category_id))
+                        if (!selCat) return null
+                        return (
+                          <div className="mt-2 rounded-xl border border-amber-200/80 bg-amber-50/70 p-2.5 dark:border-amber-900/40 dark:bg-amber-950/30">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                                Klaster: {selCat.cluster || selCat.category_type || 'Tata Tertib Santri'}
+                              </span>
+                              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                                Resmi TU: -{Math.abs(selCat.point_weight || 5)} Poin
+                              </span>
+                            </div>
+                            {selCat.consequence && (
+                              <p className="mt-1 text-[11px] text-amber-900 dark:text-amber-200">
+                                <b>Konsekuensi TU:</b> {selCat.consequence}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </div>
+
+                    {/* Kronologi / Catatan Kejadian Guru */}
+                    <div>
+                      <label className="mb-1 block font-bold text-slate-700 dark:text-slate-200">
+                        Catatan Kronologi Kejadian / Perilaku <span className="text-rose-500">*</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        required
+                        value={pelanggaranForm.description}
+                        onChange={(e) => setPelanggaranForm({ ...pelanggaranForm, description: e.target.value })}
+                        placeholder="Tuliskan catatan kejadian perilaku santri di kelas atau lingkungan madrasah..."
+                        className="w-full rounded-xl border border-slate-200 p-2.5 text-xs outline-none transition focus:border-rose-500 focus:ring-1 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+
+                    {/* Rujukan BK & Tindak Lanjut */}
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50 space-y-2.5">
+                      <label className="flex items-center gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={pelanggaranForm.refer_bk}
+                          onChange={(e) => setPelanggaranForm({ ...pelanggaranForm, refer_bk: e.target.checked })}
+                          className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                        />
+                        <div>
+                          <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                            Rujuk ke Guru BK (Bimbingan Konseling) & Wali Kelas
+                          </span>
+                          <p className="text-[10px] text-slate-500">
+                            Aktifkan bila perilaku memerlukan pembinaan lanjutan atau pemanggilan orang tua oleh BK.
+                          </p>
+                        </div>
+                      </label>
+
+                      <div>
+                        <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-300 text-[11px]">
+                          Tindakan Langsung Guru (Opsional)
+                        </label>
+                        <input
+                          type="text"
+                          value={pelanggaranForm.follow_up}
+                          onChange={(e) => setPelanggaranForm({ ...pelanggaranForm, follow_up: e.target.value })}
+                          placeholder="Contoh: Diberikan nasihat adab, penugasan istighfar 50x..."
+                          className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs outline-none focus:border-rose-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Footer Buttons */}
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="rounded-xl border border-slate-200 px-4 py-2 font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={savingPelanggaran}
+                        className="inline-flex min-w-36 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 via-rose-700 to-red-800 px-4 py-2 font-bold text-white shadow-md transition hover:brightness-110 disabled:opacity-60 cursor-pointer"
+                      >
+                        {savingPelanggaran && <RefreshCw className="h-4 w-4 animate-spin" />}
+                        {savingPelanggaran ? 'Menyimpan...' : 'Simpan Penilaian Perilaku'}
                       </button>
                     </div>
                   </form>

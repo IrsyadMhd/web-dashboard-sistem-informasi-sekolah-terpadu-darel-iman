@@ -99,8 +99,23 @@ export const kelasService = {
   /**
    * Impor data kelas dari file / payload JSON.
    */
-  prosesImport: async (dataRows) => {
-    const { data } = await api.post('/kelas/import', { data: dataRows })
+  prosesImport: async (payload, params = {}) => {
+    if (payload instanceof FormData) {
+      const { data } = await api.post('/kelas/import', payload, {
+        params,
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return data
+    }
+    const { data } = await api.post('/kelas/import', { data: payload, ...params })
+    return data
+  },
+
+  /**
+   * Unduh informasi format template impor kelas.
+   */
+  downloadTemplate: async () => {
+    const { data } = await api.get('/kelas/import-template')
     return data
   },
 

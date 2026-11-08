@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import HeroUiFilterSelect from '../../components/ui/HeroUiFilterSelect'
 import { SmartScrollFab } from '../../components/common'
+import FoundationDisciplineExecutiveSection from '../../components/foundation/FoundationDisciplineExecutiveSection'
 
 const containerVariants = {
   hidden: { opacity: 0, y: 15 },
@@ -1398,9 +1399,10 @@ export function FoundationDashboardPage() {
         </div>
       </motion.section>
 
-
-
-
+      {/* Tata Kelola Kedisiplinan & Critical Watchlist Yayasan */}
+      <motion.section variants={itemVariants} className="mt-8">
+        <FoundationDisciplineExecutiveSection />
+      </motion.section>
 
       {/* Modal Quick View KPI (Data PostgreSQL Real) */}
       <ModalErrorBoundary onClose={() => setActiveModal(null)}>

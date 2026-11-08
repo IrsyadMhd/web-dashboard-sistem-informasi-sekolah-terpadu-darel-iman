@@ -3495,15 +3495,20 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                       <Layers className="size-3 text-emerald-600" />
                       <span>Pola Minggu</span>
                     </label>
-                    <select
-                      value={form.week_type}
-                      onChange={(e) => handleFormChange('week_type', e.target.value)}
-                      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827]"
-                    >
-                      <option value="all">Setiap Minggu</option>
-                      <option value="odd">Minggu Ganjil</option>
-                      <option value="even">Minggu Genap</option>
-                    </select>
+                    <HeroUiFilterSelect
+                      value={form.week_type || 'all'}
+                      onChange={(val) => handleFormChange('week_type', val)}
+                      options={[
+                        { value: 'all', label: 'Setiap Minggu' },
+                        { value: 'odd', label: 'Minggu Ganjil' },
+                        { value: 'even', label: 'Minggu Genap' },
+                      ]}
+                      placeholder="Pilih Pola Minggu"
+                      icon={Layers}
+                      ariaLabel="Pola Minggu"
+                      size="md"
+                      className="w-full"
+                    />
                   </div>
 
                   {/* Live Status Jam Terpilih */}

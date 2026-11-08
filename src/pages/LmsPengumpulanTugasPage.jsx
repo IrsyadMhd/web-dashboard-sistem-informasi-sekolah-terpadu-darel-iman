@@ -26,6 +26,7 @@ import {
 import Swal from '@/components/ui/compat/swal-heroui'
 import { lmsPengumpulanTugasService } from '../services/lmsPengumpulanTugasService'
 import { api } from '../services/api'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import { useAuthStore } from '../stores/authStore'
 import { useUnitStore } from '../stores/unitStore'
 import {
@@ -838,53 +839,67 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
           {/* Baris 3: Dropdown Filters & Reset Button */}
           <div className="px-4 py-3 sm:px-6 md:px-8 flex flex-wrap items-center justify-between gap-2.5 bg-emerald-50/30 dark:bg-emerald-950/10 border-b border-emerald-200/80 dark:border-emerald-800/60">
             <div className="flex flex-wrap items-center gap-2">
-              <select
+              <HeroUiFilterSelect
                 value={selectedPenugasan}
-                onChange={(e) => {
-                  setSelectedPenugasan(e.target.value)
+                onChange={(val) => {
+                  setSelectedPenugasan(val)
                   setPage(1)
                 }}
-                className="h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="">Semua Penugasan</option>
-                {options.penugasan.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: 'Semua Penugasan' },
+                  ...options.penugasan.map((p) => ({
+                    value: String(p.id),
+                    label: p.label,
+                  })),
+                ]}
+                placeholder="Semua Penugasan"
+                icon={BookOpen}
+                ariaLabel="Pilih Penugasan"
+                size="sm"
+                searchable
+                className="w-full sm:w-auto min-w-[160px]"
+              />
 
-              <select
+              <HeroUiFilterSelect
                 value={selectedSiswa}
-                onChange={(e) => {
-                  setSelectedSiswa(e.target.value)
+                onChange={(val) => {
+                  setSelectedSiswa(val)
                   setPage(1)
                 }}
-                className="h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="">Semua Siswa</option>
-                {options.siswa.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: 'Semua Siswa' },
+                  ...options.siswa.map((s) => ({
+                    value: String(s.id),
+                    label: s.label,
+                  })),
+                ]}
+                placeholder="Semua Siswa"
+                icon={Users}
+                ariaLabel="Pilih Siswa"
+                size="sm"
+                searchable
+                className="w-full sm:w-auto min-w-[160px]"
+              />
 
-              <select
+              <HeroUiFilterSelect
                 value={selectedStatus}
-                onChange={(e) => {
-                  setSelectedStatus(e.target.value)
+                onChange={(val) => {
+                  setSelectedStatus(val)
                   setPage(1)
                 }}
-                className="h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="">Semua Status</option>
-                {options.status.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    {st.label}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: 'Semua Status' },
+                  ...options.status.map((st) => ({
+                    value: String(st.id),
+                    label: st.label,
+                  })),
+                ]}
+                placeholder="Semua Status"
+                icon={CheckCircle2}
+                ariaLabel="Pilih Status"
+                size="sm"
+                className="w-full sm:w-auto min-w-[140px]"
+              />
             </div>
 
             {(search || selectedPenugasan || selectedSiswa || selectedStatus) && (
@@ -1205,38 +1220,36 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
               Penugasan <span className="text-rose-500">*</span>
             </label>
-            <select
-              required
+            <HeroUiFilterSelect
               value={formData.penugasan_id}
-              onChange={(e) => setFormData({ ...formData, penugasan_id: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44] dark:border-slate-800 dark:bg-slate-900 dark:text-white"
-            >
-              <option value="">-- Pilih Penugasan --</option>
-              {options.penugasan.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label || p.judul_tugas || p.judul} {p.subject ? `(${p.subject})` : ''}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setFormData({ ...formData, penugasan_id: val })}
+              options={options.penugasan.map((p) => ({
+                value: String(p.id),
+                label: `${p.label || p.judul_tugas || p.judul} ${p.subject ? `(${p.subject})` : ''}`,
+              }))}
+              placeholder="-- Pilih Penugasan --"
+              ariaLabel="Pilih Penugasan"
+              searchable
+              className="w-full"
+            />
           </div>
 
           <div>
             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
               Siswa <span className="text-rose-500">*</span>
             </label>
-            <select
-              required
+            <HeroUiFilterSelect
               value={formData.siswa_id}
-              onChange={(e) => setFormData({ ...formData, siswa_id: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44] dark:border-slate-800 dark:bg-slate-900 dark:text-white"
-            >
-              <option value="">-- Pilih Siswa --</option>
-              {options.siswa.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label || s.full_name || s.name || s.nama_lengkap} {s.nisn ? `(${s.nisn})` : ''}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setFormData({ ...formData, siswa_id: val })}
+              options={options.siswa.map((s) => ({
+                value: String(s.id),
+                label: `${s.label || s.full_name || s.name || s.nama_lengkap} ${s.nisn ? `(${s.nisn})` : ''}`,
+              }))}
+              placeholder="-- Pilih Siswa --"
+              ariaLabel="Pilih Siswa"
+              searchable
+              className="w-full"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1244,17 +1257,17 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Status Submission
               </label>
-              <select
+              <HeroUiFilterSelect
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44] dark:border-slate-800 dark:bg-slate-900 dark:text-white"
-              >
-                {options.status.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    {st.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setFormData({ ...formData, status: val })}
+                options={options.status.map((st) => ({
+                  value: String(st.id),
+                  label: st.label,
+                }))}
+                placeholder="-- Pilih Status --"
+                ariaLabel="Pilih Status Submission"
+                className="w-full"
+              />
             </div>
 
             <div>

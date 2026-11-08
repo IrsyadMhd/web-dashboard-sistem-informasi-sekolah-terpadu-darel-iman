@@ -46,14 +46,14 @@ export function Dialog({
             )}
           >
             <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
-            <div className="relative p-6">
+            <div className={cn('relative', className?.includes('p-0') ? 'p-0 flex flex-col flex-1 min-h-0' : 'p-6')}>
               {resolvedOnClose && showCloseButton && (
                 <HeroButton
                   isIconOnly
                   size="sm"
                   onPress={resolvedOnClose}
                   aria-label="Tutup dialog"
-                  className="absolute right-4 top-4 rounded-xl size-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-400 transition-all cursor-pointer active:scale-95"
+                  className="absolute right-4 top-4 rounded-xl size-8 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-400 transition-all cursor-pointer active:scale-95 z-20"
                 >
                   <X className="size-4" strokeWidth={2.2} />
                 </HeroButton>

@@ -73,6 +73,7 @@ import {
   PrintOptionModal,
   MasterFilterSelect,
 } from '../components/master-data'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import {
   TableRoot,
   TableHeader,
@@ -1539,21 +1540,26 @@ export default function MasterHakAksesPage() {
                     Filter Unit Pendidikan Akun:
                   </span>
                 </div>
-                <select
+                <HeroUiFilterSelect
                   value={selectedUnitId}
-                  onChange={(e) => {
-                    setSelectedUnitId(e.target.value)
+                  onChange={(val) => {
+                    setSelectedUnitId(val)
                     setPage(1)
                   }}
-                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs outline-none focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12"
-                >
-                  <option value="">Semua Unit Akses Anda</option>
-                  {educationUnits.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name || u.nama_unit || u.code}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '', label: 'Semua Unit Akses Anda' },
+                    ...educationUnits.map((u) => ({
+                      value: String(u.id),
+                      label: u.name || u.nama_unit || u.code,
+                    })),
+                  ]}
+                  placeholder="Semua Unit Akses Anda"
+                  icon={Building}
+                  ariaLabel="Filter unit pendidikan akun"
+                  size="sm"
+                  searchable
+                  className="w-full sm:w-auto min-w-[220px]"
+                />
               </div>
             )}
             <UserAccountManagement

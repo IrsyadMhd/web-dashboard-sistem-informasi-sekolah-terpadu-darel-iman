@@ -45,6 +45,7 @@ import {
 import { lmsRaporService } from '../services/lmsRaporService'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import { useDebounce } from '../hooks/useDebounce'
 import { SquircleActionButton, PrintOptionModal } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
@@ -1378,62 +1379,77 @@ export default function LmsRaporPage({ tabNav = null }) {
                   {/* Dropdown Kelas */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Pilihan Kelas</label>
-                    <select
+                    <HeroUiFilterSelect
                       value={filters.kelas_id}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, kelas_id: e.target.value }))}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="">Semua Kelas</option>
-                      {options.kelases.map((k) => (
-                        <option key={k.id} value={k.id}>{k.nama_kelas}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setFilters((prev) => ({ ...prev, kelas_id: val }))}
+                      options={[
+                        { value: '', label: 'Semua Kelas' },
+                        ...options.kelases.map((k) => ({ value: String(k.id), label: k.nama_kelas })),
+                      ]}
+                      placeholder="Semua Kelas"
+                      icon={Building2}
+                      ariaLabel="Pilihan Kelas"
+                      size="sm"
+                      searchable
+                      className="w-full"
+                    />
                   </div>
 
                   {/* Dropdown Semester */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Semester</label>
-                    <select
+                    <HeroUiFilterSelect
                       value={filters.semester_id}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, semester_id: e.target.value }))}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="">Semua Semester</option>
-                      {options.semesters.map((s) => (
-                        <option key={s.id} value={s.id}>{s.nama}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setFilters((prev) => ({ ...prev, semester_id: val }))}
+                      options={[
+                        { value: '', label: 'Semua Semester' },
+                        ...options.semesters.map((s) => ({ value: String(s.id), label: s.nama })),
+                      ]}
+                      placeholder="Semua Semester"
+                      icon={Calendar}
+                      ariaLabel="Pilihan Semester"
+                      size="sm"
+                      className="w-full"
+                    />
                   </div>
 
                   {/* Dropdown Tahun Ajaran */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Tahun Ajaran</label>
-                    <select
+                    <HeroUiFilterSelect
                       value={filters.tahun_ajaran_id}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, tahun_ajaran_id: e.target.value }))}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="">Semua Tahun Ajaran</option>
-                      {options.tahun_ajarans.map((t) => (
-                        <option key={t.id} value={t.id}>{t.year}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setFilters((prev) => ({ ...prev, tahun_ajaran_id: val }))}
+                      options={[
+                        { value: '', label: 'Semua Tahun Ajaran' },
+                        ...options.tahun_ajarans.map((t) => ({ value: String(t.id), label: t.year })),
+                      ]}
+                      placeholder="Semua Tahun Ajaran"
+                      icon={Calendar}
+                      ariaLabel="Pilihan Tahun Ajaran"
+                      size="sm"
+                      className="w-full"
+                    />
                   </div>
 
                   {/* Filter Status Rapor */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Status Rapor</label>
-                    <select
+                    <HeroUiFilterSelect
                       value={filters.status_rapor}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, status_rapor: e.target.value }))}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="">Semua Status</option>
-                      <option value="draft">Draft</option>
-                      <option value="final">Final Validated</option>
-                      <option value="diterbitkan">Diterbitkan</option>
-                      <option value="direvisi">Direvisi</option>
-                    </select>
+                      onChange={(val) => setFilters((prev) => ({ ...prev, status_rapor: val }))}
+                      options={[
+                        { value: '', label: 'Semua Status' },
+                        { value: 'draft', label: 'Draft' },
+                        { value: 'final', label: 'Final Validated' },
+                        { value: 'diterbitkan', label: 'Diterbitkan' },
+                        { value: 'direvisi', label: 'Direvisi' },
+                      ]}
+                      placeholder="Semua Status"
+                      icon={CheckCircle2}
+                      ariaLabel="Status Rapor"
+                      size="sm"
+                      className="w-full"
+                    />
                   </div>
                 </div>
               </div>
@@ -1745,48 +1761,43 @@ export default function LmsRaporPage({ tabNav = null }) {
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Pilih Kelas
                   </label>
-                  <select
-                    required
+                  <HeroUiFilterSelect
                     value={generateData.kelas_id}
-                    onChange={(e) => setGenerateData({ ...generateData, kelas_id: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-[#0E5C44]"
-                  >
-                    {options.kelases.map((k) => (
-                      <option key={k.id} value={k.id}>{k.nama_kelas}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setGenerateData({ ...generateData, kelas_id: val })}
+                    options={options.kelases.map((k) => ({ value: String(k.id), label: k.nama_kelas }))}
+                    placeholder="Pilih Kelas"
+                    ariaLabel="Pilih Kelas"
+                    searchable
+                    className="w-full"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Semester
                   </label>
-                  <select
-                    required
+                  <HeroUiFilterSelect
                     value={generateData.semester_id}
-                    onChange={(e) => setGenerateData({ ...generateData, semester_id: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-[#0E5C44]"
-                  >
-                    {options.semesters.map((s) => (
-                      <option key={s.id} value={s.id}>{s.nama}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setGenerateData({ ...generateData, semester_id: val })}
+                    options={options.semesters.map((s) => ({ value: String(s.id), label: s.nama }))}
+                    placeholder="Pilih Semester"
+                    ariaLabel="Pilih Semester"
+                    className="w-full"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Tahun Ajaran
                   </label>
-                  <select
-                    required
+                  <HeroUiFilterSelect
                     value={generateData.tahun_ajaran_id}
-                    onChange={(e) => setGenerateData({ ...generateData, tahun_ajaran_id: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-[#0E5C44]"
-                  >
-                    {options.tahun_ajarans.map((t) => (
-                      <option key={t.id} value={t.id}>{t.year}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setGenerateData({ ...generateData, tahun_ajaran_id: val })}
+                    options={options.tahun_ajarans.map((t) => ({ value: String(t.id), label: t.year }))}
+                    placeholder="Pilih Tahun Ajaran"
+                    ariaLabel="Pilih Tahun Ajaran"
+                    className="w-full"
+                  />
                 </div>
               </DialogBody>
 
@@ -1829,44 +1840,40 @@ export default function LmsRaporPage({ tabNav = null }) {
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                         Pilih Siswa
                       </label>
-                      <select
-                        required
+                      <HeroUiFilterSelect
                         value={formData.siswa_id}
-                        onChange={(e) => setFormData({ ...formData, siswa_id: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                      >
-                        {options.students.map((s) => (
-                          <option key={s.id} value={s.id}>{s.name} ({s.nisn})</option>
-                        ))}
-                      </select>
+                        onChange={(val) => setFormData({ ...formData, siswa_id: val })}
+                        options={options.students.map((s) => ({ value: String(s.id), label: `${s.name} (${s.nisn})` }))}
+                        placeholder="Pilih Siswa"
+                        ariaLabel="Pilih Siswa"
+                        searchable
+                        className="w-full"
+                      />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Kelas</label>
-                        <select
-                          required
+                        <HeroUiFilterSelect
                           value={formData.kelas_id}
-                          onChange={(e) => setFormData({ ...formData, kelas_id: e.target.value })}
-                          className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                        >
-                          {options.kelases.map((k) => (
-                            <option key={k.id} value={k.id}>{k.nama_kelas}</option>
-                          ))}
-                        </select>
+                          onChange={(val) => setFormData({ ...formData, kelas_id: val })}
+                          options={options.kelases.map((k) => ({ value: String(k.id), label: k.nama_kelas }))}
+                          placeholder="Pilih Kelas"
+                          ariaLabel="Pilih Kelas"
+                          searchable
+                          className="w-full"
+                        />
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Semester</label>
-                        <select
-                          required
+                        <HeroUiFilterSelect
                           value={formData.semester_id}
-                          onChange={(e) => setFormData({ ...formData, semester_id: e.target.value })}
-                          className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                        >
-                          {options.semesters.map((s) => (
-                            <option key={s.id} value={s.id}>{s.nama}</option>
-                          ))}
-                        </select>
+                          onChange={(val) => setFormData({ ...formData, semester_id: val })}
+                          options={options.semesters.map((s) => ({ value: String(s.id), label: s.nama }))}
+                          placeholder="Pilih Semester"
+                          ariaLabel="Pilih Semester"
+                          className="w-full"
+                        />
                       </div>
                     </div>
                   </>
@@ -1899,16 +1906,19 @@ export default function LmsRaporPage({ tabNav = null }) {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Status Rapor</label>
-                    <select
+                    <HeroUiFilterSelect
                       value={formData.status_rapor}
-                      onChange={(e) => setFormData({ ...formData, status_rapor: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                    >
-                      <option value="draft">Draft</option>
-                      <option value="final">Final Validated</option>
-                      <option value="diterbitkan">Diterbitkan</option>
-                      <option value="direvisi">Direvisi</option>
-                    </select>
+                      onChange={(val) => setFormData({ ...formData, status_rapor: val })}
+                      options={[
+                        { value: 'draft', label: 'Draft' },
+                        { value: 'final', label: 'Final Validated' },
+                        { value: 'diterbitkan', label: 'Diterbitkan' },
+                        { value: 'direvisi', label: 'Direvisi' },
+                      ]}
+                      placeholder="Status Rapor"
+                      ariaLabel="Status Rapor"
+                      className="w-full"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Tanggal Terbit</label>

@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Sparkles,
   FileSpreadsheet,
+  RefreshCcw,
 } from 'lucide-react'
 import { parseSpreadsheetFile, downloadSpreadsheetTemplate } from '../../utils/spreadsheetParser'
 
@@ -187,13 +188,15 @@ export default function JabatanImportModal({ isOpen, onClose, onImport, isSubmit
     }
   }
 
+  const [overwriteExisting, setOverwriteExisting] = useState(false)
+
   const handleSubmit = (e) => {
     e.preventDefault()
     if (parsedData.length === 0) {
       setParseError('Pilih file yang berisi data valid terlebih dahulu.')
       return
     }
-    onImport(parsedData)
+    onImport({ file, rows: parsedData, overwrite: overwriteExisting })
   }
 
   const handleClose = () => {
@@ -201,6 +204,7 @@ export default function JabatanImportModal({ isOpen, onClose, onImport, isSubmit
     setFile(null)
     setParsedData([])
     setParseError('')
+    setOverwriteExisting(false)
     onClose()
   }
 
@@ -418,6 +422,47 @@ export default function JabatanImportModal({ isOpen, onClose, onImport, isSubmit
                       </div>
                     </div>
                   )}
+
+                  {/* Opsi Timpa Data (Overwrite) */}
+                  <div className={`rounded-2xl border p-4 transition-all duration-200 ${
+                    overwriteExisting
+                      ? "border-amber-300/90 bg-gradient-to-r from-amber-50/70 via-orange-50/30 to-amber-50/70 dark:border-amber-700/60 dark:bg-amber-950/30"
+                      : "border-slate-200/80 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40"
+                  }`}>
+                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                      <div className="pt-0.5">
+                        <input
+                          type="checkbox"
+                          id="overwrite-jabatan-checkbox"
+                          checked={overwriteExisting}
+                          onChange={(e) => setOverwriteExisting(e.target.checked)}
+                          className="size-4.5 rounded-md border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                            Timpa Data Jika Kode / Nama Jabatan Sudah Ada
+                          </span>
+                          {overwriteExisting ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800 border border-amber-300/80 dark:bg-amber-950 dark:text-amber-300">
+                              <RefreshCcw className="size-2.5" />
+                              Opsi Timpa Aktif
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              Lewati Duplikat (Default)
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                          {overwriteExisting
+                            ? 'Jika baris data memiliki Kode Jabatan atau Nama Jabatan yang sudah terdaftar, data jabatan lama akan diperbarui otomatis.'
+                            : 'Jika baris data memiliki Kode Jabatan atau Nama Jabatan yang sudah ada di database, baris tersebut akan dilewati dan data lama tetap utuh.'}
+                        </p>
+                      </div>
+                    </label>
+                  </div>
                 </div>
 
                 {/* Footer */}

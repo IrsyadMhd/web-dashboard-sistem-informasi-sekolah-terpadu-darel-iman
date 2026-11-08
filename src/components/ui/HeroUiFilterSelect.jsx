@@ -8,6 +8,7 @@ import { ChevronDown, Search, Check, X } from 'lucide-react'
  * Provides custom interactive select styling matching TailGrids & Hero UI standards.
  */
 export default function HeroUiFilterSelect({
+  id = undefined,
   value,
   onChange,
   options = [],
@@ -20,6 +21,8 @@ export default function HeroUiFilterSelect({
   ariaLabel = '',
   disabled = false,
   size = 'md', // 'sm' (h-9), 'md' (h-10), 'lg' (h-11)
+  placement = 'bottom', // 'bottom' | 'top'
+  align = 'left', // 'left' | 'right'
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -84,9 +87,10 @@ export default function HeroUiFilterSelect({
   }
 
   return (
-    <div className={`relative ${className}`} ref={containerRef}>
+    <div className={`relative ${isOpen ? 'z-50' : 'z-10'} ${className}`} ref={containerRef} id={id ? `${id}-container` : undefined}>
       <button
         type="button"
+        id={id}
         aria-label={ariaLabel || placeholder}
         disabled={disabled}
         onClick={() => {
@@ -143,11 +147,13 @@ export default function HeroUiFilterSelect({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            initial={{ opacity: 0, scale: 0.96, y: placement === 'top' ? 4 : -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            exit={{ opacity: 0, scale: 0.96, y: placement === 'top' ? 4 : -4 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute left-0 top-full mt-1.5 z-[100] ${popoverWidth} min-w-[220px] overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/50 dark:shadow-black/60`}
+            className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} ${
+              placement === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+            } z-[100] ${popoverWidth} min-w-[220px] overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/50 dark:shadow-black/60`}
           >
             {searchable && normalizedOptions.length > 5 && (
               <div className="p-1.5 border-b border-slate-100 dark:border-slate-800 mb-1">
@@ -184,8 +190,8 @@ export default function HeroUiFilterSelect({
                       }}
                       className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-bold transition-all text-left cursor-pointer ${
                         isSelected
-                          ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/70 dark:text-emerald-300 font-black'
-                          : 'text-slate-700 hover:bg-emerald-50/50 hover:text-emerald-800 dark:text-slate-200 dark:hover:bg-slate-800/80 dark:hover:text-emerald-300'
+                          ? 'bg-gradient-to-r from-emerald-50 to-teal-50/70 text-emerald-950 dark:from-emerald-950/80 dark:to-teal-950/50 dark:text-emerald-200 font-black'
+                          : 'text-slate-700 hover:bg-emerald-50/60 hover:text-emerald-900 dark:text-slate-200 dark:hover:bg-slate-800/80 dark:hover:text-emerald-300'
                       }`}
                     >
                       <div className="truncate pr-2 flex-1">
@@ -221,6 +227,7 @@ export default function HeroUiFilterSelect({
 }
 
 HeroUiFilterSelect.propTypes = {
+  id: PropTypes.string,
   value: PropTypes.any,
   onChange: PropTypes.func.isRequired,
   options: PropTypes.array,
@@ -233,4 +240,6 @@ HeroUiFilterSelect.propTypes = {
   ariaLabel: PropTypes.string,
   disabled: PropTypes.bool,
   size: PropTypes.oneOf(['sm', 'md', 'lg']),
+  placement: PropTypes.oneOf(['bottom', 'top']),
+  align: PropTypes.oneOf(['left', 'right']),
 }
