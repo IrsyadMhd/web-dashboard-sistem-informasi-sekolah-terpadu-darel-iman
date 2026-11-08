@@ -44,6 +44,7 @@ import {
   Pencil,
   Trash2,
   X,
+  ArrowUpDown,
 } from 'lucide-react'
 import Swal from '@/components/ui/compat/swal-heroui'
 import { PageContainer, AppBreadcrumb, AppTabs } from '../components/app'
@@ -113,6 +114,10 @@ export default function DisciplinePointManagementPage() {
   const [selectedCluster, setSelectedCluster] = useState('all')
   const [selectedLevel, setSelectedLevel] = useState('all')
   const [selectedUnitId, setSelectedUnitId] = useState('all')
+  const [selectedClassId, setSelectedClassId] = useState('all')
+  const [classesList, setClassesList] = useState([])
+  const [classesLoading, setClassesLoading] = useState(false)
+  const [sortBy, setSortBy] = useState('date_desc')
   const [educationUnits, setEducationUnits] = useState([])
 
   // State Master Kategori (Aturan Tata Tertib)
@@ -206,6 +211,36 @@ export default function DisciplinePointManagementPage() {
     loadInitialData()
   }, [loadInitialData])
 
+  // Load Kelas Dinamis saat Unit Pendidikan Dipilih
+  useEffect(() => {
+    let isMounted = true
+    const fetchClasses = async () => {
+      if (selectedUnitId === 'all') {
+        setClassesList([])
+        setSelectedClassId('all')
+        return
+      }
+      try {
+        setClassesLoading(true)
+        const res = await api.get('/kelas', { params: { unit_id: selectedUnitId, per_page: 100 } })
+        if (isMounted) {
+          const list = res?.data?.data || res?.data || []
+          setClassesList(Array.isArray(list) ? list : [])
+          setSelectedClassId('all')
+        }
+      } catch (err) {
+        console.error('Failed to load classes for unit:', err)
+        if (isMounted) setClassesList([])
+      } finally {
+        if (isMounted) setClassesLoading(false)
+      }
+    }
+    fetchClasses()
+    return () => {
+      isMounted = false
+    }
+  }, [selectedUnitId])
+
   // 2. Load Transaksi Pelanggaran
   const fetchViolations = useCallback(
     async (page = 1) => {
@@ -218,6 +253,8 @@ export default function DisciplinePointManagementPage() {
           cluster: selectedCluster !== 'all' ? selectedCluster : undefined,
           level: selectedLevel !== 'all' ? selectedLevel : undefined,
           unit_id: selectedUnitId !== 'all' ? selectedUnitId : undefined,
+          class_id: selectedClassId !== 'all' ? selectedClassId : undefined,
+          sort_by: sortBy,
         }
         const res = await disciplineService.getViolations(params)
         setViolations(res.data || [])
@@ -234,7 +271,7 @@ export default function DisciplinePointManagementPage() {
         setLoading(false)
       }
     },
-    [debouncedSearch, selectedCluster, selectedLevel, selectedUnitId]
+    [debouncedSearch, selectedCluster, selectedLevel, selectedUnitId, selectedClassId, sortBy]
   )
 
   useEffect(() => {
@@ -270,7 +307,7 @@ export default function DisciplinePointManagementPage() {
   // Unit Pendidikan Options untuk HeroUiFilterSelect (dengan badge Boarding/Fullday otomatis)
   const unitFilterOptions = useMemo(() => {
     return [
-      { value: 'all', label: 'Semua Unit Pendidikan', badge: 'Semua' },
+      { value: 'all', label: 'Semua Unit Pendidikan' },
       ...educationUnits.map((u) => {
         const isBoarding = u.program_type === 'boarding' || /PONPES|MAHAD|PESANTREN|ASRAMA/i.test(u.name || '')
         return {
@@ -282,6 +319,20 @@ export default function DisciplinePointManagementPage() {
       }),
     ]
   }, [educationUnits])
+
+  // Class Options untuk HeroUiFilterSelect (terfilter otomatis berdasarkan unit yang dipilih)
+  const classFilterOptions = useMemo(() => {
+    if (selectedUnitId === 'all') {
+      return [{ value: 'all', label: 'Semua Kelas' }]
+    }
+    return [
+      { value: 'all', label: 'Semua Kelas di Unit Ini' },
+      ...classesList.map((k) => ({
+        value: String(k.id),
+        label: k.nama_kelas || k.name || `Kelas ${k.tingkat || ''}`,
+      })),
+    ]
+  }, [selectedUnitId, classesList])
 
   // Filter Kategori/Pasal Dinamis untuk Modal
   const filteredModalCategories = useMemo(() => {
@@ -525,12 +576,12 @@ export default function DisciplinePointManagementPage() {
         items={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Kesantrian & Kedisiplinan', href: '/dashboard/kesantrian' },
-          { label: 'Buku Saku Tata Tertib & Poin Santri' },
+          { label: 'Tata Tertib & Poin' },
         ]}
       />
 
       <HeroUiHeader
-        title="Buku Saku Tata Tertib & Poin Santri"
+        title="Tata Tertib & Poin"
         subtitle="Manajemen kedisiplinan berjenjang terintegrasi (1 - 250 Poin): Pencatatan langsung oleh Musyrif Asrama, Wali Kelas, Guru Mapel, Waka Kesantrian, dan Divisi Pendidikan."
         roleTag={userRoles[0] || 'Petugas'}
         theme="emerald"
@@ -765,25 +816,79 @@ export default function DisciplinePointManagementPage() {
       {activeTab === 'violations' && (
         <div className="mt-4 space-y-4">
           <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
-            {/* Toolbar Search & Filter */}
-            <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="w-full sm:w-80">
+            {/* Toolbar Search & Action (Row 1) */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="w-full sm:flex-1 max-w-xl">
                 <HeroInput
                   isClearable
                   placeholder="Cari santri, NIS, atau jenis pelanggaran..."
                   value={searchInput}
                   onValueChange={setSearchInput}
-                  startContent={<Search className="w-4 h-4 text-emerald-600" />}
+                  startContent={<Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
                   size="sm"
                   variant="bordered"
                   classNames={{
-                    inputWrapper: 'border-emerald-300/80 dark:border-emerald-700 bg-white dark:bg-slate-900',
+                    inputWrapper: 'border-emerald-300/80 dark:border-emerald-700 bg-white dark:bg-slate-900 shadow-2xs h-10 rounded-xl',
                   }}
                 />
               </div>
 
-              {/* Filter Bar HeroUI */}
-              <div className="flex items-center flex-wrap gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/70 dark:border-emerald-700 dark:text-emerald-300 text-xs font-black shadow-2xs">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  Total {pagination.total || 0} Kasus
+                </span>
+
+                <HeroButton
+                  size="sm"
+                  color="primary"
+                  variant="solid"
+                  className="font-black bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl shadow-xs"
+                  startContent={<Plus className="w-4 h-4" />}
+                  onPress={() => setIsInputModalOpen(true)}
+                >
+                  Catat Pelanggaran
+                </HeroButton>
+              </div>
+            </div>
+
+            {/* Structured Filter Bar HeroUI (Row 2) */}
+            <div className="bg-gradient-to-r from-emerald-50/60 via-teal-50/40 to-emerald-50/60 dark:bg-[#151D2A] p-3 sm:p-4 border-b border-emerald-200/80 dark:border-emerald-800/60 flex flex-wrap items-center gap-2.5">
+              <div className="w-full sm:w-56">
+                <HeroUiFilterSelect
+                  value={selectedUnitId}
+                  onChange={(val) => {
+                    setSelectedUnitId(val || 'all')
+                    setPage(1)
+                  }}
+                  options={unitFilterOptions}
+                  placeholder="Semua Unit Pendidikan"
+                  icon={Building}
+                  searchable={true}
+                  size="sm"
+                  className="w-full"
+                />
+              </div>
+
+              {/* Filter Turunan: Kelas / Rombel */}
+              <div className="w-full sm:w-52">
+                <HeroUiFilterSelect
+                  value={selectedClassId}
+                  onChange={(val) => {
+                    setSelectedClassId(val || 'all')
+                    setPage(1)
+                  }}
+                  options={classFilterOptions}
+                  placeholder={selectedUnitId === 'all' ? 'Semua Kelas (Pilih Unit)' : 'Semua Kelas di Unit Ini'}
+                  icon={School}
+                  searchable={true}
+                  disabled={selectedUnitId === 'all' && classesList.length === 0}
+                  size="sm"
+                  className="w-full"
+                />
+              </div>
+
+              <div className="w-full sm:w-44">
                 <HeroUiFilterSelect
                   value={selectedCluster}
                   onChange={(val) => {
@@ -798,10 +903,13 @@ export default function DisciplinePointManagementPage() {
                     { value: 'masjid', label: 'D. Peraturan di Masjid' },
                   ]}
                   placeholder="Semua Kluster"
+                  icon={Bookmark}
                   size="sm"
-                  className="w-full sm:w-44"
+                  className="w-full"
                 />
+              </div>
 
+              <div className="w-full sm:w-36">
                 <HeroUiFilterSelect
                   value={selectedLevel}
                   onChange={(val) => {
@@ -815,39 +923,51 @@ export default function DisciplinePointManagementPage() {
                     { value: 'berat', label: 'Tingkat Berat' },
                   ]}
                   placeholder="Semua Tingkat"
+                  icon={ShieldAlert}
                   size="sm"
-                  className="w-full sm:w-36"
+                  className="w-full"
                 />
+              </div>
 
+              <div className="w-full sm:w-44">
                 <HeroUiFilterSelect
-                  value={selectedUnitId}
+                  value={sortBy}
                   onChange={(val) => {
-                    setSelectedUnitId(val || 'all')
+                    setSortBy(val || 'date_desc')
                     setPage(1)
                   }}
-                  options={unitFilterOptions}
-                  placeholder="Semua Unit Pendidikan"
-                  icon={Building}
-                  searchable={true}
+                  options={[
+                    { value: 'date_desc', label: 'Terbaru (Waktu)' },
+                    { value: 'points_desc', label: 'Poin Tertinggi (Terberat)' },
+                    { value: 'points_asc', label: 'Poin Terendah (Teringan)' },
+                    { value: 'date_asc', label: 'Terlama (Waktu)' },
+                  ]}
+                  placeholder="Urutan Data"
+                  icon={ArrowUpDown}
                   size="sm"
-                  className="w-full sm:w-52"
+                  className="w-full"
                 />
+              </div>
 
+              {(selectedCluster !== 'all' || selectedLevel !== 'all' || selectedUnitId !== 'all' || selectedClassId !== 'all' || searchInput || sortBy !== 'date_desc') && (
                 <HeroButton
                   size="sm"
                   variant="flat"
                   color="default"
+                  className="font-bold rounded-xl"
                   startContent={<RotateCcw className="w-3.5 h-3.5" />}
                   onPress={() => {
                     setSearchInput('')
                     setSelectedCluster('all')
                     setSelectedLevel('all')
                     setSelectedUnitId('all')
+                    setSelectedClassId('all')
+                    setSortBy('date_desc')
                   }}
                 >
-                  Reset
+                  Reset Filter
                 </HeroButton>
-              </div>
+              )}
             </div>
 
             {/* Table Body */}
@@ -873,10 +993,56 @@ export default function DisciplinePointManagementPage() {
                     </tr>
                   ) : violations.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-500">
-                        <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-60" />
-                        <p className="font-bold text-sm">Alhamdulillah, belum ada catatan pelanggaran.</p>
-                        <p className="text-xs mt-1">Data kedisiplinan dan tata tertib santri berjalan dengan baik.</p>
+                      <td colSpan={7} className="py-16 px-4 text-center">
+                        <div className="max-w-md mx-auto flex flex-col items-center">
+                          <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/25 mb-4 ring-8 ring-emerald-50 dark:ring-emerald-950/40">
+                            <ShieldCheck className="w-8 h-8 text-white" />
+                          </div>
+
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 text-xs font-black mb-2 shadow-2xs">
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Status Disiplin: Kondusif & Tertib
+                          </span>
+
+                          <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                            Alhamdulillah, Belum Ada Catatan Pelanggaran
+                          </h4>
+
+                          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                            Data kedisiplinan dan tata tertib santri berjalan dengan sangat baik pada filter terpilih.
+                          </p>
+
+                          <div className="mt-5 flex items-center gap-2">
+                            <HeroButton
+                              size="sm"
+                              color="primary"
+                              variant="solid"
+                              className="font-black bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm rounded-xl"
+                              startContent={<Plus className="w-4 h-4" />}
+                              onPress={() => setIsInputModalOpen(true)}
+                            >
+                              Catat Pelanggaran
+                            </HeroButton>
+
+                            {(selectedCluster !== 'all' || selectedLevel !== 'all' || selectedUnitId !== 'all' || searchInput || sortBy !== 'date_desc') && (
+                              <HeroButton
+                                size="sm"
+                                variant="flat"
+                                color="default"
+                                className="font-bold rounded-xl"
+                                startContent={<RotateCcw className="w-3.5 h-3.5" />}
+                                onPress={() => {
+                                  setSearchInput('')
+                                  setSelectedCluster('all')
+                                  setSelectedLevel('all')
+                                  setSelectedUnitId('all')
+                                  setSortBy('date_desc')
+                                }}
+                              >
+                                Reset Filter
+                              </HeroButton>
+                            )}
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   ) : (

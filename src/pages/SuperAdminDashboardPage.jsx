@@ -55,6 +55,13 @@ import {
   AlertIndicator,
   AlertTitle,
 } from '../components/ui/alert'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '../components/ui/select'
 import { SquircleActionButton } from '../components/master-data'
 
 import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
@@ -714,21 +721,27 @@ export default function SuperAdminDashboardPage() {
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Pilihan Unit Sekolah
                     </label>
-                    <select
-                      value={selectedUnit}
-                      onChange={(e) => {
-                        setSelectedUnit(e.target.value)
+                    <Select
+                      value={String(selectedUnit)}
+                      onChange={(val) => {
+                        setSelectedUnit(val ? String(val) : 'semua')
                         setPage(1)
                       }}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition"
                     >
-                      <option value="semua">Semua Unit Pendidikan ({availableUnits.length} Unit)</option>
-                      {availableUnits.map((unit) => (
-                        <option key={unit.id} value={unit.id}>
-                          {unit.name} ({unit.code})
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition shadow-2xs">
+                        <SelectValue placeholder="Semua Unit Pendidikan" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 max-h-64 overflow-y-auto bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1">
+                        <SelectItem id="semua" value="semua" className="text-xs font-medium py-1.5">
+                          Semua Unit Pendidikan ({availableUnits.length} Unit)
+                        </SelectItem>
+                        {availableUnits.map((unit) => (
+                          <SelectItem key={unit.id} id={String(unit.id)} value={String(unit.id)} className="text-xs font-medium py-1.5">
+                            {unit.name} ({unit.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Dropdown Tahun Ajaran (Dari Database) */}
@@ -736,21 +749,27 @@ export default function SuperAdminDashboardPage() {
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Tahun Ajaran
                     </label>
-                    <select
-                      value={selectedAcademicYear}
-                      onChange={(e) => {
-                        setSelectedAcademicYear(e.target.value)
+                    <Select
+                      value={String(selectedAcademicYear)}
+                      onChange={(val) => {
+                        setSelectedAcademicYear(val ? String(val) : 'semua')
                         setPage(1)
                       }}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition"
                     >
-                      <option value="semua">Semua Tahun Ajaran</option>
-                      {availableAcademicYears.map((year) => (
-                        <option key={year.id} value={year.id}>
-                          {year.name} {year.is_active ? '(Aktif)' : ''}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition shadow-2xs">
+                        <SelectValue placeholder="Semua Tahun Ajaran" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 max-h-64 overflow-y-auto bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1">
+                        <SelectItem id="semua" value="semua" className="text-xs font-medium py-1.5">
+                          Semua Tahun Ajaran
+                        </SelectItem>
+                        {availableAcademicYears.map((year) => (
+                          <SelectItem key={year.id} id={String(year.id)} value={String(year.id)} className="text-xs font-medium py-1.5">
+                            {year.name} {year.is_active ? '(Aktif)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Dropdown Semester (Dari Database) */}
@@ -758,21 +777,27 @@ export default function SuperAdminDashboardPage() {
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Semester Akademik
                     </label>
-                    <select
-                      value={selectedSemester}
-                      onChange={(e) => {
-                        setSelectedSemester(e.target.value)
+                    <Select
+                      value={String(selectedSemester)}
+                      onChange={(val) => {
+                        setSelectedSemester(val ? String(val) : 'semua')
                         setPage(1)
                       }}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition"
                     >
-                      <option value="semua">Semua Semester</option>
-                      {availableSemesters.map((sem) => (
-                        <option key={sem.id} value={sem.id}>
-                          {sem.name} {sem.is_active ? '(Aktif)' : ''}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition shadow-2xs">
+                        <SelectValue placeholder="Semua Semester" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 max-h-64 overflow-y-auto bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1">
+                        <SelectItem id="semua" value="semua" className="text-xs font-medium py-1.5">
+                          Semua Semester
+                        </SelectItem>
+                        {availableSemesters.map((sem) => (
+                          <SelectItem key={sem.id} id={String(sem.id)} value={String(sem.id)} className="text-xs font-medium py-1.5">
+                            {sem.name} {sem.is_active ? '(Aktif)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Dropdown Periode Waktu */}
@@ -780,20 +805,24 @@ export default function SuperAdminDashboardPage() {
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Periode Analisis Data
                     </label>
-                    <select
-                      value={periodOption}
-                      onChange={(e) => {
-                        setPeriodOption(e.target.value)
+                    <Select
+                      value={String(periodOption)}
+                      onChange={(val) => {
+                        setPeriodOption(val ? String(val) : 'minggu')
                         setPage(1)
                       }}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition"
                     >
-                      <option value="hari">Hari Ini</option>
-                      <option value="minggu">7 Hari Terakhir (Default)</option>
-                      <option value="bulan">Bulan Ini</option>
-                      <option value="semester">6 Bulan Terakhir</option>
-                      <option value="tahun">Tahun Ini</option>
-                    </select>
+                      <SelectTrigger className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition shadow-2xs">
+                        <SelectValue placeholder="Pilih Periode..." />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 max-h-64 overflow-y-auto bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1">
+                        <SelectItem id="hari" value="hari" className="text-xs font-medium py-1.5">Hari Ini</SelectItem>
+                        <SelectItem id="minggu" value="minggu" className="text-xs font-medium py-1.5">7 Hari Terakhir (Default)</SelectItem>
+                        <SelectItem id="bulan" value="bulan" className="text-xs font-medium py-1.5">Bulan Ini</SelectItem>
+                        <SelectItem id="semester" value="semester" className="text-xs font-medium py-1.5">6 Bulan Terakhir</SelectItem>
+                        <SelectItem id="tahun" value="tahun" className="text-xs font-medium py-1.5">Tahun Ini</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Dropdown Status Unit */}
@@ -801,18 +830,22 @@ export default function SuperAdminDashboardPage() {
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Status Operasional Unit
                     </label>
-                    <select
-                      value={selectedStatus}
-                      onChange={(e) => {
-                        setSelectedStatus(e.target.value)
+                    <Select
+                      value={String(selectedStatus)}
+                      onChange={(val) => {
+                        setSelectedStatus(val ? String(val) : 'semua')
                         setPage(1)
                       }}
-                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition"
                     >
-                      <option value="semua">Semua Status Operasional</option>
-                      <option value="aktif">Aktif Operasional</option>
-                      <option value="nonaktif">Non-Aktif</option>
-                    </select>
+                      <SelectTrigger className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition shadow-2xs">
+                        <SelectValue placeholder="Semua Status Operasional" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 max-h-64 overflow-y-auto bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1">
+                        <SelectItem id="semua" value="semua" className="text-xs font-medium py-1.5">Semua Status Operasional</SelectItem>
+                        <SelectItem id="aktif" value="aktif" className="text-xs font-medium py-1.5">Aktif Operasional</SelectItem>
+                        <SelectItem id="nonaktif" value="nonaktif" className="text-xs font-medium py-1.5">Non-Aktif</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

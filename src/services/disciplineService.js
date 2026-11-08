@@ -80,8 +80,8 @@ export const disciplineService = {
   },
 
   // Overview Divisi Pendidikan (Supervisi Komparatif Lintas Unit)
-  getDivisiOverview: async () => {
-    const res = await api.get('/discipline/divisi-overview')
+  getDivisiOverview: async (params = {}) => {
+    const res = await api.get('/discipline/divisi-overview', { params })
     return res.data
   },
 

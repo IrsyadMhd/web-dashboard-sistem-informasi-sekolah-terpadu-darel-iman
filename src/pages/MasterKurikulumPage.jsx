@@ -495,8 +495,21 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['master-kurikulum-list'] })
       queryClient.invalidateQueries({ queryKey: ['master-kurikulum-stats'] })
-      setIsImportModalOpen(false)
-      pushToast('Impor Selesai', res?.message || 'Data kurikulum berhasil diimpor ke sistem.', 'success')
+
+      const payload = res?.data || {}
+      const berhasil = payload.berhasil ?? 0
+      const gagal = payload.gagal ?? 0
+      const errors = payload.errors || []
+
+      if (gagal > 0 && berhasil === 0) {
+        pushToast('Impor Gagal', errors[0] || 'Semua baris data gagal diproses.', 'error')
+      } else if (gagal > 0 && berhasil > 0) {
+        setIsImportModalOpen(false)
+        pushToast('Impor Sebagian', `Berhasil: ${berhasil}, Gagal: ${gagal}. ${errors.slice(0, 2).join('; ')}`, 'warning')
+      } else {
+        setIsImportModalOpen(false)
+        pushToast('Impor Selesai', res?.message || `Semua data (${berhasil}) berhasil diimpor ke sistem.`, 'success')
+      }
     },
     onError: (err) => {
       const msg = err.response?.data?.message || 'Gagal memproses impor data.'
@@ -1006,6 +1019,8 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
         onClose={() => setIsImportModalOpen(false)}
         onImport={(rows) => importMutation.mutate(rows)}
         isSubmitting={importMutation.isPending}
+        defaultUnitId={selectedUnitFilter || (!canViewAllUnits ? effectiveUserUnitId : '')}
+        defaultTahunAjaranId={selectedTahunFilter || ''}
       />
 
       {/* ══════════════════════════════════════════════════════════════════

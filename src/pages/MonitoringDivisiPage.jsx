@@ -904,23 +904,28 @@ export default function MonitoringDivisiPage() {
     <>
       {/* Unit Pendidikan Dropdown (Visible / Editable for Superadmin & Yayasan, locked indicator for Kepsek/Divisi) */}
       {!isUnitRestricted ? (
-        <div className="relative">
-          <select
-            value={filterUnit}
-            onChange={(e) => {
-              setFilterUnit(e.target.value)
+        <div className="relative min-w-[200px]">
+          <Select
+            value={filterUnit || ''}
+            onChange={(val) => {
+              setFilterUnit(String(val || ''))
               setPage(1)
             }}
-            className="h-10 cursor-pointer appearance-none rounded-xl border border-emerald-300/80 bg-emerald-50/60 pl-3.5 pr-8 text-xs font-bold text-emerald-900 shadow-2xs transition-all hover:border-emerald-400 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200"
           >
-            <option value="">Semua Unit Pendidikan</option>
-            {educationUnits.map((u) => (
-              <option key={u.id} value={u.name || u.code}>
-                {u.name}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-emerald-600" />
+            <SelectTrigger className="h-10 rounded-xl border border-emerald-300/80 bg-emerald-50/60 px-3.5 text-xs font-bold text-emerald-900 shadow-2xs transition-all hover:border-emerald-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+              <SelectValue placeholder="Semua Unit Pendidikan" />
+            </SelectTrigger>
+            <SelectContent className="z-50 max-h-72 overflow-y-auto bg-white dark:bg-[#1B2433] border border-emerald-200 dark:border-emerald-800/80 rounded-2xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95">
+              <SelectItem id="" value="" className="text-xs font-bold py-2 text-emerald-700 dark:text-emerald-400">
+                Semua Unit Pendidikan
+              </SelectItem>
+              {educationUnits.map((u) => (
+                <SelectItem key={u.id} id={u.name || u.code} value={u.name || u.code} className="text-xs font-semibold py-2">
+                  {u.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       ) : (
         <div className="h-10 px-3.5 rounded-xl border border-amber-200 bg-amber-50/90 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200 flex items-center gap-1.5 text-xs font-extrabold">
@@ -930,62 +935,73 @@ export default function MonitoringDivisiPage() {
       )}
 
       {/* Filter Divisi Dropdown (Populated Dynamically from Database) */}
-      <div className="relative">
-        <select
-          value={filterDivisi}
-          onChange={(e) => {
-            setFilterDivisi(e.target.value)
+      <div className="relative min-w-[190px]">
+        <Select
+          value={filterDivisi || ''}
+          onChange={(val) => {
+            setFilterDivisi(String(val || ''))
             setPage(1)
           }}
-          className="h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
         >
-          <option value="">Semua Divisi {divisionOptions.length > 0 ? `(${divisionOptions.length})` : ''}</option>
-          {divisionOptions.map((opt) => (
-            <option key={opt.id || opt.name} value={opt.name}>
-              {opt.name}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <SelectTrigger className="h-10 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+            <SelectValue placeholder={`Semua Divisi ${divisionOptions.length > 0 ? `(${divisionOptions.length})` : ''}`} />
+          </SelectTrigger>
+          <SelectContent className="z-50 max-h-72 overflow-y-auto bg-white dark:bg-[#1B2433] border border-emerald-200 dark:border-emerald-800/80 rounded-2xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95">
+            <SelectItem id="" value="" className="text-xs font-semibold py-2">
+              Semua Divisi {divisionOptions.length > 0 ? `(${divisionOptions.length})` : ''}
+            </SelectItem>
+            {divisionOptions.map((opt) => (
+              <SelectItem key={opt.id || opt.name} id={opt.name} value={opt.name} className="text-xs font-semibold py-2">
+                {opt.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Filter Status Dropdown */}
-      <div className="relative">
-        <select
-          value={filterStatus}
-          onChange={(e) => {
-            setFilterStatus(e.target.value)
+      <div className="relative min-w-[175px]">
+        <Select
+          value={filterStatus || ''}
+          onChange={(val) => {
+            setFilterStatus(String(val || ''))
             setPage(1)
           }}
-          className="h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
         >
-          <option value="">Semua Status Supervisi</option>
-          <option value="proses">Dalam Proses</option>
-          <option value="tercapai">Tercapai</option>
-          <option value="terlambat">Terlambat</option>
-          <option value="belum_tercapai">Belum Tercapai</option>
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <SelectTrigger className="h-10 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+            <SelectValue placeholder="Semua Status Supervisi" />
+          </SelectTrigger>
+          <SelectContent className="z-50 max-h-72 overflow-y-auto bg-white dark:bg-[#1B2433] border border-emerald-200 dark:border-emerald-800/80 rounded-2xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95">
+            <SelectItem id="" value="" className="text-xs font-semibold py-2">Semua Status Supervisi</SelectItem>
+            <SelectItem id="proses" value="proses" className="text-xs font-semibold py-2">Dalam Proses</SelectItem>
+            <SelectItem id="tercapai" value="tercapai" className="text-xs font-semibold py-2">Tercapai</SelectItem>
+            <SelectItem id="terlambat" value="terlambat" className="text-xs font-semibold py-2">Terlambat</SelectItem>
+            <SelectItem id="belum_tercapai" value="belum_tercapai" className="text-xs font-semibold py-2">Belum Tercapai</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Select Per Halaman */}
-      <div className="relative">
-        <select
-          value={perPage}
-          onChange={(e) => {
-            setPerPage(Number(e.target.value))
+      <div className="relative min-w-[145px]">
+        <Select
+          value={String(perPage)}
+          onChange={(val) => {
+            setPerPage(Number(val) || 10)
             setPage(1)
           }}
-          className="h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
         >
-          <option value={5}>5 Per Halaman</option>
-          <option value={10}>10 Per Halaman</option>
-          <option value={15}>15 Per Halaman</option>
-          <option value={25}>25 Per Halaman</option>
-          <option value={50}>50 Per Halaman</option>
-          <option value={100}>100 Per Halaman</option>
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <SelectTrigger className="h-10 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+            <SelectValue placeholder="10 Per Halaman" />
+          </SelectTrigger>
+          <SelectContent className="z-50 max-h-72 overflow-y-auto bg-white dark:bg-[#1B2433] border border-emerald-200 dark:border-emerald-800/80 rounded-2xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95">
+            <SelectItem id="5" value="5" className="text-xs font-semibold py-2">5 Per Halaman</SelectItem>
+            <SelectItem id="10" value="10" className="text-xs font-semibold py-2">10 Per Halaman</SelectItem>
+            <SelectItem id="15" value="15" className="text-xs font-semibold py-2">15 Per Halaman</SelectItem>
+            <SelectItem id="25" value="25" className="text-xs font-semibold py-2">25 Per Halaman</SelectItem>
+            <SelectItem id="50" value="50" className="text-xs font-semibold py-2">50 Per Halaman</SelectItem>
+            <SelectItem id="100" value="100" className="text-xs font-semibold py-2">100 Per Halaman</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Reset Filter Button - Soft Pastel Rose Squircle Icon Button with Tooltip */}

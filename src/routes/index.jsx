@@ -513,6 +513,7 @@ export const router = createBrowserRouter([
           { path: 'tahfizh', element: <BungkusLazy><StudentPortalPage section="tahfizh" /></BungkusLazy> },
           { path: 'nilai', element: <BungkusLazy><StudentPortalPage section="grades" /></BungkusLazy> },
           { path: 'komentar-guru', element: <BungkusLazy><StudentPortalPage section="student-notes" /></BungkusLazy> },
+          { path: 'tata-tertib', element: <BungkusLazy><StudentPortalPage section="discipline" /></BungkusLazy> },
           { path: 'mutabaah', element: <BungkusLazy><StudentPortalPage section="mutabaah" /></BungkusLazy> },
           { path: 'absensi', element: <BungkusLazy><StudentPortalPage section="attendance" /></BungkusLazy> },
           { path: 'kisi-kisi', element: <BungkusLazy><StudentPortalPage section="kisi" /></BungkusLazy> },

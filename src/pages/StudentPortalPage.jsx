@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import {
   AlertCircle, Award, BookOpen, BookOpenCheck, CalendarCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight,
   ClipboardList, Clock3, CreditCard, FileCheck2, GraduationCap, HeartHandshake, LayoutDashboard, Loader2,
-  Megaphone, MessageCircle, RefreshCw, Save, Send, ShieldCheck, Sparkles, UserRound, X,
+  Megaphone, MessageCircle, RefreshCw, Save, Send, ShieldAlert, ShieldCheck, Sparkles, UserRound, X,
 } from 'lucide-react'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import api from '../services/api'
@@ -17,6 +17,7 @@ import AssignmentsWorkspace from '../components/portal/AssignmentsWorkspace'
 import TahfizhWorkspace from '../components/portal/TahfizhWorkspace'
 import GradesWorkspace from '../components/portal/GradesWorkspace'
 import TeacherCommentsWorkspace from '../components/portal/TeacherCommentsWorkspace'
+import DisciplineSummaryWorkspace from '../components/portal/DisciplineSummaryWorkspace'
 import MutabaahWorkspace from '../components/portal/MutabaahWorkspace'
 import AttendanceWorkspace from '../components/portal/AttendanceWorkspace'
 import ExamGridsWorkspace from '../components/portal/ExamGridsWorkspace'
@@ -39,6 +40,7 @@ const tabs = [
   { id: 'tahfizh', label: 'Tahfizh', icon: BookOpenCheck, pastelColor: 'bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 hover:shadow-md hover:shadow-emerald-500/20' },
   { id: 'grades', label: 'Nilai', icon: Award, pastelColor: 'bg-cyan-100/90 text-cyan-700 hover:bg-cyan-600 hover:text-white dark:bg-cyan-950/60 dark:text-cyan-300 dark:hover:bg-cyan-600 hover:shadow-md hover:shadow-cyan-500/20' },
   { id: 'student-notes', label: 'Buku Penghubung', icon: MessageCircle, pastelColor: 'bg-indigo-100/90 text-indigo-700 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 hover:shadow-md hover:shadow-indigo-500/20' },
+  { id: 'discipline', label: 'Tata Tertib & Poin', icon: ShieldAlert, pastelColor: 'bg-rose-100/90 text-rose-700 hover:bg-rose-600 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-600 hover:shadow-md hover:shadow-rose-500/20' },
   { id: 'mutabaah', label: 'Mutabaah', icon: HeartHandshake, pastelColor: 'bg-amber-100/90 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 hover:shadow-md hover:shadow-amber-500/20' },
   { id: 'attendance', label: 'Absensi', icon: CalendarCheck, pastelColor: 'bg-teal-100/90 text-teal-700 hover:bg-teal-600 hover:text-white dark:bg-teal-950/60 dark:text-teal-300 dark:hover:bg-teal-600 hover:shadow-md hover:shadow-teal-500/20' },
   { id: 'kisi', label: 'Kisi-kisi', icon: BookOpenCheck, pastelColor: 'bg-violet-100/90 text-violet-700 hover:bg-violet-600 hover:text-white dark:bg-violet-950/60 dark:text-violet-300 dark:hover:bg-violet-600 hover:shadow-md hover:shadow-violet-500/20' },
@@ -51,6 +53,7 @@ const studentPortalPaths = {
   ringkasan: '/portal-siswa', profile: '/portal-siswa/profil', announcements: '/portal-siswa/informasi-sekolah',
   schedules: '/portal-siswa/jadwal', materials: '/portal-siswa/materi', assignments: '/portal-siswa/tugas',
   tahfizh: '/portal-siswa/tahfizh', grades: '/portal-siswa/nilai', 'student-notes': '/portal-siswa/komentar-guru',
+  discipline: '/portal-siswa/tata-tertib',
   mutabaah: '/portal-siswa/mutabaah', attendance: '/portal-siswa/absensi', kisi: '/portal-siswa/kisi-kisi',
   ujian: '/portal-siswa/ujian-cbt', hasil: '/portal-siswa/hasil', bills: '/portal-siswa/tagihan',
 }
@@ -847,6 +850,10 @@ const KpiCardPastelStyles = {
 
         {!panelLoading && activeTab === 'student-notes' && (
           <TeacherCommentsWorkspace comments={portalRecords} loading={panelLoading} />
+        )}
+
+        {!panelLoading && activeTab === 'discipline' && (
+          <DisciplineSummaryWorkspace childId={student?.id} />
         )}
 
         {!panelLoading && activeTab === 'mutabaah' && (
