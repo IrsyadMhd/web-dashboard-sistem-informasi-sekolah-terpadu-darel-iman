@@ -60,9 +60,24 @@ export const subjectService = {
   },
 
   importFile: async (formData) => {
-    const response = await api.post('/master/subjects/import', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    if (formData instanceof FormData) {
+      const response = await api.post('/master/subjects/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return response.data
+    }
+    const response = await api.post('/master/subjects/import', formData)
+    return response.data
+  },
+
+  prosesImport: async (payload) => {
+    if (payload instanceof FormData) {
+      const response = await api.post('/master/subjects/import', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return response.data
+    }
+    const response = await api.post('/master/subjects/import', Array.isArray(payload) ? { data: payload } : payload)
     return response.data
   },
 }

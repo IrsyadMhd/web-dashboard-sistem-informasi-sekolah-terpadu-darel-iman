@@ -22,6 +22,7 @@ import {
   UsersRound,
   X,
 } from 'lucide-react'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 
 // Validation Schema using Zod
 const jabatanSchema = z.object({
@@ -303,28 +304,24 @@ export default function JabatanFormModal({
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
                           Satuan Kerja <span className="text-rose-500">*</span>
                         </label>
-                        <div className="relative flex items-center">
-                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                            <Building2 className="size-4" />
-                          </div>
-                          <select
-                            {...register('satuan_kerja')}
-                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                          >
-                            {(options.satuan_kerja || [
-                              { value: 'Pengurus', label: 'Pengurus' },
-                              { value: 'Bidang Pendidikan', label: 'Bidang Pendidikan' },
-                              { value: 'Unit Pendidikan', label: 'Unit Pendidikan' },
-                            ])
-                              .filter((item) => isUnitScopedManager
-                                ? item.value === 'Unit Pendidikan'
-                                : (!isKepalaSekolah || item.value !== 'Pengurus'))
-                              .map((item) => (
-                                <option key={item.value} value={item.value}>{item.label}</option>
-                              ))}
-                          </select>
-                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
-                        </div>
+                        <HeroUiFilterSelect
+                          value={watch('satuan_kerja')}
+                          onChange={(val) => setValue('satuan_kerja', val, { shouldValidate: true })}
+                          options={(options.satuan_kerja || [
+                            { value: 'Pengurus', label: 'Pengurus' },
+                            { value: 'Bidang Pendidikan', label: 'Bidang Pendidikan' },
+                            { value: 'Unit Pendidikan', label: 'Unit Pendidikan' },
+                          ])
+                            .filter((item) => isUnitScopedManager
+                              ? item.value === 'Unit Pendidikan'
+                              : (!isKepalaSekolah || item.value !== 'Pengurus'))
+                            .map((item) => ({ value: item.value, label: item.label }))}
+                          placeholder="Pilih Satuan Kerja"
+                          icon={Building2}
+                          ariaLabel="Pilih satuan kerja"
+                          size="md"
+                          className="w-full"
+                        />
                       </div>
 
                       {/* Kode Jabatan */}
@@ -378,27 +375,25 @@ export default function JabatanFormModal({
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
                           Cakupan Akses <span className="text-rose-500">*</span>
                         </label>
-                        <div className="relative flex items-center">
-                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                            <ShieldCheck className="size-4" />
-                          </div>
-                          <select
-                            {...register('scope_akses')}
-                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                          >
-                            {(options.scope_akses || [
-                              { value: 'semua_unit', label: 'Semua Unit' },
-                              { value: 'bidang_pendidikan', label: 'Bidang Pendidikan' },
-                              { value: 'unit_sendiri', label: 'Unit Pendidikan Sendiri' },
-                              { value: 'rombel_sendiri', label: 'Rombel Sendiri' },
-                              { value: 'kelas_mapel_sendiri', label: 'Kelas & Mata Pelajaran Sendiri' },
-                              { value: 'siswa_binaan', label: 'Siswa Binaan' },
-                            ]).filter((item) => !isUnitScopedManager || !['semua_unit', 'bidang_pendidikan'].includes(item.value)).map((item) => (
-                              <option key={item.value} value={item.value}>{item.label}</option>
-                            ))}
-                          </select>
-                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
-                        </div>
+                        <HeroUiFilterSelect
+                          value={watch('scope_akses')}
+                          onChange={(val) => setValue('scope_akses', val, { shouldValidate: true })}
+                          options={(options.scope_akses || [
+                            { value: 'semua_unit', label: 'Semua Unit' },
+                            { value: 'bidang_pendidikan', label: 'Bidang Pendidikan' },
+                            { value: 'unit_sendiri', label: 'Unit Pendidikan Sendiri' },
+                            { value: 'rombel_sendiri', label: 'Rombel Sendiri' },
+                            { value: 'kelas_mapel_sendiri', label: 'Kelas & Mata Pelajaran Sendiri' },
+                            { value: 'siswa_binaan', label: 'Siswa Binaan' },
+                          ])
+                            .filter((item) => !isUnitScopedManager || !['semua_unit', 'bidang_pendidikan'].includes(item.value))
+                            .map((item) => ({ value: item.value, label: item.label }))}
+                          placeholder="Pilih Cakupan Akses"
+                          icon={ShieldCheck}
+                          ariaLabel="Pilih cakupan akses"
+                          size="md"
+                          className="w-full"
+                        />
                       </div>
                     </div>
 
@@ -438,26 +433,22 @@ export default function JabatanFormModal({
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
                           Level Jabatan <span className="text-rose-500">*</span>
                         </label>
-                        <div className="relative flex items-center">
-                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                            <Layers className="size-4" />
-                          </div>
-                          <select
-                            {...register('level_jabatan')}
-                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                          >
-                            <option value="">-- Pilih Level Jabatan --</option>
-                            {(options.level_jabatan?.length > 0 ? options.level_jabatan : LEVEL_JABATAN_OPTIONS)
+                        <HeroUiFilterSelect
+                          value={String(watch('level_jabatan') ?? '')}
+                          onChange={(val) => setValue('level_jabatan', Number(val), { shouldValidate: true })}
+                          options={[
+                            { value: '', label: '-- Pilih Level Jabatan --' },
+                            ...(options.level_jabatan?.length > 0 ? options.level_jabatan : LEVEL_JABATAN_OPTIONS)
                               .filter((lvl) => !isUnitScopedManager || Number(lvl.value) > 2)
                               .filter((lvl) => !isKepalaSekolah || Number(lvl.value) !== 1)
-                              .map((lvl) => (
-                                <option key={lvl.value} value={lvl.value}>
-                                  {lvl.label}
-                                </option>
-                              ))}
-                          </select>
-                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
-                        </div>
+                              .map((lvl) => ({ value: String(lvl.value), label: lvl.label })),
+                          ]}
+                          placeholder="-- Pilih Level Jabatan --"
+                          icon={Layers}
+                          ariaLabel="Pilih level jabatan"
+                          size="md"
+                          className="w-full"
+                        />
                         {errors.level_jabatan && (
                           <p className="text-[11px] font-semibold text-rose-500">{errors.level_jabatan.message}</p>
                         )}
@@ -469,23 +460,23 @@ export default function JabatanFormModal({
                           Unit Sekolah / Yayasan
                           <span className="text-slate-400 font-normal ml-1">(dari Data Unit Pendidikan)</span>
                         </label>
-                        <div className="relative flex items-center">
-                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                            <Building2 className="size-4" />
-                          </div>
-                          <select
-                            {...register('unit_sekolah_id')}
-                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                          >
-                            {!isUnitScopedManager && <option value="">-- Semua Unit / Yayasan --</option>}
-                            {(options.unit_sekolah || []).map((unit) => (
-                              <option key={unit.id} value={unit.id}>
-                                {unit.nama} {unit.kode ? `(${unit.kode})` : ''}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
-                        </div>
+                        <HeroUiFilterSelect
+                          value={String(watch('unit_sekolah_id') ?? '')}
+                          onChange={(val) => setValue('unit_sekolah_id', val, { shouldValidate: true })}
+                          options={[
+                            ...(!isUnitScopedManager ? [{ value: '', label: '-- Semua Unit / Yayasan --' }] : []),
+                            ...(options.unit_sekolah || []).map((unit) => ({
+                              value: String(unit.id),
+                              label: `${unit.nama} ${unit.kode ? `(${unit.kode})` : ''}`,
+                            })),
+                          ]}
+                          placeholder="-- Semua Unit / Yayasan --"
+                          icon={Building2}
+                          ariaLabel="Pilih unit sekolah"
+                          size="md"
+                          searchable
+                          className="w-full"
+                        />
                         {(options.unit_sekolah || []).length === 0 && (
                           <p className="text-[11px] font-medium text-amber-700">Belum ada data unit pendidikan. Tambahkan di menu Unit Pendidikan.</p>
                         )}
@@ -503,23 +494,23 @@ export default function JabatanFormModal({
                           Atasan Langsung
                           <span className="text-slate-400 font-normal ml-1">(dari Data Pegawai)</span>
                         </label>
-                        <div className="relative flex items-center">
-                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                            <UsersRound className="size-4" />
-                          </div>
-                          <select
-                            {...register('atasan_pegawai_id')}
-                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                          >
-                            <option value="">-- Tidak Ada / Langsung ke Yayasan --</option>
-                            {(options.atasan_langsung || []).map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.nama_pegawai}{p.nama_jabatan ? ` — ${p.nama_jabatan}` : ''}{p.niy ? ` (${p.niy})` : ''}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
-                        </div>
+                        <HeroUiFilterSelect
+                          value={String(watch('atasan_pegawai_id') ?? '')}
+                          onChange={(val) => setValue('atasan_pegawai_id', val, { shouldValidate: true })}
+                          options={[
+                            { value: '', label: '-- Tidak Ada / Langsung ke Yayasan --' },
+                            ...(options.atasan_langsung || []).map((p) => ({
+                              value: String(p.id),
+                              label: `${p.nama_pegawai}${p.nama_jabatan ? ` — ${p.nama_jabatan}` : ''}${p.niy ? ` (${p.niy})` : ''}`,
+                            })),
+                          ]}
+                          placeholder="-- Tidak Ada / Langsung ke Yayasan --"
+                          icon={UsersRound}
+                          ariaLabel="Pilih atasan langsung"
+                          size="md"
+                          searchable
+                          className="w-full"
+                        />
                         {(options.atasan_langsung || []).length === 0 && (
                           <p className="text-[11px] font-medium text-amber-700">Belum ada data pegawai aktif. Tambahkan di menu Kepegawaian.</p>
                         )}
@@ -531,23 +522,23 @@ export default function JabatanFormModal({
                           Role Sistem
                           <span className="text-slate-400 font-normal ml-1">(dari Tabel Hak Akses)</span>
                         </label>
-                        <div className="relative flex items-center">
-                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                            <ShieldCheck className="size-4" />
-                          </div>
-                          <select
-                            {...register('role_sistem_id')}
-                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                          >
-                            <option value="">-- Tanpa Role / Atur Manual --</option>
-                            {(options.role_sistem || []).map((r) => (
-                              <option key={r.id} value={r.id}>
-                                {r.name}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
-                        </div>
+                        <HeroUiFilterSelect
+                          value={String(watch('role_sistem_id') ?? '')}
+                          onChange={(val) => setValue('role_sistem_id', val, { shouldValidate: true })}
+                          options={[
+                            { value: '', label: '-- Tanpa Role / Atur Manual --' },
+                            ...(options.role_sistem || []).map((r) => ({
+                              value: String(r.id),
+                              label: r.name,
+                            })),
+                          ]}
+                          placeholder="-- Tanpa Role / Atur Manual --"
+                          icon={ShieldCheck}
+                          ariaLabel="Pilih role sistem"
+                          size="md"
+                          searchable
+                          className="w-full"
+                        />
                         {(options.role_sistem || []).length === 0 && (
                           <p className="text-[11px] text-amber-500 font-medium">⚠ Belum ada role terdaftar. Tambahkan di menu Hak Akses.</p>
                         )}
@@ -618,38 +609,35 @@ export default function JabatanFormModal({
                       {/* Pilihan Ikon */}
                       <div className="space-y-1.5">
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">Pilihan Ikon</label>
-                        <div className="relative flex items-center">
-                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                            <UserCheck className="size-4" />
-                          </div>
-                          <select
-                            {...register('ikon')}
-                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                          >
-                            {PRESET_IKON.map((i) => (
-                              <option key={i.val} value={i.val}>
-                                {i.label}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
-                        </div>
+                        <HeroUiFilterSelect
+                          value={watch('ikon')}
+                          onChange={(val) => setValue('ikon', val, { shouldValidate: true })}
+                          options={PRESET_IKON.map((i) => ({ value: i.val, label: i.label }))}
+                          placeholder="Pilih Ikon"
+                          icon={UserCheck}
+                          ariaLabel="Pilih ikon visual"
+                          size="md"
+                          className="w-full"
+                        />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-200/90 dark:bg-slate-900/40 dark:border-slate-800">
                       <div className="space-y-1.5">
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">Status Operasional</label>
-                        <div className="relative flex items-center">
-                          <select
-                            {...register('status')}
-                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 cursor-pointer"
-                          >
-                            <option value="Aktif">Aktif</option>
-                            <option value="Nonaktif">Nonaktif</option>
-                          </select>
-                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
-                        </div>
+                        <HeroUiFilterSelect
+                          value={watch('status')}
+                          onChange={(val) => setValue('status', val, { shouldValidate: true })}
+                          options={[
+                            { value: 'Aktif', label: 'Aktif' },
+                            { value: 'Nonaktif', label: 'Nonaktif' },
+                          ]}
+                          placeholder="Status Operasional"
+                          icon={CheckCircle2}
+                          ariaLabel="Pilih status operasional"
+                          size="md"
+                          className="w-full"
+                        />
                       </div>
 
                       <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200/90 dark:bg-slate-900 dark:border-slate-800">

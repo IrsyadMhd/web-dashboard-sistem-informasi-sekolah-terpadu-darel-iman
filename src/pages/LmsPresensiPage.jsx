@@ -29,6 +29,7 @@ import Swal from '@/components/ui/compat/swal-heroui'
 import AppTabs from '../components/app/AppTabs'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import { useDebounce } from '../hooks/useDebounce'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
@@ -796,31 +797,40 @@ export default function LmsPresensiPage() {
 
             {/* Toolbar Baris 3: Horizontal Filters & Reset Button */}
             <div className="px-3 sm:px-4 py-2.5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:border-emerald-800/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 flex flex-wrap items-center gap-2">
-              <select
+              <HeroUiFilterSelect
                 value={filters.jadwal_pelajaran_id}
-                onChange={(e) => setFilters((prev) => ({ ...prev, jadwal_pelajaran_id: e.target.value }))}
-                className={dropdownCls}
-              >
-                <option value="">Semua Jadwal Pelajaran</option>
-                {options.schedules.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nama_jadwal || s.label || s.name || 'Jadwal'}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setFilters((prev) => ({ ...prev, jadwal_pelajaran_id: val }))}
+                options={[
+                  { value: '', label: 'Semua Jadwal Pelajaran' },
+                  ...options.schedules.map((s) => ({
+                    value: String(s.id),
+                    label: s.nama_jadwal || s.label || s.name || 'Jadwal',
+                  })),
+                ]}
+                placeholder="Semua Jadwal Pelajaran"
+                icon={BookOpen}
+                ariaLabel="Pilih Jadwal Pelajaran"
+                size="sm"
+                searchable
+                className="w-full sm:w-auto min-w-[170px]"
+              />
 
-              <select
+              <HeroUiFilterSelect
                 value={filters.status_hadir}
-                onChange={(e) => setFilters((prev) => ({ ...prev, status_hadir: e.target.value }))}
-                className={dropdownCls}
-              >
-                <option value="">Semua Status Kehadiran</option>
-                {options.statuses.map((st) => (
-                  <option key={st.value} value={st.value}>
-                    {st.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setFilters((prev) => ({ ...prev, status_hadir: val }))}
+                options={[
+                  { value: '', label: 'Semua Status Kehadiran' },
+                  ...options.statuses.map((st) => ({
+                    value: String(st.value),
+                    label: st.label,
+                  })),
+                ]}
+                placeholder="Semua Status Kehadiran"
+                icon={UserCheck}
+                ariaLabel="Pilih Status Kehadiran"
+                size="sm"
+                className="w-full sm:w-auto min-w-[160px]"
+              />
 
               <div className="w-44">
                 <DatePicker
@@ -1009,22 +1019,18 @@ export default function LmsPresensiPage() {
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Pilih Jadwal Pelajaran <span className="text-rose-500">*</span>
                   </label>
-                  <select
+                  <HeroUiFilterSelect
                     value={bulkState.jadwal_pelajaran_id}
-                    onChange={(e) => setBulkState((prev) => ({ ...prev, jadwal_pelajaran_id: e.target.value }))}
-                    className="w-full h-10 px-3.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-emerald-500 focus:border-emerald-500 font-semibold"
-                  >
-                    <option value="">-- Pilih Jadwal Pelajaran --</option>
-                    {options.schedules.length === 0 ? (
-                      <option value="" disabled>Belum ada jadwal pelajaran aktif</option>
-                    ) : (
-                      options.schedules.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.nama_jadwal || s.label || s.name || 'Jadwal'}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                    onChange={(val) => setBulkState((prev) => ({ ...prev, jadwal_pelajaran_id: val }))}
+                    options={options.schedules.map((s) => ({
+                      value: String(s.id),
+                      label: s.nama_jadwal || s.label || s.name || 'Jadwal',
+                    }))}
+                    placeholder="-- Pilih Jadwal Pelajaran --"
+                    ariaLabel="Pilih Jadwal Pelajaran"
+                    searchable
+                    className="w-full"
+                  />
                 </div>
 
                 <div>
@@ -1186,38 +1192,36 @@ export default function LmsPresensiPage() {
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Jadwal Pelajaran <span className="text-rose-500">*</span>
                   </label>
-                  <select
+                  <HeroUiFilterSelect
                     value={formData.jadwal_pelajaran_id}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, jadwal_pelajaran_id: e.target.value }))}
-                    required
-                    className="w-full h-10 px-3.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
-                  >
-                    <option value="">-- Pilih Jadwal --</option>
-                    {options.schedules.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nama_jadwal || s.label || s.name || 'Jadwal'}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData((prev) => ({ ...prev, jadwal_pelajaran_id: val }))}
+                    options={options.schedules.map((s) => ({
+                      value: String(s.id),
+                      label: s.nama_jadwal || s.label || s.name || 'Jadwal',
+                    }))}
+                    placeholder="-- Pilih Jadwal --"
+                    ariaLabel="Pilih Jadwal Pelajaran"
+                    searchable
+                    className="w-full"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Siswa <span className="text-rose-500">*</span>
                   </label>
-                  <select
+                  <HeroUiFilterSelect
                     value={formData.siswa_id}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, siswa_id: e.target.value }))}
-                    required
-                    className="w-full h-10 px-3.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
-                  >
-                    <option value="">-- Pilih Siswa --</option>
-                    {options.students.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        {st.full_name} ({st.nis || 'No NIS'})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData((prev) => ({ ...prev, siswa_id: val }))}
+                    options={options.students.map((st) => ({
+                      value: String(st.id),
+                      label: `${st.full_name} (${st.nis || 'No NIS'})`,
+                    }))}
+                    placeholder="-- Pilih Siswa --"
+                    ariaLabel="Pilih Siswa"
+                    searchable
+                    className="w-full"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -1250,17 +1254,17 @@ export default function LmsPresensiPage() {
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Status Kehadiran <span className="text-rose-500">*</span>
                   </label>
-                  <select
+                  <HeroUiFilterSelect
                     value={formData.status_hadir}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, status_hadir: e.target.value }))}
-                    className="w-full h-10 px-3.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-semibold"
-                  >
-                    {options.statuses.map((st) => (
-                      <option key={st.value} value={st.value}>
-                        {st.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData((prev) => ({ ...prev, status_hadir: val }))}
+                    options={options.statuses.map((st) => ({
+                      value: String(st.value),
+                      label: st.label,
+                    }))}
+                    placeholder="-- Pilih Status Kehadiran --"
+                    ariaLabel="Pilih Status Kehadiran"
+                    className="w-full"
+                  />
                 </div>
 
                 <div>

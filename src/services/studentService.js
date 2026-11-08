@@ -65,8 +65,14 @@ export const studentService = {
     return data
   },
 
-  prosesImport: async (rows) => {
-    const { data } = await api.post('/students/import', { data: rows })
+  prosesImport: async (payload) => {
+    if (payload instanceof FormData) {
+      const { data } = await api.post('/students/import', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return data
+    }
+    const { data } = await api.post('/students/import', { data: payload })
     return data
   },
 

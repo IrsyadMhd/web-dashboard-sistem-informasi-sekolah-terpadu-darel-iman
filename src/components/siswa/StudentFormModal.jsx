@@ -36,6 +36,7 @@ import {
 import { getProvinsiList, getKotaOptions, getKecamatanOptions, getKelurahanOptions, getBirthPlaceOptions } from './wilayahData'
 import AddressMap from './AddressMap'
 import { DatePicker } from '@/components/ui/date-picker'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { educationUnitService } from '../../services/educationUnitService'
 import { kelasService } from '../../services/kelasService'
 import { tahunAjaranService } from '../../services/tahunAjaranService'
@@ -206,7 +207,6 @@ const Select = ({
   placeholder = '-- Pilih --',
   error,
   helperText,
-  ...props
 }) => {
   const safeOptions = Array.isArray(options)
     ? options
@@ -215,6 +215,48 @@ const Select = ({
     : Array.isArray(options?.options)
     ? options.options
     : []
+
+  const normalizedOptions = useMemo(() => {
+    const list = [{ value: '', label: placeholder }]
+
+    if (safeOptions.length === 0) {
+      list.push({
+        value: '__disabled_empty__',
+        label: '(Belum ada data opsi master — kelola di Pengaturan)',
+        disabled: true,
+      })
+    }
+
+    safeOptions.forEach((opt, idx) => {
+      if (typeof opt === 'string') {
+        list.push({ value: opt, label: opt })
+      } else {
+        list.push({
+          value: String(opt?.value ?? opt?.id ?? opt?.name ?? idx),
+          label: String(opt?.label ?? opt?.name ?? opt?.value ?? ''),
+        })
+      }
+    })
+
+    if (
+      value &&
+      !list.some((o) => String(o.value) === String(value))
+    ) {
+      list.push({
+        value: String(value),
+        label: `${value} (Data Historis)`,
+      })
+    }
+
+    return list
+  }, [safeOptions, placeholder, value])
+
+  const handleSelectChange = (val) => {
+    if (val === '__disabled_empty__') return
+    if (typeof onChange === 'function') {
+      onChange({ target: { name, value: val } })
+    }
+  }
 
   return (
     <div>
@@ -228,52 +270,18 @@ const Select = ({
           </span>
         )}
       </div>
-      <div className="relative flex items-center">
-        {Icon && (
-          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-            <Icon className="size-4" />
-          </div>
-        )}
-        <select
-          name={name}
-          value={value ?? ''}
-          onChange={onChange}
-          required={required}
-          disabled={disabled}
-          className={`w-full appearance-none rounded-xl border py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 outline-none hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer ${
-            disabled
-              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed dark:bg-slate-800 dark:border-slate-700'
-              : error
-              ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-rose-500/20 dark:border-rose-700 dark:bg-rose-950/20'
-              : 'bg-slate-50/50 border-slate-200/90'
-          } ${Icon ? 'pl-10 pr-9' : 'pl-3.5 pr-9'}`}
-          {...props}
-        >
-          <option value="">{placeholder}</option>
-          {safeOptions.length === 0 && (
-            <option value="" disabled>
-              (Belum ada data opsi master — kelola di Pengaturan Opsi Bisnis)
-            </option>
-          )}
-          {value && !safeOptions.some((opt) => (typeof opt === 'string' ? opt === value : (opt?.value ?? opt?.id ?? opt?.name) === value)) && (
-            <option value={value}>{value} (Data Historis)</option>
-          )}
-          {safeOptions.map((opt, idx) =>
-            typeof opt === 'string' ? (
-              <option key={`opt-str-${opt}-${idx}`} value={opt}>
-                {opt}
-              </option>
-            ) : (
-              <option key={`opt-val-${opt?.value ?? opt?.id ?? idx}-${idx}`} value={opt?.value ?? ''}>
-                {opt?.label ?? opt?.name ?? opt?.value ?? ''}
-              </option>
-            )
-          )}
-        </select>
-        <div className="pointer-events-none absolute right-3 flex items-center text-slate-400 dark:text-slate-500">
-          <ChevronDown className="size-4" />
-        </div>
-      </div>
+      <HeroUiFilterSelect
+        value={value ?? ''}
+        onChange={handleSelectChange}
+        options={normalizedOptions}
+        placeholder={placeholder}
+        icon={Icon}
+        disabled={disabled}
+        ariaLabel={label || name || 'Pilih opsi'}
+        searchable={safeOptions.length > 7}
+        size="md"
+        className="w-full"
+      />
       {error && (
         <p className="mt-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
           <span>⚠</span> {error}

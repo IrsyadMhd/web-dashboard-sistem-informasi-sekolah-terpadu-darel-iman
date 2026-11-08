@@ -58,6 +58,7 @@ import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { useDebounce } from '../hooks/useDebounce'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import { PrintOptionModal } from '../components/master-data'
 import { downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
 import {
@@ -1577,22 +1578,27 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
 
               {/* Unit Filter: Dropdown jika multi-unit, atau Badge Tetap jika hanya 1 unit */}
               {options.education_units && options.education_units.length > 1 && (
-                <select
+                <HeroUiFilterSelect
                   value={selectedUnitFilter}
-                  onChange={(e) => {
-                    setSelectedUnitFilter(e.target.value)
+                  onChange={(val) => {
+                    setSelectedUnitFilter(val)
                     setSelectedMapelFilter('')
                     setPage(1)
                   }}
-                  className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
-                >
-                  <option value="">Semua Unit</option>
-                  {options.education_units.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name || u.nama}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '', label: 'Semua Unit' },
+                    ...options.education_units.map((u) => ({
+                      value: String(u.id),
+                      label: u.name || u.nama,
+                    })),
+                  ]}
+                  placeholder="Semua Unit"
+                  icon={Building2}
+                  ariaLabel="Pilih Unit Pendidikan"
+                  size="sm"
+                  searchable
+                  className="w-full sm:w-auto min-w-[150px]"
+                />
               )}
               {options.education_units && options.education_units.length === 1 && (
                 <div className="flex h-9 items-center gap-1.5 rounded-xl border border-emerald-300/80 bg-white dark:bg-[#111827] px-3 text-xs font-bold text-emerald-800 dark:border-emerald-800/80 dark:text-emerald-300 shadow-xs">
@@ -1603,86 +1609,96 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
 
               {/* Mapel Dropdown */}
               {filteredSubjectOptions && filteredSubjectOptions.length > 0 && (
-                <select
+                <HeroUiFilterSelect
                   value={selectedMapelFilter}
-                  onChange={(e) => {
-                    setSelectedMapelFilter(e.target.value)
+                  onChange={(val) => {
+                    setSelectedMapelFilter(val)
                     setPage(1)
                   }}
-                  className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
-                >
-                  <option value="">Semua Mapel ({filteredSubjectOptions.length})</option>
-                  {filteredSubjectOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '', label: `Semua Mapel (${filteredSubjectOptions.length})` },
+                    ...filteredSubjectOptions,
+                  ]}
+                  placeholder="Semua Mapel"
+                  icon={BookOpen}
+                  ariaLabel="Pilih Mata Pelajaran"
+                  size="sm"
+                  searchable
+                  className="w-full sm:w-auto min-w-[160px]"
+                />
               )}
 
               {/* Jenjang Dropdown */}
-              <select
+              <HeroUiFilterSelect
                 value={selectedFaseFilter}
-                onChange={(e) => {
-                  setSelectedFaseFilter(e.target.value)
+                onChange={(val) => {
+                  setSelectedFaseFilter(val)
                   setPage(1)
                 }}
-                className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
-              >
-                <option value="">Semua Jenjang</option>
-                {JENJANG_FASE_OPTIONS.map((j) => (
-                  <option key={j.value} value={j.value}>
-                    {j.label}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: 'Semua Jenjang' },
+                  ...JENJANG_FASE_OPTIONS,
+                ]}
+                placeholder="Semua Jenjang"
+                icon={GraduationCap}
+                ariaLabel="Pilih Jenjang Fase"
+                size="sm"
+                className="w-full sm:w-auto min-w-[140px]"
+              />
 
               {/* Status Dropdown */}
-              <select
+              <HeroUiFilterSelect
                 value={selectedStatusFilter}
-                onChange={(e) => {
-                  setSelectedStatusFilter(e.target.value)
+                onChange={(val) => {
+                  setSelectedStatusFilter(val)
                   setPage(1)
                 }}
-                className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
-              >
-                <option value="">Semua Status</option>
-                {STATUS_LIST.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: 'Semua Status' },
+                  ...STATUS_LIST.map((s) => ({ value: s, label: s })),
+                ]}
+                placeholder="Semua Status"
+                icon={CheckCircle2}
+                ariaLabel="Pilih Status"
+                size="sm"
+                className="w-full sm:w-auto min-w-[140px]"
+              />
 
               {/* Data Sampah Dropdown */}
-              <select
+              <HeroUiFilterSelect
                 value={denganSampahFilter}
-                onChange={(e) => {
-                  setDenganSampahFilter(e.target.value)
+                onChange={(val) => {
+                  setDenganSampahFilter(val)
                   setPage(1)
                 }}
-                className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
-              >
-                <option value="">Data Aktif</option>
-                <option value="1">Termasuk Sampah</option>
-              </select>
+                options={[
+                  { value: '', label: 'Data Aktif' },
+                  { value: '1', label: 'Termasuk Sampah' },
+                ]}
+                placeholder="Data Aktif"
+                icon={Trash2}
+                ariaLabel="Filter Data Sampah"
+                size="sm"
+                className="w-full sm:w-auto min-w-[140px]"
+              />
 
               {/* Sortir Tanggal Dropdown */}
-              <div className="flex items-center gap-1.5 bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-700 rounded-xl px-2.5 h-9 shadow-xs">
-                <Calendar className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <select
-                  value={sortDateOrder}
-                  onChange={(e) => {
-                    setSortDateOrder(e.target.value)
-                    setPage(1)
-                  }}
-                  className="bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer pr-1"
-                  title="Urutkan modul berdasarkan tanggal"
-                >
-                  <option value="desc">Tanggal: Terbaru ↓</option>
-                  <option value="asc">Tanggal: Terlama ↑</option>
-                </select>
-              </div>
+              <HeroUiFilterSelect
+                value={sortDateOrder}
+                onChange={(val) => {
+                  setSortDateOrder(val)
+                  setPage(1)
+                }}
+                options={[
+                  { value: 'desc', label: 'Tanggal: Terbaru ↓' },
+                  { value: 'asc', label: 'Tanggal: Terlama ↑' },
+                ]}
+                placeholder="Urutkan Tanggal"
+                icon={Calendar}
+                ariaLabel="Urutkan Modul Berdasarkan Tanggal"
+                size="sm"
+                className="w-full sm:w-auto min-w-[160px]"
+              />
 
               {/* Reset Filter Button */}
               {hasActiveFilters && (
@@ -1942,19 +1958,23 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                   <strong className="text-slate-900 dark:text-white">{meta.total || 0}</strong> modul
                 </span>
                 <span className="text-slate-300 dark:text-slate-600">•</span>
-                <select
-                  value={perPage}
-                  onChange={(e) => {
-                    setPerPage(Number(e.target.value))
+                <HeroUiFilterSelect
+                  value={String(perPage)}
+                  onChange={(val) => {
+                    setPerPage(Number(val))
                     setPage(1)
                   }}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 cursor-pointer"
-                >
-                  <option value={5}>5 baris</option>
-                  <option value={10}>10 baris</option>
-                  <option value={20}>20 baris</option>
-                  <option value={50}>50 baris</option>
-                </select>
+                  options={[
+                    { value: '5', label: '5 baris' },
+                    { value: '10', label: '10 baris' },
+                    { value: '20', label: '20 baris' },
+                    { value: '50', label: '50 baris' },
+                  ]}
+                  placeholder="Baris per halaman"
+                  ariaLabel="Pilih baris per halaman"
+                  size="sm"
+                  className="w-28"
+                />
               </div>
 
               {/* Previous & Next Icon-Only Squircle Buttons */}

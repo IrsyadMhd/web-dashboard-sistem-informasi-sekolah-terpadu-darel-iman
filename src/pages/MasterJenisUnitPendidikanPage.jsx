@@ -58,6 +58,7 @@ import ActionDropdown from '../components/app/ActionDropdown'
 import AppBadge from '../components/app/AppBadge'
 import { useToast } from '../components/app'
 import { MasterStatusBadge, PrintOptionModal } from '../components/master-data'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { usePengaturanStore } from '../stores/pengaturanStore'
 import { useAuthStore } from '../stores/authStore'
@@ -252,6 +253,7 @@ export default function MasterJenisUnitPendidikanPage() {
   const [selectedForDetail, setSelectedForDetail] = useState(null)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [importResult, setImportResult] = useState(null)
+  const [duplicateModalData, setDuplicateModalData] = useState(null)
   const [showExportModal, setShowExportModal] = useState(false)
   const [exportFormat, setExportFormat] = useState('xlsx')
   const [isExporting, setIsExporting] = useState(false)
@@ -462,16 +464,41 @@ export default function MasterJenisUnitPendidikanPage() {
   })
 
   const importMutation = useMutation({
-    mutationFn: (rows) => jenisUnitService.prosesImport(rows),
-    onSuccess: (res, rows) => {
+    mutationFn: (param) => {
+      if (param && (param.file || param.rows || param.overwrite !== undefined)) {
+        const form = new FormData()
+        if (param.file) form.append('file', param.file)
+        if (param.rows) form.append('data', JSON.stringify(param.rows))
+        form.append('overwrite', param.overwrite ? '1' : '0')
+        return jenisUnitService.prosesImport(form)
+      }
+      return jenisUnitService.prosesImport(param)
+    },
+    onSuccess: (res, vars) => {
       queryClient.invalidateQueries({ queryKey: ['jenis-unit-list'] })
       queryClient.invalidateQueries({ queryKey: ['all-jenis-unit-for-kpi'] })
-      const resultRows = res?.data?.rows || res?.data?.berhasil || rows
-      setImportResult({
-        rows: Array.isArray(resultRows) ? resultRows : rows,
-        message: res?.message || 'Data jenis unit berhasil diimpor.',
-      })
-      pushToast('Import Data Berhasil', `${Array.isArray(resultRows) ? resultRows.length : rows.length} data jenis unit berhasil diimpor.`, 'success')
+      const resData = res?.data || {}
+      const duplikatCount = resData.duplikat || 0
+      const diperbaruiCount = resData.diperbarui || 0
+      const berhasilCount = resData.berhasil || 0
+      const totalCount = resData.total || 0
+      const overwrite = vars?.overwrite || false
+
+      if (duplikatCount > 0 || (diperbaruiCount > 0 && overwrite)) {
+        const titleMsg = overwrite ? 'Impor Selesai (Data Ditimpa)' : 'Pemberitahuan Data Duplikat'
+        const detailMsg = overwrite
+          ? `${berhasilCount} baru, ${diperbaruiCount} berhasil ditimpa dari total ${totalCount} data.`
+          : `${berhasilCount} berhasil, ${duplikatCount} data dilewati karena sudah ada.`
+        pushToast(titleMsg, detailMsg, overwrite ? 'info' : 'warning')
+      } else {
+        pushToast('Import Data Berhasil', res?.message || `${berhasilCount} data jenis unit berhasil diimpor.`, 'success')
+      }
+
+      if (Array.isArray(resData.duplicates) && resData.duplicates.length > 0) {
+        setDuplicateModalData(resData)
+      }
+      setIsImportModalOpen(false)
+      setImportResult(null)
     },
     onError: (error) => {
       pushToast('Gagal Mengimpor', error.response?.data?.message || 'Gagal memproses impor data.', 'error')
@@ -1045,81 +1072,80 @@ export default function MasterJenisUnitPendidikanPage() {
               filters={
                 <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
                   {/* Status filter */}
-                  <div className="relative w-full sm:w-auto">
-                    <select
-                      value={selectedStatusFilter}
-                      onChange={(e) => {
-                        setSelectedStatusFilter(e.target.value)
-                        setPage(1)
-                      }}
-                      aria-label="Filter status jenis unit"
-                      className="w-full sm:w-auto min-w-[140px] h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                    >
-                      <option value="">Semua Status</option>
-                      <option value="true">Aktif</option>
-                      <option value="false">Tidak Aktif</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                  </div>
+                  <HeroUiFilterSelect
+                    value={selectedStatusFilter}
+                    onChange={(val) => {
+                      setSelectedStatusFilter(val)
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: '', label: 'Semua Status' },
+                      { value: 'true', label: 'Aktif' },
+                      { value: 'false', label: 'Tidak Aktif' },
+                    ]}
+                    placeholder="Semua Status"
+                    icon={CheckCircle2}
+                    ariaLabel="Filter status jenis unit"
+                    size="sm"
+                    className="w-full sm:w-auto min-w-[140px]"
+                  />
 
                   {/* Jenjang filter */}
-                  <div className="relative w-full sm:w-auto">
-                    <select
-                      value={selectedJenjangFilter}
-                      onChange={(e) => {
-                        setSelectedJenjangFilter(e.target.value)
-                        setPage(1)
-                      }}
-                      aria-label="Filter jenjang pendidikan"
-                      className="w-full sm:w-auto min-w-[140px] h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                    >
-                      <option value="">Semua Jenjang</option>
-                      {JENJANG_LIST.map((jenjang) => (
-                        <option key={jenjang} value={jenjang}>
-                          {jenjang}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                  </div>
+                  <HeroUiFilterSelect
+                    value={selectedJenjangFilter}
+                    onChange={(val) => {
+                      setSelectedJenjangFilter(val)
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: '', label: 'Semua Jenjang' },
+                      ...JENJANG_LIST.map((jenjang) => ({ value: jenjang, label: jenjang })),
+                    ]}
+                    placeholder="Semua Jenjang"
+                    icon={GraduationCap}
+                    ariaLabel="Filter jenjang pendidikan"
+                    size="sm"
+                    className="w-full sm:w-auto min-w-[140px]"
+                  />
 
                   {/* Cakupan data filter */}
-                  <div className="relative w-full sm:w-auto">
-                    <select
-                      value={denganSampahFilter}
-                      onChange={(e) => {
-                        setDenganSampahFilter(e.target.value)
-                        setPage(1)
-                      }}
-                      aria-label="Filter cakupan data jenis unit"
-                      className="w-full sm:w-auto min-w-[140px] h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                    >
-                      <option value="">Data Aktif</option>
-                      <option value="true">Termasuk Terhapus</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                  </div>
+                  <HeroUiFilterSelect
+                    value={denganSampahFilter}
+                    onChange={(val) => {
+                      setDenganSampahFilter(val)
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: '', label: 'Data Aktif' },
+                      { value: 'true', label: 'Termasuk Terhapus' },
+                    ]}
+                    placeholder="Data Aktif"
+                    icon={Tag}
+                    ariaLabel="Filter cakupan data jenis unit"
+                    size="sm"
+                    className="w-full sm:w-auto min-w-[140px]"
+                  />
 
                   {/* Per Page filter */}
-                  <div className="relative w-full sm:w-auto">
-                    <select
-                      value={perPage}
-                      onChange={(e) => {
-                        setPerPage(Number(e.target.value))
-                        setPage(1)
-                      }}
-                      aria-label="Tampilkan per halaman"
-                      className="w-full sm:w-auto min-w-[140px] h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                    >
-                      <option value={5}>5 per hal</option>
-                      <option value={10}>10 per hal</option>
-                      <option value={15}>15 per hal</option>
-                      <option value={25}>25 per hal</option>
-                      <option value={50}>50 per hal</option>
-                      <option value={100}>100 per hal</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                  </div>
+                  <HeroUiFilterSelect
+                    value={perPage}
+                    onChange={(val) => {
+                      setPerPage(Number(val))
+                      setPage(1)
+                    }}
+                    options={[
+                      { value: '5', label: '5 per hal' },
+                      { value: '10', label: '10 per hal' },
+                      { value: '15', label: '15 per hal' },
+                      { value: '25', label: '25 per hal' },
+                      { value: '50', label: '50 per hal' },
+                      { value: '100', label: '100 per hal' },
+                    ]}
+                    placeholder="10 per hal"
+                    ariaLabel="Tampilkan per halaman"
+                    size="sm"
+                    className="w-full sm:w-auto min-w-[120px]"
+                  />
 
                   {/* Reset button */}
                   {!filtersAreClear && (
@@ -1189,10 +1215,158 @@ export default function MasterJenisUnitPendidikanPage() {
           setIsImportModalOpen(false)
           setImportResult(null)
         }}
-        onImport={(rows) => importMutation.mutate(rows)}
+        onImport={(param) => importMutation.mutate(param)}
         isSubmitting={importMutation.isPending}
         result={importResult}
       />
+
+      {/* ── MODAL HASIL IMPOR & PEMBERITAHUAN DATA DUPLIKAT ── */}
+      <AnimatePresence>
+        {duplicateModalData && (
+          <div
+            className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jenis-unit-duplicate-report-title"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="my-auto w-full max-w-2xl font-sans"
+            >
+              <div className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                {/* Top Accent Gradient Bar */}
+                <div className={cn(
+                  "h-1.5 w-full shrink-0",
+                  duplicateModalData.diperbarui > 0
+                    ? "bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600"
+                    : duplicateModalData.duplikat > 0
+                      ? "bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-500"
+                      : "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600"
+                )} />
+
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "rounded-2xl p-2.5 text-white shadow-md shrink-0 border",
+                      duplicateModalData.diperbarui > 0
+                        ? "bg-gradient-to-br from-amber-500 to-orange-600 border-amber-300/30 shadow-amber-500/30"
+                        : "bg-gradient-to-br from-emerald-500 to-teal-700 border-emerald-300/30 shadow-emerald-500/30"
+                    )}>
+                      {duplicateModalData.diperbarui > 0 ? (
+                        <RefreshCcw className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      ) : (
+                        <CheckCircle2 className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      )}
+                    </div>
+                    <div>
+                      <h3 id="jenis-unit-duplicate-report-title" className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Hasil Impor & Pemberitahuan Data</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          Total {duplicateModalData.total} Data
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Ringkasan sinkronisasi dan status pemrosesan data jenis unit
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateModalData(null)}
+                    aria-label="Tutup ringkasan impor"
+                    className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 transition cursor-pointer"
+                  >
+                    <X className="size-4" strokeWidth={2.25} />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6 text-sm text-slate-700 dark:text-slate-200">
+                  {/* KPI Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-3 text-center dark:border-emerald-800/60 dark:bg-emerald-950/30">
+                      <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Baru</p>
+                      <p className="text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{duplicateModalData.berhasil || 0}</p>
+                    </div>
+                    <div className="rounded-2xl border border-amber-200/80 bg-amber-50/50 p-3 text-center dark:border-amber-800/60 dark:bg-amber-950/30">
+                      <p className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Ditimpa</p>
+                      <p className="text-lg font-black text-amber-700 dark:text-amber-300 mt-0.5">{duplicateModalData.diperbarui || 0}</p>
+                    </div>
+                    <div className="rounded-2xl border border-sky-200/80 bg-sky-50/50 p-3 text-center dark:border-sky-800/60 dark:bg-sky-950/30">
+                      <p className="text-[10px] font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider">Dilewati</p>
+                      <p className="text-lg font-black text-sky-700 dark:text-sky-300 mt-0.5">{duplicateModalData.duplikat || 0}</p>
+                    </div>
+                    <div className="rounded-2xl border border-rose-200/80 bg-rose-50/50 p-3 text-center dark:border-rose-800/60 dark:bg-rose-950/30">
+                      <p className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">Gagal</p>
+                      <p className="text-lg font-black text-rose-700 dark:text-rose-300 mt-0.5">{duplicateModalData.gagal || 0}</p>
+                    </div>
+                  </div>
+
+                  {/* Duplicate / Updated Rows List */}
+                  {Array.isArray(duplicateModalData.duplicates) && duplicateModalData.duplicates.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                        <span>Rincian Data Yang Sesuai / Terdeteksi Duplikat</span>
+                        <span className="text-[11px] text-slate-500 font-normal">
+                          {duplicateModalData.duplicates.length} item
+                        </span>
+                      </p>
+                      <div className="max-h-56 overflow-auto rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900/60">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-slate-50/80 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 border-b border-slate-200/80 dark:border-slate-800 font-bold sticky top-0">
+                            <tr>
+                              <th className="px-3.5 py-2.5">Baris</th>
+                              <th className="px-3.5 py-2.5">Kode Jenis</th>
+                              <th className="px-3.5 py-2.5">Nama Jenis Unit</th>
+                              <th className="px-3.5 py-2.5">Status</th>
+                              <th className="px-3.5 py-2.5">Keterangan</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[11px]">
+                            {duplicateModalData.duplicates.map((dup, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                                <td className="px-3.5 py-2 font-mono text-slate-500">#{dup.baris || idx + 1}</td>
+                                <td className="px-3.5 py-2 font-mono font-semibold text-slate-900 dark:text-white">{dup.kode || '-'}</td>
+                                <td className="px-3.5 py-2 font-medium text-slate-700 dark:text-slate-200">{dup.nama || '-'}</td>
+                                <td className="px-3.5 py-2">
+                                  <span className={cn(
+                                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                    dup.status === 'Ditimpa'
+                                      ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                      : "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300"
+                                  )}>
+                                    {dup.status}
+                                  </span>
+                                </td>
+                                <td className="px-3.5 py-2 text-slate-500 dark:text-slate-400">{dup.keterangan || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-end border-t border-slate-100 bg-slate-50/50 px-6 py-3.5 dark:border-slate-800 dark:bg-slate-900/30">
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateModalData(null)}
+                    className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white px-5 py-2 text-xs font-bold shadow-md hover:from-emerald-700 hover:to-teal-800 transition cursor-pointer"
+                  >
+                    <span>Mengerti</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Print Option Modal */}
       <PrintOptionModal

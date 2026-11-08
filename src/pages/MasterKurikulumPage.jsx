@@ -22,7 +22,10 @@ import {
   Plus,
   FileSpreadsheet,
   FileText,
+  Layers,
+  GraduationCap,
 } from 'lucide-react'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import { api } from '../services/api'
 import { masterKurikulumService } from '../services/masterKurikulumService'
 import { tahunAjaranService } from '../services/tahunAjaranService'
@@ -492,8 +495,21 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['master-kurikulum-list'] })
       queryClient.invalidateQueries({ queryKey: ['master-kurikulum-stats'] })
-      setIsImportModalOpen(false)
-      pushToast('Impor Selesai', res?.message || 'Data kurikulum berhasil diimpor ke sistem.', 'success')
+
+      const payload = res?.data || {}
+      const berhasil = payload.berhasil ?? 0
+      const gagal = payload.gagal ?? 0
+      const errors = payload.errors || []
+
+      if (gagal > 0 && berhasil === 0) {
+        pushToast('Impor Gagal', errors[0] || 'Semua baris data gagal diproses.', 'error')
+      } else if (gagal > 0 && berhasil > 0) {
+        setIsImportModalOpen(false)
+        pushToast('Impor Sebagian', `Berhasil: ${berhasil}, Gagal: ${gagal}. ${errors.slice(0, 2).join('; ')}`, 'warning')
+      } else {
+        setIsImportModalOpen(false)
+        pushToast('Impor Selesai', res?.message || `Semua data (${berhasil}) berhasil diimpor ke sistem.`, 'success')
+      }
     },
     onError: (err) => {
       const msg = err.response?.data?.message || 'Gagal memproses impor data.'
@@ -808,120 +824,124 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
             filters={
               <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
                 {/* Filter Unit Pendidikan */}
-                <div className="relative w-full sm:w-auto min-w-[140px]">
-                  <select
-                    aria-label="Filter unit pendidikan"
-                    value={selectedUnitFilter}
-                    onChange={(e) => {
-                      setSelectedUnitFilter(e.target.value)
-                      setPage(1)
-                    }}
-                    disabled={!canViewAllUnits && availableUnitOptions.length <= 1}
-                    className="w-full h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 disabled:opacity-60"
-                  >
-                    {canViewAllUnits && <option value="">Semua Unit Pendidikan</option>}
-                    {availableUnitOptions.map((unit) => (
-                      <option key={unit.id} value={unit.id}>
-                        {unit.name || unit.nama}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={selectedUnitFilter}
+                  onChange={(val) => {
+                    setSelectedUnitFilter(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    ...(canViewAllUnits ? [{ value: '', label: 'Semua Unit Pendidikan' }] : []),
+                    ...availableUnitOptions.map((unit) => ({
+                      value: String(unit.id),
+                      label: unit.name || unit.nama,
+                    })),
+                  ]}
+                  disabled={!canViewAllUnits && availableUnitOptions.length <= 1}
+                  placeholder="Semua Unit Pendidikan"
+                  icon={Building2}
+                  ariaLabel="Filter unit pendidikan"
+                  size="sm"
+                  searchable
+                  className="w-full sm:w-auto min-w-[150px]"
+                />
 
                 {/* Filter Tahun Ajaran */}
-                <div className="relative w-full sm:w-auto min-w-[140px]">
-                  <select
-                    aria-label="Filter tahun ajaran"
-                    value={selectedTahunFilter}
-                    onChange={(e) => {
-                      setSelectedTahunFilter(e.target.value)
-                      setPage(1)
-                    }}
-                    className="w-full h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Tahun Ajaran</option>
-                    {tahunAjaranOptions.map((tahun) => (
-                      <option key={tahun.id} value={tahun.id}>
-                        {tahun.name || tahun.nama} {tahun.is_active ? '(Aktif)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={selectedTahunFilter}
+                  onChange={(val) => {
+                    setSelectedTahunFilter(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    { value: '', label: 'Semua Tahun Ajaran' },
+                    ...tahunAjaranOptions.map((tahun) => ({
+                      value: String(tahun.id),
+                      label: `${tahun.name || tahun.nama}${tahun.is_active ? ' (Aktif)' : ''}`,
+                    })),
+                  ]}
+                  placeholder="Semua Tahun Ajaran"
+                  icon={Calendar}
+                  ariaLabel="Filter tahun ajaran"
+                  size="sm"
+                  searchable
+                  className="w-full sm:w-auto min-w-[150px]"
+                />
 
                 {/* Filter Jenjang Kurikulum */}
-                <div className="relative w-full sm:w-auto min-w-[140px]">
-                  <select
-                    aria-label="Filter jenjang kurikulum"
-                    value={selectedJenjangFilter}
-                    onChange={(e) => {
-                      setSelectedJenjangFilter(e.target.value)
-                      setPage(1)
-                    }}
-                    className="w-full h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Jenjang</option>
-                    {availableJenjangOptions.map((j) => (
-                      <option key={j} value={j}>{j}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={selectedJenjangFilter}
+                  onChange={(val) => {
+                    setSelectedJenjangFilter(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    { value: '', label: 'Semua Jenjang' },
+                    ...availableJenjangOptions.map((j) => ({ value: j, label: j })),
+                  ]}
+                  placeholder="Semua Jenjang"
+                  icon={GraduationCap}
+                  ariaLabel="Filter jenjang kurikulum"
+                  size="sm"
+                  searchable
+                  className="w-full sm:w-auto min-w-[140px]"
+                />
 
                 {/* Filter Jenis Kurikulum */}
-                <div className="relative w-full sm:w-auto min-w-[140px]">
-                  <select
-                    aria-label="Filter jenis kurikulum"
-                    value={selectedJenisFilter}
-                    onChange={(e) => {
-                      setSelectedJenisFilter(e.target.value)
-                      setPage(1)
-                    }}
-                    className="w-full h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Jenis</option>
-                    {availableJenisOptions.map((j) => (
-                      <option key={j} value={j}>{j}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={selectedJenisFilter}
+                  onChange={(val) => {
+                    setSelectedJenisFilter(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    { value: '', label: 'Semua Jenis' },
+                    ...availableJenisOptions.map((j) => ({ value: j, label: j })),
+                  ]}
+                  placeholder="Semua Jenis"
+                  icon={Layers}
+                  ariaLabel="Filter jenis kurikulum"
+                  size="sm"
+                  searchable
+                  className="w-full sm:w-auto min-w-[140px]"
+                />
 
                 {/* Filter Status */}
-                <div className="relative w-full sm:w-auto min-w-[140px]">
-                  <select
-                    aria-label="Filter status kurikulum"
-                    value={selectedStatusFilter}
-                    onChange={(e) => {
-                      setSelectedStatusFilter(e.target.value)
-                      setPage(1)
-                    }}
-                    className="w-full h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Status</option>
-                    <option value="aktif">Aktif</option>
-                    <option value="tidak_aktif">Nonaktif</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={selectedStatusFilter}
+                  onChange={(val) => {
+                    setSelectedStatusFilter(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    { value: '', label: 'Semua Status' },
+                    { value: 'aktif', label: 'Aktif' },
+                    { value: 'tidak_aktif', label: 'Nonaktif' },
+                  ]}
+                  placeholder="Semua Status"
+                  icon={CheckCircle2}
+                  ariaLabel="Filter status kurikulum"
+                  size="sm"
+                  className="w-full sm:w-auto min-w-[130px]"
+                />
 
                 {/* Filter Data Terhapus */}
-                <div className="relative w-full sm:w-auto min-w-[140px]">
-                  <select
-                    aria-label="Filter data terhapus"
-                    value={denganSampahFilter}
-                    onChange={(e) => {
-                      setDenganSampahFilter(e.target.value)
-                      setPage(1)
-                    }}
-                    className="w-full h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Data Aktif</option>
-                    <option value="true">Termasuk Terhapus</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={denganSampahFilter}
+                  onChange={(val) => {
+                    setDenganSampahFilter(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    { value: '', label: 'Data Aktif' },
+                    { value: 'true', label: 'Termasuk Terhapus' },
+                  ]}
+                  placeholder="Status Data"
+                  icon={Trash2}
+                  ariaLabel="Filter data terhapus"
+                  size="sm"
+                  className="w-full sm:w-auto min-w-[140px]"
+                />
 
                 {/* Reset Filter Button */}
                 {hasActiveFilters && (
@@ -999,6 +1019,8 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
         onClose={() => setIsImportModalOpen(false)}
         onImport={(rows) => importMutation.mutate(rows)}
         isSubmitting={importMutation.isPending}
+        defaultUnitId={selectedUnitFilter || (!canViewAllUnits ? effectiveUserUnitId : '')}
+        defaultTahunAjaranId={selectedTahunFilter || ''}
       />
 
       {/* ══════════════════════════════════════════════════════════════════

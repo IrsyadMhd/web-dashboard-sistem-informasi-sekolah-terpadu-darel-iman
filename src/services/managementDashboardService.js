@@ -37,4 +37,9 @@ export const managementDashboardService = {
     const response = await api.get('/dashboard/operator', { params })
     return response.data
   },
+  getMusyrif: async (params = {}) => {
+    const response = await api.get('/musyrif/dashboard', { params })
+    return response.data
+  },
 }
+

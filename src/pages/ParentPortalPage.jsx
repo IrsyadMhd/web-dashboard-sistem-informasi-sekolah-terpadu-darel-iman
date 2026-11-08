@@ -29,6 +29,7 @@ import {
   Moon,
   Receipt,
   RefreshCw,
+  ShieldAlert,
   Sparkles,
   Sun,
   TrendingUp,
@@ -48,6 +49,7 @@ import TahfizhWorkspace from '../components/portal/TahfizhWorkspace'
 import BahasaWorkspace from '../components/portal/BahasaWorkspace'
 import GradesWorkspace from '../components/portal/GradesWorkspace'
 import TeacherCommentsWorkspace from '../components/portal/TeacherCommentsWorkspace'
+import DisciplineSummaryWorkspace from '../components/portal/DisciplineSummaryWorkspace'
 import MutabaahWorkspace from '../components/portal/MutabaahWorkspace'
 import AttendanceWorkspace from '../components/portal/AttendanceWorkspace'
 import ExamGridsWorkspace from '../components/portal/ExamGridsWorkspace'
@@ -76,6 +78,7 @@ const menu = [
   ['bahasa', 'Pembiasaan Bahasa', Languages, 'bg-teal-100/90 text-teal-700 border-teal-200/90 hover:bg-teal-200'],
   ['grades', 'Nilai', Award, 'bg-teal-100/90 text-teal-600 border-teal-200/90 hover:bg-teal-200'],
   ['student-notes', 'Buku Penghubung', BookOpenCheck, 'bg-cyan-100/90 text-cyan-600 border-cyan-200/90 hover:bg-cyan-200'],
+  ['discipline', 'Tata Tertib & Poin', ShieldAlert, 'bg-rose-100/90 text-rose-600 border-rose-200/90 hover:bg-rose-200'],
   ['bills', 'Tagihan & SPP', Receipt, 'bg-emerald-100/90 text-emerald-600 border-emerald-200/90 hover:bg-emerald-200'],
   ['mutabaah', 'Mutabaah', HeartHandshake, 'bg-amber-100/90 text-amber-600 border-amber-200/90 hover:bg-amber-200'],
   ['attendance', 'Absensi', CalendarCheck, 'bg-orange-100/90 text-orange-600 border-orange-200/90 hover:bg-orange-200'],
@@ -2103,6 +2106,10 @@ export default function ParentPortalPage() {
               onSigned={load}
               student={activeChild}
             />
+          )}
+
+          {active === 'discipline' && (
+            <DisciplineSummaryWorkspace childId={childId} />
           )}
 
           {active === 'mutabaah' && (

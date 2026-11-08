@@ -29,8 +29,13 @@ import {
   User,
   HeartHandshake,
   RotateCcw,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  AlertCircle,
 } from 'lucide-react'
 import { Chip as HeroChip, Button as HeroButton } from '@heroui/react'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { hakAksesService } from '../../services/hakAksesService'
 import { employeeService } from '../../services/employeeService'
 import { studentService } from '../../services/studentService'
@@ -39,6 +44,7 @@ import api from '../../services/api'
 import { useDebounce } from '../../hooks/useDebounce'
 import { Pagination } from '../ui/pagination'
 import { usePengaturanStore, resolveFoundationName } from '../../stores/pengaturanStore'
+import { cn } from '../../lib/utils'
 
 const DEFAULT_SYSTEM_ROLES = [
   'Super Admin',
@@ -1308,6 +1314,289 @@ function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, user, isSubmitting 
   )
 }
 
+// ── HARMONIZED IMPORT MODAL ──────────────────────────────────────────────
+function HarmonizedImportModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  importFile,
+  setImportFile,
+  overwriteExisting,
+  setOverwriteExisting,
+  isImporting,
+}) {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md">
+      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232]">
+        <div className="h-1.5 w-full bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-600" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 p-5 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-teal-600 text-white shadow-md shadow-sky-500/20">
+              <Upload className="size-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Import Akun Pengguna
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Unggah berkas Excel (.xlsx, .xls) atau CSV data akun
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition cursor-pointer"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <form onSubmit={onSubmit} className="p-6 space-y-4">
+          {/* Download Template Card */}
+          <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 dark:border-slate-800 dark:bg-slate-900/40">
+            <div className="flex items-center gap-2.5">
+              <FileSpreadsheet className="size-5 text-emerald-600 dark:text-emerald-400" />
+              <div>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Unduh Format Template
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Gunakan kolom: name, email, role, phone, password, is_active
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => hakAksesService.downloadUserTemplate()}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 shadow-xs hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-slate-700 transition cursor-pointer"
+            >
+              <Download className="size-3.5" />
+              <span>Template CSV</span>
+            </button>
+          </div>
+
+          {/* Dropzone */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              Pilih Berkas Excel / CSV
+            </label>
+            <label className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sky-300/80 bg-sky-50/30 p-6 hover:bg-sky-50/60 dark:border-sky-800/60 dark:bg-sky-950/20 dark:hover:bg-sky-950/30 transition cursor-pointer">
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                className="hidden"
+              />
+              <FileSpreadsheet className="size-8 text-sky-600 dark:text-sky-400 mb-2" />
+              {importFile ? (
+                <div className="text-center">
+                  <p className="text-xs font-bold text-sky-700 dark:text-sky-300">
+                    {importFile.name}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {(importFile.size / 1024).toFixed(1)} KB — Klik untuk ganti berkas
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                    Klik atau seret berkas ke sini
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Mendukung .xlsx, .xls, atau .csv (maksimal 5MB)
+                  </p>
+                </div>
+              )}
+            </label>
+          </div>
+
+          {/* Opsi Timpa Data Jika Ada yang Sama */}
+          <div
+            className={cn(
+              'rounded-2xl border p-4 transition-all duration-200',
+              overwriteExisting
+                ? 'border-amber-300/80 bg-amber-50/70 dark:border-amber-700/60 dark:bg-amber-950/25'
+                : 'border-slate-200/80 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30'
+            )}
+          >
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={overwriteExisting}
+                onChange={(e) => setOverwriteExisting(e.target.checked)}
+                className="mt-0.5 h-4.5 w-4.5 rounded-lg border-slate-300 text-amber-600 focus:ring-amber-500 dark:border-slate-700 dark:bg-slate-800 cursor-pointer"
+              />
+              <div className="flex-1 text-xs">
+                <span className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                  <span>Timpa data jika email akun sudah terdaftar</span>
+                  {overwriteExisting ? (
+                    <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-[10px] font-extrabold text-amber-900 dark:bg-amber-900/80 dark:text-amber-200">
+                      Mode Timpa Aktif
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                      Lewati Duplikat
+                    </span>
+                  )}
+                </span>
+                <p className="mt-1 text-slate-500 dark:text-slate-400 leading-relaxed text-[11px]">
+                  Jika dicentang, akun dengan email yang sama akan diperbarui dengan data nama, telepon, peran, dan password terbaru. Jika tidak dicentang, baris duplikat akan dilewati dengan aman.
+                </p>
+              </div>
+            </label>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isImporting}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={!importFile || isImporting}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 via-teal-600 to-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/20 hover:brightness-105 disabled:opacity-50 transition cursor-pointer"
+            >
+              <Upload className="size-3.5" />
+              <span>{isImporting ? 'Memproses...' : 'Mulai Impor Akun'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── HARMONIZED DUPLICATE REPORT MODAL ──────────────────────────────────────
+function HarmonizedDuplicateModal({ data, onClose }) {
+  if (!data) return null
+
+  const duplicates = data.duplicates || []
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md">
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232]">
+        <div className="h-1.5 w-full bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-600" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 p-5 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-md shadow-emerald-500/20">
+              <AlertCircle className="size-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Laporan Hasil Impor Akun Pengguna
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Ringkasan sinkronisasi dan status pemrosesan data akun pengguna
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition cursor-pointer"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-3 text-center dark:border-emerald-800/60 dark:bg-emerald-950/30">
+              <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Baru</p>
+              <p className="text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{data.berhasil || 0}</p>
+            </div>
+            <div className="rounded-2xl border border-amber-200/80 bg-amber-50/50 p-3 text-center dark:border-amber-800/60 dark:bg-amber-950/30">
+              <p className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Ditimpa</p>
+              <p className="text-lg font-black text-amber-700 dark:text-amber-300 mt-0.5">{data.diperbarui || 0}</p>
+            </div>
+            <div className="rounded-2xl border border-sky-200/80 bg-sky-50/50 p-3 text-center dark:border-sky-800/60 dark:bg-sky-950/30">
+              <p className="text-[10px] font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider">Dilewati</p>
+              <p className="text-lg font-black text-sky-700 dark:text-sky-300 mt-0.5">{data.duplikat || 0}</p>
+            </div>
+            <div className="rounded-2xl border border-rose-200/80 bg-rose-50/50 p-3 text-center dark:border-rose-800/60 dark:bg-rose-950/30">
+              <p className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">Gagal</p>
+              <p className="text-lg font-black text-rose-700 dark:text-rose-300 mt-0.5">{data.gagal || 0}</p>
+            </div>
+          </div>
+
+          {/* Details Table */}
+          {duplicates.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                <span>Rincian Data Yang Sesuai / Terdeteksi Duplikat</span>
+                <span className="text-[11px] text-slate-500 font-normal">
+                  {duplicates.length} item
+                </span>
+              </p>
+              <div className="max-h-56 overflow-auto rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900/60">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50/80 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 border-b border-slate-200/80 dark:border-slate-800 font-bold sticky top-0">
+                    <tr>
+                      <th className="px-3.5 py-2.5">Baris</th>
+                      <th className="px-3.5 py-2.5">Email</th>
+                      <th className="px-3.5 py-2.5">Nama Akun</th>
+                      <th className="px-3.5 py-2.5">Status</th>
+                      <th className="px-3.5 py-2.5">Keterangan</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[11px]">
+                    {duplicates.map((dup, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                        <td className="px-3.5 py-2 font-mono text-slate-500">#{dup.baris || idx + 1}</td>
+                        <td className="px-3.5 py-2 font-mono font-semibold text-slate-900 dark:text-white">{dup.kode || '-'}</td>
+                        <td className="px-3.5 py-2 font-medium text-slate-700 dark:text-slate-200">{dup.nama || '-'}</td>
+                        <td className="px-3.5 py-2">
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold',
+                              dup.status === 'Ditimpa'
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                : 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300'
+                            )}
+                          >
+                            {dup.status}
+                          </span>
+                        </td>
+                        <td className="px-3.5 py-2 text-slate-500 dark:text-slate-400">{dup.keterangan || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end border-t border-slate-100 bg-slate-50/50 px-6 py-3.5 dark:border-slate-800 dark:bg-slate-900/30">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white px-5 py-2 text-xs font-bold shadow-md hover:from-emerald-700 hover:to-teal-800 transition cursor-pointer"
+          >
+            <span>Mengerti</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function UserAccountManagement({
   roles = [],
   unitId = '',
@@ -1326,6 +1615,11 @@ export default function UserAccountManagement({
   const [resetTargetUser, setResetTargetUser] = useState(null)
   const [deleteTargetUser, setDeleteTargetUser] = useState(null)
   const [isResetting, setIsResetting] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [importFile, setImportFile] = useState(null)
+  const [overwriteExisting, setOverwriteExisting] = useState(false)
+  const [duplicateModalData, setDuplicateModalData] = useState(null)
+  const [isImporting, setIsImporting] = useState(false)
 
   useEffect(() => {
     setSelectedUnitFilter(unitId || '')
@@ -1416,6 +1710,43 @@ export default function UserAccountManagement({
     remove.mutate(deleteTargetUser.id)
   }
 
+  const handleProcessImport = async (e) => {
+    if (e) e.preventDefault()
+    if (!importFile) {
+      toastError('Berkas Belum Dipilih', 'Silakan pilih berkas Excel atau CSV terlebih dahulu.')
+      return
+    }
+    setIsImporting(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', importFile)
+      formData.append('overwrite', overwriteExisting ? '1' : '0')
+      const res = await hakAksesService.importUsers(formData)
+      const resData = res?.data || res || {}
+      setIsImporting(false)
+      setImportFile(null)
+      setIsImportModalOpen(false)
+      queryClient.invalidateQueries({ queryKey: ['hak-akses-users'] })
+      queryClient.invalidateQueries({ queryKey: ['hak-akses-roles'] })
+
+      const totalBerhasil = (resData.berhasil || 0) + (resData.diperbarui || 0)
+      const msg = `Impor selesai. ${totalBerhasil} berhasil (${resData.berhasil || 0} baru, ${resData.diperbarui || 0} ditimpa), ${resData.duplikat || 0} duplikat dilewati, ${resData.gagal || 0} gagal.`
+      if (resData.gagal > 0 && totalBerhasil === 0) {
+        toastError('Import Gagal', msg)
+      } else {
+        toastSuccess('Import Berhasil', msg)
+      }
+
+      if ((resData.duplicates && resData.duplicates.length > 0) || (resData.errors && resData.errors.length > 0) || resData.diperbarui > 0 || resData.duplikat > 0) {
+        setDuplicateModalData(resData)
+      }
+    } catch (err) {
+      setIsImporting(false)
+      const msg = err?.response?.data?.message || err.message || 'Gagal memproses impor data akun pengguna.'
+      toastError('Import Gagal', msg)
+    }
+  }
+
   const users = data.data || []
   const meta = data.meta || {}
 
@@ -1447,6 +1778,22 @@ export default function UserAccountManagement({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
+            {/* Import Data Akun Button */}
+            {canManageGlobalAccess && (
+              <button
+                type="button"
+                onClick={() => {
+                  setImportFile(null)
+                  setOverwriteExisting(false)
+                  setIsImportModalOpen(true)
+                }}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-blue-50 hover:from-sky-100 hover:to-blue-100 text-sky-700 dark:from-sky-950/50 dark:to-blue-950/50 dark:border-sky-800 dark:text-sky-300 px-3.5 py-2 text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer hover:scale-[1.02] active:scale-95"
+              >
+                <Upload className="size-3.5" />
+                <span>Import Akun</span>
+              </button>
+            )}
+
             {/* Cetak Data Login Button */}
             <button
               type="button"
@@ -1547,23 +1894,26 @@ export default function UserAccountManagement({
 
           {/* Filter Unit Pendidikan (Termasuk Unit Pendidikan Anak) */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="relative">
-              <select
-                value={selectedUnitFilter}
-                onChange={(e) => {
-                  setSelectedUnitFilter(e.target.value)
-                  setPage(1)
-                }}
-                className="rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 pl-3 pr-8 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-100 shadow-2xs outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-              >
-                <option value="">Semua Unit (Termasuk Unit Anak)</option>
-                {educationUnits.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name || u.nama_unit || u.code}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <HeroUiFilterSelect
+              value={selectedUnitFilter}
+              onChange={(val) => {
+                setSelectedUnitFilter(val)
+                setPage(1)
+              }}
+              options={[
+                { value: '', label: 'Semua Unit (Termasuk Unit Anak)' },
+                ...educationUnits.map((u) => ({
+                  value: String(u.id),
+                  label: u.name || u.nama_unit || u.code,
+                })),
+              ]}
+              placeholder="Semua Unit"
+              icon={Building2}
+              ariaLabel="Filter unit pendidikan akun"
+              size="sm"
+              searchable
+              className="w-full sm:w-auto min-w-[200px]"
+            />
 
             {(categoryFilter !== 'semua' || selectedUnitFilter !== '' || search) && (
               <HeroButton
@@ -1808,6 +2158,25 @@ export default function UserAccountManagement({
         isSubmitting={remove.isPending}
         onClose={() => setDeleteTargetUser(null)}
         onConfirm={handleConfirmDeleteUser}
+      />
+
+      <HarmonizedImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => {
+          setIsImportModalOpen(false)
+          setImportFile(null)
+        }}
+        onSubmit={handleProcessImport}
+        importFile={importFile}
+        setImportFile={setImportFile}
+        overwriteExisting={overwriteExisting}
+        setOverwriteExisting={setOverwriteExisting}
+        isImporting={isImporting}
+      />
+
+      <HarmonizedDuplicateModal
+        data={duplicateModalData}
+        onClose={() => setDuplicateModalData(null)}
       />
     </div>
   )

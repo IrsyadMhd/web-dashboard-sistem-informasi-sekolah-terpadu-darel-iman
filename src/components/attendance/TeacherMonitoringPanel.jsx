@@ -23,6 +23,13 @@ import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, Dialo
 import { Backdrop, OverlayWrapper } from '@/components/ui/overlay'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { DatePicker } from '@/components/ui/date-picker'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 import { SquircleActionButton, PrintOptionModal } from '../master-data'
 import CsvImportModal from '../master-data/CsvImportModal'
 import { printCleanTable, downloadPdfTable } from '../../utils/printHelper'
@@ -574,17 +581,21 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
                 <>
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Bulan</label>
-                    <select
-                      value={filters.month || String(new Date().getMonth() + 1)}
-                      onChange={(e) => onFilterChange({ ...filters, month: e.target.value })}
-                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:border-emerald-600"
+                    <Select
+                      value={String(filters.month || (new Date().getMonth() + 1))}
+                      onChange={(val) => onFilterChange({ ...filters, month: String(val) })}
                     >
-                      {MONTHS.map((m) => (
-                        <option key={m.value} value={m.value}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                        <SelectValue placeholder="Pilih Bulan..." />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 max-h-60 overflow-y-auto bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1">
+                        {MONTHS.map((m) => (
+                          <SelectItem key={m.value} id={m.value} value={m.value} className="text-xs font-medium py-1.5">
+                            {m.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Tahun</label>
@@ -602,54 +613,66 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
               {activePeriod === 'semester' && (
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Semester</label>
-                  <select
-                    value={filters.semester_id || ''}
-                    onChange={(e) => onFilterChange({ ...filters, semester_id: e.target.value })}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:border-emerald-600"
+                  <Select
+                    value={String(filters.semester_id || '')}
+                    onChange={(val) => onFilterChange({ ...filters, semester_id: String(val) })}
                   >
-                    <option value="">-- Semester Aktif --</option>
-                    {(masterData.semesters || []).map((sem) => (
-                      <option key={sem.id} value={sem.id}>
-                        {sem.name} {sem.is_active ? '(Aktif)' : ''}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                      <SelectValue placeholder="-- Semester Aktif --" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 max-h-60 overflow-y-auto bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1">
+                      <SelectItem id="" value="" className="text-xs font-medium py-1.5">-- Semester Aktif --</SelectItem>
+                      {(masterData.semesters || []).map((sem) => (
+                        <SelectItem key={sem.id} id={String(sem.id)} value={String(sem.id)} className="text-xs font-medium py-1.5">
+                          {sem.name} {sem.is_active ? '(Aktif)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
               {activePeriod === 'tahunan' && (
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Tahun Ajaran</label>
-                  <select
-                    value={filters.academic_year_id || ''}
-                    onChange={(e) => onFilterChange({ ...filters, academic_year_id: e.target.value })}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:border-emerald-600"
+                  <Select
+                    value={String(filters.academic_year_id || '')}
+                    onChange={(val) => onFilterChange({ ...filters, academic_year_id: String(val) })}
                   >
-                    <option value="">-- Tahun Ajaran Aktif --</option>
-                    {(masterData.academic_years || []).map((ay) => (
-                      <option key={ay.id} value={ay.id}>
-                        {ay.name} {ay.is_active ? '(Aktif)' : ''}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                      <SelectValue placeholder="-- Tahun Ajaran Aktif --" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 max-h-60 overflow-y-auto bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1">
+                      <SelectItem id="" value="" className="text-xs font-medium py-1.5">-- Tahun Ajaran Aktif --</SelectItem>
+                      {(masterData.academic_years || []).map((ay) => (
+                        <SelectItem key={ay.id} id={String(ay.id)} value={String(ay.id)} className="text-xs font-medium py-1.5">
+                          {ay.name} {ay.is_active ? '(Aktif)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
               {/* FILTER UNIT PENDIDIKAN */}
               <div>
                 <label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Unit Pendidikan</label>
-                <select
-                  value={filters.unit_id || ''}
-                  onChange={(e) => onFilterChange({ ...filters, unit_id: e.target.value })}
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900 dark:text-white outline-none focus:border-emerald-600"
+                <Select
+                  value={String(filters.unit_id || '')}
+                  onChange={(val) => onFilterChange({ ...filters, unit_id: String(val) })}
                 >
-                  <option value="">-- Semua Unit Pendidikan --</option>
-                  {(masterData.education_units || []).map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.name} ({unit.code})
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <SelectValue placeholder="-- Semua Unit Pendidikan --" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50 max-h-60 overflow-y-auto bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1">
+                    <SelectItem id="" value="" className="text-xs font-medium py-1.5">-- Semua Unit Pendidikan --</SelectItem>
+                    {(masterData.education_units || []).map((unit) => (
+                      <SelectItem key={unit.id} id={String(unit.id)} value={String(unit.id)} className="text-xs font-medium py-1.5">
+                        {unit.name} ({unit.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

@@ -100,6 +100,7 @@ const MasterQuranSurahPage = lazy(() => import('../pages/MasterQuranSurahPage'))
 const MasterJadwalSholatPage = lazy(() => import('../pages/MasterJadwalSholatPage'))
 const MasterDoaPage = lazy(() => import('../pages/MasterDoaPage'))
 const PoinPenilaianDoaPage = lazy(() => import('../pages/PoinPenilaianDoaPage'))
+const DisciplinePointManagementPage = lazy(() => import('../pages/DisciplinePointManagementPage'))
 const DeleteApprovalPage = lazy(() => import('../pages/DeleteApprovalPage'))
 const GateAttendancePage = lazy(() => import('../pages/GateAttendancePage'))
 const WorshipAttendancePage = lazy(() => import('../pages/WorshipAttendancePage'))
@@ -512,6 +513,7 @@ export const router = createBrowserRouter([
           { path: 'tahfizh', element: <BungkusLazy><StudentPortalPage section="tahfizh" /></BungkusLazy> },
           { path: 'nilai', element: <BungkusLazy><StudentPortalPage section="grades" /></BungkusLazy> },
           { path: 'komentar-guru', element: <BungkusLazy><StudentPortalPage section="student-notes" /></BungkusLazy> },
+          { path: 'tata-tertib', element: <BungkusLazy><StudentPortalPage section="discipline" /></BungkusLazy> },
           { path: 'mutabaah', element: <BungkusLazy><StudentPortalPage section="mutabaah" /></BungkusLazy> },
           { path: 'absensi', element: <BungkusLazy><StudentPortalPage section="attendance" /></BungkusLazy> },
           { path: 'kisi-kisi', element: <BungkusLazy><StudentPortalPage section="kisi" /></BungkusLazy> },
@@ -1191,6 +1193,58 @@ export const router = createBrowserRouter([
               >
                 <BungkusLazy>
                   <PoinPenilaianDoaPage />
+                </BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'tata-tertib',
+            element: (
+              <PermissionElement
+                roles={[...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.TATA_USAHA, ...ROLES.GURU, ...ROLES.MUSYRIF, ...ROLES.KEPALA_SEKOLAH, ...ROLES.DIVISI, ...ROLES.WAKA]}
+                any={['discipline.point.view', 'discipline.point.manage', 'sistem.master_data', 'dormitory.view', 'asrama.activity.view', 'dashboard.guru.view', 'dashboard.musyrif.view', 'dashboard.kepala-sekolah.view', 'dashboard.divisi-pendidikan.view']}
+              >
+                <BungkusLazy>
+                  <DisciplinePointManagementPage />
+                </BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'master/tata-tertib',
+            element: (
+              <PermissionElement
+                roles={[...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.TATA_USAHA, ...ROLES.GURU, ...ROLES.MUSYRIF, ...ROLES.KEPALA_SEKOLAH, ...ROLES.DIVISI, ...ROLES.WAKA]}
+                any={['discipline.point.view', 'discipline.point.manage', 'sistem.master_data', 'dormitory.view', 'asrama.activity.view', 'dashboard.guru.view', 'dashboard.musyrif.view', 'dashboard.kepala-sekolah.view', 'dashboard.divisi-pendidikan.view']}
+              >
+                <BungkusLazy>
+                  <DisciplinePointManagementPage />
+                </BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'kesantrian/tata-tertib',
+            element: (
+              <PermissionElement
+                roles={[...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.TATA_USAHA, ...ROLES.GURU, ...ROLES.MUSYRIF, ...ROLES.KEPALA_SEKOLAH, ...ROLES.DIVISI, ...ROLES.WAKA]}
+                any={['discipline.point.view', 'discipline.point.manage', 'sistem.master_data', 'dormitory.view', 'asrama.activity.view', 'dashboard.guru.view', 'dashboard.musyrif.view', 'dashboard.kepala-sekolah.view', 'dashboard.divisi-pendidikan.view']}
+              >
+                <BungkusLazy>
+                  <DisciplinePointManagementPage />
+                </BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'kedisiplinan',
+            element: (
+              <PermissionElement
+                roles={[...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.TATA_USAHA, ...ROLES.GURU, ...ROLES.MUSYRIF, ...ROLES.KEPALA_SEKOLAH, ...ROLES.DIVISI, ...ROLES.WAKA]}
+                any={['discipline.point.view', 'discipline.point.manage', 'sistem.master_data', 'dormitory.view', 'asrama.activity.view', 'dashboard.guru.view', 'dashboard.musyrif.view', 'dashboard.kepala-sekolah.view', 'dashboard.divisi-pendidikan.view']}
+              >
+                <BungkusLazy>
+                  <DisciplinePointManagementPage />
                 </BungkusLazy>
               </PermissionElement>
             ),

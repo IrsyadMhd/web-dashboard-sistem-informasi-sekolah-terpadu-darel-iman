@@ -18,7 +18,12 @@ const SAMPLE_ROWS = [
     nama_kurikulum: 'Kurikulum Merdeka SIT SD 2026',
     jenis_kurikulum: 'SIT',
     jenjang: 'SD',
-    status: 'aktif',
+    unit_pendidikan: 'SDIT Dar el-Iman - Padang',
+    tahun_ajaran: '2026/2027',
+    semester: 'Semester Ganjil',
+    tanggal_mulai: '2026-07-15',
+    tanggal_selesai: '2027-06-30',
+    status: 'Aktif',
     deskripsi: 'Kurikulum SIT untuk jenjang Sekolah Dasar 2026/2027',
   },
   {
@@ -26,7 +31,12 @@ const SAMPLE_ROWS = [
     nama_kurikulum: 'Kurikulum Merdeka SIT SMP 2026',
     jenis_kurikulum: 'SIT',
     jenjang: 'SMP',
-    status: 'aktif',
+    unit_pendidikan: 'SMPIT 1 Dar el-Iman - Padang',
+    tahun_ajaran: '2026/2027',
+    semester: 'Semester Ganjil',
+    tanggal_mulai: '2026-07-15',
+    tanggal_selesai: '2027-06-30',
+    status: 'Aktif',
     deskripsi: 'Kurikulum SIT untuk jenjang SMPIT 2026/2027',
   },
   {
@@ -34,7 +44,12 @@ const SAMPLE_ROWS = [
     nama_kurikulum: 'Kurikulum Nasional Plus Pesantren SMA',
     jenis_kurikulum: 'Pesantren',
     jenjang: 'SMA',
-    status: 'aktif',
+    unit_pendidikan: 'SMAIT Dar el-Iman - Padang',
+    tahun_ajaran: '2026/2027',
+    semester: 'Semester Ganjil',
+    tanggal_mulai: '2026-07-15',
+    tanggal_selesai: '2027-06-30',
+    status: 'Aktif',
     deskripsi: 'Kurikulum terpadu pesantren dan nasional',
   },
 ]
@@ -45,6 +60,8 @@ export default function KurikulumImportModal({
   onImport,
   isSubmitting = false,
   result = null,
+  defaultUnitId = '',
+  defaultTahunAjaranId = '',
 }) {
   const [file, setFile] = useState(null)
   const [parsedData, setParsedData] = useState([])
@@ -64,11 +81,28 @@ export default function KurikulumImportModal({
       const headerMap = {
         'kode_kurikulum': 'kode_kurikulum',
         'kode kurikulum': 'kode_kurikulum',
+        'kode': 'kode_kurikulum',
         'nama_kurikulum': 'nama_kurikulum',
         'nama kurikulum': 'nama_kurikulum',
+        'nama': 'nama_kurikulum',
         'jenis_kurikulum': 'jenis_kurikulum',
         'jenis kurikulum': 'jenis_kurikulum',
+        'jenis': 'jenis_kurikulum',
         'jenjang': 'jenjang',
+        'unit_pendidikan': 'unit_pendidikan',
+        'unit pendidikan': 'unit_pendidikan',
+        'unit_pendidikan_id': 'unit_pendidikan_id',
+        'unit': 'unit_pendidikan',
+        'tahun_ajaran': 'tahun_ajaran',
+        'tahun ajaran': 'tahun_ajaran',
+        'tahun_ajaran_id': 'tahun_ajaran_id',
+        'tahun': 'tahun_ajaran',
+        'semester': 'semester',
+        'semester_id': 'semester_id',
+        'tanggal_mulai': 'tanggal_mulai',
+        'tanggal mulai': 'tanggal_mulai',
+        'tanggal_selesai': 'tanggal_selesai',
+        'tanggal selesai': 'tanggal_selesai',
         'status': 'status',
         'deskripsi': 'deskripsi',
       }
@@ -78,9 +112,17 @@ export default function KurikulumImportModal({
         transformRow: (row) => ({
           kode_kurikulum: row.kode_kurikulum || '',
           nama_kurikulum: row.nama_kurikulum || '',
-          jenis_kurikulum: row.jenis_kurikulum || 'Nasional',
+          jenis_kurikulum: row.jenis_kurikulum || 'SIT',
           jenjang: row.jenjang || '',
-          status: row.status || 'aktif',
+          unit_pendidikan: row.unit_pendidikan || '',
+          unit_pendidikan_id: row.unit_pendidikan_id || defaultUnitId || '',
+          tahun_ajaran: row.tahun_ajaran || '',
+          tahun_ajaran_id: row.tahun_ajaran_id || defaultTahunAjaranId || '',
+          semester: row.semester || '',
+          semester_id: row.semester_id || '',
+          tanggal_mulai: row.tanggal_mulai || '',
+          tanggal_selesai: row.tanggal_selesai || '',
+          status: row.status !== undefined && row.status !== '' ? row.status : 'aktif',
           deskripsi: row.deskripsi || '',
         }),
       })
@@ -432,6 +474,8 @@ export default function KurikulumImportModal({
                             <th className="p-2">Nama Kurikulum</th>
                             <th className="p-2">Jenis</th>
                             <th className="p-2">Jenjang</th>
+                            <th className="p-2">Unit</th>
+                            <th className="p-2">Tahun Ajaran</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -439,7 +483,7 @@ export default function KurikulumImportModal({
                             <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-900/30">
                               <td className="p-2 text-slate-400 font-mono">{i + 1}</td>
                               <td className="p-2 font-mono font-bold text-sky-700 dark:text-sky-400">
-                                {row.kode_kurikulum || row.kode || '-'}
+                                {row.kode_kurikulum || row.kode || '(Auto)'}
                               </td>
                               <td className="p-2 font-semibold text-slate-800 dark:text-slate-200">
                                 {row.nama_kurikulum || row.nama || '-'}
@@ -449,6 +493,12 @@ export default function KurikulumImportModal({
                               </td>
                               <td className="p-2 text-slate-600 dark:text-slate-400">
                                 {row.jenjang || '-'}
+                              </td>
+                              <td className="p-2 text-slate-600 dark:text-slate-400 truncate max-w-[120px]">
+                                {row.unit_pendidikan || (row.unit_pendidikan_id ? 'Terkait ID' : '(Default)')}
+                              </td>
+                              <td className="p-2 text-slate-600 dark:text-slate-400">
+                                {row.tahun_ajaran || (row.tahun_ajaran_id ? 'Terkait ID' : '(Aktif)')}
                               </td>
                             </tr>
                           ))}

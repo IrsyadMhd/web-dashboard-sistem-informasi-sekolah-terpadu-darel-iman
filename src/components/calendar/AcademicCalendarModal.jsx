@@ -50,6 +50,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { academicCalendarService } from '../../services/academicCalendarService'
 import Swal from '@/components/ui/compat/swal-heroui'
 import { DatePicker } from '@/components/ui/date-picker'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { printCleanTable } from '../../utils/printHelper'
 import { usePengaturanStore, resolveFoundationName } from '../../stores/pengaturanStore'
 
@@ -1099,30 +1100,25 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
           {/* RIGHT SECTION: ACTIONS (CETAK, KELOLA, REFRESH, CLOSE) */}
           <div className="flex items-center gap-2">
             {/* UNIT FILTER SELECTOR */}
-            <div className="w-40 sm:w-48">
-              <select
+            <div className="w-44 sm:w-52">
+              <HeroUiFilterSelect
                 value={activeTargetUnit}
-                onChange={(e) => isFullAccessUser && !lockedUnit && setSelectedUnitFilter(e.target.value)}
+                onChange={(val) => isFullAccessUser && !lockedUnit && setSelectedUnitFilter(val)}
                 disabled={!isFullAccessUser || Boolean(lockedUnit)}
-                title={lockedUnit ? `Terkunci unit anak: ${lockedUnit}` : (!isFullAccessUser ? `Terkunci unit ${activeTargetUnit}` : 'Pilih Unit Pendidikan')}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-black text-slate-800 focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white cursor-pointer disabled:opacity-90"
-              >
-                {lockedUnit ? (
-                  <option value={lockedUnit}>
-                    {`${lockedUnit} (Unit Siswa)`}
-                  </option>
-                ) : isFullAccessUser ? (
-                  unitOptions.map((u) => (
-                    <option key={u.value} value={u.value}>
-                      {u.label || u.value}
-                    </option>
-                  ))
-                ) : (
-                  <option value={activeTargetUnit}>
-                    {`${activeTargetUnit} (Terkunci)`}
-                  </option>
-                )}
-              </select>
+                options={
+                  lockedUnit
+                    ? [{ value: lockedUnit, label: `${lockedUnit} (Unit Siswa)` }]
+                    : isFullAccessUser
+                    ? unitOptions.map((u) => ({ value: u.value, label: u.label || u.value }))
+                    : [{ value: activeTargetUnit, label: `${activeTargetUnit} (Terkunci)` }]
+                }
+                placeholder="Pilih Unit Pendidikan"
+                icon={Building}
+                ariaLabel="Filter Unit Pendidikan"
+                size="sm"
+                searchable={isFullAccessUser && !lockedUnit}
+                className="w-full"
+              />
             </div>
 
             {/* CETAK / PDF BUTTON */}
@@ -1222,24 +1218,22 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Pilih Unit Pendidikan Sekolah <span className="text-rose-500">*</span>
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={isFullAccessUser ? formData.unit : activeTargetUnit}
-                        onChange={(e) => isFullAccessUser && setFormData({ ...formData, unit: e.target.value })}
+                        onChange={(val) => isFullAccessUser && setFormData((prev) => ({ ...prev, unit: val }))}
                         disabled={!isFullAccessUser}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      >
-                        {isFullAccessUser ? (
-                          unitOptions.map((u) => (
-                            <option key={u.value} value={u.value}>
-                              {u.label || u.value}
-                            </option>
-                          ))
-                        ) : (
-                          <option value={activeTargetUnit}>
-                            {activeTargetUnit} (Terkunci Sesuai Hak Akses Anda)
-                          </option>
-                        )}
-                      </select>
+                        options={
+                          isFullAccessUser
+                            ? unitOptions.map((u) => ({ value: u.value, label: u.label || u.value }))
+                            : [{ value: activeTargetUnit, label: `${activeTargetUnit} (Terkunci Sesuai Hak Akses Anda)` }]
+                        }
+                        placeholder="Pilih Unit Pendidikan"
+                        icon={Building}
+                        ariaLabel="Pilih Unit Pendidikan Sekolah"
+                        size="md"
+                        searchable={isFullAccessUser}
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Judul Agenda */}
@@ -1262,17 +1256,20 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Kategori Agenda <span className="text-rose-500">*</span>
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={formData.category}
-                        onChange={(e) => handleCategorySelectChange(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      >
-                        {Object.entries(PRESET_CATEGORIES).map(([key, cat]) => (
-                          <option key={key} value={key}>
-                            {cat.label}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => handleCategorySelectChange(val)}
+                        options={Object.entries(PRESET_CATEGORIES).map(([key, cat]) => ({
+                          value: key,
+                          label: cat.label,
+                        }))}
+                        placeholder="Pilih Kategori"
+                        icon={Tag}
+                        ariaLabel="Kategori Agenda"
+                        size="md"
+                        searchable
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Custom Label if Category custom */}
@@ -1297,17 +1294,19 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Warna Penanda Card / Badge
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={formData.color}
-                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      >
-                        {Object.entries(COLOR_PALETTE).map(([cKey, cVal]) => (
-                          <option key={cKey} value={cKey}>
-                            {cVal.label}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => setFormData((prev) => ({ ...prev, color: val }))}
+                        options={Object.entries(COLOR_PALETTE).map(([cKey, cVal]) => ({
+                          value: cKey,
+                          label: cVal.label,
+                        }))}
+                        placeholder="Pilih Warna"
+                        icon={Palette}
+                        ariaLabel="Warna Penanda Card / Badge"
+                        size="md"
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Tanggal Mulai */}
@@ -1350,17 +1349,17 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Tautan Pintasan Modul Fitur
                       </label>
-                      <select
-                        value={formData.targetModule}
-                        onChange={(e) => setFormData({ ...formData, targetModule: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      >
-                        {MODULE_LINK_OPTIONS.map((m) => (
-                          <option key={m.value} value={m.value}>
-                            {m.label}
-                          </option>
-                        ))}
-                      </select>
+                      <HeroUiFilterSelect
+                        value={formData.targetModule || ''}
+                        onChange={(val) => setFormData((prev) => ({ ...prev, targetModule: val }))}
+                        options={MODULE_LINK_OPTIONS.map((m) => ({ value: m.value, label: m.label }))}
+                        placeholder="Pilih Tautan Modul"
+                        icon={ExternalLink}
+                        ariaLabel="Tautan Pintasan Modul Fitur"
+                        size="md"
+                        searchable
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Sasaran Peserta */}
@@ -1368,17 +1367,16 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Target Sasaran Civitas
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={formData.audience}
-                        onChange={(e) => setFormData({ ...formData, audience: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      >
-                        {AUDIENCE_OPTIONS.map((aud) => (
-                          <option key={aud.value} value={aud.value}>
-                            {aud.label}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => setFormData((prev) => ({ ...prev, audience: val }))}
+                        options={AUDIENCE_OPTIONS.map((aud) => ({ value: aud.value, label: aud.label }))}
+                        placeholder="Pilih Target Sasaran"
+                        icon={Users}
+                        ariaLabel="Target Sasaran Civitas"
+                        size="md"
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Catatan / Keterangan */}
@@ -2067,15 +2065,20 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                           Konfirmasi Kehadiran
                         </label>
-                        <select
+                        <HeroUiFilterSelect
                           value={rsvpStatus}
-                          onChange={(e) => setRsvpStatus(e.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-extrabold text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white cursor-pointer"
-                        >
-                          <option value="hadir">Anda akan hadir ✓</option>
-                          <option value="ragu">Mungkin hadir</option>
-                          <option value="tidak">Tidak dapat hadir</option>
-                        </select>
+                          onChange={(val) => setRsvpStatus(val)}
+                          options={[
+                            { value: 'hadir', label: 'Anda akan hadir ✓' },
+                            { value: 'ragu', label: 'Mungkin hadir' },
+                            { value: 'tidak', label: 'Tidak dapat hadir' },
+                          ]}
+                          placeholder="Pilih Konfirmasi"
+                          icon={UserCheck}
+                          ariaLabel="Konfirmasi Kehadiran"
+                          size="sm"
+                          className="w-full"
+                        />
                       </div>
                     </div>
                   ) : activeDetailTab === 'peserta' ? (

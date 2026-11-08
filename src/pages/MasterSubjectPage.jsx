@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Trash2,
   RotateCcw,
+  RefreshCcw,
   Eye,
   Upload,
   Download,
@@ -59,6 +60,7 @@ import {
   PrintOptionModal,
   MasterFilterSelect,
 } from '../components/master-data'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import {
   Select as HeroSelect,
   SelectTrigger as HeroSelectTrigger,
@@ -211,6 +213,8 @@ export default function MasterSubjectPage({
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false)
   const [importFile, setImportFile] = useState(null)
+  const [overwriteExisting, setOverwriteExisting] = useState(false)
+  const [duplicateModalData, setDuplicateModalData] = useState(null)
   // Toast Helper (Global)
   const toast = useToast()
   const notify = (title, message = '', type = 'success') => toast(title, message, type)
@@ -658,13 +662,34 @@ export default function MasterSubjectPage({
     }
     const form = new FormData()
     form.append('file', importFile)
+    form.append('overwrite', overwriteExisting ? '1' : '0')
 
     try {
       notify('Memproses Impor', 'Sedang memproses berkas data mata pelajaran...', 'info')
       const res = await subjectService.importFile(form)
-      notify('Impor Berhasil', res.message || 'Data berhasil diimpor.', 'success')
+      const resData = res?.data || {}
+      const duplikatCount = resData.duplikat || 0
+      const diperbaruiCount = resData.diperbarui || 0
+      const berhasilCount = resData.berhasil || 0
+      const totalCount = resData.total || 0
+
+      if (duplikatCount > 0 || (diperbaruiCount > 0 && overwriteExisting)) {
+        const titleMsg = overwriteExisting ? 'Impor Selesai (Data Ditimpa)' : 'Pemberitahuan Data Duplikat'
+        const detailMsg = overwriteExisting
+          ? `${berhasilCount} baru, ${diperbaruiCount} berhasil ditimpa dari total ${totalCount} baris.`
+          : `${berhasilCount} berhasil, ${duplikatCount} baris dilewati karena sudah ada.`
+        notify(titleMsg, detailMsg, overwriteExisting ? 'info' : 'warning')
+      } else {
+        notify('Impor Berhasil', res.message || `${berhasilCount} data mata pelajaran berhasil diimpor.`, 'success')
+      }
+
+      if (Array.isArray(resData.duplicates) && resData.duplicates.length > 0) {
+        setDuplicateModalData(resData)
+      }
+
       setIsImportModalOpen(false)
       setImportFile(null)
+      setOverwriteExisting(false)
       queryClient.invalidateQueries(['master-subjects-list'])
     } catch (err) {
       notify('Gagal Impor', err.response?.data?.message || 'Proses impor gagal.', 'danger')
@@ -977,86 +1002,112 @@ export default function MasterSubjectPage({
         searchPlaceholder="Cari nama atau kode mata pelajaran..."
         filters={
           <>
-            <MasterFilterSelect
+            <HeroUiFilterSelect
               value={selectedUnitFilter}
-              onChange={(event) => {
-                const unitId = event.target.value
+              onChange={(unitId) => {
                 const matchingKurikulum = resolveKurikulumForUnit(unitId)
                 setSelectedUnitFilter(unitId)
                 if (!matchingKurikulum.some((item) => String(item.id) === String(selectedKurikulumFilter))) setSelectedKurikulumFilter('')
                 setPage(1)
               }}
+              options={[
+                ...(canViewAllUnits ? [{ value: '', label: 'Semua Unit' }] : []),
+                ...availableUnitOptions.map((unit) => ({ value: String(unit.id), label: unit.name })),
+              ]}
               disabled={!canViewAllUnits && availableUnitOptions.length <= 1}
-              aria-label="Filter unit pendidikan"
-            >
-              {canViewAllUnits && <option value="">Semua Unit</option>}
-              {availableUnitOptions.map((unit) => (
-                <option key={unit.id} value={unit.id}>{unit.name}</option>
-              ))}
-            </MasterFilterSelect>
+              placeholder="Semua Unit"
+              icon={Building2}
+              ariaLabel="Filter unit pendidikan"
+              size="sm"
+              searchable
+              className="w-full sm:w-auto min-w-[150px]"
+            />
 
-            <MasterFilterSelect
+            <HeroUiFilterSelect
               value={selectedKurikulumFilter}
-              onChange={(event) => { setSelectedKurikulumFilter(event.target.value); setPage(1) }}
-              aria-label="Filter kurikulum"
-            >
-              <option value="">Semua Kurikulum</option>
-              {availableKurikulumForFilter.map((kurikulum) => (
-                <option key={kurikulum.id} value={kurikulum.id}>{kurikulum.nama_kurikulum}</option>
-              ))}
-            </MasterFilterSelect>
+              onChange={(val) => { setSelectedKurikulumFilter(val); setPage(1) }}
+              options={[
+                { value: '', label: 'Semua Kurikulum' },
+                ...availableKurikulumForFilter.map((kurikulum) => ({ value: String(kurikulum.id), label: kurikulum.nama_kurikulum })),
+              ]}
+              placeholder="Semua Kurikulum"
+              icon={Layers}
+              ariaLabel="Filter kurikulum"
+              size="sm"
+              searchable
+              className="w-full sm:w-auto min-w-[160px]"
+            />
 
-            <MasterFilterSelect
+            <HeroUiFilterSelect
               value={selectedKelompokFilter}
-              onChange={(event) => { setSelectedKelompokFilter(event.target.value); setPage(1) }}
-              aria-label="Filter kelompok mata pelajaran"
-            >
-              <option value="">Semua Kelompok</option>
-              {KELOMPOK_LIST.map((kelompok) => (
-                <option key={kelompok} value={kelompok}>{kelompok}</option>
-              ))}
-            </MasterFilterSelect>
+              onChange={(val) => { setSelectedKelompokFilter(val); setPage(1) }}
+              options={[
+                { value: '', label: 'Semua Kelompok' },
+                ...KELOMPOK_LIST.map((kelompok) => ({ value: kelompok, label: kelompok })),
+              ]}
+              placeholder="Semua Kelompok"
+              icon={Tag}
+              ariaLabel="Filter kelompok mata pelajaran"
+              size="sm"
+              className="w-full sm:w-auto min-w-[140px]"
+            />
 
-            <MasterFilterSelect
+            <HeroUiFilterSelect
               value={selectedKategoriFilter}
-              onChange={(event) => { setSelectedKategoriFilter(event.target.value); setPage(1) }}
-              aria-label="Filter kategori mata pelajaran"
-            >
-              <option value="">Semua Kategori</option>
-              {KATEGORI_LIST.map((kategori) => (
-                <option key={kategori} value={kategori}>{kategori}</option>
-              ))}
-            </MasterFilterSelect>
+              onChange={(val) => { setSelectedKategoriFilter(val); setPage(1) }}
+              options={[
+                { value: '', label: 'Semua Kategori' },
+                ...KATEGORI_LIST.map((kategori) => ({ value: kategori, label: kategori })),
+              ]}
+              placeholder="Semua Kategori"
+              icon={BookOpen}
+              ariaLabel="Filter kategori mata pelajaran"
+              size="sm"
+              className="w-full sm:w-auto min-w-[140px]"
+            />
 
-            <MasterFilterSelect
+            <HeroUiFilterSelect
               value={selectedJenjangFilter}
-              onChange={(event) => { setSelectedJenjangFilter(event.target.value); setPage(1) }}
-              aria-label="Filter jenjang mata pelajaran"
-            >
-              <option value="">Semua Jenjang</option>
-              {['PAUD', 'TK', 'SD', 'SMP', 'SMA', 'SMK'].map((jenjang) => (
-                <option key={jenjang} value={jenjang}>{jenjang}</option>
-              ))}
-            </MasterFilterSelect>
+              onChange={(val) => { setSelectedJenjangFilter(val); setPage(1) }}
+              options={[
+                { value: '', label: 'Semua Jenjang' },
+                ...['PAUD', 'TK', 'SD', 'SMP', 'SMA', 'SMK'].map((jenjang) => ({ value: jenjang, label: jenjang })),
+              ]}
+              placeholder="Semua Jenjang"
+              icon={GraduationCap}
+              ariaLabel="Filter jenjang mata pelajaran"
+              size="sm"
+              className="w-full sm:w-auto min-w-[130px]"
+            />
 
-            <MasterFilterSelect
+            <HeroUiFilterSelect
               value={selectedStatusFilter}
-              onChange={(event) => { setSelectedStatusFilter(event.target.value); setPage(1) }}
-              aria-label="Filter status mata pelajaran"
-            >
-              <option value="">Semua Status</option>
-              <option value="aktif">Aktif</option>
-              <option value="tidak_aktif">Nonaktif</option>
-            </MasterFilterSelect>
+              onChange={(val) => { setSelectedStatusFilter(val); setPage(1) }}
+              options={[
+                { value: '', label: 'Semua Status' },
+                { value: 'aktif', label: 'Aktif' },
+                { value: 'tidak_aktif', label: 'Nonaktif' },
+              ]}
+              placeholder="Semua Status"
+              icon={CheckCircle2}
+              ariaLabel="Filter status mata pelajaran"
+              size="sm"
+              className="w-full sm:w-auto min-w-[130px]"
+            />
 
-            <MasterFilterSelect
+            <HeroUiFilterSelect
               value={denganSampahFilter}
-              onChange={(event) => { setDenganSampahFilter(event.target.value); setPage(1) }}
-              aria-label="Filter cakupan data"
-            >
-              <option value="">Data Aktif</option>
-              <option value="1">Termasuk Arsip</option>
-            </MasterFilterSelect>
+              onChange={(val) => { setDenganSampahFilter(val); setPage(1) }}
+              options={[
+                { value: '', label: 'Data Aktif' },
+                { value: '1', label: 'Termasuk Arsip' },
+              ]}
+              placeholder="Data Aktif"
+              icon={Archive}
+              ariaLabel="Filter cakupan data"
+              size="sm"
+              className="w-full sm:w-auto min-w-[140px]"
+            />
           </>
         }
         onResetFilters={resetFilters}
@@ -1340,32 +1391,30 @@ export default function MasterSubjectPage({
                       <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                         Unit Pendidikan <span className="text-rose-500">*</span>
                       </label>
-                      <div className="relative">
-                        <Building className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                        <select
-                          value={formData.unit_pendidikan_id}
-                          onChange={(e) => {
-                            const newUnitId = e.target.value
-                            const matchingKur = resolveKurikulumForUnit(newUnitId)
-                            const currentUnit = (unitDropdown || []).find((u) => String(u.id) === String(newUnitId))
-                            const jenjang = getUnitJenjang(currentUnit)
-                            const isStillValid = matchingKur.some((k) => String(k.id) === String(formData.kurikulum_id))
-                            setFormData({
-                              ...formData,
-                              unit_pendidikan_id: newUnitId,
-                              kurikulum_id: isStillValid ? formData.kurikulum_id : (matchingKur[0]?.id || ''),
-                              jenjang: jenjang || formData.jenjang,
-                            })
-                          }}
-                          required
-                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                        >
-                          <option value="">Pilih Unit Pendidikan</option>
-                          {unitDropdown.map((u) => (
-                            <option key={u.id} value={u.id}>{u.name}</option>
-                          ))}
-                        </select>
-                      </div>
+                      <HeroUiFilterSelect
+                        value={formData.unit_pendidikan_id}
+                        onChange={(newUnitId) => {
+                          const matchingKur = resolveKurikulumForUnit(newUnitId)
+                          const currentUnit = (unitDropdown || []).find((u) => String(u.id) === String(newUnitId))
+                          const jenjang = getUnitJenjang(currentUnit)
+                          const isStillValid = matchingKur.some((k) => String(k.id) === String(formData.kurikulum_id))
+                          setFormData({
+                            ...formData,
+                            unit_pendidikan_id: newUnitId,
+                            kurikulum_id: isStillValid ? formData.kurikulum_id : (matchingKur[0]?.id || ''),
+                            jenjang: jenjang || formData.jenjang,
+                          })
+                        }}
+                        options={[
+                          { value: '', label: 'Pilih Unit Pendidikan' },
+                          ...unitDropdown.map((u) => ({ value: String(u.id), label: u.name })),
+                        ]}
+                        placeholder="Pilih Unit Pendidikan"
+                        icon={Building}
+                        ariaLabel="Pilih unit pendidikan"
+                        searchable
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Kurikulum */}
@@ -1373,22 +1422,22 @@ export default function MasterSubjectPage({
                       <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                         Kurikulum <span className="text-rose-500">*</span>
                       </label>
-                      <div className="relative">
-                        <Layers className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                        <select
-                          value={formData.kurikulum_id}
-                          onChange={(e) => setFormData({ ...formData, kurikulum_id: e.target.value })}
-                          required
-                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                        >
-                          <option value="">Pilih Kurikulum</option>
-                          {availableKurikulumForForm.map((k) => (
-                            <option key={k.id} value={k.id}>
-                              {k.nama_kurikulum} {k.jenjang ? `(${k.jenjang})` : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <HeroUiFilterSelect
+                        value={formData.kurikulum_id}
+                        onChange={(val) => setFormData({ ...formData, kurikulum_id: val })}
+                        options={[
+                          { value: '', label: 'Pilih Kurikulum' },
+                          ...availableKurikulumForForm.map((k) => ({
+                            value: String(k.id),
+                            label: `${k.nama_kurikulum} ${k.jenjang ? `(${k.jenjang})` : ''}`,
+                          })),
+                        ]}
+                        placeholder="Pilih Kurikulum"
+                        icon={Layers}
+                        ariaLabel="Pilih kurikulum"
+                        searchable
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Kode Mapel */}
@@ -1449,15 +1498,15 @@ export default function MasterSubjectPage({
                       <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                         Kelompok Mapel
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={formData.kelompok_mapel}
-                        onChange={(e) => setFormData({ ...formData, kelompok_mapel: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                      >
-                        {KELOMPOK_LIST.map((k) => (
-                          <option key={k} value={k}>{k}</option>
-                        ))}
-                      </select>
+                        onChange={(val) => setFormData({ ...formData, kelompok_mapel: val })}
+                        options={KELOMPOK_LIST.map((k) => ({ value: k, label: k }))}
+                        placeholder="Pilih Kelompok Mapel"
+                        icon={Tag}
+                        ariaLabel="Pilih kelompok mapel"
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Kategori */}
@@ -1465,15 +1514,15 @@ export default function MasterSubjectPage({
                       <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                         Kategori
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={formData.kategori}
-                        onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                      >
-                        {KATEGORI_LIST.map((k) => (
-                          <option key={k} value={k}>{k}</option>
-                        ))}
-                      </select>
+                        onChange={(val) => setFormData({ ...formData, kategori: val })}
+                        options={KATEGORI_LIST.map((k) => ({ value: k, label: k }))}
+                        placeholder="Pilih Kategori"
+                        icon={BookOpen}
+                        ariaLabel="Pilih kategori"
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Jenjang */}
@@ -1481,18 +1530,15 @@ export default function MasterSubjectPage({
                       <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                         Jenjang
                       </label>
-                      <div className="relative">
-                        <GraduationCap className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                        <select
-                          value={formData.jenjang}
-                          onChange={(e) => setFormData({ ...formData, jenjang: e.target.value })}
-                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                        >
-                          {['PAUD', 'TK', 'SD', 'SMP', 'SMA', 'SMK'].map((j) => (
-                            <option key={j} value={j}>{j}</option>
-                          ))}
-                        </select>
-                      </div>
+                      <HeroUiFilterSelect
+                        value={formData.jenjang}
+                        onChange={(val) => setFormData({ ...formData, jenjang: val })}
+                        options={['PAUD', 'TK', 'SD', 'SMP', 'SMA', 'SMK'].map((j) => ({ value: j, label: j }))}
+                        placeholder="Pilih Jenjang"
+                        icon={GraduationCap}
+                        ariaLabel="Pilih jenjang"
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Alokasi JP per Minggu */}
@@ -2051,11 +2097,56 @@ export default function MasterSubjectPage({
                     />
                   </div>
 
+                  {/* Opsi Timpa Data (Overwrite) */}
+                  <div className={cn(
+                    "rounded-2xl border p-4 transition-all duration-200",
+                    overwriteExisting
+                      ? "border-amber-300/90 bg-gradient-to-r from-amber-50/70 via-orange-50/30 to-amber-50/70 dark:border-amber-700/60 dark:bg-amber-950/30"
+                      : "border-slate-200/80 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40"
+                  )}>
+                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                      <div className="pt-0.5">
+                        <input
+                          type="checkbox"
+                          id="overwrite-mapel-checkbox"
+                          checked={overwriteExisting}
+                          onChange={(e) => setOverwriteExisting(e.target.checked)}
+                          className="size-4.5 rounded-md border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                            Timpa Data Jika Kode Mapel Sudah Ada
+                          </span>
+                          {overwriteExisting ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800 border border-amber-300/80 dark:bg-amber-950 dark:text-amber-300">
+                              <RefreshCcw className="size-2.5" />
+                              Opsi Timpa Aktif
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              Lewati Duplikat (Default)
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                          {overwriteExisting
+                            ? 'Jika baris data pada berkas memiliki Kode Mapel yang sudah terdaftar, data mata pelajaran lama akan diperbarui otomatis.'
+                            : 'Jika baris data pada berkas memiliki Kode Mapel yang sudah ada di database, baris tersebut akan dilewati dan data lama tetap utuh.'}
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
                   {/* Footer */}
                   <div className="flex items-center justify-between border-t border-slate-100 bg-white pt-4 dark:border-slate-800 dark:bg-slate-950">
                     <button
                       type="button"
-                      onClick={() => setIsImportModalOpen(false)}
+                      onClick={() => {
+                        setIsImportModalOpen(false)
+                        setOverwriteExisting(false)
+                      }}
                       className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
                     >
                       <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
@@ -2075,6 +2166,154 @@ export default function MasterSubjectPage({
                     </button>
                   </div>
                 </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MODAL HASIL IMPOR & PEMBERITAHUAN DATA DUPLIKAT ── */}
+      <AnimatePresence>
+        {duplicateModalData && (
+          <div
+            className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mapel-duplicate-report-title"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="my-auto w-full max-w-2xl font-sans"
+            >
+              <div className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                {/* Top Accent Gradient Bar */}
+                <div className={cn(
+                  "h-1.5 w-full shrink-0",
+                  duplicateModalData.diperbarui > 0
+                    ? "bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600"
+                    : duplicateModalData.duplikat > 0
+                      ? "bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-500"
+                      : "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600"
+                )} />
+
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "rounded-2xl p-2.5 text-white shadow-md shrink-0 border",
+                      duplicateModalData.diperbarui > 0
+                        ? "bg-gradient-to-br from-amber-500 to-orange-600 border-amber-300/30 shadow-amber-500/30"
+                        : "bg-gradient-to-br from-emerald-500 to-teal-700 border-emerald-300/30 shadow-emerald-500/30"
+                    )}>
+                      {duplicateModalData.diperbarui > 0 ? (
+                        <RefreshCcw className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      ) : (
+                        <CheckCircle2 className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      )}
+                    </div>
+                    <div>
+                      <h3 id="mapel-duplicate-report-title" className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Hasil Impor & Pemberitahuan Data</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          Total {duplicateModalData.total} Data
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Ringkasan sinkronisasi dan status pemrosesan data mata pelajaran
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateModalData(null)}
+                    aria-label="Tutup ringkasan impor"
+                    className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 transition cursor-pointer"
+                  >
+                    <X className="size-4" strokeWidth={2.25} />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6 text-sm text-slate-700 dark:text-slate-200">
+                  {/* KPI Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-3 text-center dark:border-emerald-800/60 dark:bg-emerald-950/30">
+                      <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Baru</p>
+                      <p className="text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{duplicateModalData.berhasil || 0}</p>
+                    </div>
+                    <div className="rounded-2xl border border-amber-200/80 bg-amber-50/50 p-3 text-center dark:border-amber-800/60 dark:bg-amber-950/30">
+                      <p className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Ditimpa</p>
+                      <p className="text-lg font-black text-amber-700 dark:text-amber-300 mt-0.5">{duplicateModalData.diperbarui || 0}</p>
+                    </div>
+                    <div className="rounded-2xl border border-sky-200/80 bg-sky-50/50 p-3 text-center dark:border-sky-800/60 dark:bg-sky-950/30">
+                      <p className="text-[10px] font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider">Dilewati</p>
+                      <p className="text-lg font-black text-sky-700 dark:text-sky-300 mt-0.5">{duplicateModalData.duplikat || 0}</p>
+                    </div>
+                    <div className="rounded-2xl border border-rose-200/80 bg-rose-50/50 p-3 text-center dark:border-rose-800/60 dark:bg-rose-950/30">
+                      <p className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">Gagal</p>
+                      <p className="text-lg font-black text-rose-700 dark:text-rose-300 mt-0.5">{duplicateModalData.gagal || 0}</p>
+                    </div>
+                  </div>
+
+                  {/* Duplicate / Updated Rows List */}
+                  {Array.isArray(duplicateModalData.duplicates) && duplicateModalData.duplicates.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                        <span>Rincian Data Yang Sesuai / Terdeteksi Duplikat</span>
+                        <span className="text-[11px] text-slate-500 font-normal">
+                          {duplicateModalData.duplicates.length} item
+                        </span>
+                      </p>
+                      <div className="max-h-56 overflow-auto rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900/60">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-slate-50/80 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 border-b border-slate-200/80 dark:border-slate-800 font-bold sticky top-0">
+                            <tr>
+                              <th className="px-3.5 py-2.5">Baris</th>
+                              <th className="px-3.5 py-2.5">Kode Mapel</th>
+                              <th className="px-3.5 py-2.5">Nama Mapel</th>
+                              <th className="px-3.5 py-2.5">Status</th>
+                              <th className="px-3.5 py-2.5">Keterangan</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[11px]">
+                            {duplicateModalData.duplicates.map((dup, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                                <td className="px-3.5 py-2 font-mono text-slate-500">#{dup.baris || idx + 1}</td>
+                                <td className="px-3.5 py-2 font-mono font-semibold text-slate-900 dark:text-white">{dup.kode || '-'}</td>
+                                <td className="px-3.5 py-2 font-medium text-slate-700 dark:text-slate-200">{dup.nama || '-'}</td>
+                                <td className="px-3.5 py-2">
+                                  <span className={cn(
+                                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                    dup.status === 'Ditimpa'
+                                      ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                      : "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300"
+                                  )}>
+                                    {dup.status}
+                                  </span>
+                                </td>
+                                <td className="px-3.5 py-2 text-slate-500 dark:text-slate-400">{dup.keterangan || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-end border-t border-slate-100 bg-slate-50/50 px-6 py-3.5 dark:border-slate-800 dark:bg-slate-900/30">
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateModalData(null)}
+                    className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white px-5 py-2 text-xs font-bold shadow-md hover:from-emerald-700 hover:to-teal-800 transition cursor-pointer"
+                  >
+                    <span>Mengerti</span>
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

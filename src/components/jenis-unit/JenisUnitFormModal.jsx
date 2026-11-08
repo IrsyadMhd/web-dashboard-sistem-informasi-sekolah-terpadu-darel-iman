@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react'
 import { renderJenisUnitIcon } from './JenisUnitTable'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 
 const JENJANG_OPTIONS = [
   'PAUD',
@@ -309,23 +310,16 @@ export default function JenisUnitFormModal({
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
                       Jenjang Pendidikan <span className="text-rose-500">*</span>
                     </label>
-                    <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                        <GraduationCap className="size-4" />
-                      </div>
-                      <select
-                        value={formData.jenjang}
-                        onChange={(e) => setFormData({ ...formData, jenjang: e.target.value })}
-                        className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                      >
-                        {JENJANG_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
-                    </div>
+                    <HeroUiFilterSelect
+                      value={formData.jenjang}
+                      onChange={(val) => setFormData({ ...formData, jenjang: val })}
+                      options={JENJANG_OPTIONS.map((opt) => ({ value: opt, label: opt }))}
+                      placeholder="Pilih Jenjang"
+                      icon={GraduationCap}
+                      ariaLabel="Pilih jenjang pendidikan"
+                      size="md"
+                      className="w-full"
+                    />
                     {errors.jenjang && <p className="text-[11px] font-semibold text-rose-500">{errors.jenjang}</p>}
                   </div>
                 </div>
@@ -335,7 +329,7 @@ export default function JenisUnitFormModal({
                   {/* Urutan */}
                   <div className="space-y-1.5">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
-                      Urutan Tampilan <span className="text-rose-500">*</span>
+                       Urutan Tampilan <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative flex items-center">
                       <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
@@ -361,22 +355,17 @@ export default function JenisUnitFormModal({
                   <div className="space-y-1.5">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">Icon Visual</label>
                     <div className="flex items-center gap-2">
-                      <div className="relative flex-1 flex items-center">
-                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                          <School className="size-4" />
-                        </div>
-                        <select
+                      <div className="flex-1">
+                        <HeroUiFilterSelect
                           value={formData.icon}
-                          onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                          className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-9 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                        >
-                          {ICON_OPTIONS.map((ico) => (
-                            <option key={ico.value} value={ico.value}>
-                              {ico.label}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
+                          onChange={(val) => setFormData({ ...formData, icon: val })}
+                          options={ICON_OPTIONS.map((ico) => ({ value: ico.value, label: ico.label }))}
+                          placeholder="Pilih Icon Visual"
+                          icon={School}
+                          ariaLabel="Pilih icon visual"
+                          size="md"
+                          className="w-full"
+                        />
                       </div>
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/60 dark:text-emerald-400 shadow-2xs">
                         {renderJenisUnitIcon(formData.icon, 'w-5 h-5')}

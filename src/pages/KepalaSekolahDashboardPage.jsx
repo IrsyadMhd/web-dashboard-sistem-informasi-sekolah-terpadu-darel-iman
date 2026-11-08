@@ -42,7 +42,9 @@ import {
   ChevronUp,
   Briefcase,
   TrendingUp,
+  Scale,
 } from 'lucide-react'
+import PrincipalDisciplineOverviewSection from '../components/discipline/PrincipalDisciplineOverviewSection'
 import InputLaporanBulananModal from '../components/pemantauan/InputLaporanBulananModal'
 import { printWeeklyStudentEvaluation, resolveFoundationName } from '../utils/printHelper'
 import { useAuthStore } from '../stores/authStore'
@@ -1000,6 +1002,22 @@ export default function KepalaSekolahDashboardPage() {
                 {studentAttendanceList.length}
               </span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMonitoringPillar('kedisiplinan')
+                setMonitoringSearch('')
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                monitoringPillar === 'kedisiplinan'
+                  ? 'bg-gradient-to-r from-rose-600 to-amber-600 text-white shadow-md shadow-rose-600/25'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Scale className="h-4 w-4" />
+              <span>Radar Disiplin & SP</span>
+            </button>
           </div>
         </div>
 
@@ -1695,6 +1713,14 @@ export default function KepalaSekolahDashboardPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* TAB 4: RADAR KEDISIPLINAN & OTORISASI SP */}
+          {monitoringPillar === 'kedisiplinan' && (
+            <PrincipalDisciplineOverviewSection
+              unitId={selectedUnitFilter || data?.unit_id || data?.unit?.id}
+              onOpenStudentSummary={() => navigate('/dashboard/master/tata-tertib')}
+            />
           )}
         </div>
       </section>
