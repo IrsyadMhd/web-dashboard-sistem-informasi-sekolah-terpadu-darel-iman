@@ -32,6 +32,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [errorTitle, setErrorTitle] = useState('Gagal Autentikasi')
   const [sessionNotice, setSessionNotice] = useState(null)
   const [successNotice, setSuccessNotice] = useState(null)
   const [workspaceOptions, setWorkspaceOptions] = useState([])
@@ -192,14 +193,39 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
         setLoading(false)
         return
       }
+
+      const status = err?.response?.status
+      const errCode = err?.response?.data?.code
+      let resolvedTitle = 'Username / Password Salah'
+      let fallbackMsg = 'Username, NIP, NIS, NIK, atau password tidak valid.'
+
+      if (status === 0 || err?.code === 'ERR_NETWORK' || errCode === 'SERVER_UNREACHABLE' || errCode === 'CLIENT_OFFLINE') {
+        const isClientOffline = typeof navigator !== 'undefined' && !navigator.onLine
+        resolvedTitle = isClientOffline ? 'Koneksi Internet Terputus' : 'Server Tidak Terjangkau'
+        fallbackMsg = isClientOffline
+          ? 'Perangkat Anda sedang tidak terhubung ke jaringan internet. Periksa koneksi internet Anda.'
+          : 'Tidak dapat terhubung ke server backend. Pastikan server aktif dan coba kembali.'
+      } else if (status === 503 || errCode === 'DATABASE_CONNECTION_ERROR') {
+        resolvedTitle = 'Gangguan Basis Data'
+        fallbackMsg = 'Layanan database sedang tidak dapat dijangkau. Silakan hubungi administrator sistem.'
+      } else if (status === 502 || status === 504) {
+        resolvedTitle = 'Server Tidak Merespons'
+        fallbackMsg = 'Server backend membutuhkan waktu terlalu lama untuk merespons (Gateway Timeout).'
+      } else if (status === 500) {
+        resolvedTitle = 'Gangguan Sistem Server'
+        fallbackMsg = 'Terjadi kendala teknis pada server backend. Silakan hubungi administrator.'
+      }
+
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.errors?.identifier?.[0] ||
-        'Username, NIP, NIS, NIK, atau password tidak valid.'
+        fallbackMsg
+
+      setErrorTitle(resolvedTitle)
       setError(msg)
       showAuthPopup({
         type: 'error',
-        title: 'Username / Password Salah',
+        title: resolvedTitle,
         message: msg,
       })
       setLoading(false)
@@ -382,7 +408,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
             <Alert status="error" className="animate-fade-in">
               <AlertIndicator />
               <AlertContent>
-                <AlertTitle>Gagal Autentikasi</AlertTitle>
+                <AlertTitle>{errorTitle || 'Gagal Autentikasi'}</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </AlertContent>
             </Alert>
