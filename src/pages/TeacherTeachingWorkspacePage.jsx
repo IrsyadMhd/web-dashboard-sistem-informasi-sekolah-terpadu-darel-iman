@@ -58,6 +58,7 @@ import {
   Save,
   Scan,
   ScanFace,
+  School,
   Search,
   ShieldAlert,
   Sparkles,
@@ -816,17 +817,37 @@ export default function TeacherTeachingWorkspacePage() {
     muatPengaturan()
   }, [muatPengaturan])
 
-  const isPengurusYayasan = React.useMemo(() => hasAnyRole(userRoles, [
-    'Yayasan', 'Ketua Yayasan', 'Pengurus Yayasan', 'Sekretaris Yayasan', 'Bendahara Yayasan',
-    'ketua_yayasan', 'pengurus_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'Super Admin', 'SuperAdmin', 'Admin'
-  ]), [userRoles])
+  // Akses Lingkup Tahfizh:
+  // 1. Global Scope: Superadmin, Admin, Pengurus Yayasan, dan Divisi Pendidikan
+  //    (Dapat melihat seluruh unit dan menyortir masing-masing rincian unit pendidikan)
+  const isGlobalTahfizhScope = React.useMemo(() => {
+    return hasAnyRole(userRoles, [
+      ...(ROLES.SUPER_ADMIN || []),
+      ...(ROLES.ADMIN || []),
+      ...(ROLES.YAYASAN || []),
+      ...(ROLES.DIVISI || []),
+      'Super Admin', 'SuperAdmin', 'super_admin',
+      'Admin', 'admin', 'administrator',
+      'Yayasan', 'Ketua Yayasan', 'Pengurus Yayasan', 'Sekretaris Yayasan', 'Bendahara Yayasan', 'Pembina Yayasan', 'Pengawas Yayasan',
+      'ketua_yayasan', 'pengurus_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan',
+      'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'kepala_bidang_pendidikan',
+      'Divisi Kurikulum', 'Divisi Kesiswaan', 'divisi-pendidikan',
+    ])
+  }, [userRoles])
 
-  const isKepalaSekolahOrDivisiPendidikan = React.useMemo(() => !isPengurusYayasan && hasAnyRole(userRoles, [
-    'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek',
-    'Divisi Pendidikan', 'divisi_pendidikan', 'Kepala Bidang Pendidikan', 'Divisi Kurikulum'
-  ]), [isPengurusYayasan, userRoles])
+  // Kompatibilitas mundur
+  const isPengurusYayasan = isGlobalTahfizhScope
 
-  const isGuru = !isPengurusYayasan && !isKepalaSekolahOrDivisiPendidikan
+  // 2. Unit-Locked Scope: Kepala Sekolah
+  const isKepalaSekolahOrDivisiPendidikan = React.useMemo(() => {
+    return !isGlobalTahfizhScope && hasAnyRole(userRoles, [
+      ...(ROLES.KEPALA_SEKOLAH || []),
+      'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek'
+    ])
+  }, [isGlobalTahfizhScope, userRoles])
+
+  // 3. Unit-Locked Scope: Guru, TU, Musyrif
+  const isGuru = !isGlobalTahfizhScope && !isKepalaSekolahOrDivisiPendidikan
 
   // Multi-unit Tahfizh Leaderboard state
   const [educationUnits, setEducationUnits] = useState([])
@@ -5572,25 +5593,41 @@ export default function TeacherTeachingWorkspacePage() {
       list = list.filter((item) => item.totalSetoran > 0 || item.totalAyat > 0)
     }
 
-    // Role-Based Scope Filtering
-    if (isPengurusYayasan) {
+    // Role-Based Scope Filtering:
+    // 1. Global Scope: Superadmin, Admin, Pengurus Yayasan, Divisi Pendidikan
+    //    -> Melihat seluruh unit secara default ('semua'), atau dapat menyortir masing-masing unit pendidikan via selectedTahfizhUnit
+    if (isGlobalTahfizhScope) {
       if (selectedTahfizhUnit && selectedTahfizhUnit !== 'semua') {
-        list = list.filter((item) =>
-          item.unitName.toLowerCase().includes(selectedTahfizhUnit.toLowerCase()) ||
-          item.student.education_unit_id === selectedTahfizhUnit ||
-          item.student.unit_id === selectedTahfizhUnit
-        )
+        const target = selectedTahfizhUnit.toLowerCase().trim()
+        list = list.filter((item) => {
+          const itemUnitName = (item.unitName || '').toLowerCase().trim()
+          const itemUnitId = String(item.student?.education_unit_id || item.student?.unit_id || item.student?.education_unit?.id || item.student?.kelas?.unit_pendidikan_id || '')
+          return (
+            itemUnitName.includes(target) ||
+            target.includes(itemUnitName) ||
+            itemUnitId === selectedTahfizhUnit
+          )
+        })
       }
-    } else if (isKepalaSekolahOrDivisiPendidikan) {
-      const userUnit = teacherProfile?.education_unit || user?.education_unit?.name || user?.unit_name || ''
-      if (selectedTahfizhUnit && selectedTahfizhUnit !== 'semua') {
-        list = list.filter((item) =>
-          item.unitName.toLowerCase().includes(selectedTahfizhUnit.toLowerCase()) ||
-          item.student.education_unit_id === selectedTahfizhUnit ||
-          item.student.unit_id === selectedTahfizhUnit
-        )
-      } else if (userUnit) {
-        list = list.filter((item) => item.unitName.toLowerCase().includes(userUnit.toLowerCase()))
+    } else {
+      // 2. Unit-Locked Scope: Guru, Kepala Sekolah, TU, Musyrif
+      //    -> HARUS SESUAI dengan unit pendidikannya masing-masing
+      const userUnitName = (teacherProfile?.education_unit || user?.education_unit?.name || user?.unit_name || user?.unit?.nama || '').toLowerCase().trim()
+      const userUnitId = String(teacherProfile?.education_unit_data?.id || user?.education_unit_id || user?.education_unit?.id || user?.unit_id || '')
+
+      if (userUnitId || (userUnitName && userUnitName !== '-')) {
+        list = list.filter((item) => {
+          const itemUnitId = String(item.student?.education_unit_id || item.student?.unit_id || item.student?.education_unit?.id || item.student?.kelas?.unit_pendidikan_id || item.student?.kelas?.education_unit_id || '')
+          const itemUnitName = (item.unitName || item.student?.education_unit?.name || item.student?.unit?.name || item.student?.kelas?.unit_pendidikan?.name || '').toLowerCase().trim()
+
+          if (userUnitId && itemUnitId && itemUnitId === userUnitId) {
+            return true
+          }
+          if (userUnitName && itemUnitName && (itemUnitName.includes(userUnitName) || userUnitName.includes(itemUnitName))) {
+            return true
+          }
+          return false
+        })
       }
     }
 
@@ -5605,7 +5642,7 @@ export default function TeacherTeachingWorkspacePage() {
       )
     }
 
-    // Dynamic Sorting based on tahfizhSortOrder
+    // Dynamic Sorting based on tahfizhSortOrder (Default: highest / terbanyak hafalan)
     return list.sort((a, b) => {
       if (tahfizhSortOrder === 'surah') {
         if (b.completedSurahs !== a.completedSurahs) return b.completedSurahs - a.completedSurahs
@@ -5622,14 +5659,15 @@ export default function TeacherTeachingWorkspacePage() {
         const dateB = b.latest?.record_date || ''
         return dateB.localeCompare(dateA)
       }
-      // Default: highest (pencapaian ayat terbanyak)
+      // Default: highest (pencapaian hafalan ayat terbanyak)
       if (b.totalAyat !== a.totalAyat) return b.totalAyat - a.totalAyat
       if (b.completedSurahs !== a.completedSurahs) return b.completedSurahs - a.completedSurahs
+      if (b.totalSetoran !== a.totalSetoran) return b.totalSetoran - a.totalSetoran
       const nameCompare = (a.student.nama_lengkap || '').localeCompare(b.student.nama_lengkap || '')
       if (nameCompare !== 0) return nameCompare
       return (a.student.id || '').localeCompare(b.student.id || '')
     })
-  }, [students, tahfizhLogs, selectedTahfizhUnit, debouncedTahfizhSearch, tahfizhFilterClass, tahfizhSortOrder, selectedClass, isPengurusYayasan, isKepalaSekolahOrDivisiPendidikan, teacherProfile, user, selectedClassName, quranSurahs])
+  }, [students, tahfizhLogs, selectedTahfizhUnit, debouncedTahfizhSearch, tahfizhFilterClass, tahfizhSortOrder, selectedClass, isGlobalTahfizhScope, isPengurusYayasan, isKepalaSekolahOrDivisiPendidikan, teacherProfile, user, selectedClassName, quranSurahs])
 
   const top5TahfizhStudents = React.useMemo(() => {
     return sortedTahfizhLeaderboard
@@ -5716,7 +5754,7 @@ export default function TeacherTeachingWorkspacePage() {
   const handlePrintTahfizhLeaderboard = () => {
     printCleanTable({
       title: 'Leaderboard & Rekapitulasi Tahfizh Al-Qur\'an',
-      subtitle: `Scope: ${isPengurusYayasan ? 'Seluruh Unit (Yayasan)' : isKepalaSekolahOrDivisiPendidikan ? `Unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'Pimpinan'}` : `Kelas ${selectedClassName}`} | Tahun Ajaran ${selectedAcademicYear || 'Aktif'}`,
+      subtitle: `Scope: ${isGlobalTahfizhScope ? (selectedTahfizhUnit !== 'semua' ? `Unit ${selectedTahfizhUnit}` : 'Seluruh Unit (Yayasan & Divisi Pendidikan)') : `Unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'Sekolah'}${selectedClassName ? ` — Kelas ${selectedClassName}` : ''}`} | Tahun Ajaran ${selectedAcademicYear || 'Aktif'}`,
       headers: ['Rank', 'Nama Siswa / Santri', 'NIS', 'Unit Sekolah', 'Kelas', 'Juz', 'Capaian Terakhir', 'Total Hafalan (Ayat)', 'Total Surah'],
       rows: sortedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, unitName, className }, idx) => [
         idx + 1,
@@ -5738,7 +5776,7 @@ export default function TeacherTeachingWorkspacePage() {
   const handleDownloadPdfTahfizhLeaderboard = () => {
     downloadPdfTable({
       title: 'Leaderboard & Rekapitulasi Tahfizh Al-Qur\'an',
-      subtitle: `Scope: ${isPengurusYayasan ? 'Seluruh Unit (Yayasan)' : isKepalaSekolahOrDivisiPendidikan ? `Unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'Pimpinan'}` : `Kelas ${selectedClassName}`} | Tahun Ajaran ${selectedAcademicYear || 'Aktif'}`,
+      subtitle: `Scope: ${isGlobalTahfizhScope ? (selectedTahfizhUnit !== 'semua' ? `Unit ${selectedTahfizhUnit}` : 'Seluruh Unit (Yayasan & Divisi Pendidikan)') : `Unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'Sekolah'}${selectedClassName ? ` — Kelas ${selectedClassName}` : ''}`} | Tahun Ajaran ${selectedAcademicYear || 'Aktif'}`,
       headers: ['Rank', 'Nama Siswa / Santri', 'NIS', 'Unit Sekolah', 'Kelas', 'Juz', 'Capaian Terakhir', 'Total Hafalan (Ayat)', 'Total Surah'],
       rows: sortedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, unitName, className }, idx) => [
         idx + 1,
@@ -8680,34 +8718,32 @@ export default function TeacherTeachingWorkspacePage() {
                           Jurnal &amp; Monitoring Tahfizh
                         </span>
                         <span className={`inline-flex items-center gap-1 rounded-full px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-bold border ${
-                          isPengurusYayasan
+                          isGlobalTahfizhScope
                             ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border-purple-300/70'
-                            : isKepalaSekolahOrDivisiPendidikan
-                            ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border-sky-300/70'
                             : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300/70'
                         }`}>
-                          {isPengurusYayasan ? (
-                            <>• Scope: Seluruh Unit (Yayasan)</>
-                          ) : isKepalaSekolahOrDivisiPendidikan ? (
-                            <>• Scope: Unit Pimpinan ({teacherProfile?.education_unit || user?.education_unit?.name || 'Kepala Sekolah / Divisi'})</>
+                          {isGlobalTahfizhScope ? (
+                            selectedTahfizhUnit && selectedTahfizhUnit !== 'semua' ? (
+                              <>• Scope: Seluruh Unit (Filter: {selectedTahfizhUnit})</>
+                            ) : (
+                              <>• Scope: Seluruh Unit Pendidikan (Yayasan &amp; Divisi Pendidikan)</>
+                            )
                           ) : (
-                            <>• Scope: Kelas {selectedClassName}</>
+                            <>• Scope: Unit {teacherProfile?.education_unit || user?.education_unit?.name || user?.unit_name || 'Sekolah'} {selectedClassName && selectedClass !== 'all' ? `— Kelas ${selectedClassName}` : ''}</>
                           )}
                         </span>
                       </div>
                       <h2 id="tahfizh-heading" className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                        {isPengurusYayasan
-                          ? 'Leaderboard Pencapaian Hafalan Tahfizh Seluruh Unit'
-                          : isKepalaSekolahOrDivisiPendidikan
-                          ? `Leaderboard Hafalan Tahfizh Terbanyak — ${teacherProfile?.education_unit || user?.education_unit?.name || 'Unit Pimpinan'}`
-                          : `Jurnal & Ranking Setoran Tahfizh Al-Qur'an — Kelas ${selectedClassName}`}
+                        {isGlobalTahfizhScope
+                          ? (selectedTahfizhUnit && selectedTahfizhUnit !== 'semua'
+                              ? `Leaderboard Hafalan Tahfizh Terbanyak — Unit ${selectedTahfizhUnit}`
+                              : 'Leaderboard Pencapaian Hafalan Tahfizh Seluruh Unit')
+                          : `Jurnal & Ranking Setoran Tahfizh Al-Qur'an — ${teacherProfile?.education_unit || user?.education_unit?.name || 'Unit Sekolah'}${selectedClassName && selectedClass !== 'all' ? ` (Kelas ${selectedClassName})` : ''}`}
                       </h2>
                       <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-                        {isPengurusYayasan
-                          ? 'Menampilkan konsolidasi pencapaian hafalan tahfizh terbanyak dari seluruh unit pendidikan di bawah naungan yayasan.'
-                          : isKepalaSekolahOrDivisiPendidikan
-                          ? 'Menampilkan peringkat pencapaian hafalan tahfizh terbanyak siswa dari masing-masing unit yang Anda pimpin.'
-                          : `Daftar siswa yang diajar pada rombel ${selectedClassName} diurutkan berdasarkan pencapaian hafalan terbanyak.`}
+                        {isGlobalTahfizhScope
+                          ? 'Menampilkan konsolidasi pencapaian hafalan tahfizh terbanyak dari seluruh unit pendidikan dengan kemampuan menyortir rincian teratas masing-masing unit.'
+                          : `Menampilkan daftar peringkat hafalan tahfizh santri khusus untuk unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'pendidikan Anda'} diurutkan berdasarkan pencapaian hafalan terbanyak.`}
                       </p>
                     </div>
                   </div>
@@ -8905,8 +8941,8 @@ export default function TeacherTeachingWorkspacePage() {
                 </div>
               )}
 
-              {/* 3. MULTI-UNIT SUMMARY CARDS (For Pengurus Yayasan & Kepala Sekolah) */}
-              {(isPengurusYayasan || isKepalaSekolahOrDivisiPendidikan) && unitStatsSummary.length > 0 && (
+              {/* 3. MULTI-UNIT SUMMARY CARDS (For Super Admin, Admin, Pengurus Yayasan & Divisi Pendidikan) */}
+              {isGlobalTahfizhScope && unitStatsSummary.length > 0 && (
                 <div className="grid gap-3.5 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {unitStatsSummary.map((unitStat) => (
                     <div
@@ -8988,152 +9024,165 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </div>
 
-                {/* Filter & Search Bar */}
-                <div className="bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 border-b border-emerald-200/80 dark:border-emerald-800/60 p-3 sm:p-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-                  {/* Search Input */}
-                  <div className="relative flex-1 w-full max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                {/* ── TOOLBAR BARIS 2: Full-Width Search Input ── */}
+                <div className="bg-gradient-to-r from-emerald-50/40 via-teal-50/20 to-emerald-50/40 dark:from-emerald-950/20 dark:via-teal-950/10 dark:to-emerald-950/20 border-b border-emerald-200/80 dark:border-emerald-800/60 p-3 sm:px-5 sm:py-3.5">
+                  <div className="relative w-full">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600/70 dark:text-emerald-400/70" />
                     <input
                       type="text"
                       value={tahfizhSearch}
                       onChange={(e) => setTahfizhSearch(e.target.value)}
-                      placeholder="Cari nama santri, NIS, unit, atau kelas..."
-                      className="w-full pl-9 pr-8 py-2 rounded-xl text-xs bg-white dark:bg-[#151D2A] border border-emerald-300/80 dark:border-emerald-700/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-slate-900 dark:text-white placeholder:text-slate-400 shadow-2xs"
+                      placeholder="Cari nama santri binaan, NIS, NISN, unit, atau kelas rombel..."
+                      className="w-full h-10 pl-10 pr-9 rounded-xl text-xs bg-white dark:bg-[#151D2A] border border-emerald-300/80 dark:border-emerald-700/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-slate-900 dark:text-white placeholder:text-slate-400 shadow-2xs font-medium"
                     />
                     {tahfizhSearch && (
                       <button
                         type="button"
                         onClick={() => setTahfizhSearch('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                         title="Hapus pencarian"
                       >
                         <X className="size-3.5" />
                       </button>
                     )}
                   </div>
+                </div>
 
-                  {/* Filter Dropdowns List (Unit, Rombel, Urutkan, Limit, Reset) */}
-                  <div className="flex flex-wrap items-center gap-2.5 self-stretch lg:self-center">
-                    {(isPengurusYayasan || isKepalaSekolahOrDivisiPendidikan) && (
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <label htmlFor="filter-unit-tahfizh" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                          Unit:
-                        </label>
+                {/* ── TOOLBAR BARIS 3: Filter Bar Terstruktur & Rapi (Unit, Rombel, Urutkan, Tampilkan, Reset) ── */}
+                <div className="bg-gradient-to-r from-emerald-50/60 via-teal-50/30 to-emerald-50/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 border-b border-emerald-200/80 dark:border-emerald-800/60 p-3 sm:px-5 sm:py-3">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    {/* Left: Filter Controls Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap items-center gap-2.5 flex-1 min-w-0">
+                      {/* Unit Dropdown / Locked Unit Badge */}
+                      {isGlobalTahfizhScope ? (
+                        <div className="w-full lg:w-auto lg:min-w-[220px]">
+                          <HeroUiFilterSelect
+                            id="filter-unit-tahfizh"
+                            value={selectedTahfizhUnit}
+                            onChange={(val) => {
+                              setSelectedTahfizhUnit(val)
+                              setTahfizhPage(1)
+                            }}
+                            options={[
+                              { value: 'semua', label: '✨ Semua Unit Pendidikan' },
+                              ...educationUnits.map((u) => ({
+                                value: String(u.nama || u.name || u.id),
+                                label: u.nama || u.name,
+                              })),
+                            ]}
+                            placeholder="✨ Semua Unit Pendidikan"
+                            icon={School}
+                            ariaLabel="Filter Unit Pendidikan Tahfizh"
+                            popoverWidth="min-w-[240px]"
+                            searchable
+                            align="left"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          title="Unit Terkunci: Menampilkan data khusus unit wewenang Anda"
+                          className="inline-flex h-10 items-center justify-between gap-2 rounded-xl border border-emerald-300/80 bg-white/90 dark:bg-emerald-950/60 dark:border-emerald-700/80 px-3.5 text-xs font-bold text-emerald-800 dark:text-emerald-200 shadow-2xs w-full lg:w-auto shrink-0"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <School className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span className="truncate max-w-[210px] font-extrabold">
+                              {teacherProfile?.education_unit || user?.education_unit?.name || user?.unit_name || 'Unit Terikat'}
+                            </span>
+                          </div>
+                          <Lock className="size-3 text-emerald-500/80 shrink-0 ml-1" />
+                        </div>
+                      )}
+
+                      {/* Rombel Dropdown */}
+                      <div className="w-full lg:w-auto lg:min-w-[190px]">
                         <HeroUiFilterSelect
-                          id="filter-unit-tahfizh"
-                          value={selectedTahfizhUnit}
-                          onChange={(val) => setSelectedTahfizhUnit(val)}
+                          id="filter-rombel-tahfizh"
+                          value={tahfizhFilterClass}
+                          onChange={(val) => {
+                            setTahfizhFilterClass(val)
+                            setTahfizhPage(1)
+                          }}
                           options={[
-                            { value: 'semua', label: '✨ Semua Unit Pendidikan' },
-                            ...educationUnits.map((u) => ({
-                              value: String(u.nama || u.name || u.id),
-                              label: u.nama || u.name,
+                            { value: 'all', label: '✨ Semua Rombel' },
+                            ...classes.map((cls) => ({
+                              value: String(cls.id),
+                              label: `${cls.nama_kelas || cls.name}${cls.kode_kelas ? ` · ${cls.kode_kelas}` : ''}`,
                             })),
                           ]}
-                          placeholder="Semua Unit"
-                          ariaLabel="Filter Unit Pendidikan Tahfizh"
+                          placeholder="✨ Semua Rombel"
+                          icon={Layers}
+                          ariaLabel="Filter Rombel Tahfizh"
                           popoverWidth="min-w-[210px]"
                           searchable
-                          align="right"
+                          align="left"
                         />
                       </div>
-                    )}
 
-                    {/* Filter Rombel */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <label htmlFor="filter-rombel-tahfizh" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                        Rombel:
-                      </label>
-                      <HeroUiFilterSelect
-                        id="filter-rombel-tahfizh"
-                        value={tahfizhFilterClass}
-                        onChange={(val) => {
-                          setTahfizhFilterClass(val)
-                          setTahfizhPage(1)
-                        }}
-                        options={[
-                          { value: 'all', label: '✨ Semua Rombel' },
-                          ...classes.map((cls) => ({
-                            value: String(cls.id),
-                            label: `${cls.nama_kelas || cls.name}${cls.kode_kelas ? ` · ${cls.kode_kelas}` : ''}`,
-                          })),
-                        ]}
-                        placeholder="Semua Rombel"
-                        ariaLabel="Filter Rombel Tahfizh"
-                        popoverWidth="min-w-[210px]"
-                        searchable
-                        align="right"
-                      />
+                      {/* Urutkan Dropdown */}
+                      <div className="w-full lg:w-auto lg:min-w-[230px]">
+                        <HeroUiFilterSelect
+                          id="filter-sort-tahfizh"
+                          value={tahfizhSortOrder}
+                          onChange={(val) => {
+                            setTahfizhSortOrder(val)
+                            setTahfizhPage(1)
+                          }}
+                          options={[
+                            { value: 'highest', label: '🏆 Hafalan Terbanyak (Rank #1)' },
+                            { value: 'surah', label: '📖 Total Surah Terbanyak' },
+                            { value: 'name_asc', label: '🔤 Nama Santri (A-Z)' },
+                            { value: 'name_desc', label: '🔤 Nama Santri (Z-A)' },
+                            { value: 'recent', label: '🕒 Setoran Terbaru' },
+                          ]}
+                          placeholder="🏆 Hafalan Terbanyak"
+                          icon={Trophy}
+                          ariaLabel="Urutkan Leaderboard Tahfizh"
+                          popoverWidth="min-w-[240px]"
+                          align="left"
+                        />
+                      </div>
+
+                      {/* Limit Per Halaman Dropdown */}
+                      <div className="w-full lg:w-auto lg:min-w-[190px]">
+                        <HeroUiFilterSelect
+                          id="filter-limit-tahfizh"
+                          value={String(tahfizhPerPage)}
+                          onChange={(val) => {
+                            setTahfizhPerPage(val === 'all' ? 'all' : Number(val))
+                            setTahfizhPage(1)
+                          }}
+                          options={[
+                            { value: '10', label: '10 data per halaman' },
+                            { value: '25', label: '25 data per halaman' },
+                            { value: '50', label: '50 data per halaman' },
+                            { value: 'all', label: 'Semua Data' },
+                          ]}
+                          placeholder="10 data per halaman"
+                          icon={Eye}
+                          ariaLabel="Tampilkan per halaman"
+                          popoverWidth="min-w-[200px]"
+                          align="left"
+                        />
+                      </div>
                     </div>
 
-                    {/* Filter Urutkan */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <label htmlFor="filter-sort-tahfizh" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                        Urutkan:
-                      </label>
-                      <HeroUiFilterSelect
-                        id="filter-sort-tahfizh"
-                        value={tahfizhSortOrder}
-                        onChange={(val) => {
-                          setTahfizhSortOrder(val)
-                          setTahfizhPage(1)
-                        }}
-                        options={[
-                          { value: 'highest', label: '🏆 Hafalan Terbanyak (Rank #1)' },
-                          { value: 'surah', label: '📖 Total Surah Terbanyak' },
-                          { value: 'name_asc', label: '🔤 Nama Santri (A-Z)' },
-                          { value: 'name_desc', label: '🔤 Nama Santri (Z-A)' },
-                          { value: 'recent', label: '🕒 Setoran Terbaru' },
-                        ]}
-                        placeholder="Urutkan..."
-                        ariaLabel="Urutkan Leaderboard Tahfizh"
-                        popoverWidth="min-w-[230px]"
-                        align="right"
-                      />
-                    </div>
-
-                    {/* Filter Limit Per Halaman */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <label htmlFor="filter-limit-tahfizh" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                        Tampilkan:
-                      </label>
-                      <HeroUiFilterSelect
-                        id="filter-limit-tahfizh"
-                        value={String(tahfizhPerPage)}
-                        onChange={(val) => {
-                          setTahfizhPerPage(val === 'all' ? 'all' : Number(val))
-                          setTahfizhPage(1)
-                        }}
-                        options={[
-                          { value: '10', label: '10 data per halaman' },
-                          { value: '25', label: '25 data per halaman' },
-                          { value: '50', label: '50 data per halaman' },
-                          { value: 'all', label: 'Semua Data' },
-                        ]}
-                        placeholder="10 data"
-                        ariaLabel="Tampilkan per halaman"
-                        popoverWidth="min-w-[170px]"
-                        align="right"
-                      />
-                    </div>
-
-                    {/* Tombol Reset Filter jika ada filter aktif */}
-                    {(tahfizhSearch || selectedTahfizhUnit !== 'semua' || tahfizhFilterClass !== 'all' || tahfizhSortOrder !== 'highest' || tahfizhPerPage !== 10) && (
+                    {/* Right: Reset Filter Button */}
+                    {(tahfizhSearch || (isGlobalTahfizhScope && selectedTahfizhUnit !== 'semua') || tahfizhFilterClass !== 'all' || tahfizhSortOrder !== 'highest' || tahfizhPerPage !== 10) && (
                       <button
                         type="button"
                         onClick={() => {
                           setTahfizhSearch('')
-                          setSelectedTahfizhUnit('semua')
+                          if (isGlobalTahfizhScope) setSelectedTahfizhUnit('semua')
                           setTahfizhFilterClass('all')
                           setTahfizhSortOrder('highest')
                           setTahfizhPerPage(10)
                           setTahfizhPage(1)
                         }}
-                        className="inline-flex items-center gap-1 rounded-xl border border-rose-300 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                        className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50/90 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/60 dark:hover:bg-rose-900/80 px-3.5 text-xs font-bold text-rose-700 dark:text-rose-300 transition-all cursor-pointer shrink-0 shadow-2xs hover:scale-102 active:scale-98 self-end md:self-center"
                         title="Reset Semua Filter"
                       >
-                        <RefreshCw className="size-3 text-rose-600 dark:text-rose-400" />
-                        <span>Reset</span>
+                        <RefreshCw className="size-3.5 text-rose-600 dark:text-rose-400" />
+                        <span>Reset Filter</span>
                       </button>
                     )}
                   </div>
@@ -9144,9 +9193,11 @@ export default function TeacherTeachingWorkspacePage() {
                   {paginatedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, totalSetoran, unitName, className }, index) => {
                     const currentPerPage = tahfizhPerPage === 'all' ? sortedTahfizhLeaderboard.length : (Number(tahfizhPerPage) || TAHFIZH_PER_PAGE)
                     const absoluteIndex = (tahfizhPage - 1) * currentPerPage + index
-                    const isTop1 = absoluteIndex === 0
-                    const isTop2 = absoluteIndex === 1
-                    const isTop3 = absoluteIndex === 2
+                    // Syarat medali Gold, Perak, Tembaga: Harus yang terbanyak hafalan dan memiliki hafalan (> 0 ayat / setoran)
+                    const hasHafalan = (totalAyat > 0 || totalSetoran > 0)
+                    const isTop1 = absoluteIndex === 0 && hasHafalan
+                    const isTop2 = absoluteIndex === 1 && hasHafalan
+                    const isTop3 = absoluteIndex === 2 && hasHafalan
                     return (
                       <article key={student.id} className="p-4 space-y-3">
                         <div className="flex items-start justify-between gap-3">
@@ -9227,9 +9278,11 @@ export default function TeacherTeachingWorkspacePage() {
                     {paginatedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, totalSetoran, unitName, className }, index) => {
                       const currentPerPage = tahfizhPerPage === 'all' ? sortedTahfizhLeaderboard.length : (Number(tahfizhPerPage) || TAHFIZH_PER_PAGE)
                       const absoluteIndex = (tahfizhPage - 1) * currentPerPage + index
-                      const isTop1 = absoluteIndex === 0
-                      const isTop2 = absoluteIndex === 1
-                      const isTop3 = absoluteIndex === 2
+                      // Syarat medali Gold, Perak, Tembaga: Harus yang terbanyak hafalan dan memiliki hafalan (> 0 ayat / setoran)
+                      const hasHafalan = (totalAyat > 0 || totalSetoran > 0)
+                      const isTop1 = absoluteIndex === 0 && hasHafalan
+                      const isTop2 = absoluteIndex === 1 && hasHafalan
+                      const isTop3 = absoluteIndex === 2 && hasHafalan
                       return (
                         <tr key={student.id} className="hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-colors">
                           <td className="p-3.5 text-center">
