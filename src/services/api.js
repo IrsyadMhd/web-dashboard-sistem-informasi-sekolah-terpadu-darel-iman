@@ -1,5 +1,27 @@
 import axios from 'axios'
 import { clearAuthArtifacts, checkSessionValidity } from '../stores/authStore'
+import { showToast } from '../components/app/ToastProvider'
+
+// Throttle notifikasi error jaringan / server agar tidak spam saat multiple fetch gagal bersamaan
+let lastErrorToastTime = 0
+let lastErrorTitle = ''
+let hasReportedServerIssue = false
+
+const notifyServerIssueThrottled = (payload) => {
+  const now = Date.now()
+  if (now - lastErrorToastTime > 4000 || lastErrorTitle !== payload.title) {
+    lastErrorToastTime = now
+    lastErrorTitle = payload.title
+    showToast(payload)
+  }
+}
+
+const dispatchServerStatus = (status, message) => {
+  if (typeof window !== 'undefined') {
+    hasReportedServerIssue = status !== 'healthy'
+    window.dispatchEvent(new CustomEvent('app-server-status', { detail: { status, message } }))
+  }
+}
 
 export const resolveApiBaseUrl = () => {
   const configured = import.meta.env.VITE_API_BASE_URL
@@ -59,10 +81,20 @@ api.interceptors.request.use((config) => {
 })
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (hasReportedServerIssue) {
+      dispatchServerStatus('healthy', 'Koneksi kembali normal.')
+    }
+    return response
+  },
   (error) => {
     const status = error?.response?.status
+    const config = error?.config || {}
+    const isLoginEndpoint = typeof config.url === 'string' && (config.url.includes('/login') || config.url.includes('/auth/'))
+    const isBackgroundPoll = typeof config.url === 'string' && config.url.includes('/notifications/unread-count')
+    const shouldSuppressGlobalToast = Boolean(config.skipGlobalErrorToast || isLoginEndpoint || isBackgroundPoll)
 
+    // 1. Tangani 401 Unauthorized (Sesi Kedaluwarsa)
     if (status === 401) {
       const token = localStorage.getItem('school_erp_token') || sessionStorage.getItem('school_erp_token')
       if (token && typeof token === 'string' && token.startsWith('dev-test-token')) {
@@ -74,6 +106,117 @@ api.interceptors.response.use(
       if (window.location.pathname !== '/masuk') {
         window.location.href = '/masuk?reason=expired'
       }
+      return Promise.reject(error)
+    }
+
+    // 2. Tangani Koneksi Jaringan Terputus / Server Backend Mati
+    const isNetworkError = !error?.response || error?.code === 'ERR_NETWORK' || error?.code === 'ECONNABORTED'
+    if (isNetworkError) {
+      const isClientOffline = typeof navigator !== 'undefined' && !navigator.onLine
+      const friendlyTitle = isClientOffline ? 'Koneksi Internet Terputus' : 'Server Tidak Terjangkau'
+      const friendlyDesc = isClientOffline
+        ? 'Perangkat Anda sedang tidak terhubung ke jaringan internet. Periksa koneksi Wi-Fi atau data Anda.'
+        : 'Tidak dapat terhubung ke server backend. Pastikan layanan backend aktif dan dapat diakses.'
+
+      if (!error.response) {
+        error.response = {
+          status: 0,
+          data: {
+            status: 'error',
+            code: isClientOffline ? 'CLIENT_OFFLINE' : 'SERVER_UNREACHABLE',
+            message: friendlyDesc,
+          },
+        }
+      } else if (error.response.data) {
+        error.response.data.message = friendlyDesc
+      }
+
+      if (!shouldSuppressGlobalToast) {
+        notifyServerIssueThrottled({
+          title: friendlyTitle,
+          description: friendlyDesc,
+          type: 'error',
+        })
+      }
+
+      dispatchServerStatus(isClientOffline ? 'offline' : 'server_error', friendlyDesc)
+
+      return Promise.reject(error)
+    }
+
+    // 3. Tangani Gangguan Basis Data (503 atau code DATABASE_CONNECTION_ERROR)
+    const isDbError =
+      status === 503 ||
+      error?.response?.data?.code === 'DATABASE_CONNECTION_ERROR' ||
+      (typeof error?.response?.data?.message === 'string' &&
+        (error.response.data.message.includes('SQLSTATE') ||
+          error.response.data.message.includes('PDOException') ||
+          error.response.data.message.includes('could not connect to server') ||
+          error.response.data.message.includes('Connection refused')))
+
+    if (isDbError) {
+      const friendlyTitle = 'Gangguan Basis Data'
+      const friendlyDesc = 'Layanan database sedang tidak dapat dijangkau. Mohon hubungi administrator sistem.'
+
+      if (error?.response?.data) {
+        error.response.data.code = 'DATABASE_CONNECTION_ERROR'
+        error.response.data.message = friendlyDesc
+      }
+
+      if (!shouldSuppressGlobalToast) {
+        notifyServerIssueThrottled({
+          title: friendlyTitle,
+          description: friendlyDesc,
+          type: 'error',
+        })
+      }
+
+      dispatchServerStatus('db_error', friendlyDesc)
+
+      return Promise.reject(error)
+    }
+
+    // 4. Tangani Gateway Timeout / Server Error (502 / 504 / 500)
+    if (status === 502 || status === 504) {
+      const friendlyTitle = 'Server Tidak Merespons'
+      const friendlyDesc = 'Server backend membutuhkan waktu terlalu lama untuk merespons (Gateway Timeout). Silakan coba lagi.'
+
+      if (error?.response?.data) {
+        error.response.data.message = friendlyDesc
+      }
+
+      if (!shouldSuppressGlobalToast) {
+        notifyServerIssueThrottled({
+          title: friendlyTitle,
+          description: friendlyDesc,
+          type: 'error',
+        })
+      }
+
+      return Promise.reject(error)
+    }
+
+    if (status === 500) {
+      const rawMsg = error?.response?.data?.message || ''
+      const friendlyTitle = 'Kesalahan Server Internal'
+      const friendlyDesc =
+        !rawMsg || rawMsg === 'Server Error'
+          ? 'Terjadi kendala pemrosesan internal pada server. Silakan coba beberapa saat lagi.'
+          : rawMsg
+
+      if (error?.response?.data && (!rawMsg || rawMsg === 'Server Error')) {
+        error.response.data.message = friendlyDesc
+      }
+
+      if (!shouldSuppressGlobalToast) {
+        notifyServerIssueThrottled({
+          title: friendlyTitle,
+          description: friendlyDesc,
+          type: 'error',
+        })
+      }
+
+      return Promise.reject(error)
     }
 
     return Promise.reject(error)

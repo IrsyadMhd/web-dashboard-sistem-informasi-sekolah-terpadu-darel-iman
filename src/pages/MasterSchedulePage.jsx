@@ -45,6 +45,7 @@ import { educationUnitService } from '../services/educationUnitService'
 import { tahunAjaranService } from '../services/tahunAjaranService'
 import { printCleanTable, downloadPdfTable, printMatrixSchedule } from '../utils/printHelper'
 import { parseSpreadsheetFile, downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
+import { downloadFileFromApi } from '../utils/exportUtils'
 import {
   ActionDropdown,
   AppBadge,
@@ -1237,13 +1238,13 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   // Harmonized Batch Export Handler
   const handleProcessExport = async () => {
     setShowExportModal(false)
-    if (!items || items.length === 0) {
-      pushToast('Peringatan', 'Tidak ada data jadwal untuk diekspor.', 'warning')
-      return
-    }
 
     if (exportFormat === 'pdf') {
       const allRows = Array.isArray(items) ? items : []
+      if (allRows.length === 0) {
+        pushToast('Peringatan', 'Tidak ada data jadwal untuk diekspor.', 'warning')
+        return
+      }
       downloadPdfTable({
         title: 'Laporan Data Jadwal Pelajaran',
         subtitle: 'Daftar Sesi Pelajaran & Jam Mengajar Sekolah Islam Terpadu',
@@ -1251,7 +1252,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         rows: allRows.map((row, i) => [
           i + 1,
           `${row.nama_hari || DAYS_MAP.find((d) => d.id === row.day_of_week)?.name || 'Senin'} (${formatTime(row.time_start)} - ${formatTime(row.time_end)})`,
-          `${subjectName(row.subject) || row.subject_name || '-'}${row.subject?.kode_mapel || row.subject?.code ? ` [${row.subject.kode_mapel || row.subject.code}]` : ''}`,
+          `${subjectName(row.subject) || row.activity_name || row.subject_name || '-'}${row.subject?.kode_mapel || row.subject?.code ? ` [${row.subject.kode_mapel || row.subject.code}]` : ''}`,
           `${row.kelas?.nama_kelas || row.school_class?.name || row.kelas_name || '-'}${row.kelas?.unit_pendidikan?.name || row.unit_name ? ` (${row.kelas?.unit_pendidikan?.name || row.unit_name})` : ''}`,
           `${row.employee?.nama_lengkap || row.teacher?.name || row.guru_name || '-'}${row.employee?.niy ? ` (NIY ${row.employee.niy})` : ''}`,
           `${row.academic_year?.name || row.tahun_ajaran_name || '-'}${row.semester?.name ? ` - ${row.semester.name}` : ''}`,
@@ -1263,36 +1264,85 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
       return
     }
 
-    // CSV / Excel (.xlsx, .xls)
+    // Excel (.xlsx, .xls) / CSV
     try {
-      const headers = ['NO', 'GURU', 'MATA PELAJARAN', 'KELAS', 'HARI', 'JAM MULAI', 'JAM SELESAI', 'STATUS']
-      let csvStr = headers.join(',') + '\n'
-      items.forEach((row, i) => {
-        const line = [
-          i + 1,
-          `"${row.employee?.nama_lengkap || row.guru_name || ''}"`,
-          `"${row.subject?.nama_mapel || row.mapel_name || ''}"`,
-          `"${row.kelas?.nama_kelas || row.kelas_name || ''}"`,
-          `"${row.nama_hari || DAYS_MAP.find((d) => d.id === row.day_of_week)?.name || ''}"`,
-          `"${row.time_start || ''}"`,
-          `"${row.time_end || ''}"`,
-          `"${row.is_active ? 'Aktif' : 'Nonaktif'}"`,
-        ].join(',')
-        csvStr += line + '\n'
-      })
-      const ext = exportFormat === 'xlsx' ? 'xlsx' : exportFormat === 'xls' ? 'xls' : 'csv'
-      const mime = exportFormat === 'csv' ? 'text/csv;charset=utf-8;' : 'application/vnd.ms-excel;charset=utf-8;'
-      const blob = new Blob([csvStr], { type: mime })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `export_jadwal_${new Date().toISOString().slice(0, 10)}.${ext}`)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      pushToast('Export Berhasil', `Data jadwal berhasil diekspor ke format .${ext.toUpperCase()}.`, 'success')
-    } catch {
-      pushToast('Error', 'Gagal mengunduh berkas ekspor.', 'error')
+      const params = {
+        search: search || undefined,
+        unit_pendidikan_id: unitFilter || undefined,
+        program_type: programTypeFilter || undefined,
+        academic_year_id: yearFilter || undefined,
+        semester_id: semesterFilter || undefined,
+        subject_id: subjectFilter || undefined,
+        kelas_id: classFilter || undefined,
+        day_of_week: effectiveDayFilter || undefined,
+        employee_id: teacherFilter || undefined,
+        is_active: statusFilter || undefined,
+      }
+
+      const res = await downloadFileFromApi(
+        '/schedules/export',
+        params,
+        exportFormat,
+        `export_jadwal_${new Date().toISOString().slice(0, 10)}`
+      )
+
+      if (res?.success) {
+        pushToast('Export Berhasil', `Data jadwal berhasil diekspor ke format .${exportFormat.toUpperCase()}.`, 'success')
+        return
+      }
+
+      // Fallback ke Client-Side via XLSX (SheetJS) jika API backend tidak merespons berkas binary
+      if (items && items.length > 0) {
+        const exportData = items.map((row, i) => ({
+          'No': i + 1,
+          'Hari': row.nama_hari || DAYS_MAP.find((d) => d.id === row.day_of_week)?.name || 'Senin',
+          'Jam Mulai': row.time_start || row.start_time || '',
+          'Jam Selesai': row.time_end || row.end_time || '',
+          'Mata Pelajaran': subjectName(row.subject) || row.activity_name || row.subject_name || '-',
+          'Kelas': row.kelas?.nama_kelas || row.school_class?.name || row.kelas_name || '-',
+          'Unit': row.kelas?.unit_pendidikan?.name || row.unit_name || '-',
+          'Guru Pengampu': row.employee?.nama_lengkap || row.teacher?.name || row.guru_name || '-',
+          'Tahun Ajaran': row.academic_year?.name || row.tahun_ajaran_name || '-',
+          'Semester': row.semester?.name || row.semester_name || '-',
+          'Status': row.is_active ? 'Aktif' : 'Nonaktif',
+        }))
+        downloadSpreadsheetTemplate(
+          exportData,
+          `export_jadwal_${new Date().toISOString().slice(0, 10)}`,
+          exportFormat,
+          'Jadwal Pelajaran'
+        )
+        pushToast('Export Berhasil', `Data jadwal berhasil diekspor ke format .${exportFormat.toUpperCase()}.`, 'success')
+      } else {
+        pushToast('Error', 'Gagal mengunduh berkas ekspor jadwal.', 'error')
+      }
+    } catch (err) {
+      console.error('Export schedule error:', err)
+      // Ultimate fallback: XLSX client-side
+      if (items && items.length > 0) {
+        const exportData = items.map((row, i) => ({
+          'No': i + 1,
+          'Hari': row.nama_hari || DAYS_MAP.find((d) => d.id === row.day_of_week)?.name || 'Senin',
+          'Jam Mulai': row.time_start || row.start_time || '',
+          'Jam Selesai': row.time_end || row.end_time || '',
+          'Mata Pelajaran': subjectName(row.subject) || row.activity_name || row.subject_name || '-',
+          'Kelas': row.kelas?.nama_kelas || row.school_class?.name || row.kelas_name || '-',
+          'Unit': row.kelas?.unit_pendidikan?.name || row.unit_name || '-',
+          'Guru Pengampu': row.employee?.nama_lengkap || row.teacher?.name || row.guru_name || '-',
+          'Tahun Ajaran': row.academic_year?.name || row.tahun_ajaran_name || '-',
+          'Semester': row.semester?.name || row.semester_name || '-',
+          'Status': row.is_active ? 'Aktif' : 'Nonaktif',
+        }))
+        downloadSpreadsheetTemplate(
+          exportData,
+          `export_jadwal_${new Date().toISOString().slice(0, 10)}`,
+          exportFormat,
+          'Jadwal Pelajaran'
+        )
+        pushToast('Export Berhasil', `Data jadwal berhasil diekspor ke format .${exportFormat.toUpperCase()}.`, 'success')
+      } else {
+        pushToast('Error', 'Gagal mengunduh berkas ekspor.', 'error')
+      }
     }
   }
 
