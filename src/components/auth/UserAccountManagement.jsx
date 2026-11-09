@@ -1783,7 +1783,16 @@ export default function UserAccountManagement({
     },
     onError: (err) => {
       setIsSyncing(false)
-      toastError('Gagal Sinkronisasi', err?.response?.data?.message || err?.message || 'Gagal menyinkronkan akun.')
+      queryClient.invalidateQueries({ queryKey: ['hak-akses-users'] })
+      queryClient.invalidateQueries({ queryKey: ['hak-akses-roles'] })
+      const isNetworkTimeout =
+        err?.message === 'Network Error' ||
+        err?.code === 'ECONNABORTED' ||
+        err?.message?.includes('timeout')
+      const errorMsg = isNetworkTimeout
+        ? 'Koneksi ke server terputus atau melebihi batas waktu (Timeout). Sebagian atau seluruh akun mungkin sudah berhasil dibuat, silakan muat ulang halaman.'
+        : err?.response?.data?.message || err?.message || 'Gagal menyinkronkan akun.'
+      toastError('Gagal Sinkronisasi', errorMsg)
     },
   })
 

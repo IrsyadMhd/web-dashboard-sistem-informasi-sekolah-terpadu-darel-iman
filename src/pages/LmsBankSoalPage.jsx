@@ -393,12 +393,12 @@ function HeroUiFilterSelect({
           setIsOpen((prev) => !prev)
           setSearch('')
         }}
-        className={`h-9 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
+        className={`h-10 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-bold transition-all duration-200 cursor-pointer shadow-2xs ${
           isOpen
-            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-[#111827] dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
             : value !== '' && value !== undefined && value !== null
-            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
-            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+            ? 'border-emerald-500/80 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50 text-emerald-950 dark:border-emerald-600/80 dark:bg-gradient-to-r dark:from-emerald-950/60 dark:via-teal-950/40 dark:to-emerald-950/60 dark:text-emerald-200 font-extrabold shadow-emerald-500/10'
+            : 'border-slate-200/90 bg-white text-slate-700 hover:border-emerald-400 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200 dark:hover:border-emerald-600'
         }`}
       >
         <div className="flex items-center gap-1.5 truncate">
@@ -423,7 +423,7 @@ function HeroUiFilterSelect({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -4 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+            className={`absolute left-0 top-full mt-1.5 z-[100] ${popoverWidth} max-w-[92vw] overflow-hidden rounded-2xl border border-emerald-200/90 bg-white/98 backdrop-blur-md shadow-2xl dark:border-emerald-800/80 dark:bg-[#182232]/98`}
           >
             {searchable && options.length > 5 && (
               <div className="p-2 border-b border-slate-100 dark:border-slate-800">
@@ -2042,7 +2042,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   setSearchInput(e.target.value)
                   setPage(1)
                 }}
-                className="h-10 sm:h-11 w-full rounded-2xl border border-emerald-200/90 bg-white pl-10 sm:pl-11 pr-10 text-xs font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-100"
+                className="h-10 w-full rounded-xl border border-emerald-300/80 bg-white pl-10 sm:pl-11 pr-10 text-xs font-medium text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-700/80 dark:bg-slate-900 dark:text-slate-100 shadow-2xs"
               />
               {searchInput && (
                 <button
@@ -2051,7 +2051,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                     setSearchInput('')
                     setPage(1)
                   }}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -2060,147 +2060,149 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
           </div>
 
           {/* Toolbar Baris 3: Dropdown Filter Horizontal & Reset */}
-          <div className="border-b border-emerald-200/80 bg-white px-4 py-3 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-[#1B2433]">
-            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
-                Filter:
-              </span>
+          <div className="border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50/60 via-teal-50/30 to-emerald-50/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 px-4 py-3 sm:px-6 md:px-8">
+            <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 w-full">
+              {/* Filter Controls Grid / Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:flex xl:flex-wrap items-center gap-2.5 flex-1 min-w-0">
+                {/* Unit Dropdown (Divisi Pendidikan / Global) atau Locked Unit Badge */}
+                {canSelectUnit ? (
+                  <HeroUiFilterSelect
+                    value={selectedUnit}
+                    onChange={(val) => {
+                      setSelectedUnit(val)
+                      setPage(1)
+                    }}
+                    placeholder={`Semua Unit (${options.units?.length || 'SIT'})`}
+                    icon={School}
+                    popoverWidth="min-w-[220px]"
+                    searchable={(options.units?.length || 0) > 5}
+                    options={[
+                      { value: '', label: `Semua Unit (${options.units?.length || 'SIT'})` },
+                      ...(options.units || []).map((u) => ({ value: String(u.id), label: u.name || u.nama_unit })),
+                    ]}
+                  />
+                ) : (
+                  <div
+                    title="Unit Terkunci: Menampilkan data khusus unit wewenang Anda"
+                    className="inline-flex h-10 items-center justify-between gap-2 rounded-xl border border-emerald-300/80 bg-white/95 dark:bg-emerald-950/60 dark:border-emerald-700/80 px-3.5 text-xs font-bold text-emerald-800 dark:text-emerald-200 shadow-2xs w-full sm:w-auto shrink-0"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <School className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="truncate max-w-[200px] font-extrabold">{userUnitName || 'Unit Terikat'}</span>
+                    </div>
+                    <Lock className="size-3 text-emerald-500/80 shrink-0 ml-1" />
+                  </div>
+                )}
 
-              {/* Unit Dropdown (Divisi Pendidikan / Global) atau Locked Unit Badge */}
-              {canSelectUnit ? (
+                {/* Filter Mata Pelajaran */}
                 <HeroUiFilterSelect
-                  value={selectedUnit}
+                  value={filters.mata_pelajaran_id || ''}
                   onChange={(val) => {
-                    setSelectedUnit(val)
+                    setFilters((prev) => ({ ...prev, mata_pelajaran_id: val }))
                     setPage(1)
                   }}
-                  placeholder={`Semua Unit (${options.units?.length || 'SIT'})`}
-                  icon={School}
-                  popoverWidth="min-w-[220px]"
-                  searchable={(options.units?.length || 0) > 5}
+                  placeholder="Semua Mata Pelajaran"
+                  icon={BookOpen}
+                  popoverWidth="min-w-[240px]"
+                  searchable
                   options={[
-                    { value: '', label: `Semua Unit (${options.units?.length || 'SIT'})` },
-                    ...(options.units || []).map((u) => ({ value: String(u.id), label: u.name || u.nama_unit })),
+                    { value: '', label: 'Semua Mata Pelajaran' },
+                    ...(((options.subjects || options.mata_pelajaran) && (options.subjects || options.mata_pelajaran).length > 0
+                      ? (options.subjects || options.mata_pelajaran)
+                      : Array.from(
+                          new Map(
+                            (options.kisi_kisi || [])
+                              .filter((k) => k.mata_pelajaran_id || k.mata_pelajaran)
+                              .map((k) => {
+                                const id = k.mata_pelajaran_id || k.mata_pelajaran?.id || (typeof k.mata_pelajaran === 'string' ? k.mata_pelajaran : k.id)
+                                const name = typeof k.mata_pelajaran === 'object' ? (k.mata_pelajaran.name || k.mata_pelajaran.nama) : (k.mata_pelajaran || k.judul_kisi)
+                                return [id, { id, name }]
+                              })
+                          ).values()
+                        )
+                    ).map((m) => ({
+                      value: m.id,
+                      label: m.name || m.nama_mapel || m.nama || m.label,
+                    }))),
                   ]}
                 />
-              ) : (
-                <div
-                  title="Terkunci: Menampilkan data khusus unit wewenang Anda"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300/80 bg-emerald-50 text-[11px] font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
-                >
-                  <School className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>{userUnitName}</span>
-                  <Lock className="size-3 text-emerald-500 ml-0.5 opacity-80" />
-                </div>
-              )}
 
-              {/* Filter Mata Pelajaran */}
-              <HeroUiFilterSelect
-                value={filters.mata_pelajaran_id || ''}
-                onChange={(val) => {
-                  setFilters((prev) => ({ ...prev, mata_pelajaran_id: val }))
-                  setPage(1)
-                }}
-                placeholder="Semua Mata Pelajaran"
-                icon={BookOpen}
-                popoverWidth="min-w-[240px]"
-                searchable
-                options={[
-                  { value: '', label: 'Semua Mata Pelajaran' },
-                  ...(((options.subjects || options.mata_pelajaran) && (options.subjects || options.mata_pelajaran).length > 0
-                    ? (options.subjects || options.mata_pelajaran)
-                    : Array.from(
-                        new Map(
-                          (options.kisi_kisi || [])
-                            .filter((k) => k.mata_pelajaran_id || k.mata_pelajaran)
-                            .map((k) => {
-                              const id = k.mata_pelajaran_id || k.mata_pelajaran?.id || (typeof k.mata_pelajaran === 'string' ? k.mata_pelajaran : k.id)
-                              const name = typeof k.mata_pelajaran === 'object' ? (k.mata_pelajaran.name || k.mata_pelajaran.nama) : (k.mata_pelajaran || k.judul_kisi)
-                              return [id, { id, name }]
-                            })
-                        ).values()
-                      )
-                  ).map((m) => ({
-                    value: m.id,
-                    label: m.name || m.nama_mapel || m.nama || m.label,
-                  }))),
-                ]}
-              />
+                {/* Filter Rombel / Kelas */}
+                <HeroUiFilterSelect
+                  value={filters.kelas_id || ''}
+                  onChange={(val) => {
+                    setFilters((prev) => ({ ...prev, kelas_id: val }))
+                    setPage(1)
+                  }}
+                  placeholder="Semua Rombel / Kelas"
+                  icon={Layers}
+                  popoverWidth="min-w-[180px]"
+                  options={[
+                    { value: '', label: 'Semua Rombel / Kelas' },
+                    ...(options.kelas || []).map((c) => ({
+                      value: c.id,
+                      label: c.nama_kelas || c.name,
+                    })),
+                  ]}
+                />
 
-              {/* Filter Rombel / Kelas */}
-              <HeroUiFilterSelect
-                value={filters.kelas_id || ''}
-                onChange={(val) => {
-                  setFilters((prev) => ({ ...prev, kelas_id: val }))
-                  setPage(1)
-                }}
-                placeholder="Semua Rombel / Kelas"
-                icon={Layers}
-                popoverWidth="min-w-[170px]"
-                options={[
-                  { value: '', label: 'Semua Rombel / Kelas' },
-                  ...(options.kelas || []).map((c) => ({
-                    value: c.id,
-                    label: c.nama_kelas || c.name,
-                  })),
-                ]}
-              />
+                {/* Filter Kisi-kisi */}
+                <HeroUiFilterSelect
+                  value={filters.kisi_kisi_id || ''}
+                  onChange={(val) => {
+                    setFilters((prev) => ({ ...prev, kisi_kisi_id: val }))
+                    setPage(1)
+                  }}
+                  placeholder="Semua Kisi-kisi Ujian"
+                  icon={FileText}
+                  popoverWidth="min-w-[260px]"
+                  searchable
+                  options={[
+                    { value: '', label: 'Semua Kisi-kisi Ujian' },
+                    ...(options.kisi_kisi || []).map((k) => ({
+                      value: k.id,
+                      label: `${k.judul_kisi} (${k.jenis_ujian})`,
+                    })),
+                  ]}
+                />
 
-              {/* Filter Kisi-kisi */}
-              <HeroUiFilterSelect
-                value={filters.kisi_kisi_id || ''}
-                onChange={(val) => {
-                  setFilters((prev) => ({ ...prev, kisi_kisi_id: val }))
-                  setPage(1)
-                }}
-                placeholder="Semua Kisi-kisi Ujian"
-                icon={FileText}
-                popoverWidth="min-w-[260px]"
-                searchable
-                options={[
-                  { value: '', label: 'Semua Kisi-kisi Ujian' },
-                  ...(options.kisi_kisi || []).map((k) => ({
-                    value: k.id,
-                    label: `${k.judul_kisi} (${k.jenis_ujian})`,
-                  })),
-                ]}
-              />
+                {/* Filter Tipe Soal */}
+                <HeroUiFilterSelect
+                  value={filters.tipe_soal || ''}
+                  onChange={(val) => {
+                    setFilters((prev) => ({ ...prev, tipe_soal: val }))
+                    setPage(1)
+                  }}
+                  placeholder="Semua Tipe Soal"
+                  icon={CheckSquare}
+                  popoverWidth="min-w-[170px]"
+                  options={[
+                    { value: '', label: 'Semua Tipe Soal' },
+                    { value: 'pg', label: 'Pilihan Ganda' },
+                    { value: 'esai', label: 'Essay / Esai' },
+                    { value: 'benar_salah', label: 'Benar / Salah' },
+                    { value: 'menjodohkan', label: 'Menjodohkan' },
+                  ]}
+                />
 
-              {/* Filter Tipe Soal */}
-              <HeroUiFilterSelect
-                value={filters.tipe_soal || ''}
-                onChange={(val) => {
-                  setFilters((prev) => ({ ...prev, tipe_soal: val }))
-                  setPage(1)
-                }}
-                placeholder="Semua Tipe Soal"
-                icon={CheckSquare}
-                popoverWidth="min-w-[160px]"
-                options={[
-                  { value: '', label: 'Semua Tipe Soal' },
-                  { value: 'pg', label: 'Pilihan Ganda' },
-                  { value: 'esai', label: 'Essay / Esai' },
-                  { value: 'benar_salah', label: 'Benar / Salah' },
-                  { value: 'menjodohkan', label: 'Menjodohkan' },
-                ]}
-              />
-
-              {/* Filter Tingkat Kesulitan */}
-              <HeroUiFilterSelect
-                value={filters.tingkat_kesulitan || ''}
-                onChange={(val) => {
-                  setFilters((prev) => ({ ...prev, tingkat_kesulitan: val }))
-                  setPage(1)
-                }}
-                placeholder="Semua Tingkat Kesulitan"
-                popoverWidth="min-w-[170px]"
-                options={[
-                  { value: '', label: 'Semua Tingkat Kesulitan' },
-                  { value: 'mudah', label: 'Mudah' },
-                  { value: 'sedang', label: 'Sedang' },
-                  { value: 'sulit', label: 'Sulit' },
-                ]}
-              />
+                {/* Filter Tingkat Kesulitan */}
+                <HeroUiFilterSelect
+                  value={filters.tingkat_kesulitan || ''}
+                  onChange={(val) => {
+                    setFilters((prev) => ({ ...prev, tingkat_kesulitan: val }))
+                    setPage(1)
+                  }}
+                  placeholder="Semua Tingkat Kesulitan"
+                  icon={Sparkles}
+                  popoverWidth="min-w-[190px]"
+                  options={[
+                    { value: '', label: 'Semua Tingkat Kesulitan' },
+                    { value: 'mudah', label: 'Tingkat: Mudah' },
+                    { value: 'sedang', label: 'Tingkat: Sedang' },
+                    { value: 'sulit', label: 'Tingkat: Sulit' },
+                  ]}
+                />
+              </div>
 
               {/* Reset Filter Button */}
               {((canSelectUnit && selectedUnit) || searchInput || filters.mata_pelajaran_id || filters.kisi_kisi_id || filters.kelas_id || filters.tipe_soal || filters.tingkat_kesulitan) && (
@@ -2212,11 +2214,11 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                     setFilters({ mata_pelajaran_id: '', kisi_kisi_id: '', kelas_id: '', tipe_soal: '', tingkat_kesulitan: '', status: '' })
                     setPage(1)
                   }}
-                  className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 h-9.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                  className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50/90 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/60 dark:hover:bg-rose-900/80 px-3.5 text-xs font-bold text-rose-700 dark:text-rose-300 transition-all cursor-pointer shrink-0 shadow-2xs hover:scale-102 active:scale-98 self-end xl:self-center"
                   title="Reset Semua Filter"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  <span>Reset</span>
+                  <RotateCcw className="size-3.5 text-rose-600 dark:text-rose-400" />
+                  <span>Reset Filter</span>
                 </button>
               )}
             </div>

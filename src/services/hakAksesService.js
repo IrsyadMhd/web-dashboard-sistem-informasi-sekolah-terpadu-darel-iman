@@ -137,7 +137,9 @@ export const hakAksesService = {
   },
 
   syncEntities: async (payload = {}) => {
-    const { data } = await api.post('/hak-akses/users/sync-entities', payload)
+    const { data } = await api.post('/hak-akses/users/sync-entities', payload, {
+      timeout: 120000,
+    })
     return data
   },
 }
