@@ -391,6 +391,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const [importFile, setImportFile] = useState(null)
   const [importPreviewData, setImportPreviewData] = useState([])
   const [isImporting, setIsImporting] = useState(false)
+  const [importFailures, setImportFailures] = useState([])
   const [showExportModal, setShowExportModal] = useState(false)
   const [exportFormat, setExportFormat] = useState('xlsx')
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
@@ -1158,6 +1159,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     const file = e.target.files?.[0]
     if (!file) return
     setImportFile(file)
+    setImportFailures([])
 
     try {
       const rows = await parseSpreadsheetFile(file)
@@ -1173,6 +1175,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const handleProcessImport = async () => {
     if (!importFile) return
     setIsImporting(true)
+    setImportFailures([])
     try {
       const allRows = await parseSpreadsheetFile(importFile)
       if (allRows.length === 0) {
@@ -1186,29 +1189,57 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
       for (let index = 0; index < allRows.length; index += 1) {
         const row = allRows[index]
         try {
-          await scheduleService.tambah({
+          const payload = {
             ...row,
+            academic_year_id: row.academic_year_id || yearFilter || undefined,
+            semester_id: row.semester_id || semesterFilter || undefined,
             day_of_week: Number(row.day_of_week),
+            time_start: String(row.time_start || '').trim().slice(0, 5),
+            time_end: String(row.time_end || '').trim().slice(0, 5),
             is_active: !['0', 'false', 'nonaktif'].includes(String(row.is_active).toLowerCase()),
-          })
+          }
+          await scheduleService.tambah(payload)
           success += 1
         } catch (error) {
-          failures.push(`baris ${index + 2}: ${error.response?.data?.message || 'gagal'}`)
+          const resData = error.response?.data
+          let detailMsg = resData?.message || 'Data tidak valid'
+          if (resData?.errors && typeof resData.errors === 'object') {
+            const errList = Object.values(resData.errors).flat()
+            if (errList.length > 0) {
+              detailMsg = errList.join(' • ')
+            }
+          }
+          failures.push({
+            row: index + 2,
+            message: detailMsg,
+            data: row,
+          })
         }
       }
       queryClient.invalidateQueries({ queryKey: ['schedules'] })
-      setShowImportModal(false)
-      setImportFile(null)
-      setImportPreviewData([])
       setIsImporting(false)
+
       if (failures.length === 0) {
+        setShowImportModal(false)
+        setImportFile(null)
+        setImportPreviewData([])
+        setImportFailures([])
         pushToast('Import Berhasil', `${success} jadwal pelajaran berhasil diimport.`, 'success')
       } else {
-        pushToast(
-          'Import Sebagian Berhasil',
-          `${success} berhasil, ${failures.length} gagal (${failures.slice(0, 2).join(', ')}...).`,
-          'warning'
-        )
+        setImportFailures(failures)
+        if (success > 0) {
+          pushToast(
+            'Import Sebagian Berhasil',
+            `${success} jadwal berhasil, ${failures.length} baris gagal divalidasi. Periksa rincian pada banner di atas.`,
+            'warning'
+          )
+        } else {
+          pushToast(
+            'Import Gagal',
+            `Seluruh ${failures.length} baris data gagal divalidasi oleh server (Error 422). Periksa rincian pada banner merah di atas.`,
+            'error'
+          )
+        }
       }
     } catch (err) {
       setIsImporting(false)
@@ -1938,6 +1969,38 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
                 {/* Modal Body */}
                 <div className="modal-body min-h-0 flex-1 space-y-4.5 overflow-y-auto p-6 text-sm text-slate-700 dark:text-slate-200">
+                  {/* Error Banner Rincian Gagal Validasi Server */}
+                  {importFailures.length > 0 && (
+                    <div className="flex flex-col gap-2 rounded-2xl border-2 border-rose-300 bg-rose-50/95 p-4 text-rose-900 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200 shadow-sm animate-fadeIn">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 font-black text-xs text-rose-800 dark:text-rose-300 uppercase tracking-wide">
+                          <AlertTriangle className="size-4.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                          <span>Gagal Memvalidasi {importFailures.length} Baris Jadwal (Error 422)</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setImportFailures([])}
+                          className="text-[11px] font-bold text-rose-700 hover:text-rose-900 dark:text-rose-300 dark:hover:text-white underline cursor-pointer"
+                        >
+                          Tutup Banner
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-rose-700 dark:text-rose-300 leading-relaxed">
+                        Server menolak data berikut karena tidak memenuhi syarat validasi (ID relasi tidak terdaftar, jadwal bentrok waktu/ruang/guru, atau format waktu tidak sesuai):
+                      </p>
+                      <div className="max-h-40 overflow-y-auto space-y-2 text-xs pr-1">
+                        {importFailures.map((f, idx) => (
+                          <div key={idx} className="rounded-xl border border-rose-200 bg-white/90 p-2.5 dark:border-rose-900/60 dark:bg-slate-900/70 flex items-start gap-2">
+                            <span className="font-bold text-rose-800 dark:text-rose-300 shrink-0 rounded bg-rose-100 dark:bg-rose-900/60 px-1.5 py-0.5 text-[10px]">
+                              Baris {f.row}
+                            </span>
+                            <p className="text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{f.message}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Unduh Template Card */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-sky-200/70 bg-gradient-to-r from-sky-50/50 via-teal-50/20 to-white p-4 dark:border-sky-850/50 dark:bg-slate-900/40">
                     <div className="flex items-center gap-3">
@@ -1992,6 +2055,17 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                     )}
                     <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileSelect} className="hidden" />
                   </label>
+
+                  {/* Guidance Banner */}
+                  <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-3.5 dark:border-emerald-800/50 dark:bg-emerald-950/30 flex items-start gap-2.5">
+                    <ShieldCheck className="size-4.5 text-[#0E5C44] dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1 text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
+                      <p className="font-bold text-[#0E5C44] dark:text-emerald-300">Panduan Pengisian Berkas Impor:</p>
+                      <p>• Kolom <strong>kelas_id</strong>, <strong>employee_id</strong>, dan <strong>subject_id</strong> wajib berupa UUID unik terdaftar di sistem.</p>
+                      <p>• Jam <strong>time_start</strong> &amp; <strong>time_end</strong> wajib format <code>HH:mm</code> (contoh: <code>07:30</code> dan <code>09:00</code>).</p>
+                      <p>• Hari <strong>day_of_week</strong> diisi angka 1 (Senin) hingga 7 (Minggu).</p>
+                    </div>
+                  </div>
 
                   {/* Table Preview */}
                   {importPreviewData.length > 0 && (

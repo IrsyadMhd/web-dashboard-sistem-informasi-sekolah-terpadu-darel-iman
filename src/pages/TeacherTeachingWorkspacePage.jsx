@@ -749,7 +749,7 @@ const MateriModalForm = React.memo(function MateriModalForm({
   )
 })
 
-export const calculateScheduleStatus = (schedule, selectedDate = '') => {
+const calculateScheduleStatus = (schedule, selectedDate = '') => {
   if (!schedule) return { label: 'Selesai', isActive: false, className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
   const today = new Date()
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`

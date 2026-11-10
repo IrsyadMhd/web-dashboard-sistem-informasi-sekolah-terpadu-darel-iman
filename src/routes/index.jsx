@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, Component } from 'react'
-import { Navigate, Outlet, createBrowserRouter, useSearchParams } from 'react-router-dom'
+import { Navigate, Outlet, createBrowserRouter, useSearchParams, RouterProvider } from 'react-router-dom'
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'))
 const DashboardPage = lazy(() => import('../pages/DashboardPage'))
@@ -359,7 +359,7 @@ function PresensiRedirect() {
   return <Navigate to={`/portal-guru/workspace?${q.toString()}`} replace />
 }
 
-export const router = createBrowserRouter([
+const router = createBrowserRouter([
   {
     path: '/',
     element: <Navigate to="/masuk" replace />,
@@ -2028,5 +2028,9 @@ export const router = createBrowserRouter([
   },
 ])
 
-export default router
+export function AppRouter() {
+  return <RouterProvider router={router} />
+}
+
+export default AppRouter
 

@@ -38,7 +38,7 @@ import {
   COLOR_PALETTE,
   MODULE_LINK_OPTIONS,
   AUDIENCE_OPTIONS,
-} from '../components/calendar/AcademicCalendarModal'
+} from '../components/calendar/calendarConstants'
 import { useDebounce } from '../hooks/useDebounce'
 import { useToast } from '../components/app/ToastProvider'
 
