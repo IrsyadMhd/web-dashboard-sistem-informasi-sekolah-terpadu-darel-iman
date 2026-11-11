@@ -30,12 +30,24 @@ import {
   Menu,
 } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
+import { Icon as IconifyIcon, iconLoaded } from '@iconify/react'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppTabs from '../components/app/AppTabs'
 import { Button } from '../components/ui/button'
 import { useToast } from '../components/app'
 import { adminNavigationService } from '../services/adminNavigationService'
-import { resolveSidebarIcon } from '../hooks/useNavigation'
+import { useMobileMaterialIcons } from '../utils/mobileMaterialIcons'
+
+const ICON_PICKER_PAGE_SIZE = 100
+
+const ALL_CLEAN_LUCIDE_ICONS = Object.keys(LucideIcons).filter(
+  (k) =>
+    /^[A-Z]/.test(k) &&
+    !k.endsWith('Icon') &&
+    !k.startsWith('Lucide') &&
+    LucideIcons[k] &&
+    (typeof LucideIcons[k] === 'function' || typeof LucideIcons[k] === 'object')
+)
 
 // Mapping bantuan icon Lucide ke icon MaterialCommunityIcons
 const LUCIDE_TO_MATERIAL_MAP = {
@@ -150,6 +162,9 @@ function renderLucideIcon(iconName, className = 'h-5 w-5', fallback = Layers) {
 }
 
 function renderMaterialIconPreview(materialIconName, className = 'h-5 w-5') {
+  if (materialIconName && iconLoaded(`mdi:${materialIconName}`)) {
+    return React.createElement(IconifyIcon, { icon: `mdi:${materialIconName}`, className })
+  }
   const mappedLucide = MATERIAL_TO_LUCIDE_MAP[materialIconName] || 'HelpCircle'
   return renderLucideIcon(mappedLucide, className, Smartphone)
 }
@@ -325,16 +340,28 @@ export default function KelolaNavigasiMenuPage() {
 
   const [activePlatformTab, setActivePlatformTab] = useState('web')
   const [selectedMobileRole, setSelectedMobileRole] = useState('student')
+  const [selectedModuleFilter, setSelectedModuleFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [permissionSearchQuery, setPermissionSearchQuery] = useState('')
 
   // Modal State
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null) // null = create, object = edit
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null)
+  const [isModuleModalOpen, setIsModuleModalOpen] = useState(false)
+  const [editingModule, setEditingModule] = useState(null)
+  const [deleteModuleTarget, setDeleteModuleTarget] = useState(null)
   const [syncConfirmOpen, setSyncConfirmOpen] = useState(false)
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
-  const [iconPickerModal, setIconPickerModal] = useState(null) // 'web' | 'mobile' | null
+  const [iconPickerModal, setIconPickerModal] = useState(null) // 'web' | 'mobile' | 'module' | null
   const [iconSearchQuery, setIconSearchQuery] = useState('')
+  const [visibleIconLimit, setVisibleIconLimit] = useState(ICON_PICKER_PAGE_SIZE)
+
+  const { mdiReady, androidMaterialIconNames } = useMobileMaterialIcons()
+
+  useEffect(() => {
+    setVisibleIconLimit(ICON_PICKER_PAGE_SIZE)
+  }, [iconPickerModal, iconSearchQuery])
 
   // Form State
   const [formData, setFormData] = useState({
@@ -358,49 +385,99 @@ export default function KelolaNavigasiMenuPage() {
     is_active: true,
   })
 
+  const [moduleFormData, setModuleFormData] = useState({
+    id: '',
+    name: '',
+    icon: 'Layers',
+    platform: 'both',
+    is_active: true,
+  })
+
   // Fetch Navigation Data
-  const { data: navData, isLoading, refetch } = useQuery({
+  const { data: navData, isLoading } = useQuery({
     queryKey: ['admin-navigation-data'],
     queryFn: () => adminNavigationService.getNavigationData(),
   })
 
-  const modules = navData?.modules || []
+  const modules = useMemo(() => navData?.modules || [], [navData?.modules])
   const moduleOptions = useMemo(() => {
-    return (modules || []).map((m) => ({
+    return modules.map((m) => ({
       value: String(m.id),
       label: m.name,
       subtext: `Platform: ${m.platform}`,
     }))
   }, [modules])
+  const moduleFilterOptions = useMemo(() => {
+    return [
+      { value: 'all', label: 'Semua Modul Induk' },
+      ...modules.map((m) => ({
+        value: String(m.id),
+        label: m.name,
+        subtext: `${(m.menus || []).length} menu (${m.platform})`,
+      })),
+    ]
+  }, [modules])
   const canonicalRoles = navData?.registries?.canonical_roles || [
+    { id: 'super_admin', label: 'Super Admin' },
     { id: 'student', label: 'Siswa / Santri' },
     { id: 'parent', label: 'Orang Tua / Wali Murid' },
     { id: 'teacher', label: 'Guru / Pengajar' },
     { id: 'principal', label: 'Kepala Sekolah' },
-    { id: 'tu', 'label': 'Tata Usaha / Operator' },
+    { id: 'tu', label: 'Tata Usaha / Operator' },
     { id: 'foundation', label: 'Pengurus Yayasan / Pimpinan' },
+    { id: 'divisi', label: 'Kepala Divisi / Unit Kerja' },
     { id: 'musyrif', label: 'Musyrif / Pembimbing Asrama' },
     { id: 'alumni', label: 'Alumni' },
   ]
-  const availablePermissions = navData?.permissions || []
-  const mobileScreens = navData?.registries?.mobile_screens || []
-  const webRoutes = navData?.registries?.web_routes || []
+  const availablePermissions = useMemo(() => navData?.permissions || [], [navData?.permissions])
+  const mobileScreens = useMemo(
+    () => navData?.registries?.mobile_screens || [],
+    [navData?.registries?.mobile_screens]
+  )
+  const webRoutes = useMemo(
+    () => navData?.registries?.web_routes || [],
+    [navData?.registries?.web_routes]
+  )
   const allLucideIcons = useMemo(() => {
     const fromApi = navData?.registries?.lucide_icons || []
-    return Array.from(new Set([...fromApi, ...POPULAR_LUCIDE_ICONS]))
+    return Array.from(new Set([...POPULAR_LUCIDE_ICONS, ...fromApi, ...ALL_CLEAN_LUCIDE_ICONS]))
   }, [navData?.registries?.lucide_icons])
 
   const allMaterialIcons = useMemo(() => {
+    const formatMaterialLabel = (id) =>
+      id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
     const fromApi = navData?.registries?.material_icons || []
-    const mappedApi = fromApi.map((id) => ({
-      id,
-      label: id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-      lucide: MATERIAL_TO_LUCIDE_MAP[id] || 'Circle',
-    }))
-    const existingIds = new Set(mappedApi.map((x) => x.id))
-    const extra = POPULAR_MATERIAL_ICONS.filter((x) => !existingIds.has(x.id))
-    return [...mappedApi, ...extra]
-  }, [navData?.registries?.material_icons])
+    const byId = new Map()
+
+    // 1. Ikon populer berlabel Bahasa Indonesia di urutan paling atas
+    POPULAR_MATERIAL_ICONS.forEach((item) => {
+      byId.set(item.id, item)
+    })
+
+    // 2. Ikon dari registry backend
+    fromApi.forEach((id) => {
+      if (!byId.has(id)) {
+        byId.set(id, {
+          id,
+          label: formatMaterialLabel(id),
+          lucide: MATERIAL_TO_LUCIDE_MAP[id] || 'Circle',
+        })
+      }
+    })
+
+    // 3. Seluruh ~7.400+ ikon MaterialCommunityIcons yang valid di mobile-app
+    androidMaterialIconNames.forEach((id) => {
+      if (!byId.has(id)) {
+        byId.set(id, {
+          id,
+          label: formatMaterialLabel(id),
+          lucide: MATERIAL_TO_LUCIDE_MAP[id] || 'Circle',
+        })
+      }
+    })
+
+    return Array.from(byId.values())
+  }, [navData?.registries?.material_icons, androidMaterialIconNames])
 
   const filteredLucideIcons = useMemo(() => {
     if (!iconSearchQuery.trim()) return allLucideIcons
@@ -419,21 +496,41 @@ export default function KelolaNavigasiMenuPage() {
     )
   }, [allMaterialIcons, iconSearchQuery])
 
+  const filteredPermissions = useMemo(() => {
+    if (!permissionSearchQuery.trim()) return availablePermissions
+    const q = permissionSearchQuery.toLowerCase()
+    return availablePermissions.filter((p) => String(p).toLowerCase().includes(q))
+  }, [availablePermissions, permissionSearchQuery])
+
+  const filteredModules = useMemo(() => {
+    if (!searchQuery.trim()) return modules
+    const q = searchQuery.toLowerCase()
+    return modules.filter(
+      (mod) =>
+        mod.name?.toLowerCase().includes(q) ||
+        String(mod.id || '').toLowerCase().includes(q) ||
+        mod.platform?.toLowerCase().includes(q)
+    )
+  }, [modules, searchQuery])
+
   // Flattened Menus for Current Platform
   const currentMenus = useMemo(() => {
     const list = []
     modules.forEach((mod) => {
+      if (selectedModuleFilter !== 'all' && String(mod.id) !== String(selectedModuleFilter)) {
+        return
+      }
       ;(mod.menus || []).forEach((menu) => {
         if (activePlatformTab === 'web') {
           if (menu.platform === 'web' || menu.platform === 'both') {
-            list.push({ ...menu, module_name: mod.name })
+            list.push({ ...menu, module_name: mod.name, module_is_active: mod.is_active !== false })
           }
-        } else {
+        } else if (activePlatformTab === 'mobile') {
           if (menu.platform === 'mobile' || menu.platform === 'both') {
             const roles = menu.target_roles || []
             const matchesRole = roles.length === 0 || roles.includes(selectedMobileRole)
             if (matchesRole) {
-              list.push({ ...menu, module_name: mod.name })
+              list.push({ ...menu, module_name: mod.name, module_is_active: mod.is_active !== false })
             }
           }
         }
@@ -447,14 +544,36 @@ export default function KelolaNavigasiMenuPage() {
         m.name?.toLowerCase().includes(q) ||
         m.name_mobile?.toLowerCase().includes(q) ||
         m.path?.toLowerCase().includes(q) ||
-        m.id?.toLowerCase().includes(q)
+        m.id?.toLowerCase().includes(q) ||
+        m.module_name?.toLowerCase().includes(q)
     )
-  }, [modules, activePlatformTab, selectedMobileRole, searchQuery])
+  }, [modules, activePlatformTab, selectedMobileRole, selectedModuleFilter, searchQuery])
+
+  // Helper Map: whether a menu can move up/down within its parent module
+  const siblingMoveMap = useMemo(() => {
+    const byModule = new Map()
+    currentMenus.forEach((menu) => {
+      const modKey = String(menu.module_id)
+      if (!byModule.has(modKey)) byModule.set(modKey, [])
+      byModule.get(modKey).push(menu.id)
+    })
+    const result = new Map()
+    byModule.forEach((ids) => {
+      ids.forEach((id, i) => {
+        result.set(id, { canUp: i > 0, canDown: i < ids.length - 1 })
+      })
+    })
+    return result
+  }, [currentMenus])
 
   // Open Form Modal
   const handleOpenCreate = () => {
-    const defaultModule = modules[0]?.id || 'dashboard'
+    const defaultModule =
+      selectedModuleFilter !== 'all'
+        ? selectedModuleFilter
+        : modules[0]?.id || 'dashboard'
     setEditingItem(null)
+    setPermissionSearchQuery('')
     setFormData({
       id: `menu-${Date.now().toString().slice(-6)}`,
       module_id: defaultModule,
@@ -464,7 +583,7 @@ export default function KelolaNavigasiMenuPage() {
       path: activePlatformTab === 'web' ? '/dashboard' : 'Jadwal',
       icon: 'LayoutDashboard',
       icon_mobile: 'view-dashboard-outline',
-      platform: activePlatformTab === 'web' ? 'web' : 'mobile',
+      platform: activePlatformTab === 'mobile' ? 'mobile' : 'web',
       target_roles: activePlatformTab === 'mobile' ? [selectedMobileRole] : [],
       required_permissions: [],
       metadata: {
@@ -480,6 +599,7 @@ export default function KelolaNavigasiMenuPage() {
 
   const handleOpenEdit = (menu) => {
     setEditingItem(menu)
+    setPermissionSearchQuery('')
     const isSameName = (menu.name_mobile || menu.name) === menu.name
     setFormData({
       id: menu.id,
@@ -504,6 +624,30 @@ export default function KelolaNavigasiMenuPage() {
     setIsFormModalOpen(true)
   }
 
+  const handleOpenCreateModule = () => {
+    setEditingModule(null)
+    setModuleFormData({
+      id: `mod-${Date.now().toString().slice(-6)}`,
+      name: '',
+      icon: 'Layers',
+      platform: 'both',
+      is_active: true,
+    })
+    setIsModuleModalOpen(true)
+  }
+
+  const handleOpenEditModule = (mod) => {
+    setEditingModule(mod)
+    setModuleFormData({
+      id: mod.id,
+      name: mod.name || '',
+      icon: mod.icon || 'Layers',
+      platform: mod.platform || 'both',
+      is_active: mod.is_active !== false,
+    })
+    setIsModuleModalOpen(true)
+  }
+
   // Auto-Match Icon Handler
   const handleAutoMatchIcon = () => {
     const matched = LUCIDE_TO_MATERIAL_MAP[formData.icon]
@@ -523,6 +667,11 @@ export default function KelolaNavigasiMenuPage() {
     }
   }
 
+  const invalidateNavigation = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin-navigation-data'] })
+    queryClient.invalidateQueries({ queryKey: ['navigation-modules'] })
+  }
+
   // Mutations
   const saveMutation = useMutation({
     mutationFn: async (payload) => {
@@ -532,7 +681,7 @@ export default function KelolaNavigasiMenuPage() {
       return await adminNavigationService.createMenu(payload)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['admin-navigation-data'])
+      invalidateNavigation()
       setIsFormModalOpen(false)
       addToast({
         title: 'Berhasil Disimpan',
@@ -554,7 +703,7 @@ export default function KelolaNavigasiMenuPage() {
       return await adminNavigationService.deleteMenu(id)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['admin-navigation-data'])
+      invalidateNavigation()
       setDeleteConfirmTarget(null)
       addToast({
         title: 'Menu Dihapus',
@@ -571,12 +720,62 @@ export default function KelolaNavigasiMenuPage() {
     },
   })
 
+  const saveModuleMutation = useMutation({
+    mutationFn: async (payload) => {
+      if (editingModule) {
+        return await adminNavigationService.updateModule(editingModule.id, payload)
+      }
+      return await adminNavigationService.createModule(payload)
+    },
+    onSuccess: () => {
+      invalidateNavigation()
+      setIsModuleModalOpen(false)
+      addToast({
+        title: 'Modul Disimpan',
+        message: `Modul navigasi berhasil ${editingModule ? 'diperbarui' : 'ditambahkan'}.`,
+        type: 'success',
+      })
+    },
+    onError: (err) => {
+      addToast({
+        title: 'Gagal Menyimpan Modul',
+        message: err.response?.data?.message || err.message,
+        type: 'error',
+      })
+    },
+  })
+
+  const deleteModuleMutation = useMutation({
+    mutationFn: async (id) => {
+      return await adminNavigationService.deleteModule(id)
+    },
+    onSuccess: () => {
+      invalidateNavigation()
+      setDeleteModuleTarget(null)
+      if (selectedModuleFilter === String(deleteModuleTarget?.id)) {
+        setSelectedModuleFilter('all')
+      }
+      addToast({
+        title: 'Modul Dihapus',
+        message: 'Modul navigasi beserta menu di dalamnya berhasil dihapus.',
+        type: 'success',
+      })
+    },
+    onError: (err) => {
+      addToast({
+        title: 'Gagal Menghapus Modul',
+        message: err.response?.data?.message || err.message,
+        type: 'error',
+      })
+    },
+  })
+
   const syncMutation = useMutation({
     mutationFn: async () => {
       return await adminNavigationService.syncMobileConfig()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['admin-navigation-data'])
+      invalidateNavigation()
       setSyncConfirmOpen(false)
       addToast({
         title: 'Sinkronisasi Berhasil',
@@ -598,7 +797,7 @@ export default function KelolaNavigasiMenuPage() {
       return await adminNavigationService.resetDefaults()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['admin-navigation-data'])
+      invalidateNavigation()
       setResetConfirmOpen(false)
       addToast({
         title: 'Menu Default Dipulihkan',
@@ -618,7 +817,7 @@ export default function KelolaNavigasiMenuPage() {
   const handleToggleActive = async (menu) => {
     try {
       await adminNavigationService.updateMenu(menu.id, { is_active: !menu.is_active })
-      queryClient.invalidateQueries(['admin-navigation-data'])
+      invalidateNavigation()
       addToast({
         title: menu.is_active ? 'Menu Dinonaktifkan' : 'Menu Diaktifkan',
         message: `Status menu "${menu.name}" berhasil diubah.`,
@@ -629,28 +828,87 @@ export default function KelolaNavigasiMenuPage() {
     }
   }
 
+  const handleToggleModuleActive = async (mod) => {
+    try {
+      await adminNavigationService.updateModule(mod.id, { is_active: !mod.is_active })
+      invalidateNavigation()
+      addToast({
+        title: mod.is_active ? 'Modul Dinonaktifkan' : 'Modul Diaktifkan',
+        message: `Status modul "${mod.name}" berhasil diubah.`,
+        type: 'success',
+      })
+    } catch (e) {
+      addToast({ title: 'Gagal Mengubah Status Modul', message: e.response?.data?.message || e.message, type: 'error' })
+    }
+  }
+
   const handleMoveOrder = async (menu, direction) => {
-    const list = [...currentMenus]
-    const idx = list.findIndex((m) => m.id === menu.id)
+    const modKey = String(menu.module_id)
+    const visibleSiblings = currentMenus.filter((m) => String(m.module_id) === modKey)
+    const visibleIdx = visibleSiblings.findIndex((m) => m.id === menu.id)
+    if (visibleIdx < 0) return
+
+    const targetVisibleIdx = visibleIdx + direction
+    if (targetVisibleIdx < 0 || targetVisibleIdx >= visibleSiblings.length) return
+
+    const targetItem = visibleSiblings[targetVisibleIdx]
+    const parentModule = modules.find((m) => String(m.id) === modKey)
+    const allModuleMenus = [...(parentModule?.menus || [])].sort(
+      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+    )
+
+    const idxA = allModuleMenus.findIndex((m) => m.id === menu.id)
+    const idxB = allModuleMenus.findIndex((m) => m.id === targetItem.id)
+    if (idxA < 0 || idxB < 0) return
+
+    const swapped = [...allModuleMenus]
+    const [moved] = swapped.splice(idxA, 1)
+    swapped.splice(idxB, 0, moved)
+
+    const reorderPayload = swapped.map((item, i) => ({
+      id: item.id,
+      sort_order: i + 1,
+    }))
+
+    try {
+      await adminNavigationService.reorder('menus', reorderPayload)
+      invalidateNavigation()
+    } catch (e) {
+      addToast({ title: 'Gagal Mengubah Urutan', message: e.response?.data?.message || e.message, type: 'error' })
+    }
+  }
+
+  const handleMoveModuleOrder = async (mod, direction) => {
+    const list = [...filteredModules]
+    const idx = list.findIndex((m) => m.id === mod.id)
     if (idx < 0) return
     const targetIdx = idx + direction
     if (targetIdx < 0 || targetIdx >= list.length) return
 
-    const currentItem = list[idx]
-    const targetItem = list[targetIdx]
+    const fullList = [...modules].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    const idxA = fullList.findIndex((m) => m.id === mod.id)
+    const idxB = fullList.findIndex((m) => m.id === list[targetIdx].id)
+    if (idxA < 0 || idxB < 0) return
 
-    const newCurrentOrder = targetItem.sort_order
-    const newTargetOrder = currentItem.sort_order
+    const [moved] = fullList.splice(idxA, 1)
+    fullList.splice(idxB, 0, moved)
+
+    const reorderPayload = fullList.map((item, i) => ({
+      id: item.id,
+      sort_order: i + 1,
+    }))
 
     try {
-      await adminNavigationService.reorder('menus', [
-        { id: currentItem.id, sort_order: newCurrentOrder },
-        { id: targetItem.id, sort_order: newTargetOrder },
-      ])
-      queryClient.invalidateQueries(['admin-navigation-data'])
+      await adminNavigationService.reorder('modules', reorderPayload)
+      invalidateNavigation()
     } catch (e) {
-      addToast({ title: 'Gagal Mengubah Urutan', message: e.message, type: 'error' })
+      addToast({ title: 'Gagal Mengubah Urutan Modul', message: e.response?.data?.message || e.message, type: 'error' })
     }
+  }
+
+  const handleSubmitModuleForm = (e) => {
+    e.preventDefault()
+    saveModuleMutation.mutate(moduleFormData)
   }
 
   const handleSubmitForm = (e) => {
@@ -665,6 +923,7 @@ export default function KelolaNavigasiMenuPage() {
   const platformTabs = [
     { id: 'web', label: '1. Menu Web Dashboard', icon: Globe },
     { id: 'mobile', label: '2. Menu Mobile App (Android)', icon: Smartphone },
+    { id: 'modules', label: '3. Kelola Modul Induk', icon: Layers },
   ]
 
   return (
@@ -710,16 +969,22 @@ export default function KelolaNavigasiMenuPage() {
                 <RefreshCw className="h-4 w-4 mr-1.5" /> Publikasikan ke Mobile
               </Button>
             )}
-            <Button variant="primary" onClick={handleOpenCreate} className="rounded-xl">
-              <Plus className="h-4 w-4 mr-1.5" /> Tambah Menu Baru
-            </Button>
+            {activePlatformTab === 'modules' ? (
+              <Button variant="primary" onClick={handleOpenCreateModule} className="rounded-xl">
+                <Plus className="h-4 w-4 mr-1.5" /> Tambah Modul Baru
+              </Button>
+            ) : (
+              <Button variant="primary" onClick={handleOpenCreate} className="rounded-xl">
+                <Plus className="h-4 w-4 mr-1.5" /> Tambah Menu Baru
+              </Button>
+            )}
           </div>
         </div>
       </section>
 
       {/* Main Container */}
       <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md dark:border-emerald-600/35 dark:bg-[#1B2433]">
-        {/* Navigation Tabs (Web vs Mobile) */}
+        {/* Navigation Tabs (Web vs Mobile vs Modules) */}
         <nav className="flex overflow-x-auto no-scrollbar border-b border-emerald-200/80 bg-emerald-50/40 p-3 dark:border-emerald-800/60 dark:bg-[#13221f]/50">
           <AppTabs
             tabs={platformTabs}
@@ -731,52 +996,209 @@ export default function KelolaNavigasiMenuPage() {
 
         {/* Filter & Toolbar Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 p-4 dark:border-emerald-900/60 dark:bg-[#15212d]">
-          {/* Mobile Role Switcher (Only visible in mobile tab) */}
           {activePlatformTab === 'mobile' ? (
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-              <span className="text-xs font-bold text-slate-500 mr-1 whitespace-nowrap">Target Peran:</span>
-              {canonicalRoles.map((role) => (
-                <button
-                  key={role.id}
-                  onClick={() => setSelectedMobileRole(role.id)}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition whitespace-nowrap ${
-                    selectedMobileRole === role.id
-                      ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
-                      : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                  }`}
-                >
-                  {role.label}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 max-w-full">
+                <span className="text-xs font-bold text-slate-500 mr-1 whitespace-nowrap">Target Peran:</span>
+                {canonicalRoles.map((role) => (
+                  <button
+                    key={role.id}
+                    onClick={() => setSelectedMobileRole(role.id)}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition whitespace-nowrap ${
+                      selectedMobileRole === role.id
+                        ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
+                        : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    {role.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          ) : (
-            <div className="flex items-center gap-2">
+          ) : activePlatformTab === 'web' ? (
+            <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                 Total {currentMenus.length} Menu Sidebar Web
               </span>
             </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-lg bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                Total {filteredModules.length} Modul Induk
+              </span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                Urutan dan status aktif modul langsung memengaruhi sidebar Web & sinkronisasi Mobile.
+              </span>
+            </div>
           )}
 
-          {/* Search Box */}
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari nama menu / rute..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-xs text-slate-800 outline-none transition focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-            />
+          {/* Module Filter & Search Box */}
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {activePlatformTab !== 'modules' && (
+              <div className="w-full sm:w-52">
+                <HeroUiFilterSelect
+                  value={selectedModuleFilter}
+                  onChange={(val) => setSelectedModuleFilter(val || 'all')}
+                  options={moduleFilterOptions}
+                  placeholder="Semua Modul"
+                  icon={Layers}
+                  searchable={true}
+                  className="w-full"
+                  ariaLabel="Filter Modul Induk"
+                />
+              </div>
+            )}
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder={activePlatformTab === 'modules' ? 'Cari nama / id modul...' : 'Cari nama menu / rute...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-xs text-slate-800 outline-none transition focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Datatable / Grid of Menus */}
+        {/* Datatable / Grid of Modules or Menus */}
         <div className="p-4 sm:p-5">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center p-12 text-slate-400">
               <RefreshCw className="h-8 w-8 animate-spin text-emerald-600 mb-3" />
               <p className="text-xs font-bold">Memuat daftar menu navigasi...</p>
             </div>
+          ) : activePlatformTab === 'modules' ? (
+            filteredModules.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center dark:border-slate-800">
+                <Layers className="h-10 w-10 text-slate-300 mb-2" />
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white">Tidak ada modul yang sesuai</h3>
+                <p className="text-xs text-slate-500 max-w-sm mt-1">
+                  Silakan ubah kata kunci pencarian atau klik tombol "Tambah Modul Baru" di atas.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-emerald-100 dark:border-slate-800">
+                <table className="w-full border-collapse text-left text-xs">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-slate-700 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-slate-200 border-b-2 border-emerald-200/90">
+                      <th className="py-3 px-4 font-black">Urutan</th>
+                      <th className="py-3 px-4 font-black">Ikon & Nama Modul</th>
+                      <th className="py-3 px-4 font-black">ID Modul</th>
+                      <th className="py-3 px-4 font-black">Platform</th>
+                      <th className="py-3 px-4 font-black text-center">Jumlah Menu</th>
+                      <th className="py-3 px-4 font-black text-center">Status</th>
+                      <th className="py-3 px-4 font-black text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-100/80 dark:divide-slate-800 bg-white dark:bg-[#1B2433]">
+                    {filteredModules.map((mod, index) => (
+                      <tr
+                        key={mod.id}
+                        className={`transition hover:bg-emerald-50/30 dark:hover:bg-slate-800/40 ${
+                          mod.is_active === false ? 'opacity-60 bg-slate-50/50 dark:bg-slate-900/30' : ''
+                        }`}
+                      >
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                            <span className="font-extrabold text-slate-500 w-5 text-center">
+                              #{mod.sort_order}
+                            </span>
+                            <div className="flex flex-col">
+                              <button
+                                onClick={() => handleMoveModuleOrder(mod, -1)}
+                                disabled={index === 0}
+                                className="p-0.5 text-slate-400 hover:text-emerald-600 disabled:opacity-20"
+                                title="Naikkan urutan modul"
+                              >
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleMoveModuleOrder(mod, 1)}
+                                disabled={index === filteredModules.length - 1}
+                                className="p-0.5 text-slate-400 hover:text-emerald-600 disabled:opacity-20"
+                                title="Turunkan urutan modul"
+                              >
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2.5">
+                            <span className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                              {renderLucideIcon(mod.icon || 'Layers', 'h-4 w-4 text-emerald-600 dark:text-emerald-400')}
+                            </span>
+                            <div>
+                              <span className="font-bold text-slate-900 dark:text-white block">
+                                {mod.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                icon: {mod.icon || 'Layers'}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className="font-mono text-[11px] text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                            {mod.id}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className="rounded-lg bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 px-2 py-0.5 text-[10px] font-bold uppercase">
+                            {mod.platform || 'both'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedModuleFilter(String(mod.id))
+                              setActivePlatformTab(mod.platform === 'mobile' ? 'mobile' : 'web')
+                            }}
+                            className="rounded-lg bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 dark:bg-slate-800 dark:text-slate-300 px-2.5 py-1 text-[11px] font-bold transition"
+                            title="Lihat daftar menu dalam modul ini"
+                          >
+                            {(mod.menus || []).length} menu
+                          </button>
+                        </td>
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleModuleActive(mod)}
+                            className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold transition ${
+                              mod.is_active !== false
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                                : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300'
+                            }`}
+                          >
+                            {mod.is_active !== false ? 'Aktif' : 'Nonaktif'}
+                          </button>
+                        </td>
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleOpenEditModule(mod)}
+                              className="rounded-lg border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-100 hover:text-emerald-600 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                              title="Ubah Modul"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteModuleTarget(mod)}
+                              className="rounded-lg border border-slate-200 p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-rose-950/40"
+                              title="Hapus Modul"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
           ) : currentMenus.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center dark:border-slate-800">
               <Menu className="h-10 w-10 text-slate-300 mb-2" />
@@ -800,8 +1222,8 @@ export default function KelolaNavigasiMenuPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-emerald-100/80 dark:divide-slate-800 bg-white dark:bg-[#1B2433]">
-                  {currentMenus.map((menu, index) => {
-                    const LucideIconComp = resolveSidebarIcon(menu.icon)
+                  {currentMenus.map((menu) => {
+                    const moveInfo = siblingMoveMap.get(menu.id) || { canUp: false, canDown: false }
                     return (
                       <tr
                         key={menu.id}
@@ -809,7 +1231,7 @@ export default function KelolaNavigasiMenuPage() {
                           !menu.is_active ? 'opacity-60 bg-slate-50/50 dark:bg-slate-900/30' : ''
                         }`}
                       >
-                        {/* Sort Controls */}
+                        {/* Sort Controls (within parent module) */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           <div className="flex items-center gap-1">
                             <span className="font-extrabold text-slate-500 w-5 text-center">
@@ -818,17 +1240,17 @@ export default function KelolaNavigasiMenuPage() {
                             <div className="flex flex-col">
                               <button
                                 onClick={() => handleMoveOrder(menu, -1)}
-                                disabled={index === 0}
+                                disabled={!moveInfo.canUp}
                                 className="p-0.5 text-slate-400 hover:text-emerald-600 disabled:opacity-20"
-                                title="Naikkan urutan"
+                                title="Naikkan urutan dalam modul"
                               >
                                 <ArrowUp className="h-3.5 w-3.5" />
                               </button>
                               <button
                                 onClick={() => handleMoveOrder(menu, 1)}
-                                disabled={index === currentMenus.length - 1}
+                                disabled={!moveInfo.canDown}
                                 className="p-0.5 text-slate-400 hover:text-emerald-600 disabled:opacity-20"
-                                title="Turunkan urutan"
+                                title="Turunkan urutan dalam modul"
                               >
                                 <ArrowDown className="h-3.5 w-3.5" />
                               </button>
@@ -846,9 +1268,13 @@ export default function KelolaNavigasiMenuPage() {
                               <span className="font-bold text-slate-900 dark:text-white block">
                                 {menu.name}
                               </span>
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                icon: {menu.icon}
-                              </span>
+                              <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                                  {menu.module_name}
+                                </span>
+                                <span>•</span>
+                                <span className="font-mono">{menu.icon}</span>
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -907,6 +1333,16 @@ export default function KelolaNavigasiMenuPage() {
                             {menu.target_roles && menu.target_roles.length > 3 && (
                               <span className="text-[10px] text-slate-400 font-bold">
                                 +{menu.target_roles.length - 3}
+                              </span>
+                            )}
+                            {Array.isArray(menu.required_permissions) && menu.required_permissions.length > 0 && (
+                              <span
+                                className="rounded bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 px-1.5 py-0.5 text-[10px] font-mono"
+                                title={menu.required_permissions.join(', ')}
+                              >
+                                {menu.required_permissions.length === 1
+                                  ? menu.required_permissions[0]
+                                  : `${menu.required_permissions.length} perm`}
                               </span>
                             )}
                           </div>
@@ -1190,32 +1626,100 @@ export default function KelolaNavigasiMenuPage() {
                         placeholder="Contoh: /dashboard/master/siswa atau Jadwal"
                         className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-800 outline-none transition focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 font-mono"
                       />
+                      {(webRoutes.length > 0 || mobileScreens.length > 0) && (
+                        <div className="mt-1.5 space-y-1">
+                          <HeroUiFilterSelect
+                            value={String(formData.path || '')}
+                            onChange={(val) => {
+                              if (!val) return
+                              const matchedMobile = mobileScreens.find(
+                                (s) => String(s.route || s.path || s.value || s) === String(val)
+                              )
+                              setFormData((prev) => ({
+                                ...prev,
+                                path: val,
+                                metadata: matchedMobile?.tab
+                                  ? { ...prev.metadata, tab: matchedMobile.tab }
+                                  : prev.metadata,
+                              }))
+                            }}
+                            options={[
+                              ...(formData.platform !== 'mobile'
+                                ? webRoutes.map((r) => {
+                                    const pathVal = String(r.path || r.value || r)
+                                    return {
+                                      value: pathVal,
+                                      label: `[Web] ${r.label || pathVal}`,
+                                      subtext: pathVal,
+                                    }
+                                  })
+                                : []),
+                              ...(formData.platform !== 'web'
+                                ? mobileScreens.map((s) => {
+                                    const routeVal = String(s.route || s.path || s.value || s)
+                                    return {
+                                      value: routeVal,
+                                      label: `[Mobile] ${s.label || routeVal}`,
+                                      subtext: s.tab ? `${routeVal} (tab: ${s.tab})` : routeVal,
+                                    }
+                                  })
+                                : []),
+                            ]}
+                            placeholder="Pilih cepat dari daftar rute/screen..."
+                            icon={LinkIcon}
+                            searchable={true}
+                            className="w-full"
+                            ariaLabel="Pilih Cepat Rute atau Layar"
+                          />
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
-                        Preset Warna Mobile:
-                      </label>
-                      <div className="flex items-center gap-1.5 pt-1.5 overflow-x-auto no-scrollbar">
-                        {COLOR_PRESETS.map((p) => (
-                          <button
-                            key={p.label}
-                            type="button"
-                            onClick={() =>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
+                          Preset Warna Mobile:
+                        </label>
+                        <div className="flex items-center gap-1.5 pt-1 overflow-x-auto no-scrollbar">
+                          {COLOR_PRESETS.map((p) => (
+                            <button
+                              key={p.label}
+                              type="button"
+                              onClick={() =>
+                                setFormData({
+                                  ...formData,
+                                  metadata: { ...formData.metadata, color: p.color, bg: p.bg },
+                                })
+                              }
+                              style={{ backgroundColor: p.color }}
+                              className={`h-7 w-7 rounded-full shrink-0 transition ${
+                                formData.metadata?.color === p.color
+                                  ? 'ring-2 ring-emerald-600 ring-offset-2'
+                                  : ''
+                              }`}
+                              title={p.label}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      {formData.platform !== 'web' && (
+                        <div>
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
+                            Parameter Tab Mobile (Opsional):
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.metadata?.tab || ''}
+                            onChange={(e) =>
                               setFormData({
                                 ...formData,
-                                metadata: { ...formData.metadata, color: p.color, bg: p.bg },
+                                metadata: { ...formData.metadata, tab: e.target.value },
                               })
                             }
-                            style={{ backgroundColor: p.color }}
-                            className={`h-7 w-7 rounded-full shrink-0 transition ${
-                              formData.metadata?.color === p.color
-                                ? 'ring-2 ring-emerald-600 ring-offset-2'
-                                : ''
-                            }`}
-                            title={p.label}
+                            placeholder="Contoh: jadwal / pengumuman"
+                            className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-800 outline-none transition focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 font-mono"
                           />
-                        ))}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1258,6 +1762,109 @@ export default function KelolaNavigasiMenuPage() {
                           </label>
                         )
                       })}
+                    </div>
+                  </div>
+
+                  {/* Required Permissions (Web RBAC) */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3.5 dark:border-slate-800 dark:bg-slate-900/40 space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <Shield className="h-4 w-4 text-amber-600" />
+                        Hak Akses / Permission Dibutuhkan (Opsional)
+                      </span>
+                      {formData.required_permissions.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, required_permissions: [] })}
+                          className="text-[11px] font-bold text-rose-600 hover:underline"
+                        >
+                          Kosongkan ({formData.required_permissions.length} dipilih)
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Jika dipilih, pengguna non-Super Admin wajib memiliki minimal satu permission berikut untuk melihat menu ini.
+                    </p>
+                    {formData.required_permissions.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {formData.required_permissions.map((perm) => (
+                          <span
+                            key={perm}
+                            className="inline-flex items-center gap-1 rounded-lg bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 px-2 py-0.5 text-[10px] font-mono font-bold"
+                          >
+                            {perm}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFormData({
+                                  ...formData,
+                                  required_permissions: formData.required_permissions.filter(
+                                    (p) => p !== perm
+                                  ),
+                                })
+                              }
+                              className="hover:text-rose-600"
+                              aria-label={`Hapus permission ${perm}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                      <input
+                        type="text"
+                        value={permissionSearchQuery}
+                        onChange={(e) => setPermissionSearchQuery(e.target.value)}
+                        placeholder="Cari permission (contoh: view_students, manage_attendance)..."
+                        className="h-8 w-full rounded-xl border border-slate-200 bg-white pl-8 pr-3 text-[11px] text-slate-800 outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      />
+                    </div>
+                    <div className="max-h-32 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5 pr-1">
+                      {filteredPermissions.length === 0 ? (
+                        <span className="col-span-full text-[11px] text-slate-400 py-2 text-center">
+                          Tidak ada permission yang cocok.
+                        </span>
+                      ) : (
+                        filteredPermissions.slice(0, 60).map((perm) => {
+                          const permName = String(perm)
+                          const isChecked = formData.required_permissions.includes(permName)
+                          return (
+                            <label
+                              key={permName}
+                              className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-[11px] font-mono cursor-pointer transition ${
+                                isChecked
+                                  ? 'border-amber-300 bg-amber-50/70 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200'
+                                  : 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setFormData({
+                                      ...formData,
+                                      required_permissions: [...formData.required_permissions, permName],
+                                    })
+                                  } else {
+                                    setFormData({
+                                      ...formData,
+                                      required_permissions: formData.required_permissions.filter(
+                                        (p) => p !== permName
+                                      ),
+                                    })
+                                  }
+                                }}
+                                className="h-3.5 w-3.5 accent-amber-600 rounded"
+                              />
+                              <span className="truncate">{permName}</span>
+                            </label>
+                          )
+                        })
+                      )}
                     </div>
                   </div>
 
@@ -1458,9 +2065,9 @@ export default function KelolaNavigasiMenuPage() {
               {/* Top Accent Gradient */}
               <div
                 className={`h-1.5 w-full bg-gradient-to-r ${
-                  iconPickerModal === 'web'
-                    ? 'from-emerald-500 via-teal-400 to-emerald-600'
-                    : 'from-violet-500 via-purple-400 to-violet-600'
+                  iconPickerModal === 'mobile'
+                    ? 'from-violet-500 via-purple-400 to-violet-600'
+                    : 'from-emerald-500 via-teal-400 to-emerald-600'
                 }`}
               />
 
@@ -1469,18 +2076,18 @@ export default function KelolaNavigasiMenuPage() {
                 <div className="flex items-center gap-3">
                   <div
                     className={`flex h-11 w-11 items-center justify-center rounded-2xl shadow-md ${
-                      iconPickerModal === 'web'
-                        ? 'bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-emerald-500/20'
-                        : 'bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-violet-500/20'
+                      iconPickerModal === 'mobile'
+                        ? 'bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-violet-500/20'
+                        : 'bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-emerald-500/20'
                     }`}
                   >
                     <Palette className="h-5 w-5" />
                   </div>
                   <div>
                     <h3 className="text-base font-black text-slate-900 dark:text-white">
-                      {iconPickerModal === 'web'
-                        ? 'Pilih Gambar Ikon Web (Lucide)'
-                        : 'Pilih Gambar Ikon Mobile (Material)'}
+                      {iconPickerModal === 'mobile'
+                        ? 'Pilih Gambar Ikon Mobile (Material)'
+                        : 'Pilih Gambar Ikon Web / Modul (Lucide)'}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       Klik langsung pada gambar ikon di bawah ini untuk memilihnya.
@@ -1504,9 +2111,9 @@ export default function KelolaNavigasiMenuPage() {
                   <input
                     type="text"
                     placeholder={
-                      iconPickerModal === 'web'
-                        ? 'Cari nama ikon Lucide (misal: book, calendar, user, settings)...'
-                        : 'Cari nama ikon Mobile (misal: dashboard, account, clock, cbt)...'
+                      iconPickerModal === 'mobile'
+                        ? 'Cari nama ikon Mobile (misal: dashboard, account, clock, cbt)...'
+                        : 'Cari nama ikon Lucide (misal: book, calendar, user, settings)...'
                     }
                     value={iconSearchQuery}
                     onChange={(e) => setIconSearchQuery(e.target.value)}
@@ -1525,15 +2132,15 @@ export default function KelolaNavigasiMenuPage() {
                 </div>
 
                 <span className="shrink-0 rounded-xl bg-slate-200/70 px-2.5 py-2 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  {iconPickerModal === 'web'
-                    ? `${filteredLucideIcons.length} Ikon`
-                    : `${filteredMaterialIcons.length} Ikon`}
+                  {iconPickerModal === 'mobile'
+                    ? `${filteredMaterialIcons.length.toLocaleString('id-ID')} Ikon${!mdiReady ? ' (Memuat SVG...)' : ''}`
+                    : `${filteredLucideIcons.length.toLocaleString('id-ID')} Ikon`}
                 </span>
               </div>
 
               {/* Scrollable Grid of Visual Icons */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 max-h-[50vh]">
-                {(iconPickerModal === 'web' ? filteredLucideIcons : filteredMaterialIcons).length === 0 ? (
+                {(iconPickerModal === 'mobile' ? filteredMaterialIcons : filteredLucideIcons).length === 0 ? (
                   <div className="flex flex-col items-center justify-center p-12 text-center text-slate-400">
                     <Search className="h-8 w-8 text-slate-300 mb-2" />
                     <p className="text-xs font-bold">Tidak ada ikon yang sesuai pencarian</p>
@@ -1542,16 +2149,23 @@ export default function KelolaNavigasiMenuPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {iconPickerModal === 'web'
-                      ? filteredLucideIcons.map((ic) => {
-                          const isSelected = formData.icon === ic
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                      {iconPickerModal !== 'mobile'
+                        ? filteredLucideIcons.slice(0, visibleIconLimit).map((ic) => {
+                          const activeVal =
+                            iconPickerModal === 'module' ? moduleFormData.icon : formData.icon
+                          const isSelected = activeVal === ic
                           return (
                             <button
                               key={ic}
                               type="button"
                               onClick={() => {
-                                setFormData((prev) => ({ ...prev, icon: ic }))
+                                if (iconPickerModal === 'module') {
+                                  setModuleFormData((prev) => ({ ...prev, icon: ic }))
+                                } else {
+                                  setFormData((prev) => ({ ...prev, icon: ic }))
+                                }
                                 setIconPickerModal(null)
                               }}
                               className={`group relative flex flex-col items-center justify-center gap-2 rounded-2xl border p-3.5 transition-all text-center cursor-pointer ${
@@ -1583,7 +2197,7 @@ export default function KelolaNavigasiMenuPage() {
                             </button>
                           )
                         })
-                      : filteredMaterialIcons.map((item) => {
+                        : filteredMaterialIcons.slice(0, visibleIconLimit).map((item) => {
                           const isSelected = formData.icon_mobile === item.id
                           return (
                             <button
@@ -1628,7 +2242,35 @@ export default function KelolaNavigasiMenuPage() {
                             </button>
                           )
                         })}
-                  </div>
+                    </div>
+
+                    {((iconPickerModal === 'mobile' ? filteredMaterialIcons.length : filteredLucideIcons.length) > visibleIconLimit) && (
+                      <div className="mt-4 flex flex-col items-center gap-1.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setVisibleIconLimit((prev) => prev + ICON_PICKER_PAGE_SIZE)}
+                          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:border-emerald-400 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                          Muat Lebih Banyak (+{ICON_PICKER_PAGE_SIZE} dari{' '}
+                          {(
+                            (iconPickerModal === 'mobile'
+                              ? filteredMaterialIcons.length
+                              : filteredLucideIcons.length) - visibleIconLimit
+                          ).toLocaleString('id-ID')}{' '}
+                          ikon tersisa)
+                        </Button>
+                        <span className="text-[11px] text-slate-400">
+                          Menampilkan {visibleIconLimit.toLocaleString('id-ID')} dari{' '}
+                          {(iconPickerModal === 'mobile'
+                            ? filteredMaterialIcons.length
+                            : filteredLucideIcons.length
+                          ).toLocaleString('id-ID')}{' '}
+                          ikon (gunakan kolom pencarian untuk hasil instan)
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -1637,7 +2279,11 @@ export default function KelolaNavigasiMenuPage() {
                 <span className="text-xs text-slate-500">
                   Ikon aktif:{' '}
                   <strong className="text-slate-800 dark:text-white font-mono">
-                    {iconPickerModal === 'web' ? formData.icon : formData.icon_mobile}
+                    {iconPickerModal === 'mobile'
+                      ? formData.icon_mobile
+                      : iconPickerModal === 'module'
+                      ? moduleFormData.icon
+                      : formData.icon}
                   </strong>
                 </span>
                 <Button
@@ -1647,6 +2293,214 @@ export default function KelolaNavigasiMenuPage() {
                 >
                   Tutup
                 </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 6. Modal Tambah / Ubah Modul Induk */}
+      <AnimatePresence>
+        {isModuleModalOpen && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+            >
+              <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+              <div className="p-5 sm:p-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-md">
+                      <Layers className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                        {editingModule ? 'Ubah Modul Induk' : 'Tambah Modul Induk Baru'}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Modul digunakan untuk mengelompokkan item menu sidebar dan mobile.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsModuleModalOpen(false)}
+                    className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmitModuleForm} className="mt-4 space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
+                      Nama Modul:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={moduleFormData.name}
+                      onChange={(e) => setModuleFormData({ ...moduleFormData, name: e.target.value })}
+                      placeholder="Contoh: Akademik & Kurikulum"
+                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-800 outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+
+                  {!editingModule && (
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1">
+                        ID Modul (Slug Unik):
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={moduleFormData.id}
+                        onChange={(e) =>
+                          setModuleFormData({
+                            ...moduleFormData,
+                            id: e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, '-'),
+                          })
+                        }
+                        placeholder="contoh: akademik-kurikulum"
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-mono text-slate-800 outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1.5">
+                      Platform Modul:
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'both', label: 'Keduanya' },
+                        { id: 'web', label: 'Web Saja' },
+                        { id: 'mobile', label: 'Mobile Saja' },
+                      ].map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setModuleFormData({ ...moduleFormData, platform: p.id })}
+                          className={`rounded-xl border p-2 text-xs font-bold transition ${
+                            moduleFormData.platform === p.id
+                              ? 'border-emerald-600 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                              : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => {
+                      setIconSearchQuery('')
+                      setIconPickerModal('module')
+                    }}
+                    className="flex items-center gap-3 rounded-xl border border-emerald-200/80 bg-white p-2.5 cursor-pointer hover:border-emerald-500 transition dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400">
+                      {renderLucideIcon(moduleFormData.icon || 'Layers', 'h-5 w-5')}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-[10px] font-bold uppercase text-emerald-600">
+                        Ikon Modul (Lucide)
+                      </span>
+                      <div className="truncate text-xs font-black text-slate-900 dark:text-white font-mono">
+                        {moduleFormData.icon || 'Layers'}
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-semibold text-emerald-700 underline">
+                      Pilih Ikon
+                    </span>
+                  </div>
+
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={moduleFormData.is_active}
+                      onChange={(e) =>
+                        setModuleFormData({ ...moduleFormData, is_active: e.target.checked })
+                      }
+                      className="h-4 w-4 accent-emerald-600 rounded"
+                    />
+                    Modul Aktif (Tampilkan menu di dalamnya)
+                  </label>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setIsModuleModalOpen(false)}
+                      className="rounded-xl"
+                    >
+                      Batal
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      pending={saveModuleMutation.isPending}
+                      className="rounded-xl"
+                    >
+                      <Save className="h-4 w-4 mr-1.5" /> Simpan Modul
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 7. Modal Konfirmasi Hapus Modul */}
+      <AnimatePresence>
+        {deleteModuleTarget && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.94 }}
+              className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+            >
+              <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+              <div className="p-6">
+                <div className="flex items-center gap-3.5 mb-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30">
+                    <Trash2 className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <span className="inline-block rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                      Hapus Modul Induk
+                    </span>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                      Hapus "{deleteModuleTarget.name}"?
+                    </h3>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+                  Modul ini memiliki {(deleteModuleTarget.menus || []).length} menu di dalamnya. Menghapus modul juga akan menghapus seluruh menu di dalam modul tersebut.
+                </p>
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setDeleteModuleTarget(null)}
+                    className="rounded-xl"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    variant="danger"
+                    pending={deleteModuleMutation.isPending}
+                    onClick={() => deleteModuleMutation.mutate(deleteModuleTarget.id)}
+                    className="rounded-xl"
+                  >
+                    Ya, Hapus Modul
+                  </Button>
+                </div>
               </div>
             </motion.div>
           </div>

@@ -326,7 +326,7 @@ function OfficialRaporSheet({ digitalData }) {
  * Print & Download PDF Helper Function
  * Creates a clean, dedicated iframe to trigger A4 print dialog.
  */
-export function printRaporDocument(digitalData) {
+function printRaporDocument(digitalData) {
   if (!digitalData) return
 
   const school = digitalData.school_info || {}

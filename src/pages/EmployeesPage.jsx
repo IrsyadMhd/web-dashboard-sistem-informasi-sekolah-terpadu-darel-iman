@@ -125,7 +125,7 @@ function getEmployeePhotoUrl(emp) {
   return resolveAvatarUrl(emp) || ''
 }
 
-export function getEmployeeFullName(emp) {
+function getEmployeeFullName(emp) {
   if (!emp) return '-'
   const gDepan = emp.gelar_depan && String(emp.gelar_depan).trim() !== '-' ? String(emp.gelar_depan).trim() : ''
   const gBelakang = emp.gelar_belakang && String(emp.gelar_belakang).trim() !== '-' ? String(emp.gelar_belakang).trim() : ''

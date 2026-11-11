@@ -32,6 +32,12 @@ export const DEFAULT_MOBILE_API_CONFIG = {
     logo_login_url: null,
     logo_footer_url: null,
     splash_background_color: '#004B3A',
+    contact: {
+      phone: '',
+      email: '',
+      website: '',
+      service_hours: "Senin – Jum'at: 07.30 – 16.00 WIB",
+    },
   },
   navigation: {
     style: 'bottom_tabs',
@@ -55,13 +61,17 @@ export const DEFAULT_MOBILE_API_CONFIG = {
   },
   role_home_layouts: Object.fromEntries(
     Object.entries({
-      super_admin: ['announcements', 'quick_menu', 'metrics', 'schedule'],
-      foundation: ['metrics', 'announcements', 'schedule', 'quick_menu'],
-      principal: ['metrics', 'schedule', 'announcements', 'quick_menu'],
-      teacher: ['schedule', 'quick_menu', 'metrics', 'announcements'],
-      parent: ['announcements', 'quick_menu', 'schedule', 'metrics'],
-      student: ['schedule', 'quick_menu', 'announcements', 'metrics'],
-      staff: ['quick_menu', 'metrics', 'announcements', 'schedule'],
+      super_admin: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      foundation: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      principal: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      divisi: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      tu: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      teacher: ['metrics', 'schedule', 'quick_menu', 'announcements'],
+      musyrif: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      parent: ['quick_menu', 'metrics', 'schedule', 'announcements'],
+      student: ['quick_menu', 'metrics', 'schedule', 'announcements'],
+      staff: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      alumni: ['quick_menu', 'metrics', 'schedule', 'announcements'],
     }).map(([role, sections]) => [
       role,
       {
@@ -92,35 +102,70 @@ export const DEFAULT_MOBILE_API_CONFIG = {
     enabled: true,
     slides: [
       {
+        id: 1,
         title: 'Sistem Sekolah Terpadu',
         desc: 'Akses informasi akademik, jadwal pembelajaran, dan pengumuman sekolah dalam satu genggaman.',
+        description: 'Akses informasi akademik, jadwal pembelajaran, dan pengumuman sekolah dalam satu genggaman.',
         image_url: null,
       },
       {
+        id: 2,
         title: "Mutaba'ah & Tahfizh Mandiri",
         desc: "Pantau amalan yaumiyyah, hafalan Al-Qur'an, dan capaian adab ananda secara transparan.",
+        description: "Pantau amalan yaumiyyah, hafalan Al-Qur'an, dan capaian adab ananda secara transparan.",
         image_url: null,
       },
       {
+        id: 3,
         title: 'Presensi & Layanan Digital',
         desc: 'Notifikasi kehadiran kelas & gerbang otomatis terhubung langsung ke gawai orang tua.',
+        description: 'Notifikasi kehadiran kelas & gerbang otomatis terhubung langsung ke gawai orang tua.',
         image_url: null,
       },
     ],
   },
 }
 
+const normalizeOnboardingSlides = (slides) => {
+  const source = Array.isArray(slides) && slides.length > 0
+    ? slides
+    : DEFAULT_MOBILE_API_CONFIG.onboarding.slides
+
+  return source.map((slide, idx) => {
+    const text = slide?.description || slide?.desc || ''
+    return {
+      ...slide,
+      id: slide?.id ?? idx + 1,
+      title: slide?.title || '',
+      desc: text,
+      description: text,
+      image_url: slide?.image_url || null,
+    }
+  })
+}
+
 const mergeConfig = (value = {}) => ({
   ...DEFAULT_MOBILE_API_CONFIG,
   ...value,
   theme: { ...DEFAULT_MOBILE_API_CONFIG.theme, ...(value.theme || {}) },
-  branding: { ...DEFAULT_MOBILE_API_CONFIG.branding, ...(value.branding || {}) },
+  branding: {
+    ...DEFAULT_MOBILE_API_CONFIG.branding,
+    ...(value.branding || {}),
+    contact: {
+      ...DEFAULT_MOBILE_API_CONFIG.branding.contact,
+      ...(value.branding?.contact || {}),
+    },
+  },
   navigation: { ...DEFAULT_MOBILE_API_CONFIG.navigation, ...(value.navigation || {}) },
   home_layout: { ...DEFAULT_MOBILE_API_CONFIG.home_layout, ...(value.home_layout || {}) },
   role_home_layouts: { ...DEFAULT_MOBILE_API_CONFIG.role_home_layouts, ...(value.role_home_layouts || {}) },
   features: { ...DEFAULT_MOBILE_API_CONFIG.features, ...(value.features || {}) },
   system: { ...DEFAULT_MOBILE_API_CONFIG.system, ...(value.system || {}) },
-  onboarding: { ...DEFAULT_MOBILE_API_CONFIG.onboarding, ...(value.onboarding || {}) },
+  onboarding: {
+    ...DEFAULT_MOBILE_API_CONFIG.onboarding,
+    ...(value.onboarding || {}),
+    slides: normalizeOnboardingSlides(value.onboarding?.slides),
+  },
 })
 
 export const mobileApiConfigService = {
@@ -143,7 +188,10 @@ export const mobileApiConfigService = {
       role_home_layouts: config.role_home_layouts,
       features: config.features,
       system: config.system,
-      onboarding: config.onboarding,
+      onboarding: {
+        ...config.onboarding,
+        slides: normalizeOnboardingSlides(config.onboarding?.slides),
+      },
     }
     return mergeConfig((await api.put('/admin/mobile-config', payload)).data?.data)
   },
