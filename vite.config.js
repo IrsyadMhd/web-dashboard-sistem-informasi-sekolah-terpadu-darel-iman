@@ -87,6 +87,11 @@ export default defineConfig({
             return 'vendor-form'
           }
 
+          // 5b. Lazy-loaded Material Icons untuk Halaman Kelola Navigasi Mobile
+          if (id.includes('@iconify-json/mdi')) {
+            return undefined
+          }
+
           return 'vendor-misc'
         },
       },

@@ -32,6 +32,12 @@ export const DEFAULT_MOBILE_API_CONFIG = {
     logo_login_url: null,
     logo_footer_url: null,
     splash_background_color: '#004B3A',
+    contact: {
+      phone: '',
+      email: '',
+      website: '',
+      service_hours: "Senin – Jum'at: 07.30 – 16.00 WIB",
+    },
   },
   navigation: {
     style: 'bottom_tabs',
@@ -55,13 +61,17 @@ export const DEFAULT_MOBILE_API_CONFIG = {
   },
   role_home_layouts: Object.fromEntries(
     Object.entries({
-      super_admin: ['announcements', 'quick_menu', 'metrics', 'schedule'],
-      foundation: ['metrics', 'announcements', 'schedule', 'quick_menu'],
-      principal: ['metrics', 'schedule', 'announcements', 'quick_menu'],
-      teacher: ['schedule', 'quick_menu', 'metrics', 'announcements'],
-      parent: ['announcements', 'quick_menu', 'schedule', 'metrics'],
-      student: ['schedule', 'quick_menu', 'announcements', 'metrics'],
-      staff: ['quick_menu', 'metrics', 'announcements', 'schedule'],
+      super_admin: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      foundation: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      principal: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      divisi: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      tu: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      teacher: ['metrics', 'schedule', 'quick_menu', 'announcements'],
+      musyrif: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      parent: ['quick_menu', 'metrics', 'schedule', 'announcements'],
+      student: ['quick_menu', 'metrics', 'schedule', 'announcements'],
+      staff: ['metrics', 'quick_menu', 'schedule', 'announcements'],
+      alumni: ['quick_menu', 'metrics', 'schedule', 'announcements'],
     }).map(([role, sections]) => [
       role,
       {
@@ -138,7 +148,14 @@ const mergeConfig = (value = {}) => ({
   ...DEFAULT_MOBILE_API_CONFIG,
   ...value,
   theme: { ...DEFAULT_MOBILE_API_CONFIG.theme, ...(value.theme || {}) },
-  branding: { ...DEFAULT_MOBILE_API_CONFIG.branding, ...(value.branding || {}) },
+  branding: {
+    ...DEFAULT_MOBILE_API_CONFIG.branding,
+    ...(value.branding || {}),
+    contact: {
+      ...DEFAULT_MOBILE_API_CONFIG.branding.contact,
+      ...(value.branding?.contact || {}),
+    },
+  },
   navigation: { ...DEFAULT_MOBILE_API_CONFIG.navigation, ...(value.navigation || {}) },
   home_layout: { ...DEFAULT_MOBILE_API_CONFIG.home_layout, ...(value.home_layout || {}) },
   role_home_layouts: { ...DEFAULT_MOBILE_API_CONFIG.role_home_layouts, ...(value.role_home_layouts || {}) },

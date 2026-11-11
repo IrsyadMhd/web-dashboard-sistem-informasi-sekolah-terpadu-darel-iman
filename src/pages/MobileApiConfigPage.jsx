@@ -32,6 +32,7 @@ import {
   Menu,
   Check,
   ChevronDown,
+  Phone,
   Search,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -65,10 +66,14 @@ const roleLabels = {
   super_admin: 'Super Admin',
   foundation: 'Pengurus Yayasan',
   principal: 'Kepala Sekolah',
+  divisi: 'Divisi Pendidikan',
+  tu: 'Tata Usaha (TU)',
   teacher: 'Guru / Pengajar',
+  musyrif: 'Musyrif Asrama',
   parent: 'Orang Tua',
   student: 'Siswa',
   staff: 'Staf / Operator',
+  alumni: 'Alumni',
 }
 
 const gradientAngles = {
@@ -519,6 +524,18 @@ export default function MobileApiConfigPage() {
       branding: { ...current.branding, [key]: value },
     }))
 
+  const updateBrandingContact = (key, value) =>
+    setConfig((current) => ({
+      ...current,
+      branding: {
+        ...current.branding,
+        contact: {
+          ...(current.branding?.contact || {}),
+          [key]: value,
+        },
+      },
+    }))
+
   const updateFeature = (key, value) =>
     setConfig((current) => ({
       ...current,
@@ -558,18 +575,25 @@ export default function MobileApiConfigPage() {
     })
 
   const updateSection = (type, value) =>
-    setConfig((current) => ({
-      ...current,
-      role_home_layouts: {
-        ...current.role_home_layouts,
-        [selectedRole]: {
-          ...current.role_home_layouts[selectedRole],
-          sections: current.role_home_layouts[selectedRole].sections.map((item) =>
-            item.type === type ? { ...item, ...value } : item
-          ),
+    setConfig((current) => {
+      const baseLayout =
+        current.role_home_layouts?.[selectedRole] ||
+        DEFAULT_MOBILE_API_CONFIG.role_home_layouts?.[selectedRole] ||
+        current.home_layout
+      return {
+        ...current,
+        role_home_layouts: {
+          ...current.role_home_layouts,
+          [selectedRole]: {
+            ...baseLayout,
+            customized: true,
+            sections: (baseLayout?.sections || []).map((item) =>
+              item.type === type ? { ...item, ...value } : item
+            ),
+          },
         },
-      },
-    }))
+      }
+    })
 
   const moveSection = (type, direction) => {
     const index = sortedSections.findIndex((item) => item.type === type)
@@ -577,16 +601,23 @@ export default function MobileApiConfigPage() {
     if (index < 0 || target < 0 || target >= sortedSections.length) return
     const next = [...sortedSections]
     ;[next[index], next[target]] = [next[target], next[index]]
-    setConfig((current) => ({
-      ...current,
-      role_home_layouts: {
-        ...current.role_home_layouts,
-        [selectedRole]: {
-          ...current.role_home_layouts[selectedRole],
-          sections: next.map((item, order) => ({ ...item, order: order + 1 })),
+    setConfig((current) => {
+      const baseLayout =
+        current.role_home_layouts?.[selectedRole] ||
+        DEFAULT_MOBILE_API_CONFIG.role_home_layouts?.[selectedRole] ||
+        current.home_layout
+      return {
+        ...current,
+        role_home_layouts: {
+          ...current.role_home_layouts,
+          [selectedRole]: {
+            ...baseLayout,
+            customized: true,
+            sections: next.map((item, order) => ({ ...item, order: order + 1 })),
+          },
         },
-      },
-    }))
+      }
+    })
   }
 
   const save = async () => {
@@ -768,6 +799,56 @@ export default function MobileApiConfigPage() {
                         value={config.branding?.school_name || ''}
                         onChange={(e) => updateBranding('school_name', e.target.value)}
                         placeholder="Contoh: Yayasan Dar el-Iman Padang"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="rounded-[18px] border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-700 dark:bg-slate-800/60">
+                  <h2 className="flex items-center gap-2 text-base font-black text-slate-900 dark:text-white">
+                    <Phone className="h-5 w-5 text-emerald-600" />
+                    Kontak Layanan & Pusat Bantuan Mobile
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Ditampilkan pada menu Pusat Bantuan & Customer Care (Orang Tua/Siswa) serta popup layanan TU. Biarkan kosong untuk memakai data otomatis dari Pengaturan Situs.
+                  </p>
+
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                      Nomor WhatsApp / Telepon Call Center
+                      <input
+                        className={inputClass}
+                        value={config.branding?.contact?.phone || ''}
+                        onChange={(e) => updateBrandingContact('phone', e.target.value)}
+                        placeholder="Contoh: 08116661141 atau 62811..."
+                      />
+                    </label>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                      Email Helpdesk Resmi
+                      <input
+                        type="email"
+                        className={inputClass}
+                        value={config.branding?.contact?.email || ''}
+                        onChange={(e) => updateBrandingContact('email', e.target.value)}
+                        placeholder="Contoh: bantuan@sekolah.sch.id"
+                      />
+                    </label>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                      Jam Operasional Layanan
+                      <input
+                        className={inputClass}
+                        value={config.branding?.contact?.service_hours || ''}
+                        onChange={(e) => updateBrandingContact('service_hours', e.target.value)}
+                        placeholder="Contoh: Senin – Jum'at: 07.30 – 16.00 WIB"
+                      />
+                    </label>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                      Website Resmi Instansi
+                      <input
+                        className={inputClass}
+                        value={config.branding?.contact?.website || ''}
+                        onChange={(e) => updateBrandingContact('website', e.target.value)}
+                        placeholder="Contoh: https://dareliman.sch.id"
                       />
                     </label>
                   </div>

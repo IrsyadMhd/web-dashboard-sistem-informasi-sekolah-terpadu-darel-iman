@@ -755,11 +755,26 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
   const normalizePath = (to) => (to || '').split('?')[0].replace(/\/+$/, '') || '/'
 
   const dynamicSidebarMenu = useMemo(() => {
-    // 1. Sidebar Khusus Role Orang Tua / Wali Murid: Seluruh tab portal dipetakan ke modul terstruktur
-    if (isPureParent) {
-      const currentChild = new URLSearchParams(location.search).get('child')
-      const childSuffix = currentChild ? `&child=${currentChild}` : ''
-      const pUrl = (tab) => `/portal-orangtua?tab=${tab}${childSuffix}`
+    const dbModules = Array.isArray(navData?.modules) ? navData.modules : []
+    const currentChild = isPureParent
+      ? new URLSearchParams(location.search).get('child')
+      : null
+    const childSuffix = currentChild ? `child=${encodeURIComponent(currentChild)}` : ''
+    const hasDbPortalOrtu = dbModules.some(
+      (m) =>
+        String(m.id || '').startsWith('portal-ortu') ||
+        (m.items || []).some((it) => String(it.path || '').startsWith('/portal-orangtua'))
+    )
+    const hasDbPortalSiswa = dbModules.some(
+      (m) =>
+        String(m.id || '').startsWith('portal-siswa') ||
+        (m.items || []).some((it) => String(it.path || '').startsWith('/portal-siswa'))
+    )
+
+    // 1. Fallback Sidebar Role Orang Tua apabila modul portal-ortu belum tersedia di DB
+    if (isPureParent && !hasDbPortalOrtu) {
+      const fallbackSuffix = currentChild ? `&child=${currentChild}` : ''
+      const pUrl = (tab) => `/portal-orangtua?tab=${tab}${fallbackSuffix}`
 
       return [
         {
@@ -817,8 +832,8 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
       ]
     }
 
-    // 2. Sidebar Khusus Role Siswa: Seluruh tab portal siswa dipetakan ke modul terstruktur
-    if (isPureStudent) {
+    // 2. Fallback Sidebar Role Siswa apabila modul portal-siswa belum tersedia di DB
+    if (isPureStudent && !hasDbPortalSiswa) {
       return [
         {
           key: 'portal-utama',
@@ -874,14 +889,22 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
       ]
     }
 
-    if (!navData?.modules || !Array.isArray(navData.modules) || navData.modules.length === 0) {
+    if (dbModules.length === 0) {
       return []
     }
 
     const seenPaths = new Set()
     const result = []
 
-    for (const mod of navData.modules) {
+    const resolveDynamicItemPath = (rawPath) => {
+      if (!rawPath) return ''
+      if (isPureParent && childSuffix && rawPath.startsWith('/portal-orangtua') && !rawPath.includes('child=')) {
+        return `${rawPath}${rawPath.includes('?') ? '&' : '?'}${childSuffix}`
+      }
+      return rawPath
+    }
+
+    for (const mod of dbModules) {
       if (isKepalaSekolah && mod.id === 'pengaturan') {
         continue
       }
@@ -894,13 +917,14 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
         return !shouldHideSubmenu(mod, itemObj)
       })
 
-      // 2. Deduplikasi rute yang duplikat
+      // 2. Deduplikasi rute (mempertahankan query string agar tab ?tab=... tidak bertabrakan)
       const uniqueItems = []
       for (const sub of filteredItems) {
-        const norm = normalizePath(sub.path)
-        if (norm && !seenPaths.has(norm)) {
-          seenPaths.add(norm)
-          uniqueItems.push(sub)
+        const resolvedPath = resolveDynamicItemPath(sub.path)
+        const dedupKey = resolvedPath.trim().replace(/\/+$/, '') || '/'
+        if (dedupKey && !seenPaths.has(dedupKey)) {
+          seenPaths.add(dedupKey)
+          uniqueItems.push({ ...sub, resolvedPath })
         }
       }
 
@@ -914,7 +938,7 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
           key: mod.id,
           label: first.name || mod.name,
           icon: resolveSidebarIcon(first.icon) || ModIcon,
-          to: first.path,
+          to: first.resolvedPath,
         })
       } else {
         result.push({
@@ -922,10 +946,10 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
           label: mod.name.toUpperCase(),
           icon: ModIcon,
           submenus: uniqueItems.map((sub) => ({
-            to: sub.path,
+            to: sub.resolvedPath,
             label: sub.id === 'mutabaah-tahfizh' ? setoranTahfizhMenuLabel : sub.name,
             icon: resolveSidebarIcon(sub.icon),
-            action: sub.path?.includes('/kalender') ? 'calendar' : undefined,
+            action: sub.resolvedPath?.includes('/kalender') ? 'calendar' : undefined,
           })),
         })
       }
