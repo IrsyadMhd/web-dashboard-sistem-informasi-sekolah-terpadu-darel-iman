@@ -105,6 +105,7 @@ import {
   DialogTitle,
 } from '../components/ui/dialog'
 import { handleApiExport, downloadFileFromApi } from '../utils/exportUtils'
+import { parseSpreadsheetFile } from '../utils/spreadsheetParser'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import {
   MasterActionButton,
@@ -928,27 +929,40 @@ export default function StudentsPage() {
     if (!file) return
     setImportFile(file)
     try {
-      const text = await file.text()
-      const lines = text.split('\n').filter(l => l.trim())
-      if (lines.length > 1) {
-        const previewRows = lines.slice(1, 6).map(line => {
-          const cols = line.split(',').map(c => c.replace(/^"|"$/g, '').trim())
-          return {
-            nis: cols[4] || cols[0] || '23010',
-            nisn: cols[5] || cols[1] || '0098123456',
-            nama: cols[6] || cols[2] || 'Siswa Import',
-            gender: cols[9] || cols[3] || 'L',
-            unit: cols[40] || cols[10] || 'SDIT 2 Dar el-Iman',
-            kelas: cols[41] || cols[11] || '1A',
-            namaAyah: cols[42] || cols[12] || 'Bapak Siswa',
-            hpAyah: cols[46] || cols[13] || '08123456789',
-            status: 'Siap Impor',
+      const pickField = (normalizedRow, candidates) => {
+        for (const key of candidates) {
+          const val = normalizedRow[key]
+          if (val !== undefined && val !== null && String(val).trim() !== '') {
+            return String(val).trim()
           }
-        })
-        setImportPreviewData(previewRows)
+        }
+        return '-'
       }
+
+      const rows = await parseSpreadsheetFile(file)
+      const previewRows = rows.slice(0, 5).map((rawRow) => {
+        const normalized = {}
+        Object.entries(rawRow).forEach(([k, v]) => {
+          const normKey = String(k).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+          normalized[normKey] = v
+        })
+
+        return {
+          nis: pickField(normalized, ['nis', 'nis_siswa', 'no_induk']),
+          nisn: pickField(normalized, ['nisn']),
+          nama: pickField(normalized, ['nama_lengkap', 'full_name', 'nama_siswa', 'nama']),
+          gender: pickField(normalized, ['jenis_kelamin', 'gender', 'jk', 'l_p']),
+          unit: pickField(normalized, ['unit_pendidikan', 'unit', 'nama_unit', 'unit_sekolah']),
+          kelas: pickField(normalized, ['kelas', 'rombel', 'nama_kelas', 'kelas_saat_ini']),
+          namaAyah: pickField(normalized, ['nama_ayah', 'orang_tua', 'nama_orang_tua', 'nama_wali', 'nama_ibu']),
+          hpAyah: pickField(normalized, ['no_hp', 'hp_ayah', 'nomor_wa_ayah', 'no_wa', 'telepon', 'hp_ibu', 'hp_wali']),
+          status: 'Siap Impor',
+        }
+      })
+      setImportPreviewData(previewRows)
     } catch (err) {
-      console.error('Failed to preview CSV file:', err)
+      console.error('Failed to preview import file:', err)
+      setImportPreviewData([])
     }
   }
 

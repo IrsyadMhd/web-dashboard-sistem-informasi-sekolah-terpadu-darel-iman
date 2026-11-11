@@ -23,7 +23,6 @@ import { Link, useLocation } from 'react-router-dom'
 import { Breadcrumbs } from '../ui/breadcrumbs'
 import {
   Button as HeroButton,
-  Tooltip as HeroTooltip,
 } from '@heroui/react'
 import {
   AppBadge,
@@ -306,14 +305,15 @@ export function SquircleActionButton({
   const isDisabled = disabled || loading
   const effectiveLabel = label || props.title || defaultSquircleLabels[variant] || 'Aksi'
 
+  const pressHandler = onPress || onClick
   const buttonNode = (
     <HeroButton
       isIconOnly
-      onPress={onPress || onClick}
-      onClick={onClick}
+      onPress={pressHandler}
       isDisabled={isDisabled}
       aria-label={effectiveLabel}
       aria-busy={loading || undefined}
+      title={effectiveLabel}
       className={`
         flex size-10 items-center justify-center rounded-2xl
         ${config.classes}
@@ -332,14 +332,15 @@ export function SquircleActionButton({
   )
 
   return (
-    <HeroTooltip>
-      <HeroTooltip.Trigger>
-        {buttonNode}
-      </HeroTooltip.Trigger>
-      <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+    <span className="group/tooltip relative inline-flex">
+      {buttonNode}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute -top-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white opacity-0 shadow-xl transition-opacity duration-150 group-hover/tooltip:opacity-100 group-focus-within/tooltip:opacity-100 dark:bg-slate-100 dark:text-slate-900"
+      >
         {effectiveLabel}
-      </HeroTooltip.Content>
-    </HeroTooltip>
+      </span>
+    </span>
   )
 }
 

@@ -82,6 +82,17 @@ export const isPnsOccupation = (occ) => {
   return str.includes('pegawai negeri') || str.includes('pns') || str.includes('asn')
 }
 
+const normalizeGender = (value) => {
+  const g = String(value || '').trim().toLowerCase()
+  if (g === 'female' || g === 'p' || g === 'perempuan' || g === 'akhwat') return 'female'
+  return 'male'
+}
+
+const normalizeStudentDate = (value) => {
+  if (!value || value === '-') return ''
+  return String(value).slice(0, 10)
+}
+
 export const OCCUPATION_OPTIONS_AYAH = [
   'Pegawai Negeri',
   'Pegawai Swasta',
@@ -333,9 +344,15 @@ export default function StudentFormModal({
       setActiveStep(0)
       setModalError(null)
       if (initialData) {
-        const meta = initialData.raw?.metadata || {}
+        const raw = initialData.raw || {}
+        const meta = raw.metadata || initialData.metadata || {}
         const orangTua = meta.orang_tua || {}
-        const parentRel = initialData.raw?.parent || {}
+        const parentRel = raw.parent || {}
+        const resolvedStatusRaw =
+          meta.akademik?.status_siswa ||
+          meta.status_siswa ||
+          (raw.is_active !== undefined ? (raw.is_active ? 'aktif' : 'nonaktif') : initialData.status)
+        const normalizedStatus = String(resolvedStatusRaw || 'aktif').trim().toLowerCase()
 
         setFormData({
           id: initialData.id,
@@ -344,12 +361,12 @@ export default function StudentFormModal({
           nik: meta.nik || '',
           no_registrasi_akta_lahir: meta.no_registrasi_akta_lahir || '',
           no_kk: meta.no_kk || '',
-          nis: initialData.nis || meta.nis || '',
-          nisn: initialData.nisn || meta.nisn || '',
-          full_name: initialData.nama || meta.full_name || '',
-          birth_date: initialData.birth_date || meta.birth_date || '',
-          birth_place: initialData.birth_place || meta.birth_place || '',
-          gender: initialData.gender || meta.gender || 'male',
+          nis: raw.nis || initialData.nis || meta.nis || '',
+          nisn: raw.nisn || (initialData.nisn !== '-' ? initialData.nisn : '') || meta.nisn || '',
+          full_name: raw.full_name || initialData.nama || meta.full_name || '',
+          birth_date: normalizeStudentDate(raw.birth_date || initialData.birth_date || initialData.tanggalLahir || meta.birth_date),
+          birth_place: raw.birth_place || (initialData.birth_place && initialData.birth_place !== '-' ? initialData.birth_place : '') || (initialData.tempatLahir && initialData.tempatLahir !== '-' ? initialData.tempatLahir : '') || meta.birth_place || '',
+          gender: normalizeGender(raw.gender || meta.gender || initialData.gender),
           agama: meta.agama || 'Islam',
           email: meta.email || '',
           anak_ke: meta.anak_ke || '',
@@ -443,18 +460,18 @@ export default function StudentFormModal({
           nomor_wa_wali: meta.nomor_wa_wali || '',
           medsos_wali: meta.medsos_wali || '',
 
-          unit_id: initialData.unit_id || meta.unit_id || '',
-          unit_pendidikan: initialData.unit || meta.unit_pendidikan || '',
+          unit_id: raw.unit_id || raw.education_unit_id || initialData.unit_id || initialData.unitId || meta.unit_id || '',
+          unit_pendidikan: raw.education_unit?.name || initialData.unit || meta.unit_pendidikan || '',
           jenis_pendaftaran: meta.jenis_pendaftaran || (meta.unit_asal_id ? 'pindahan_internal' : (meta.sekolah_asal ? 'pindahan_eksternal' : 'baru')),
           unit_asal_id: meta.unit_asal_id || '',
           no_va: meta.no_va || meta.nis_pembayaran || '',
           va_bsi_bank: meta.va_bsi_bank || meta.bank_name || '',
           nis_pembayaran: meta.nis_pembayaran || meta.no_va || '',
           tahun_ajaran_masuk: meta.tahun_ajaran_masuk || '',
-          kelas_id: initialData.kelas_id || meta.kelas_id || '',
+          kelas_id: raw.kelas_id || raw.class_id || initialData.kelas_id || initialData.kelasId || meta.kelas_id || '',
           keterangan_kelas: meta.keterangan_kelas || '',
           tahun_ajaran_berjalan: meta.tahun_ajaran_berjalan || '',
-          status_siswa: initialData.status || meta.status_siswa || 'aktif',
+          status_siswa: normalizedStatus,
           status_orang_tua: meta.status_orang_tua || 'Umum',
           niy_ortu_jika_pegawai: meta.niy_ortu_jika_pegawai || '',
           wali_kelas: meta.wali_kelas || '',
