@@ -1555,11 +1555,10 @@ export default function MobileApiConfigPage() {
 
                 {/* 3 Slides Management Cards */}
                 <div className="space-y-4">
-                  {(config.onboarding?.slides || [
-                    { id: 1, title: 'Sistem Sekolah Terpadu', description: 'Akses seluruh informasi akademik, jadwal pelajaran, dan kegiatan harian siswa dalam satu aplikasi terintegrasi.', image_url: null },
-                    { id: 2, title: "Mutaba'ah & Tahfizh Mandiri", description: "Pantau setoran hafalan Al-Qur'an dan amalan yaumiyyah ananda secara berkala dan real-time bersama ustadz/ustadzah.", image_url: null },
-                    { id: 3, title: 'Presensi & Layanan Digital', description: 'Dapatkan notifikasi kedatangan gerbang sekolah, perizinan asrama, dan komunikasi cepat dengan pihak sekolah.', image_url: null },
-                  ]).map((slide, idx) => {
+                  {(config.onboarding?.slides?.length
+                    ? config.onboarding.slides
+                    : DEFAULT_MOBILE_API_CONFIG.onboarding.slides
+                  ).map((slide, idx) => {
                     const mediaType = `onboarding_${idx + 1}`
                     const isUploading = uploadingAsset === mediaType
                     const fallbackImages = [
