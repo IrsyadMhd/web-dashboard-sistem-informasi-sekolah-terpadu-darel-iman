@@ -175,23 +175,6 @@ export const academicCalendarService = {
       // Ignore write errors
     }
 
-    // Kirim juga ke API backend jika endpoint tersedia
-    try {
-      await api.post('/portal/school-information', {
-        title: payload.title,
-        type: 'calendar',
-        category: payload.category,
-        custom_category: payload.customCategoryLabel,
-        color: payload.color,
-        education_unit: payload.unit,
-        start_date: payload.startDate,
-        end_date: payload.endDate,
-        notes: payload.notes
-      })
-    } catch {
-      // Abaikan jika backend belum siap
-    }
-
     return academicCalendarService.getEvents()
   },
 

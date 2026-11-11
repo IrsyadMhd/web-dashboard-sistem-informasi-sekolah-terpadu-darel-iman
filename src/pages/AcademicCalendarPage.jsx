@@ -696,23 +696,29 @@ export default function AcademicCalendarPage() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <span className="text-xs font-black leading-snug">{ev.title}</span>
-                          {canManage && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                onClick={() => handleOpenEdit(ev)}
-                                className="p-1 rounded text-slate-500 hover:text-emerald-700 hover:bg-white/60 dark:hover:bg-slate-800"
-                                title="Edit Agenda"
-                              >
-                                <Edit2 className="h-3 w-3" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteEvent(ev)}
-                                className="p-1 rounded text-slate-500 hover:text-rose-600 hover:bg-white/60 dark:hover:bg-slate-800"
-                                title="Hapus Agenda"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
+                          {!String(ev.id).startsWith('evt-') ? (
+                            <span className="shrink-0 rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
+                              Sistem
+                            </span>
+                          ) : (
+                            canManage && (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => handleOpenEdit(ev)}
+                                  className="p-1 rounded text-slate-500 hover:text-emerald-700 hover:bg-white/60 dark:hover:bg-slate-800"
+                                  title="Edit Agenda"
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteEvent(ev)}
+                                  className="p-1 rounded text-slate-500 hover:text-rose-600 hover:bg-white/60 dark:hover:bg-slate-800"
+                                  title="Hapus Agenda"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                            )
                           )}
                         </div>
 

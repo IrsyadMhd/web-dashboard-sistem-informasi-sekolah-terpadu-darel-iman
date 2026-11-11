@@ -299,13 +299,20 @@ export const isGlobalAccessManager = (roles = []) => {
 }
 
 /**
- * Unit Access Manager — kelola data unit sendiri saja.
- * Termasuk: Operator / TU (3), Kepala Sekolah & Divisi (4)
+ * Unit Access Manager — kelola hak akses/role unit secara dinamis berbasis permission.
  */
-export const isUnitAccessManager = (roles = []) => {
-  const lvl = getUserRoleLevel(roles)
-  if (lvl === 3 || lvl === 4) return true
-  return hasAnyRole(roles, [...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH, ...ROLES.TATA_USAHA])
+export const isUnitAccessManager = (userOrRoles = []) => {
+  if (userOrRoles && !Array.isArray(userOrRoles) && typeof userOrRoles === 'object') {
+    const permissions = Array.isArray(userOrRoles.permissions) ? userOrRoles.permissions : []
+    if (permissions.some((p) => ['employee.role_access.manage', 'sistem.hak_akses', 'permission.manage', 'role.manage'].includes(p))) {
+      return true
+    }
+    const roles = userOrRoles.roles || (userOrRoles.role ? [userOrRoles.role] : [])
+    return hasAnyRole(roles, [...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH])
+  }
+  const lvl = getUserRoleLevel(userOrRoles)
+  if (lvl === 4) return true
+  return hasAnyRole(userOrRoles, [...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
