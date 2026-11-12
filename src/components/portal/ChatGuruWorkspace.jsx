@@ -43,6 +43,8 @@ import { webRealtimeWs } from '../../services/websocketService'
 import { familyPortalService } from '../../services/familyPortalService'
 import Swal from '@/components/ui/compat/swal-heroui'
 import { educationUnitService } from '../../services/educationUnitService'
+import { useAuthStore } from '../../stores/authStore'
+import { getUserRoleLevel, ROLE_LEVELS } from '../../auth/portalResolver'
 
 const CATEGORIES = [
   'Akademik',
@@ -525,11 +527,25 @@ export default function ChatGuruWorkspace({
     )
   }
 
+  const authUser = useAuthStore((state) => state.user)
+  const canReadFoundationUnits = useMemo(() => {
+    const level = getUserRoleLevel(authUser)
+    const perms = Array.isArray(authUser?.permissions) ? authUser.permissions : []
+    return (
+      level <= ROLE_LEVELS.DIVISI_PENDIDIKAN ||
+      perms.some((p) =>
+        ['foundation.dashboard.view', 'dashboard.kepala-sekolah.view', 'dashboard.divisi-pendidikan.view'].includes(p)
+      )
+    )
+  }, [authUser])
+
   // Fetch unit pendidikan directly from PostgreSQL database
   useEffect(() => {
     const fetchUnits = async () => {
       try {
-        const res = await api.get('/foundation/units').catch(() => educationUnitService.getAll())
+        const res = canReadFoundationUnits
+          ? await api.get('/foundation/units').catch(() => educationUnitService.getAll())
+          : await educationUnitService.getAll()
         const raw = res?.data?.data || res?.data || res || []
         const list = Array.isArray(raw) ? raw : (Array.isArray(raw.data) ? raw.data : [])
         setDbUnits(list)
@@ -538,7 +554,7 @@ export default function ChatGuruWorkspace({
       }
     }
     fetchUnits()
-  }, [])
+  }, [canReadFoundationUnits])
 
   const availableUnits = useMemo(() => {
     const map = new Map()
@@ -1347,10 +1363,16 @@ export default function ChatGuruWorkspace({
                 </p>
                 <p className="mt-1 text-[11px]">
                   {tab === 'directory'
-                    ? 'Kontak pegawai yang dapat Anda hubungi akan tampil di sini.'
+                    ? (mode === 'teacher'
+                      ? 'Daftar orang tua/wali murid yang dapat Anda hubungi akan tampil di sini.'
+                      : 'Kontak pegawai yang dapat Anda hubungi akan tampil di sini.')
                     : tab === 'unread'
-                    ? 'Semua pesan dari pegawai telah Anda baca.'
-                    : 'Pilih pegawai dari daftar kontak untuk memulai percakapan.'}
+                    ? (mode === 'teacher'
+                      ? 'Semua pesan dari orang tua/wali telah Anda baca.'
+                      : 'Semua pesan dari pegawai telah Anda baca.')
+                    : (mode === 'teacher'
+                      ? 'Pilih orang tua/wali murid dari daftar kontak untuk memulai percakapan.'
+                      : 'Pilih pegawai dari daftar kontak untuk memulai percakapan.')}
                 </p>
                 {tab === 'percakapan' && directoryContacts.length > 0 && (
                   <button
@@ -1359,7 +1381,9 @@ export default function ChatGuruWorkspace({
                     className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-md hover:bg-emerald-700 transition cursor-pointer"
                   >
                     <Users className="h-3.5 w-3.5" />
-                    Lihat Daftar Pegawai ({directoryContacts.length})
+                    {mode === 'teacher'
+                      ? `Lihat Daftar Wali Murid (${directoryContacts.length})`
+                      : `Lihat Daftar Pegawai (${directoryContacts.length})`}
                   </button>
                 )}
               </div>
@@ -1740,7 +1764,7 @@ export default function ChatGuruWorkspace({
                   type="text"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                  placeholder="Contoh: Rapat Divisi Pendidikan"
+                  placeholder={mode === 'teacher' ? 'Contoh: Informasi Kelas & Wali Santri' : 'Contoh: Rapat Divisi Pendidikan'}
                   className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>

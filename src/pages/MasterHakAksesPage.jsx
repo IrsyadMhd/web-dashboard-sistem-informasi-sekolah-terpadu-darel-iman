@@ -338,12 +338,15 @@ export default function MasterHakAksesPage() {
   const userRoles = useMemo(() => user?.roles || (user?.role ? [user.role] : []), [user])
 
   const userLevel = getUserRoleLevel(user)
+  const userPermissions = useMemo(() => (Array.isArray(user?.permissions) ? user.permissions : []), [user])
   const isFoundation = isFoundationUser(user)
   const isSuperAdmin = userLevel === ROLE_LEVELS.SUPER_ADMIN // Level 1
-  const canViewGlobalAccess = isFoundation || userLevel <= ROLE_LEVELS.YAYASAN // Yayasan & Admin boleh lihat tab roles & permissions
-  const canManageGlobalAccess = !isFoundation && userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem Murni (Bukan Yayasan)
-  const canManageUnitAccess = !isFoundation && (userLevel === ROLE_LEVELS.OPERATOR || userLevel === ROLE_LEVELS.KEPALA_SEKOLAH) // Level 3-4: Operator, Kepsek & Divisi
-  const canManageAccess = !isFoundation && userLevel <= ROLE_LEVELS.KEPALA_SEKOLAH // Level 1 s/d 4 (Bukan Yayasan)
+  const hasGlobalAccessPerm = userPermissions.some((p) => ['sistem.hak_akses', 'permission.manage', 'role.manage'].includes(p))
+  const hasUnitAccessPerm = userPermissions.includes('employee.role_access.manage')
+  const canViewGlobalAccess = isFoundation || userLevel <= ROLE_LEVELS.YAYASAN || hasGlobalAccessPerm // Yayasan & Admin boleh lihat tab roles & permissions
+  const canManageGlobalAccess = !isFoundation && (isSuperAdmin || hasGlobalAccessPerm)
+  const canManageUnitAccess = !isFoundation && !canManageGlobalAccess && hasUnitAccessPerm
+  const canManageAccess = canManageGlobalAccess || canManageUnitAccess
 
   const [activeTab, setActiveTab] = useState(canViewGlobalAccess ? 'roles' : 'pegawai')
   const [roleCategoryFilter, setRoleCategoryFilter] = useState('semua')

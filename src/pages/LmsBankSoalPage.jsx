@@ -129,9 +129,8 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald
       onClick={onClick}
       role={isClickable ? 'button' : undefined}
       tabIndex={isClickable ? 0 : undefined}
-      className={`group relative overflow-hidden rounded-[18px] border-2 p-4 sm:p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${
-        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
-      } ${t.card} ${active ? '!ring-2 !ring-emerald-500 !border-emerald-500 shadow-md shadow-emerald-500/20' : ''}`}
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-4 sm:p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+        } ${t.card} ${active ? '!ring-2 !ring-emerald-500 !border-emerald-500 shadow-md shadow-emerald-500/20' : ''}`}
     >
       <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
       <div className="flex items-center justify-between mb-3">
@@ -174,7 +173,7 @@ function useNotifications() {
   const push = (title, message, tone = 'success') => {
     toast(title, message, tone)
   }
-  const dismiss = () => {}
+  const dismiss = () => { }
   return { items: [], push, dismiss }
 }
 
@@ -241,13 +240,12 @@ function HeroUiModalSelect({
             setSearch('')
           }
         }}
-        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
-          disabled
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${disabled
             ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
             : isOpen
-            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
-            : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
-        }`}
+              ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+              : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+          }`}
       >
         <div className="flex items-center gap-2 truncate">
           {IconComponent && (
@@ -260,9 +258,8 @@ function HeroUiModalSelect({
           )}
         </div>
         <ChevronDown
-          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+            }`}
         />
       </button>
 
@@ -311,11 +308,10 @@ function HeroUiModalSelect({
                         onChange(opt.value)
                         setIsOpen(false)
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${isSelected
                           ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
                           : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
-                      }`}
+                        }`}
                     >
                       <div className="truncate pr-2">
                         <div>{opt.label}</div>
@@ -393,13 +389,12 @@ function HeroUiFilterSelect({
           setIsOpen((prev) => !prev)
           setSearch('')
         }}
-        className={`h-10 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-bold transition-all duration-200 cursor-pointer shadow-2xs ${
-          isOpen
+        className={`h-10 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-bold transition-all duration-200 cursor-pointer shadow-2xs ${isOpen
             ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-[#111827] dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
             : value !== '' && value !== undefined && value !== null
-            ? 'border-emerald-500/80 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50 text-emerald-950 dark:border-emerald-600/80 dark:bg-gradient-to-r dark:from-emerald-950/60 dark:via-teal-950/40 dark:to-emerald-950/60 dark:text-emerald-200 font-extrabold shadow-emerald-500/10'
-            : 'border-slate-200/90 bg-white text-slate-700 hover:border-emerald-400 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200 dark:hover:border-emerald-600'
-        }`}
+              ? 'border-emerald-500/80 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50 text-emerald-950 dark:border-emerald-600/80 dark:bg-gradient-to-r dark:from-emerald-950/60 dark:via-teal-950/40 dark:to-emerald-950/60 dark:text-emerald-200 font-extrabold shadow-emerald-500/10'
+              : 'border-slate-200/90 bg-white text-slate-700 hover:border-emerald-400 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200 dark:hover:border-emerald-600'
+          }`}
       >
         <div className="flex items-center gap-1.5 truncate">
           {IconComponent && (
@@ -410,9 +405,8 @@ function HeroUiFilterSelect({
           </span>
         </div>
         <ChevronDown
-          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+            }`}
         />
       </button>
 
@@ -457,11 +451,10 @@ function HeroUiFilterSelect({
                         onChange(opt.value)
                         setIsOpen(false)
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${isSelected
                           ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
                           : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
-                      }`}
+                        }`}
                     >
                       <span className="truncate pr-2">{opt.label}</span>
                       {isSelected && (
@@ -625,11 +618,10 @@ function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }
             onDragOver={handleDrag}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`cursor-pointer rounded-2xl border-2 border-dashed p-7 text-center transition-all ${
-              dragActive
+            className={`cursor-pointer rounded-2xl border-2 border-dashed p-7 text-center transition-all ${dragActive
                 ? 'border-emerald-500 bg-emerald-50/60 dark:border-emerald-400 dark:bg-emerald-950/30'
                 : 'border-emerald-300/80 bg-slate-50/50 hover:bg-emerald-50/30 dark:border-emerald-800/70 dark:bg-slate-900/40'
-            }`}
+              }`}
           >
             <input
               ref={fileInputRef}
@@ -718,28 +710,25 @@ function HarmonizedSaveModal({ isOpen, onClose, onConfirm, isEdit, title, isSubm
         className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
       >
         <div
-          className={`h-1.5 w-full bg-gradient-to-r ${
-            isEdit ? 'from-amber-400 via-amber-500 to-orange-600' : 'from-emerald-500 via-teal-400 to-emerald-600'
-          }`}
+          className={`h-1.5 w-full bg-gradient-to-r ${isEdit ? 'from-amber-400 via-amber-500 to-orange-600' : 'from-emerald-500 via-teal-400 to-emerald-600'
+            }`}
         />
         <div className="p-6">
           <div className="flex items-center gap-3.5 mb-4">
             <div
-              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-md ${
-                isEdit
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-md ${isEdit
                   ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30'
                   : 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30'
-              }`}
+                }`}
             >
               {isEdit ? <Edit3 className="h-6 w-6" /> : <BookOpen className="h-6 w-6" />}
             </div>
             <div>
               <span
-                className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${
-                  isEdit
+                className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${isEdit
                     ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
                     : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                }`}
+                  }`}
               >
                 {isEdit ? 'Perbarui Soal' : 'Butir Soal Baru'}
               </span>
@@ -770,11 +759,10 @@ function HarmonizedSaveModal({ isOpen, onClose, onConfirm, isEdit, title, isSubm
               type="button"
               onClick={onConfirm}
               disabled={isSubmitting}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-bold text-white shadow-md transition-all ${
-                isEdit
+              className={`inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-bold text-white shadow-md transition-all ${isEdit
                   ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 shadow-amber-600/30 hover:brightness-105'
                   : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 shadow-emerald-600/30 hover:brightness-105'
-              } disabled:opacity-50`}
+                } disabled:opacity-50`}
             >
               {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}
               <span>{isSubmitting ? 'Menyimpan...' : isEdit ? 'Ya, Simpan Perubahan' : 'Ya, Tambahkan Soal'}</span>
@@ -857,17 +845,15 @@ function HarmonizedBatchExportModal({
                   key={value}
                   type="button"
                   onClick={() => setExportFormat(value)}
-                  className={`rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer ${
-                    exportFormat === value
+                  className={`rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer ${exportFormat === value
                       ? 'border-emerald-500 bg-emerald-50/70 shadow-sm dark:border-emerald-700 dark:bg-emerald-950/40'
                       : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/40'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2 mb-1.5">
                     <Icon
-                      className={`size-4 ${
-                        exportFormat === value ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'
-                      }`}
+                      className={`size-4 ${exportFormat === value ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'
+                        }`}
                     />
                     <span className="text-xs font-black text-slate-900 dark:text-white">{label}</span>
                   </div>
@@ -1758,10 +1744,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
           item.tipe_soal === 'pg'
             ? 'Pilihan Ganda'
             : item.tipe_soal === 'esai'
-            ? 'Esai / Uraian'
-            : item.tipe_soal === 'benar_salah'
-            ? 'Benar / Salah'
-            : 'Menjodohkan',
+              ? 'Esai / Uraian'
+              : item.tipe_soal === 'benar_salah'
+                ? 'Benar / Salah'
+                : 'Menjodohkan',
         'Tingkat Kesulitan': (item.tingkat_kesulitan || 'sedang').toUpperCase(),
         'Bobot Poin': item.poin || 2.5,
         'Status': item.status ? 'Aktif' : 'Nonaktif',
@@ -1968,11 +1954,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   <button
                     type="button"
                     onClick={() => setViewLayout('grouped')}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      viewLayout === 'grouped'
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewLayout === 'grouped'
                         ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300'
-                    }`}
+                      }`}
                     title="Tampilan Grup per Kisi-kisi & Mapel"
                   >
                     <Folder className="h-3.5 w-3.5" />
@@ -1981,11 +1966,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   <button
                     type="button"
                     onClick={() => setViewLayout('flat')}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      viewLayout === 'flat'
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewLayout === 'flat'
                         ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300'
-                    }`}
+                      }`}
                     title="Tampilan Tabel Rata Semua Soal"
                   >
                     <Table className="h-3.5 w-3.5" />
@@ -2110,16 +2094,16 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                     ...(((options.subjects || options.mata_pelajaran) && (options.subjects || options.mata_pelajaran).length > 0
                       ? (options.subjects || options.mata_pelajaran)
                       : Array.from(
-                          new Map(
-                            (options.kisi_kisi || [])
-                              .filter((k) => k.mata_pelajaran_id || k.mata_pelajaran)
-                              .map((k) => {
-                                const id = k.mata_pelajaran_id || k.mata_pelajaran?.id || (typeof k.mata_pelajaran === 'string' ? k.mata_pelajaran : k.id)
-                                const name = typeof k.mata_pelajaran === 'object' ? (k.mata_pelajaran.name || k.mata_pelajaran.nama) : (k.mata_pelajaran || k.judul_kisi)
-                                return [id, { id, name }]
-                              })
-                          ).values()
-                        )
+                        new Map(
+                          (options.kisi_kisi || [])
+                            .filter((k) => k.mata_pelajaran_id || k.mata_pelajaran)
+                            .map((k) => {
+                              const id = k.mata_pelajaran_id || k.mata_pelajaran?.id || (typeof k.mata_pelajaran === 'string' ? k.mata_pelajaran : k.id)
+                              const name = typeof k.mata_pelajaran === 'object' ? (k.mata_pelajaran.name || k.mata_pelajaran.nama) : (k.mata_pelajaran || k.judul_kisi)
+                              return [id, { id, name }]
+                            })
+                        ).values()
+                      )
                     ).map((m) => ({
                       value: m.id,
                       label: m.name || m.nama_mapel || m.nama || m.label,
@@ -2354,11 +2338,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                           <button
                             type="button"
                             onClick={() => handleToggleStatus(item)}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all shadow-2xs ${
-                              item.status
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all shadow-2xs ${item.status
                                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                                 : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                            }`}
+                              }`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                             {item.status ? 'Aktif' : 'Non-Aktif'}
@@ -2520,11 +2503,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                                 </div>
                                 <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                   <div
-                                    className={`h-full rounded-full transition-all ${
-                                      isComplete
+                                    className={`h-full rounded-full transition-all ${isComplete
                                         ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
                                         : 'bg-gradient-to-r from-amber-400 to-emerald-500'
-                                    }`}
+                                      }`}
                                     style={{ width: `${percent}%` }}
                                   />
                                 </div>
@@ -2656,11 +2638,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                                         <button
                                           type="button"
                                           onClick={() => handleToggleStatus(item)}
-                                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all shadow-2xs ${
-                                            item.status
+                                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all shadow-2xs ${item.status
                                               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                                               : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                          }`}
+                                            }`}
                                         >
                                           <span className={`w-1.5 h-1.5 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                                           {item.status ? 'Aktif' : 'Non-Aktif'}
@@ -2884,9 +2865,8 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                 <div className="flex flex-wrap gap-2">
                   {getTipeBadge(rowDetailItem.tipe_soal)}
                   {getKesulitanBadge(rowDetailItem.tingkat_kesulitan)}
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                    rowDetailItem.status ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
-                  }`}>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${rowDetailItem.status ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                    }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${rowDetailItem.status ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                     {rowDetailItem.status ? 'Aktif' : 'Non-Aktif'}
                   </span>
@@ -2977,7 +2957,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   </div>
                   <div>
                     <h2 className="text-base font-black text-slate-900 dark:text-white">
-                      {editingItem ? 'Edit Butir Soal' : 'Form Tambah &amp; Kelola Pertanyaan Bank Soal'}
+                      {editingItem ? 'Edit Butir Soal' : 'Form Tambah & Kelola Pertanyaan Bank Soal'}
                     </h2>
                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                       Pertanyaan yang disimpan otomatis terdaftar pada kisi-kisi dan dapat diedit langsung di bawah.
@@ -3099,11 +3079,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                           key={t.id}
                           type="button"
                           onClick={() => handleTypeChange(t.id)}
-                          className={`flex items-center gap-2 p-3 rounded-2xl border text-left text-xs font-bold transition-all ${
-                            isSelected
+                          className={`flex items-center gap-2 p-3 rounded-2xl border text-left text-xs font-bold transition-all ${isSelected
                               ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500'
                               : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
-                          }`}
+                            }`}
                         >
                           <IconComp className="w-4 h-4 shrink-0" />
                           <span>{t.label}</span>
@@ -3150,11 +3129,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                               className="w-4 h-4 text-[#0E5C44] focus:ring-[#0E5C44]"
                             />
                             <span
-                              className={`w-6 h-6 rounded-full font-black text-xs flex items-center justify-center ${
-                                isCorrect
+                              className={`w-6 h-6 rounded-full font-black text-xs flex items-center justify-center ${isCorrect
                                   ? 'bg-[#0E5C44] text-white'
                                   : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                              }`}
+                                }`}
                             >
                               {optKey.toUpperCase()}
                             </span>
@@ -3201,11 +3179,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                       {['Benar', 'Salah'].map((val) => (
                         <label
                           key={val}
-                          className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-2xl border cursor-pointer font-black text-xs transition-all ${
-                            formData.kunci_jawaban === val
+                          className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-2xl border cursor-pointer font-black text-xs transition-all ${formData.kunci_jawaban === val
                               ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
                               : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                          }`}
+                            }`}
                         >
                           <input
                             type="radio"
@@ -3425,11 +3402,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                     ) : (
                       <div className="flex items-center gap-2 flex-wrap">
                         {selectedKisiObj?.jumlah_soal > 0 && (
-                          <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
-                            modalSessionQuestions.length >= selectedKisiObj.jumlah_soal
+                          <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${modalSessionQuestions.length >= selectedKisiObj.jumlah_soal
                               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
                               : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
-                          }`}>
+                            }`}>
                             {modalSessionQuestions.length >= selectedKisiObj.jumlah_soal
                               ? 'Target Terpenuhi (100%)'
                               : `Sisa ${selectedKisiObj.jumlah_soal - modalSessionQuestions.length} Soal Lagi`}
@@ -3458,7 +3434,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                     </div>
                   ) : modalSessionQuestions.length === 0 ? (
                     <div className="p-6 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 text-xs font-medium">
-                      Belum ada butir soal yang tersimpan untuk kisi-kisi ini. Gunakan form di atas lalu tekan <strong>"+ Tambah Pertanyaan Ke Kisi-kisi"</strong>.
+                      Belum ada butir soal yang tersimpan untuk kisi-kisi ini. Gunakan form di atas lalu tekan <strong>"Simpan &amp; Selesai"</strong> atau <strong>"Simpan &amp; Tambah Soal Kedua (#2)"</strong>.
                     </div>
                   ) : (
                     <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
@@ -3477,9 +3453,8 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                           {modalSessionQuestions.map((q, idx) => (
                             <TableRow
                               key={q.id || idx}
-                              className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${
-                                editingModalQuestionId === q.id ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''
-                              }`}
+                              className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${editingModalQuestionId === q.id ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''
+                                }`}
                             >
                               <TableCell className="py-2.5 px-3 text-center font-bold text-slate-500">{idx + 1}</TableCell>
                               <TableCell className="py-2.5 px-3 max-w-xs">
@@ -3595,16 +3570,14 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                       return (
                         <div
                           key={optKey}
-                          className={`flex items-center gap-3 p-3 rounded-2xl border text-xs ${
-                            isKey
+                          className={`flex items-center gap-3 p-3 rounded-2xl border text-xs ${isKey
                               ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-bold'
                               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
-                          }`}
+                            }`}
                         >
                           <span
-                            className={`w-6 h-6 rounded-full font-black text-xs flex items-center justify-center ${
-                              isKey ? 'bg-[#0E5C44] text-white' : 'bg-slate-200 dark:bg-slate-700'
-                            }`}
+                            className={`w-6 h-6 rounded-full font-black text-xs flex items-center justify-center ${isKey ? 'bg-[#0E5C44] text-white' : 'bg-slate-200 dark:bg-slate-700'
+                              }`}
                           >
                             {optKey.toUpperCase()}
                           </span>

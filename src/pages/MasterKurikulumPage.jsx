@@ -191,15 +191,49 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
     return userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
   }, [user, userRoles, userLevel])
 
+  const userPermissions = useMemo(
+    () => (Array.isArray(user?.permissions) ? user.permissions : []),
+    [user]
+  )
+
+  const canCreate = useMemo(() => {
+    if (!user) return false
+    return (
+      userLevel <= ROLE_LEVELS.ADMIN ||
+      userPermissions.includes('academic.curriculum.create') ||
+      userPermissions.includes('sistem.master_data')
+    )
+  }, [user, userLevel, userPermissions])
+
+  const canUpdate = useMemo(() => {
+    if (!user) return false
+    return (
+      userLevel <= ROLE_LEVELS.ADMIN ||
+      userPermissions.includes('academic.curriculum.update') ||
+      userPermissions.includes('sistem.master_data')
+    )
+  }, [user, userLevel, userPermissions])
+
   const canDelete = useMemo(() => {
     if (!user) return false
-    const perms = Array.isArray(user?.permissions) ? user.permissions : []
     return (
-      userLevel <= ROLE_LEVELS.YAYASAN || // Level 1-2: Global Access
-      perms.includes('academic.curriculum.delete') ||
-      perms.includes('sistem.master_data')
+      userLevel <= ROLE_LEVELS.ADMIN ||
+      userPermissions.includes('academic.curriculum.delete') ||
+      userPermissions.includes('sistem.master_data')
     )
-  }, [user, userRoles, userLevel])
+  }, [user, userLevel, userPermissions])
+
+  const canExport = useMemo(() => {
+    if (!user) return false
+    return (
+      userLevel <= ROLE_LEVELS.ADMIN ||
+      userPermissions.includes('academic.curriculum.view') ||
+      userPermissions.includes('report.export') ||
+      userPermissions.includes('sistem.master_data')
+    )
+  }, [user, userLevel, userPermissions])
+
+  const canImport = canCreate || canUpdate
 
   // Fetch Education Units
   const { data: unitsData = [] } = useQuery({
@@ -580,7 +614,11 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
       setShowExportModal(false)
       pushToast('Export Berhasil', `Data kurikulum berhasil diekspor (.${exportFormat}).`, 'success')
     } catch (err) {
-      pushToast('Gagal Export', 'Terjadi kesalahan saat mengekspor data.', 'error')
+      pushToast(
+        'Gagal Export',
+        err?.response?.data?.message || err?.message || 'Terjadi kesalahan saat mengekspor data.',
+        'error'
+      )
     } finally {
       setIsExporting(false)
     }
@@ -591,73 +629,80 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
 
   const pageActions = (
     <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
-      {/* 1. Tombol Cetak & Export (Vivid Indigo Squircle + Floating Tooltip) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Cetak & Download Data Kurikulum"
-          aria-label="Cetak & Download Data Kurikulum"
-          onClick={() => setIsPrintModalOpen(true)}
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-        >
-          <Printer className="size-5 text-white" strokeWidth={2.2} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Cetak & Export
-        </div>
-      </div>
+      {canExport && (
+        <>
+          {/* 1. Tombol Cetak & Export (Vivid Indigo Squircle + Floating Tooltip) */}
+          <div className="group relative inline-flex">
+            <button
+              type="button"
+              title="Cetak & Download Data Kurikulum"
+              aria-label="Cetak & Download Data Kurikulum"
+              onClick={() => setIsPrintModalOpen(true)}
+              className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            >
+              <Printer className="size-5 text-white" strokeWidth={2.2} />
+            </button>
+            <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+              <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+              Cetak & Export
+            </div>
+          </div>
+        </>
+      )}
 
-      {/* 2. Import Button (Vivid Sky Blue Squircle + Floating Tooltip) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Import Data Kurikulum"
-          aria-label="Import Data Kurikulum"
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-          onClick={() => setIsImportModalOpen(true)}
-        >
-          <Upload className="size-5 text-white" strokeWidth={2.2} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Import Data
+      {canImport && (
+        <div className="group relative inline-flex">
+          <button
+            type="button"
+            title="Import Data Kurikulum"
+            aria-label="Import Data Kurikulum"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            onClick={() => setIsImportModalOpen(true)}
+          >
+            <Upload className="size-5 text-white" strokeWidth={2.2} />
+          </button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Import Data
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* 3. Export Button (Vivid Amber Squircle + Floating Tooltip) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Export Data Kurikulum"
-          aria-label="Export Data Kurikulum"
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-          onClick={() => setShowExportModal(true)}
-        >
-          <Download className="size-5 text-white" strokeWidth={2.2} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Export Data
+      {canExport && (
+        <div className="group relative inline-flex">
+          <button
+            type="button"
+            title="Export Data Kurikulum"
+            aria-label="Export Data Kurikulum"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            onClick={() => setShowExportModal(true)}
+          >
+            <Download className="size-5 text-white" strokeWidth={2.2} />
+          </button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Export Data
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* 4. Tambah Kurikulum Button (Vivid Emerald Squircle + Floating Tooltip) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Tambah Kurikulum Baru"
-          aria-label="Tambah Kurikulum Baru"
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-          onClick={handleOpenFormTambah}
-        >
-          <Plus className="size-5 text-white" strokeWidth={2.5} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Tambah Kurikulum
+      {canCreate && (
+        <div className="group relative inline-flex">
+          <button
+            type="button"
+            title="Tambah Kurikulum Baru"
+            aria-label="Tambah Kurikulum Baru"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            onClick={handleOpenFormTambah}
+          >
+            <Plus className="size-5 text-white" strokeWidth={2.5} />
+          </button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Tambah Kurikulum
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 
@@ -986,7 +1031,7 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
                 page={page}
                 perPage={perPage}
                 onDetail={handleOpenDetail}
-                onEdit={handleOpenFormEdit}
+                onEdit={canUpdate ? handleOpenFormEdit : undefined}
                 onDelete={canDelete ? handleConfirmDelete : undefined}
                 onRestore={canDelete ? handleConfirmRestore : undefined}
               />

@@ -1420,9 +1420,11 @@ const router = createBrowserRouter([
           {
             path: 'master-kurikulum',
             element: (
-              <BungkusLazy>
-                <MasterKurikulumPage />
-              </BungkusLazy>
+              <PermissionElement any={['academic.curriculum.view', 'master.view', 'sistem.master_data']}>
+                <BungkusLazy>
+                  <MasterKurikulumPage />
+                </BungkusLazy>
+              </PermissionElement>
             ),
           },
           {

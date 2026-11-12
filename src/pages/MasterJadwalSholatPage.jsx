@@ -38,6 +38,8 @@ import { useDebounce } from '../hooks/useDebounce'
 import { Pagination } from '../components/ui/pagination'
 import { printCleanTable, resolveFoundationName } from '../utils/printHelper'
 import { usePengaturanStore } from '../stores/pengaturanStore'
+import { useAuthStore } from '../stores/authStore'
+import { getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import {
   SquircleActionButton,
   MasterDataPage,
@@ -96,15 +98,14 @@ function HeroUiFilterSelect({
             setSearch('')
           }
         }}
-        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
-          disabled
+        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${disabled
             ? 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-800/60 cursor-not-allowed'
             : isOpen
-            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
-            : value !== '' && value !== undefined && value !== null && value !== 'all'
-            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
-            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
-        }`}
+              ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+              : value !== '' && value !== undefined && value !== null && value !== 'all'
+                ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+                : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+          }`}
       >
         <div className="flex items-center gap-1.5 truncate">
           {IconComponent && (
@@ -115,9 +116,8 @@ function HeroUiFilterSelect({
           </span>
         </div>
         <ChevronDown
-          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+            }`}
         />
       </button>
 
@@ -163,11 +163,10 @@ function HeroUiFilterSelect({
                         onChange(opt.value)
                         setIsOpen(false)
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${isSelected
                           ? 'bg-emerald-500/15 text-emerald-900 font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
                           : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
-                      }`}
+                        }`}
                     >
                       <span className="truncate">{opt.label}</span>
                       {isSelected && (
@@ -248,13 +247,12 @@ function HeroUiModalSelect({
             setSearch('')
           }
         }}
-        className={`w-full flex items-center justify-between rounded-xl border px-3 py-2 text-xs font-medium transition-all duration-200 text-left cursor-pointer ${
-          disabled
+        className={`w-full flex items-center justify-between rounded-xl border px-3 py-2 text-xs font-medium transition-all duration-200 text-left cursor-pointer ${disabled
             ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
             : isOpen
-            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-xs'
-            : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
-        }`}
+              ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-xs'
+              : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+          }`}
       >
         <div className="flex items-center gap-2 truncate">
           {IconComponent && (
@@ -267,9 +265,8 @@ function HeroUiModalSelect({
           )}
         </div>
         <ChevronDown
-          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+            }`}
         />
       </button>
 
@@ -316,11 +313,10 @@ function HeroUiModalSelect({
                         onChange(opt.value)
                         setIsOpen(false)
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${isSelected
                           ? 'bg-emerald-500/15 text-emerald-900 font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
                           : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
-                      }`}
+                        }`}
                     >
                       <span className="truncate">{opt.label}</span>
                       {isSelected && (
@@ -552,6 +548,14 @@ function HarmonizedSaveConfirmModal({ isOpen, onClose, onConfirm, payload, isSub
 }
 
 export default function MasterJadwalSholatPage() {
+  const user = useAuthStore((state) => state.user)
+  const canManageMaster = useMemo(() => {
+    if (!user) return false
+    const level = getUserRoleLevel(user)
+    const perms = Array.isArray(user?.permissions) ? user.permissions : []
+    return level <= ROLE_LEVELS.ADMIN || perms.includes('sistem.master_data')
+  }, [user])
+
   const pengaturan = usePengaturanStore((state) => state.pengaturan)
   const foundationName = resolveFoundationName(pengaturan)
   // State for Interactive Testing Form
@@ -927,33 +931,30 @@ export default function MasterJadwalSholatPage() {
               <button
                 type="button"
                 onClick={() => setActiveEndpoint('GET_PROVINSI')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeEndpoint === 'GET_PROVINSI'
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${activeEndpoint === 'GET_PROVINSI'
                     ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs font-bold'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 Data Provinsi
               </button>
               <button
                 type="button"
                 onClick={() => setActiveEndpoint('POST_KABKOTA')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeEndpoint === 'POST_KABKOTA'
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${activeEndpoint === 'POST_KABKOTA'
                     ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs font-bold'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 Data Kab/Kota
               </button>
               <button
                 type="button"
                 onClick={() => setActiveEndpoint('POST_SHALAT')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeEndpoint === 'POST_SHALAT'
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${activeEndpoint === 'POST_SHALAT'
                     ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs font-bold'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 Data Bulanan
               </button>
@@ -1041,16 +1042,18 @@ export default function MasterJadwalSholatPage() {
                     {loadingTest ? 'Memuat Data...' : 'Lihat Data API'}
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsConfirmSaveOpen(true)}
-                    disabled={savingDb}
-                    className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-md shadow-teal-600/25 transition-all flex items-center gap-2 disabled:opacity-50 text-xs cursor-pointer"
-                    title="Simpan Jadwal Sholat ke Database Master"
-                  >
-                    <Save className={`w-3.5 h-3.5 ${savingDb ? 'animate-spin' : ''}`} />
-                    {savingDb ? 'Menyimpan...' : 'Simpan DB'}
-                  </button>
+                  {canManageMaster && (
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmSaveOpen(true)}
+                      disabled={savingDb}
+                      className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-md shadow-teal-600/25 transition-all flex items-center gap-2 disabled:opacity-50 text-xs cursor-pointer"
+                      title="Simpan Jadwal Sholat ke Database Master"
+                    >
+                      <Save className={`w-3.5 h-3.5 ${savingDb ? 'animate-spin' : ''}`} />
+                      {savingDb ? 'Menyimpan...' : 'Simpan DB'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1144,7 +1147,8 @@ export default function MasterJadwalSholatPage() {
                         </table>
                         {apiResponse.data.jadwal.length > 10 && (
                           <p className="text-center py-2 text-[11px] text-slate-400 italic bg-slate-800/30">
-                            Menampilkan 10 dari {apiResponse.data.jadwal.length} hari... (Klik "Simpan DB" untuk memasukkan seluruh data ke Database Master)
+                            Menampilkan 10 dari {apiResponse.data.jadwal.length} hari...
+                            {canManageMaster ? ' (Klik "Simpan DB" untuk memasukkan seluruh data ke Database Master)' : ''}
                           </p>
                         )}
                       </div>
@@ -1284,25 +1288,27 @@ export default function MasterJadwalSholatPage() {
                   <th className="py-3.5 px-3 bg-transparent text-center text-indigo-800 dark:text-indigo-300">Ashar</th>
                   <th className="py-3.5 px-3 bg-transparent text-center text-orange-800 dark:text-orange-300">Maghrib</th>
                   <th className="py-3.5 px-3 bg-transparent text-center text-purple-800 dark:text-purple-300">Isya</th>
-                  <th className="py-3.5 px-4 bg-transparent text-center">Aksi</th>
+                  {canManageMaster && <th className="py-3.5 px-4 bg-transparent text-center">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                 {loadingMaster ? (
                   <tr>
-                    <td colSpan="13" className="py-14 text-center text-slate-400">
+                    <td colSpan={canManageMaster ? 13 : 12} className="py-14 text-center text-slate-400">
                       <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-2 text-emerald-600" />
                       <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Memuat data master sholat dari database...</p>
                     </td>
                   </tr>
                 ) : paginatedList.length === 0 ? (
                   <tr>
-                    <td colSpan="13" className="py-14 text-center text-slate-400">
+                    <td colSpan={canManageMaster ? 13 : 12} className="py-14 text-center text-slate-400">
                       <div className="flex flex-col items-center justify-center">
                         <Compass className="size-10 text-emerald-400/50 mb-2" />
                         <p className="font-bold text-slate-700 dark:text-slate-200 text-sm">Belum ada master data sholat tersimpan</p>
                         <p className="text-xs text-slate-500 max-w-sm mt-1">
-                          Gunakan panel "Testing Interaktif & Tarik Data API EQuran.id" di atas lalu klik "Simpan DB".
+                          {canManageMaster
+                            ? 'Gunakan panel "Testing Interaktif & Tarik Data API EQuran.id" di atas lalu klik "Simpan DB".'
+                            : 'Belum ada data jadwal sholat tersimpan di database master untuk filter yang dipilih.'}
                         </p>
                       </div>
                     </td>
@@ -1347,11 +1353,13 @@ export default function MasterJadwalSholatPage() {
                       <td className="py-3 px-3 text-center font-mono font-medium text-purple-600 dark:text-purple-400">
                         {row.isya}
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex justify-center">
-                          <ActionDropdown onDelete={() => handleDeleteMaster(row)} />
-                        </div>
-                      </td>
+                      {canManageMaster && (
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex justify-center">
+                            <ActionDropdown onDelete={() => handleDeleteMaster(row)} />
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

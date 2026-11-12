@@ -43,6 +43,7 @@ import AppBadge from '../components/app/AppBadge'
 import AppSkeleton from '../components/app/AppSkeleton'
 import AppEmptyState from '../components/app/AppEmptyState'
 import { SquircleActionButton, MasterActionButton, MasterActionIconButton } from '../components/master-data'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import AppTabs from '../components/app/AppTabs'
 import {
   TableRoot,
@@ -173,109 +174,6 @@ function GateKpiCard({ icon: Icon, title, value, subtext, tag, tone = 'emerald',
   )
 }
 
-function HeroUiFilterSelect({
-  value,
-  onChange,
-  options = [],
-  placeholder = 'Pilih...',
-  disabled = false,
-  searchable = false,
-  widthClass = 'min-w-[150px]',
-  icon: Icon = null,
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const containerRef = useRef(null)
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const selectedOption = options.find((opt) => String(opt.value) === String(value))
-  const filteredOptions = searchable || options.length > 5
-    ? options.filter((opt) => String(opt.label).toLowerCase().includes(search.toLowerCase()))
-    : options
-
-  return (
-    <div ref={containerRef} className={`relative ${widthClass}`}>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full flex items-center justify-between gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs transition-all hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer`}
-      >
-        <span className="flex items-center gap-2 truncate">
-          {Icon && <Icon className="size-3.5 text-slate-400 shrink-0" />}
-          <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
-        </span>
-        <ChevronDown
-          className={`size-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
-            isOpen ? 'rotate-180 text-emerald-600' : ''
-          }`}
-        />
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -4, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute left-0 top-full z-[80] mt-1.5 w-full min-w-[200px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40"
-          >
-            {(searchable || options.length > 5) && (
-              <div className="mb-1.5 px-1 pt-1">
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Cari..."
-                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  autoFocus
-                />
-              </div>
-            )}
-            <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
-              {filteredOptions.length === 0 ? (
-                <div className="py-2 text-center text-xs text-slate-400">Tidak ada pilihan</div>
-              ) : (
-                filteredOptions.map((opt) => {
-                  const isSelected = String(opt.value) === String(value)
-                  return (
-                    <button
-                      key={String(opt.value)}
-                      type="button"
-                      onClick={() => {
-                        onChange(opt.value)
-                        setIsOpen(false)
-                        setSearch('')
-                      }}
-                      className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-50 text-emerald-700 font-bold dark:bg-emerald-950/60 dark:text-emerald-300'
-                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60 font-medium'
-                      }`}
-                    >
-                      <span className="truncate">{opt.label}</span>
-                      {isSelected && <Check className="size-3.5 text-emerald-600 shrink-0" />}
-                    </button>
-                  )
-                })
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
 
 function HeroUiModalSelect({
   value,
@@ -749,6 +647,7 @@ export default function GateAttendancePage() {
       pushToast('success', 'Pengaturan Disimpan!', res.data?.message || 'Pengaturan jam masuk dan jam pulang berhasil diperbarui.')
       setShowScheduleModal(false)
       fetchScheduleConfig()
+      fetchAllScheduleConfigs()
     } catch (err) {
       pushToast('error', 'Gagal Menyimpan', err?.response?.data?.message || 'Gagal menyimpan pengaturan jadwal jam masuk/pulang.')
     } finally {
@@ -1071,7 +970,8 @@ export default function GateAttendancePage() {
               options={unitFilterOptions}
               placeholder="Semua Unit Pendidikan"
               icon={isMultiUnitUser ? Building2 : Lock}
-              widthClass="min-w-[210px]"
+              className="min-w-[210px]"
+              size="sm"
             />
 
             {/* Schedule Config Button (§H.5 squircle) */}

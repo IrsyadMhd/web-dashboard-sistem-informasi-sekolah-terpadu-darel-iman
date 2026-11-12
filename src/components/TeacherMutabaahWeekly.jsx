@@ -261,9 +261,28 @@ export default function TeacherMutabaahWeekly({
     if (template?.program_type) {
       return template.program_type.toLowerCase().includes('boarding')
     }
-    const unitName = String(currentAssignment?.unit_name || '').toUpperCase()
-    return unitName.includes('PONPES') || unitName.includes('PESANTREN') || unitName.includes('MAHAD')
-  }, [template, currentAssignment])
+    const candidateType = String(
+      currentAssignment?.program_type ||
+      user?.unit?.program_type ||
+      user?.education_unit?.program_type ||
+      user?.employee?.education_unit?.program_type ||
+      user?.metadata?.program_type ||
+      ''
+    ).toLowerCase()
+    if (candidateType.includes('boarding')) return true
+    if (candidateType.includes('fullday')) return false
+
+    const unitName = String(
+      currentAssignment?.unit_name ||
+      user?.unit_name ||
+      user?.unit?.name ||
+      user?.education_unit?.name ||
+      user?.employee?.education_unit?.name ||
+      user?.unit_code ||
+      ''
+    ).toUpperCase()
+    return unitName.includes('PONPES') || unitName.includes('PESANTREN') || unitName.includes('MAHAD') || unitName.includes('BOARDING')
+  }, [template, currentAssignment, user])
 
   // Filtered students for List view
   const filteredStudents = useMemo(() => {

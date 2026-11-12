@@ -29,6 +29,19 @@ import { studentStatusService } from '../services/studentStatusService'
 import PageContainer from '../components/app/PageContainer'
 import { useToast } from '../components/app'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogBody,
+  DialogFooter,
+} from '../components/ui/dialog'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { FieldLabel } from '../components/ui/field'
+import { TextArea } from '../components/ui/text-area'
+import { Spinner } from '../components/ui/spinner'
 import { useAuthStore } from '../stores/authStore'
 import { hasRoleLevel, ROLE_LEVELS, isFoundationUser } from '../auth/portalResolver'
 import { SmartScrollFab } from '../components/common'
@@ -78,10 +91,14 @@ export default function MasterStatusSiswaPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
 
-  // Validasi role level angka: Level 1 (Super Admin), Level 2 (Admin), Level 3 (Operator)
-  // Menolak bila tingkat privilege > 3 atau pengguna adalah Pengurus Yayasan (read-only/monitoring)
   const isFoundation = isFoundationUser(user)
-  const canManage = !isFoundation && hasRoleLevel(user, ROLE_LEVELS.OPERATOR) // level <= 3
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : []
+  const canManage =
+    !isFoundation &&
+    (hasRoleLevel(user, ROLE_LEVELS.ADMIN) ||
+      ['sistem.master_data', 'student.manage', 'operator.manage'].some((perm) =>
+        permissions.includes(perm)
+      ))
 
   // Search & Filter
   const [searchInput, setSearchInput] = useState('')
@@ -650,321 +667,271 @@ export default function MasterStatusSiswaPage() {
         </div>
       </div>
 
-      {/* ================= MODAL TAMBAH / UBAH STATUS ================= */}
-      <AnimatePresence>
-        {isFormOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsFormOpen(false)}
-              className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
-            />
-
-            {/* Modal Dialog Card */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-emerald-300/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-emerald-800/80 dark:bg-slate-900"
-            >
-              {/* Garis Aksen Gradasi Emerald */}
-              <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
-
-              {/* Header Modal */}
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
-                    <Tag className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                      {editingItem ? 'Ubah Status Siswa' : 'Tambah Status Siswa Baru'}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Konfigurasi opsi status operasional peserta didik
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsFormOpen(false)}
-                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+      {/* ================= MODAL TAMBAH / UBAH STATUS (HEROUI) ================= */}
+      <Dialog
+        isOpen={Boolean(isFormOpen)}
+        onClose={() => setIsFormOpen(false)}
+        className="max-w-lg p-0"
+      >
+        <div className="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <DialogHeader className="mb-0 pr-8">
+            <div className="flex items-center gap-3 text-left">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
+                <Tag className="h-5 w-5" />
               </div>
+              <div>
+                <DialogTitle className="text-base">
+                  {editingItem ? 'Ubah Status Siswa' : 'Tambah Status Siswa Baru'}
+                </DialogTitle>
+                <DialogDescription>
+                  Konfigurasi opsi status operasional peserta didik
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        </div>
 
-              {/* Form Body */}
-              <form onSubmit={handleSubmit}>
-                <div className="max-h-[70vh] overflow-y-auto px-6 py-4 space-y-4">
-                  {formErrors.submit && (
-                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
-                      {formErrors.submit}
-                    </div>
-                  )}
+        <form onSubmit={handleSubmit}>
+          <DialogBody className="max-h-[70vh] overflow-y-auto px-6 py-4 space-y-4">
+            {formErrors.submit && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+                {formErrors.submit}
+              </div>
+            )}
 
-                  {/* Kode Status */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                      Kode Status (System Identifier) <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="contoh: aktif, lulus, mutasi_keluar"
-                      value={formData.code}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          code: e.target.value.toLowerCase().replace(/\s+/g, '_'),
-                        }))
+            <div>
+              <FieldLabel className="text-xs font-bold uppercase tracking-wider">
+                Kode Status (System Identifier) <span className="text-rose-500">*</span>
+              </FieldLabel>
+              <Input
+                type="text"
+                useNative
+                placeholder="contoh: aktif, lulus, mutasi_keluar"
+                value={formData.code}
+                isError={Boolean(formErrors.code)}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    code: e.target.value.toLowerCase().replace(/\s+/g, '_'),
+                  }))
+                }
+                className="font-mono"
+              />
+              {formErrors.code && (
+                <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+                  {formErrors.code}
+                </p>
+              )}
+              <p className="mt-1 text-[11px] text-slate-400">
+                Kode unik yang disimpan pada record tabel siswa di database.
+              </p>
+            </div>
+
+            <div>
+              <FieldLabel className="text-xs font-bold uppercase tracking-wider">
+                Nama / Label Status <span className="text-rose-500">*</span>
+              </FieldLabel>
+              <Input
+                type="text"
+                useNative
+                placeholder="contoh: Aktif, Lulus, Mutasi Keluar"
+                value={formData.name}
+                isError={Boolean(formErrors.name)}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                }
+              />
+              {formErrors.name && (
+                <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+                  {formErrors.name}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <FieldLabel className="text-xs font-bold uppercase tracking-wider">
+                Warna Badge Tampilan
+              </FieldLabel>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {Object.entries(BADGE_COLOR_MAP).map(([key, item]) => {
+                  const isSelected = formData.badge_color === key
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, badge_color: key }))
                       }
                       className={cn(
-                        'mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2 font-mono text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 dark:bg-slate-800 dark:text-white',
-                        formErrors.code
-                          ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
-                          : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-500/20 dark:border-slate-700'
+                        'flex items-center gap-2 rounded-xl border p-2 text-left text-xs font-medium transition-all cursor-pointer',
+                        isSelected
+                          ? 'border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-950/40'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60 dark:hover:bg-slate-800'
                       )}
-                    />
-                    {formErrors.code && (
-                      <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
-                        {formErrors.code}
-                      </p>
-                    )}
-                    <p className="mt-1 text-[11px] text-slate-400">
-                      Kode unik yang disimpan pada record tabel siswa di database.
-                    </p>
-                  </div>
-
-                  {/* Nama Status */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                      Nama / Label Status <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="contoh: Aktif, Lulus, Mutasi Keluar"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, name: e.target.value }))
-                      }
-                      className={cn(
-                        'mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 dark:bg-slate-800 dark:text-white',
-                        formErrors.name
-                          ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
-                          : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-500/20 dark:border-slate-700'
-                      )}
-                    />
-                    {formErrors.name && (
-                      <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
-                        {formErrors.name}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Warna Badge & Pratinjau */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                      Warna Badge Tampilan
-                    </label>
-                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {Object.entries(BADGE_COLOR_MAP).map(([key, item]) => {
-                        const isSelected = formData.badge_color === key
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() =>
-                              setFormData((prev) => ({ ...prev, badge_color: key }))
-                            }
-                            className={cn(
-                              'flex items-center gap-2 rounded-xl border p-2 text-left text-xs font-medium transition-all',
-                              isSelected
-                                ? 'border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-950/40'
-                                : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60 dark:hover:bg-slate-800'
-                            )}
-                          >
-                            <span className={cn('h-3.5 w-3.5 shrink-0 rounded-full', item.dot)} />
-                            <span className="truncate text-slate-800 dark:text-slate-200 capitalize">
-                              {key}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    {/* Pratinjau Badge Terpilih */}
-                    <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-800/40">
-                      <span className="text-xs text-slate-500">Pratinjau:</span>
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold',
-                          (BADGE_COLOR_MAP[formData.badge_color] || BADGE_COLOR_MAP.emerald).badge
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'h-1.5 w-1.5 rounded-full',
-                            (BADGE_COLOR_MAP[formData.badge_color] || BADGE_COLOR_MAP.emerald).dot
-                          )}
-                        />
-                        {formData.name || 'Contoh Status'}
+                    >
+                      <span className={cn('h-3.5 w-3.5 shrink-0 rounded-full', item.dot)} />
+                      <span className="truncate text-slate-800 dark:text-slate-200 capitalize">
+                        {key}
                       </span>
-                    </div>
-                  </div>
+                    </button>
+                  )
+                })}
+              </div>
 
-                  {/* Urutan & Status Aktif */}
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                        Urutan Tampilan
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={formData.order}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            order: parseInt(e.target.value, 10) || 0,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                        Status Sistem
-                      </label>
-                      <label className="mt-2.5 flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.is_active}
-                          onChange={(e) =>
-                            setFormData((prev) => ({ ...prev, is_active: e.target.checked }))
-                          }
-                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800"
-                        />
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          Aktifkan Status Ini
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Keterangan */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                      Keterangan / Deskripsi
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Keterangan opsional mengenai alur status ini..."
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, description: e.target.value }))
-                      }
-                      className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                {/* Footer Modal */}
-                <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/60">
-                  <button
-                    type="button"
-                    onClick={() => setIsFormOpen(false)}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={createMutation.isPending || updateMutation.isPending}
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2 text-xs font-semibold text-white shadow-md shadow-emerald-600/25 transition-all hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50"
-                  >
-                    {(createMutation.isPending || updateMutation.isPending) && (
-                      <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-800/40">
+                <span className="text-xs text-slate-500">Pratinjau:</span>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold',
+                    (BADGE_COLOR_MAP[formData.badge_color] || BADGE_COLOR_MAP.emerald).badge
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'h-1.5 w-1.5 rounded-full',
+                      (BADGE_COLOR_MAP[formData.badge_color] || BADGE_COLOR_MAP.emerald).dot
                     )}
-                    <span>{editingItem ? 'Simpan Perubahan' : 'Tambah Status'}</span>
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                  />
+                  {formData.name || 'Contoh Status'}
+                </span>
+              </div>
+            </div>
 
-      {/* ================= MODAL KONFIRMASI HAPUS ================= */}
-      <AnimatePresence>
-        {deleteTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDeleteTarget(null)}
-              className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
-            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <FieldLabel className="text-xs font-bold uppercase tracking-wider">
+                  Urutan Tampilan
+                </FieldLabel>
+                <Input
+                  type="number"
+                  min="0"
+                  useNative
+                  value={formData.order}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      order: parseInt(e.target.value, 10) || 0,
+                    }))
+                  }
+                />
+              </div>
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-md overflow-hidden rounded-3xl border border-rose-300/80 bg-white shadow-2xl shadow-rose-950/20 dark:border-rose-800/80 dark:bg-slate-900"
+              <div>
+                <FieldLabel className="text-xs font-bold uppercase tracking-wider">
+                  Status Sistem
+                </FieldLabel>
+                <label className="mt-2.5 flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_active}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, is_active: e.target.checked }))
+                    }
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Aktifkan Status Ini
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <FieldLabel className="text-xs font-bold uppercase tracking-wider">
+                Keterangan / Deskripsi
+              </FieldLabel>
+              <TextArea
+                rows={2}
+                placeholder="Keterangan opsional mengenai alur status ini..."
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, description: e.target.value }))
+                }
+              />
+            </div>
+          </DialogBody>
+
+          <DialogFooter className="mt-0 px-6 py-4 bg-slate-50 dark:bg-slate-900/60">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFormOpen(false)}
             >
-              <div className="h-1.5 bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
-              <div className="p-6">
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
-                    <Trash2 className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                      Hapus Status Siswa?
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Tindakan ini akan menghapus opsi status dari daftar pilihan.
-                    </p>
-                  </div>
-                </div>
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              variant="success"
+              size="sm"
+              disabled={createMutation.isPending || updateMutation.isPending}
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md shadow-emerald-600/25"
+            >
+              {(createMutation.isPending || updateMutation.isPending) && (
+                <Spinner size="xs" />
+              )}
+              <span>{editingItem ? 'Simpan Perubahan' : 'Tambah Status'}</span>
+            </Button>
+          </DialogFooter>
+        </form>
+      </Dialog>
 
-                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
-                  <p className="font-semibold">Perhatian:</p>
-                  <p className="mt-0.5">
-                    Status <strong>"{deleteTarget.name}"</strong> (kode:{' '}
-                    <code>{deleteTarget.code}</code>) tidak akan lagi tersedia pada formulir pendaftaran dan filter siswa.
-                  </p>
+      {/* ================= MODAL KONFIRMASI HAPUS (HEROUI) ================= */}
+      <Dialog
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        className="max-w-md border-rose-300/80 dark:border-rose-800/80"
+      >
+        {deleteTarget && (
+          <>
+            <DialogHeader className="mb-3 pr-8">
+              <div className="flex items-center gap-3.5 text-left">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
+                  <Trash2 className="h-6 w-6" />
                 </div>
-
-                <div className="mt-6 flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(null)}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    disabled={deleteMutation.isPending}
-                    onClick={() => deleteMutation.mutate(deleteTarget.id)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-5 py-2 text-xs font-semibold text-white shadow-md shadow-rose-600/25 transition-all hover:from-rose-700 hover:to-red-700 disabled:opacity-50"
-                  >
-                    {deleteMutation.isPending && (
-                      <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    )}
-                    <span>Ya, Hapus Status</span>
-                  </button>
+                <div>
+                  <DialogTitle className="text-base">Hapus Status Siswa?</DialogTitle>
+                  <DialogDescription>
+                    Tindakan ini akan menghapus opsi status dari daftar pilihan.
+                  </DialogDescription>
                 </div>
               </div>
-            </motion.div>
-          </div>
+            </DialogHeader>
+
+            <DialogBody className="py-1">
+              <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
+                <p className="font-semibold">Perhatian:</p>
+                <p className="mt-0.5">
+                  Status <strong>&ldquo;{deleteTarget.name}&rdquo;</strong> (kode:{' '}
+                  <code>{deleteTarget.code}</code>) tidak akan lagi tersedia pada formulir pendaftaran dan filter siswa.
+                </p>
+              </div>
+            </DialogBody>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteTarget(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                className="bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 shadow-md shadow-rose-600/25"
+              >
+                {deleteMutation.isPending && <Spinner size="xs" />}
+                <span>Ya, Hapus Status</span>
+              </Button>
+            </DialogFooter>
+          </>
         )}
-      </AnimatePresence>
+      </Dialog>
 
       {/* ── HARMONIZED BATCH IMPORT MODAL (z-50) ────────────────────────────── */}
       <AnimatePresence>
