@@ -1443,7 +1443,7 @@ export default function KelolaAlumniPage() {
                     Manajemen Kelulusan
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Pemantauan terpadu data lulusan alumni, riwayat tujuan studi/kerja, mutasi internal unit, dan pindah keluar sekolah.
                 </p>
               </div>

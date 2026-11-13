@@ -260,7 +260,7 @@ export default function ParentDashboardPage() {
                   {dashboardData?.academic_context?.academic_year ? `T.A. ${dashboardData.academic_context.academic_year}` : foundationName}
                 </span>
               </div>
-              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                 Memantau data terpadu: Presensi, Hafalan Tahfizh, Nilai, Tugas LMS, Mutaba'ah, dan SPP santri secara real-time.
               </p>
             </div>

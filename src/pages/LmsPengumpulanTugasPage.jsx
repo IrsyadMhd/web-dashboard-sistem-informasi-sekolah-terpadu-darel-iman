@@ -693,7 +693,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
                     Modul LMS Terpadu
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Kelola submission tugas siswa, riwayat pengumpulan file &amp; link, serta proses koreksi dan penilaian hasil kerja secara terpadu.
                 </p>
               </div>

@@ -94,6 +94,7 @@ export function HeroUiHeader({
   description,
   icon,
   roleBadge,
+  roleTag,
   tag,
   actionBadge,
   badge,
@@ -108,7 +109,7 @@ export function HeroUiHeader({
 }) {
   const currentTheme = THEME_STYLES[theme] || THEME_STYLES.emerald
   const subtext = subtitle || description
-  const primaryBadge = roleBadge || tag
+  const primaryBadge = roleBadge || roleTag || tag
   const secondaryBadge = actionBadge || badge
 
   const CardComponent = variants ? MotionHeroCard : HeroCard
@@ -139,9 +140,9 @@ export function HeroUiHeader({
         )}
       />
 
-      <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         {/* Left: Icon Badge & Title Information */}
-        <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+        <div className="flex flex-1 items-start gap-3.5 sm:gap-4 min-w-0">
           {icon && (
             <div
               className={cn(
@@ -171,9 +172,9 @@ export function HeroUiHeader({
                       'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-extrabold',
                       currentTheme.roleTag
                     )}
-                    startContent={<ShieldCheck className="size-3.5" />}
                   >
-                    {primaryBadge}
+                    <ShieldCheck className="size-3.5 shrink-0" />
+                    <span>{primaryBadge}</span>
                   </HeroChip>
                 ) : React.isValidElement(primaryBadge) ? (
                   primaryBadge
@@ -185,9 +186,9 @@ export function HeroUiHeader({
                       'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-extrabold',
                       currentTheme.roleTag
                     )}
-                    startContent={renderIcon(primaryBadge.icon, 'size-3.5') || <ShieldCheck className="size-3.5" />}
                   >
-                    {primaryBadge.text}
+                    {renderIcon(primaryBadge.icon, 'size-3.5 shrink-0') || <ShieldCheck className="size-3.5 shrink-0" />}
+                    <span>{primaryBadge.text}</span>
                   </HeroChip>
                 ) : null
               )}
@@ -211,15 +212,16 @@ export function HeroUiHeader({
                     return <React.Fragment key={index}>{chipItem}</React.Fragment>
                   }
                   if (chipItem && typeof chipItem === 'object') {
+                    const iconNode = renderIcon(chipItem.icon, 'size-3 shrink-0')
                     return (
                       <HeroChip
                         key={index}
                         size="sm"
                         color={chipItem.color || 'success'}
-                        className="rounded-full text-xs font-bold"
-                        startContent={renderIcon(chipItem.icon, 'size-3')}
+                        className="inline-flex items-center gap-1 rounded-full text-xs font-bold"
                       >
-                        {chipItem.label || chipItem.text}
+                        {iconNode}
+                        <span>{chipItem.label || chipItem.text}</span>
                       </HeroChip>
                     )
                   }
@@ -228,7 +230,7 @@ export function HeroUiHeader({
             </div>
 
             {subtext && (
-              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+              <p className="mt-1 w-full text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
                 {subtext}
               </p>
             )}
@@ -237,7 +239,7 @@ export function HeroUiHeader({
 
         {/* Right: Actions or Secondary Highlight Badge */}
         {(actions || secondaryBadge) && (
-          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start lg:self-center">
             {secondaryBadge && (
               typeof secondaryBadge === 'string' ? (
                 <div

@@ -563,9 +563,8 @@ export default function AcademicCalendarPage() {
               {['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, i) => (
                 <div
                   key={d}
-                  className={`text-xs font-black uppercase tracking-wider ${
-                    i === 0 || i === 5 ? 'text-rose-500' : 'text-slate-600 dark:text-slate-400'
-                  }`}
+                  className={`text-xs font-black uppercase tracking-wider ${i === 0 || i === 5 ? 'text-rose-500' : 'text-slate-600 dark:text-slate-400'
+                    }`}
                 >
                   {d}
                 </div>
@@ -591,21 +590,19 @@ export default function AcademicCalendarPage() {
                   <div
                     key={cell.dateStr}
                     onClick={() => setSelectedDateEvents(cell)}
-                    className={`min-h-[92px] p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                      isSelected
-                        ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/40 shadow-sm'
-                        : isToday
+                    className={`min-h-[92px] p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${isSelected
+                      ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/40 shadow-sm'
+                      : isToday
                         ? 'border-emerald-400 bg-emerald-50/20 dark:border-emerald-700'
                         : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:border-emerald-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <span
-                        className={`text-xs font-extrabold ${
-                          isToday
-                            ? 'px-1.5 py-0.5 rounded-md bg-emerald-600 text-white'
-                            : 'text-slate-700 dark:text-slate-300'
-                        }`}
+                        className={`text-xs font-extrabold ${isToday
+                          ? 'px-1.5 py-0.5 rounded-md bg-emerald-600 text-white'
+                          : 'text-slate-700 dark:text-slate-300'
+                          }`}
                       >
                         {cell.day}
                       </span>
@@ -999,7 +996,7 @@ export default function AcademicCalendarPage() {
                     Kategori:{' '}
                     {deleteEventItem?.category
                       ? PRESET_CATEGORIES[deleteEventItem.category]?.label ||
-                        deleteEventItem.category
+                      deleteEventItem.category
                       : '-'}{' '}
                     • Tanggal: {deleteEventItem?.startDate || '-'} • Unit:{' '}
                     {deleteEventItem?.unit || 'Semua Unit'}

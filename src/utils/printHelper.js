@@ -206,6 +206,27 @@ export function updateUnitsConfigFromList(unitsList) {
  */
 export async function loadUnitsConfigFromDatabase() {
   try {
+    if (typeof localStorage !== 'undefined') {
+      const token = localStorage.getItem('school_erp_token')
+      if (!token) {
+        return DEFAULT_UNITS_CONFIG
+      }
+      const rawUser = localStorage.getItem('school_erp_user')
+      if (rawUser) {
+        const parsedUser = JSON.parse(rawUser)
+        const rawRoles = [
+          ...(Array.isArray(parsedUser?.roles) ? parsedUser.roles.map((r) => (typeof r === 'string' ? r : r?.name)) : []),
+          parsedUser?.role,
+          parsedUser?.primary_role,
+        ]
+          .filter(Boolean)
+          .map((r) => String(r).trim().toLowerCase())
+        const portalOnlyRoles = new Set(['orang tua', 'orang_tua', 'orang-tua', 'orangtua', 'wali murid', 'parent', 'siswa', 'student', 'santri', 'alumni'])
+        if (rawRoles.length > 0 && rawRoles.every((r) => portalOnlyRoles.has(r))) {
+          return DEFAULT_UNITS_CONFIG
+        }
+      }
+    }
     const res = await api.get('/education-units', { params: { per_page: 100 } })
     const units = res.data?.data || (Array.isArray(res.data) ? res.data : [])
     if (Array.isArray(units) && units.length > 0) {

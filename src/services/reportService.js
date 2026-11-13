@@ -109,8 +109,8 @@ export function adaptUnitPrestasiResponse(rawResponse, user = null, filters = {}
   const items = Array.isArray(rawResponse?.data)
     ? rawResponse.data
     : Array.isArray(rawResponse)
-    ? rawResponse
-    : []
+      ? rawResponse
+      : []
 
   const total = Number(rawResponse?.total ?? items.length)
   const currentPage = Number(rawResponse?.current_page ?? filters.page ?? 1)
@@ -123,13 +123,13 @@ export function adaptUnitPrestasiResponse(rawResponse, user = null, filters = {}
     user?.unit_name ||
     firstItem?.siswa?.education_unit?.name ||
     firstItem?.data_tambahan?.unit_name ||
-    'Mahad Abu Ja\'far'
+    'Unit Pendidikan'
 
   const resolvedUnitCode =
     user?.unit?.code ||
     user?.unit_code ||
     firstItem?.siswa?.education_unit?.code ||
-    (resolvedUnitName.toLowerCase().includes('mahad') ? 'MAHAD-01' : 'UNIT')
+    'UNIT'
 
   const unitName = resolvedUnitName
   const unitCode = resolvedUnitCode
@@ -225,9 +225,9 @@ export function adaptUnitPrestasiResponse(rawResponse, user = null, filters = {}
 
   const topStudent = details[0]
     ? {
-        full_name: details[0].student_name,
-        avatar_url: details[0].avatar_url,
-      }
+      full_name: details[0].student_name,
+      avatar_url: details[0].avatar_url,
+    }
     : null
 
   const unit_recaps = [

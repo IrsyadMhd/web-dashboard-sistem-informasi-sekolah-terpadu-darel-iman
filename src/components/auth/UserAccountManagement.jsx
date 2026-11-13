@@ -2075,14 +2075,14 @@ export default function UserAccountManagement({
                     setCategoryFilter(cat.id)
                     setPage(1)
                   }}
-                  className={`cursor-pointer font-bold transition-all text-xs select-none hover:scale-105 active:scale-95 ${
+                  className={`inline-flex items-center gap-1.5 cursor-pointer font-bold transition-all text-xs select-none hover:scale-105 active:scale-95 ${
                     isSelected
                       ? 'shadow-xs ring-1 ring-emerald-500/30'
                       : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-emerald-500'
                   }`}
-                  startContent={<Icon className="size-3.5" />}
                 >
-                  {cat.label}
+                  <Icon className="size-3.5 shrink-0" />
+                  <span>{cat.label}</span>
                 </HeroChip>
               )
             })}

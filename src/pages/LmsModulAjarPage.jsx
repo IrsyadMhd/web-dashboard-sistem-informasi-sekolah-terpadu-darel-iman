@@ -1383,7 +1383,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                       Kurikulum Merdeka &amp; KBM
                     </span>
                   </div>
-                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                     Pusat perencanaan terpadu modul ajar berbasis Capaian Pembelajaran (CP), Alur Tujuan Pembelajaran (ATP/TP), media ajar, dan instrumen asesmen.
                   </p>
                 </div>

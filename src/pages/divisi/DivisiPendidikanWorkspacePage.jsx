@@ -243,7 +243,7 @@ export default function DivisiPendidikanWorkspacePage() {
                     Direktorat Pendidikan SIT
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl font-medium">
+                <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 w-full font-medium">
                   Instrumen operasional penjaminan mutu: supervisi mengajar, kurasi ujian bersama, sertifikasi tahfizh, pembiasaan bahasa, pelatihan guru, evaluasi laporan, dan radar akreditasi.
                 </p>
               </div>

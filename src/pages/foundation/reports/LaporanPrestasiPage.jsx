@@ -444,7 +444,7 @@ export function LaporanPrestasiPage() {
 
   const handlePrintClean = () => {
     setIsPrintModalOpen(false)
-    const unitTitle = !isFoundationRole ? (reportData?.report?.unit_name || user?.unit_name || user?.unit?.name || 'Mahad Abu Ja\'far') : null
+    const unitTitle = !isFoundationRole ? (reportData?.report?.unit_name || user?.unit_name || user?.unit?.name || 'Unit Pendidikan') : null
     const headers = isFoundationRole
       ? ['Siswa', 'NIS', 'Unit & Kelas', 'Nama Prestasi', 'Kategori', 'Tingkat', 'Tanggal', 'Nilai']
       : ['Siswa', 'NIS', 'Kelas', 'Nama Prestasi', 'Kategori', 'Tingkat', 'Tanggal', 'Nilai']
@@ -468,7 +468,7 @@ export function LaporanPrestasiPage() {
 
   const handleDownloadPdf = () => {
     setIsPrintModalOpen(false)
-    const unitTitle = !isFoundationRole ? (reportData?.report?.unit_name || user?.unit_name || user?.unit?.name || 'Mahad Abu Ja\'far') : null
+    const unitTitle = !isFoundationRole ? (reportData?.report?.unit_name || user?.unit_name || user?.unit?.name || 'Unit Pendidikan') : null
     const headers = isFoundationRole
       ? ['Siswa', 'NIS', 'Unit & Kelas', 'Nama Prestasi', 'Kategori', 'Tingkat', 'Tanggal', 'Nilai']
       : ['Siswa', 'NIS', 'Kelas', 'Nama Prestasi', 'Kategori', 'Tingkat', 'Tanggal', 'Nilai']
@@ -584,7 +584,7 @@ export function LaporanPrestasiPage() {
                 {!isFoundationRole && (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100 px-3 py-0.5 text-xs font-black text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60 shadow-xs">
                     <Building2 className="size-3 text-teal-600 dark:text-teal-400" />
-                    {report?.unit_name || user?.unit_name || user?.unit?.name || 'Mahad Abu Ja\'far'}
+                    {report?.unit_name || user?.unit_name || user?.unit?.name || 'Unit Pendidikan'}
                   </span>
                 )}
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
@@ -594,7 +594,7 @@ export function LaporanPrestasiPage() {
               <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 {report?.title || 'Laporan Rekapitulasi Prestasi Siswa'}
               </h1>
-              <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+              <p className="mt-0.5 w-full text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
                 {isFoundationRole
                   ? (report?.description || 'Rekapitulasi capaian prestasi siswa per Unit Pendidikan, Kepala Sekolah, dan Divisi Pendidikan dengan profil avatar siswa & kartu apresiasi.')
                   : `Capaian dan rekapitulasi prestasi siswa di lingkungan ${report?.unit_name || 'unit pendidikan'} terintegrasi data yayasan.`}
@@ -895,7 +895,7 @@ export function LaporanPrestasiPage() {
                 <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
                 {isFoundationRole
                   ? 'Siswa Berprestasi Utama per Unit Pendidikan'
-                  : `Siswa Berprestasi Utama (${report?.unit_name || 'Mahad Abu Ja\'far'})`}
+                  : `Siswa Berprestasi Utama (${report?.unit_name || user?.unit_name || user?.unit?.name || 'Unit Pendidikan'})`}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {isFoundationRole
@@ -1004,7 +1004,7 @@ export function LaporanPrestasiPage() {
                 <Award className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 {isFoundationRole
                   ? 'Rekapitulasi & Daftar Rinci Prestasi Siswa'
-                  : `Daftar Siswa Berprestasi (${report?.unit_name || 'Mahad Abu Ja\'far'})`}
+                  : `Daftar Siswa Berprestasi (${report?.unit_name || user?.unit_name || user?.unit?.name || 'Unit Pendidikan'})`}
               </h3>
               <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                 {meta?.total || (details || []).length} Data
@@ -1100,7 +1100,7 @@ export function LaporanPrestasiPage() {
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-100/90 dark:bg-emerald-950/80 px-3 py-1.5 text-xs font-black text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 shadow-xs">
                 <Building2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                Cakupan Unit: {report?.unit_name || user?.unit_name || user?.unit?.name || 'Mahad Abu Ja\'far'}
+                Cakupan Unit: {report?.unit_name || user?.unit_name || user?.unit?.name || 'Unit Pendidikan'}
               </span>
             </div>
           )}
@@ -1306,7 +1306,7 @@ export function LaporanPrestasiPage() {
               <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-900 dark:text-emerald-200">
                 {isFoundationRole
                   ? 'Daftar Rinci Profil Prestasi Siswa Terverifikasi'
-                  : `Daftar Rinci Profil Prestasi Siswa (${report?.unit_name || 'Mahad Abu Ja\'far'})`}
+                  : `Daftar Rinci Profil Prestasi Siswa (${report?.unit_name || user?.unit_name || user?.unit?.name || 'Unit Pendidikan'})`}
               </h4>
               <span className="text-[11px] font-bold text-slate-500">
                 Halaman {meta?.current_page || 1} dari {meta?.last_page || 1}

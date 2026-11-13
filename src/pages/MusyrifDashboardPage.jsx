@@ -205,6 +205,7 @@ export default function MusyrifDashboardPage({ defaultTab }) {
 
   // Form states & Database Students
   const [quickActionModal, setQuickActionModal] = useState(null)
+  const [savingQuickAction, setSavingQuickAction] = useState(false)
   const [studentSearch, setStudentSearch] = useState('')
   const [dbStudents, setDbStudents] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
@@ -1139,8 +1140,10 @@ export default function MusyrifDashboardPage({ defaultTab }) {
   }
 
   const handleSimpanFiturAksi = async (label, modalType) => {
+    if (savingQuickAction) return
     const studentId = selectedStudentId || dbStudents[0]?.id
 
+    setSavingQuickAction(true)
     try {
       if (modalType === 'sholat') {
         await api.post('/musyrif/worship-attendance', {
@@ -1148,7 +1151,7 @@ export default function MusyrifDashboardPage({ defaultTab }) {
           prayer_name: sholatForm.prayer_name,
           attendance_status: sholatForm.attendance_status,
           notes: sholatForm.notes,
-        }).catch(() => null)
+        })
       } else if (modalType === 'setoran') {
         await api.post('/musyrif/tahfizh', {
           student_id: studentId,
@@ -1183,7 +1186,7 @@ export default function MusyrifDashboardPage({ defaultTab }) {
           makhraj_grade: tasmiForm.makhraj,
           final_score: Number(tasmiForm.score),
           notes: tasmiForm.notes,
-        }).catch(() => null)
+        })
       } else if (modalType === 'poin') {
         const finalPoints =
           poinForm.type === 'violation'
@@ -1197,14 +1200,14 @@ export default function MusyrifDashboardPage({ defaultTab }) {
           transaction_date: new Date().toISOString().split('T')[0],
           description: poinForm.notes,
           status: poinForm.status || 'tercatat',
-        }).catch(() => null)
+        })
       } else if (modalType === 'klinik') {
         await api.post('/musyrif/clinic-logs', {
           student_id: studentId,
           symptoms: klinikForm.symptoms || '-',
           medicine_given: klinikForm.medicine,
           status: klinikForm.status,
-        }).catch(() => null)
+        })
       } else if (modalType === 'titipan') {
         await api.post('/musyrif/deposits', {
           student_id: studentId,
@@ -1212,7 +1215,7 @@ export default function MusyrifDashboardPage({ defaultTab }) {
           item_name: titipanForm.item_name || '-',
           serial_number: titipanForm.serial_number,
           deposited_at: new Date().toISOString(),
-        }).catch(() => null)
+        })
       }
 
       Swal.fire({
@@ -1227,13 +1230,12 @@ export default function MusyrifDashboardPage({ defaultTab }) {
     } catch (err) {
       console.error('Save failed:', err)
       Swal.fire({
-        icon: 'success',
-        title: 'Berhasil Disimpan',
-        text: `Data ${label} santri telah berhasil dicatat ke sistem keasramaan.`,
-        timer: 2000,
-        showConfirmButton: false,
+        icon: 'error',
+        title: 'Gagal Menyimpan',
+        text: err?.response?.data?.message || `Gagal menyimpan data ${label} santri. Silakan coba lagi.`,
       })
-      setQuickActionModal(null)
+    } finally {
+      setSavingQuickAction(false)
     }
   }
 
@@ -1483,7 +1485,7 @@ export default function MusyrifDashboardPage({ defaultTab }) {
                   <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Dashboard Musyrif & Pembimbing Asrama
                   </h1>
-                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                     Workspace terpadu pengasuhan santri: presensi ibadah 24 jam, log ujian tasmi', kedisiplinan poin, klinik kesehatan, dan barang titipan.
                   </p>
                 </div>
@@ -3265,7 +3267,7 @@ export default function MusyrifDashboardPage({ defaultTab }) {
                   <MasterActionButton variant="secondary" icon={X} onClick={() => setQuickActionModal(null)}>
                     Batal
                   </MasterActionButton>
-                  <MasterActionButton variant="primary" icon={Check} onClick={() => handleSimpanFiturAksi('Presensi Sholat Berjamaah', 'sholat')}>
+                  <MasterActionButton variant="primary" icon={Check} disabled={savingQuickAction} onClick={() => handleSimpanFiturAksi('Presensi Sholat Berjamaah', 'sholat')}>
                     Simpan Presensi Sholat
                   </MasterActionButton>
                 </DialogFooter>
@@ -3825,8 +3827,9 @@ export default function MusyrifDashboardPage({ defaultTab }) {
                   </button>
                   <button
                     type="button"
+                    disabled={savingQuickAction}
                     onClick={() => handleSimpanFiturAksi('Setoran Hafalan Tahfizh', 'setoran')}
-                    className="h-11 inline-flex items-center justify-center gap-2 px-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-xl font-black shadow-lg shadow-emerald-700/20 hover:brightness-110 active:scale-95 transition text-xs cursor-pointer"
+                    className="h-11 inline-flex items-center justify-center gap-2 px-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-xl font-black shadow-lg shadow-emerald-700/20 hover:brightness-110 active:scale-95 disabled:opacity-50 transition text-xs cursor-pointer"
                   >
                     <Check className="w-4 h-4" /> Simpan Setoran Hafalan
                   </button>
@@ -4174,8 +4177,9 @@ export default function MusyrifDashboardPage({ defaultTab }) {
                   </button>
                   <button
                     type="button"
+                    disabled={savingQuickAction}
                     onClick={() => handleSimpanFiturAksi('Ujian Tasmi', 'tasmi')}
-                    className="h-11 inline-flex items-center justify-center gap-2 px-6 bg-gradient-to-r from-amber-600 via-emerald-600 to-teal-700 text-white rounded-xl font-black shadow-lg shadow-amber-600/20 hover:brightness-110 active:scale-95 transition text-xs cursor-pointer"
+                    className="h-11 inline-flex items-center justify-center gap-2 px-6 bg-gradient-to-r from-amber-600 via-emerald-600 to-teal-700 text-white rounded-xl font-black shadow-lg shadow-amber-600/20 hover:brightness-110 active:scale-95 disabled:opacity-50 transition text-xs cursor-pointer"
                   >
                     <Award className="w-4 h-4" /> Simpan Ujian Tasmi'
                   </button>
@@ -4326,7 +4330,7 @@ export default function MusyrifDashboardPage({ defaultTab }) {
                   <MasterActionButton variant="secondary" icon={X} onClick={() => setQuickActionModal(null)}>
                     Batal
                   </MasterActionButton>
-                  <MasterActionButton variant="export" icon={Check} onClick={() => handleSimpanFiturAksi('Poin Kedisiplinan', 'poin')}>
+                  <MasterActionButton variant="export" icon={Check} disabled={savingQuickAction} onClick={() => handleSimpanFiturAksi('Poin Kedisiplinan', 'poin')}>
                     Simpan Catatan Poin
                   </MasterActionButton>
                 </DialogFooter>
@@ -4397,8 +4401,8 @@ export default function MusyrifDashboardPage({ defaultTab }) {
                   <MasterActionButton variant="secondary" icon={X} onClick={() => setQuickActionModal(null)}>
                     Batal
                   </MasterActionButton>
-                  <MasterActionButton variant="import" icon={Check} onClick={() => handleSimpanFiturAksi('Klinik Kesehatan', 'klinik')}>
-                    Simpan Log Klinik
+                  <MasterActionButton variant="import" icon={Check} disabled={savingQuickAction} onClick={() => handleSimpanFiturAksi('Klinik Kesehatan', 'klinik')}>
+                    {savingQuickAction ? 'Menyimpan...' : 'Simpan Log Klinik'}
                   </MasterActionButton>
                 </DialogFooter>
               </>
@@ -4458,7 +4462,7 @@ export default function MusyrifDashboardPage({ defaultTab }) {
                   <MasterActionButton variant="secondary" icon={X} onClick={() => setQuickActionModal(null)}>
                     Batal
                   </MasterActionButton>
-                  <MasterActionButton variant="primary" icon={Check} onClick={() => handleSimpanFiturAksi('Penitipan Barang', 'titipan')}>
+                  <MasterActionButton variant="primary" icon={Check} disabled={savingQuickAction} onClick={() => handleSimpanFiturAksi('Penitipan Barang', 'titipan')}>
                     Catat Penitipan
                   </MasterActionButton>
                 </DialogFooter>

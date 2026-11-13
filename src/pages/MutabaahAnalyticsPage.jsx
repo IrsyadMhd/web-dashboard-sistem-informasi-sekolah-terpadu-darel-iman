@@ -1121,7 +1121,7 @@ export default function MutabaahAnalyticsPage({ view }) {
                 <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   {view === 'rekap' ? 'Laporan Rekap Mutaba’ah Yaumiyyah' : view === 'evaluasi' ? 'Evaluasi Target Mutaba’ah Santri' : 'Dashboard Monitoring Mutaba’ah Yaumiyyah'}
                 </h1>
-                <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                   Pusat pemantauan amalan yaumiyyah santri: shalat 5 waktu, dzikir, tilawah Al-Qur'an, dan pembiasaan ibadah harian.
                 </p>
               </div>

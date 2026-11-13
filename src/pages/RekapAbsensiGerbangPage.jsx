@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DatePicker } from '@/components/ui/date-picker'
 import { useToast } from '../components/app/ToastProvider'
+import { canSwitchEducationUnit } from '../auth/portalResolver'
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -60,7 +61,7 @@ import { educationUnitService } from '../services/educationUnitService'
 import { studentService } from '../services/studentService'
 import { useAuthStore } from '../stores/authStore'
 import { Navigate } from 'react-router-dom'
-import { getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
+import { getUserRoleLevel, ROLE_LEVELS, isRestrictedToTeacherWorkspace } from '../auth/portalResolver'
 import { cn } from '../lib/utils'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -333,19 +334,17 @@ export default function RekapAbsensiGerbangPage() {
     const list = Array.isArray(raw) ? raw : [raw]
     return list.map((r) => (typeof r === 'string' ? r : r?.name || r?.role_name || r?.nama || ''))
   }, [user])
-  const isGuru = useMemo(() => {
-    if (authLevel === ROLE_LEVELS.GURU) return true
-    const hasGuru = userRoles.some((r) => /guru|pendidik|pengajar|walas|wali[\s_]*kelas/i.test(r))
-    const hasAdminOrKepsek = userRoles.some((r) => /admin|super|kepala[\s_]*sekolah|kepsek|waka|tata[\s_]*usaha|tu|operator|divisi|yayasan/i.test(r))
-    return hasGuru && !hasAdminOrKepsek
-  }, [authLevel, userRoles])
+  const isGuru = useMemo(
+    () => isRestrictedToTeacherWorkspace(user, '/dashboard/rekap-absensi-gerbang'),
+    [user]
+  )
 
   if (isGuru) {
     return <Navigate to="/portal-guru/workspace" replace />
   }
 
-  const userUnitId = user?.unit_id || user?.education_unit_id
-  const isMultiUnitUser = !userUnitId || ['Yayasan', 'Admin', 'Super Admin'].includes(user?.role?.name)
+  const userUnitId = user?.unit_id || user?.education_unit_id || user?.employee?.unit_id || user?.metadata?.education_unit_id || user?.metadata?.unit_id || ''
+  const isMultiUnitUser = useMemo(() => canSwitchEducationUnit(user), [user])
 
   const [date, setDate] = useState(today())
   const [status, setStatus] = useState('')
@@ -1193,7 +1192,7 @@ export default function RekapAbsensiGerbangPage() {
                 <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Rekapitulasi & Scanner Presensi Gerbang
                 </h1>
-                <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                   Terminal pemindaian langsung (RFID / Barcode / QR Code) serta rekapitulasi data kehadiran dan kepulangan siswa secara real-time.
                 </p>
               </div>

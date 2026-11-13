@@ -1852,7 +1852,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Bank Soal &amp; Repositori Ujian
                   </h1>
-                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                     Kelola repositori butir soal terintegrasi Kisi-kisi Ujian dengan dukungan Pilihan Ganda, Esai, Benar-Salah, dan Menjodohkan.
                   </p>
                 </div>

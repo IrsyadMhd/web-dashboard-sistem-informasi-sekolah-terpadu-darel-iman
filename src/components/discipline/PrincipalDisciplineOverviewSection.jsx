@@ -104,11 +104,11 @@ export default function PrincipalDisciplineOverviewSection({ unitId, onOpenStude
               size="sm"
               variant="flat"
               color="primary"
-              className="font-black rounded-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-xs"
-              startContent={<RefreshCw className="h-3.5 w-3.5" />}
+              className="inline-flex items-center gap-1.5 font-black rounded-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-xs"
               onPress={fetchOverview}
             >
-              Segarkan Data
+              <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+              <span>Segarkan Data</span>
             </HeroButton>
           </div>
         </div>

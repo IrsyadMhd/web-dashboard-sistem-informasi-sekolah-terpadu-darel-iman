@@ -23,6 +23,8 @@ import {
   X,
 } from 'lucide-react'
 import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
+import { Input } from '@/components/ui/input'
+import { TextArea } from '@/components/ui/text-area'
 
 // Validation Schema using Zod
 const jabatanSchema = z.object({
@@ -330,14 +332,16 @@ export default function JabatanFormModal({
                           Kode Jabatan <span className="text-slate-400 font-normal">(Auto jika kosong)</span>
                         </label>
                         <div className="relative flex items-center">
-                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                          <div className="pointer-events-none absolute left-3.5 z-10 flex items-center text-slate-400 dark:text-slate-500">
                             <Tag className="size-4" />
                           </div>
-                          <input
+                          <Input
                             type="text"
+                            size="sm"
                             placeholder="NIY-2026xxxx / JBT-001"
-                            {...register('kode_jabatan')}
-                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                            value={watch('kode_jabatan') || ''}
+                            onChange={(e) => setValue('kode_jabatan', e.target.value, { shouldValidate: true })}
+                            className="pl-10"
                           />
                         </div>
                         {errors.kode_jabatan && (
@@ -351,18 +355,16 @@ export default function JabatanFormModal({
                           Nama Jabatan <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative flex items-center">
-                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                          <div className="pointer-events-none absolute left-3.5 z-10 flex items-center text-slate-400 dark:text-slate-500">
                             <UserCog className="size-4" />
                           </div>
-                          <input
+                          <Input
                             type="text"
+                            size="sm"
                             placeholder="Contoh: Kepala Sekolah / Guru Kelas"
-                            {...register('nama_jabatan')}
-                            className={`w-full rounded-xl border pl-10 pr-4 py-2.5 text-xs font-semibold placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:bg-white focus:outline-none focus:ring-4 ${
-                              errors.nama_jabatan
-                                ? 'border-rose-500 bg-rose-50/50 text-rose-900 focus:ring-rose-500/20'
-                                : 'border-slate-200/90 bg-slate-50/50 text-slate-800 focus:border-[#0E5C44] focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20'
-                            }`}
+                            value={watch('nama_jabatan') || ''}
+                            onChange={(e) => setValue('nama_jabatan', e.target.value, { shouldValidate: true })}
+                            className={`pl-10 ${errors.nama_jabatan ? 'border-rose-500 bg-rose-50/50' : ''}`}
                           />
                         </div>
                         {errors.nama_jabatan && (
@@ -403,14 +405,15 @@ export default function JabatanFormModal({
                         Deskripsi / Tugas Pokok Jabatan
                       </label>
                       <div className="relative flex items-start">
-                        <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
+                        <div className="pointer-events-none absolute left-3.5 top-3 z-10 flex items-center text-slate-400 dark:text-slate-500">
                           <FileText className="size-4" />
                         </div>
-                        <textarea
-                          rows="3"
+                        <TextArea
+                          rows={3}
                           placeholder="Penjelasan ringkas peran, wewenang, dan deskripsi pekerjaan..."
-                          {...register('deskripsi')}
-                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 resize-none"
+                          value={watch('deskripsi') || ''}
+                          onChange={(e) => setValue('deskripsi', e.target.value)}
+                          className="pl-10"
                         />
                       </div>
                     </div>

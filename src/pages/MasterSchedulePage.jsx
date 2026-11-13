@@ -39,7 +39,7 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { useAuthStore } from '../stores/authStore'
-import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS, ROLES } from '../auth/portalResolver'
+import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS, ROLES, isRestrictedToTeacherWorkspace } from '../auth/portalResolver'
 import { scheduleService } from '../services/scheduleService'
 import { educationUnitService } from '../services/educationUnitService'
 import { tahunAjaranService } from '../services/tahunAjaranService'
@@ -294,7 +294,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  
+
   // ── AUTH & ROLE SCOPING ──
   const authUser = useAuthStore((state) => state.user)
   const userRoles = useMemo(() => {
@@ -318,12 +318,10 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   // Multi-unit supervision: Super Admin, Yayasan, and Divisi Pendidikan
   const canSelectUnit = isSuperAdminOrYayasan || isDivisiPendidikan
 
-  const isGuru = useMemo(() => {
-    if (authLevel === ROLE_LEVELS.GURU) return true
-    const hasGuru = userRoles.some((r) => /guru|pendidik|pengajar|walas|wali[\s_]*kelas/i.test(r))
-    const hasAdminOrKepsek = userRoles.some((r) => /admin|super|kepala[\s_]*sekolah|kepsek|waka|tata[\s_]*usaha|tu|operator|divisi|yayasan/i.test(r))
-    return hasGuru && !hasAdminOrKepsek
-  }, [authLevel, userRoles])
+  const isGuru = useMemo(
+    () => isRestrictedToTeacherWorkspace(authUser, '/dashboard/akademik/jadwal'),
+    [authUser]
+  )
   const isTu = useMemo(() => authLevel === ROLE_LEVELS.OPERATOR || authLevel === ROLE_LEVELS.TATA_USAHA || userRoles.some(r => /tata[\s_]*usaha|tu|staf[\s_]*tu|admin[\s_]*tu/i.test(r)), [authLevel, userRoles])
   const isKepsek = useMemo(() => {
     if (canSelectUnit) return false
@@ -563,12 +561,12 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const unitOptions = useMemo(() => {
     if (unitsList.length > 0) return unitsList
     const map = new Map()
-    ;(options.kelas || []).forEach((k) => {
-      if (k.unitPendidikan || k.unit_pendidikan) {
-        const u = k.unitPendidikan || k.unit_pendidikan
-        map.set(u.id, u)
-      }
-    })
+      ; (options.kelas || []).forEach((k) => {
+        if (k.unitPendidikan || k.unit_pendidikan) {
+          const u = k.unitPendidikan || k.unit_pendidikan
+          map.set(u.id, u)
+        }
+      })
     return Array.from(map.values())
   }, [unitsList, options.kelas])
 
@@ -972,7 +970,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     setFormErrors({})
     setConflictWarning('')
     setIsDirty(false)
-    
+
     // Detect unit_pendidikan_id from item's class or subject or employee
     const detectedUnitId =
       item.kelas?.unit_pendidikan_id ||
@@ -1410,11 +1408,11 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     const printTeacher = (options.guru || []).find((g) => g.id === printTeacherFilter)
     const rowsToPrint = printTeacherFilter
       ? allRows.filter(
-          (r) =>
-            r.employee_id === printTeacherFilter ||
-            r.employee?.id === printTeacherFilter ||
-            r.teacher_id === printTeacherFilter
-        )
+        (r) =>
+          r.employee_id === printTeacherFilter ||
+          r.employee?.id === printTeacherFilter ||
+          r.teacher_id === printTeacherFilter
+      )
       : allRows
 
     const printConfig = {
@@ -2167,7 +2165,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Jadwal Pelajaran & Plot Mengajar
                 </h1>
-                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                   Kelola alokasi jam mengajar guru, rombongan belajar, dan mata pelajaran terintegrasi akademik sekolah.
                 </p>
               </div>
@@ -2381,7 +2379,11 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                 <span>
                   {unitOptions.find((u) => String(u.id) === String(unitFilter))?.name ||
                     unitOptions.find((u) => String(u.id) === String(unitFilter))?.nama ||
-                    (isKepsek ? 'Unit Sekolah Anda' : (isTu ? 'Unit Kerja TU' : 'Unit Anda'))}
+                    authUser?.unit?.name ||
+                    authUser?.unit_name ||
+                    authUser?.employee?.unit?.name ||
+                    authUser?.metadata?.unit_name ||
+                    'Unit Terkunci'}
                 </span>
               </div>
             ) : (
@@ -2772,7 +2774,12 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                           {item.kelas?.nama_kelas || item.school_class?.name || '-'}
                         </div>
                         <div className="text-xs text-slate-500 truncate">
-                          {item.kelas?.unit_pendidikan?.name || '-'}
+                          {item.kelas?.unit_pendidikan?.name ||
+                            item.kelas?.unit_pendidikan?.nama ||
+                            item.school_class?.unit_pendidikan?.name ||
+                            item.unit_pendidikan?.name ||
+                            item.unit_name ||
+                            '-'}
                         </div>
                       </td>
                       <td className="p-4">
@@ -3010,8 +3017,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                     {detailDrawerItem.week_type === 'odd'
                       ? 'Minggu Ganjil'
                       : detailDrawerItem.week_type === 'even'
-                      ? 'Minggu Genap'
-                      : 'Setiap Minggu'}
+                        ? 'Minggu Genap'
+                        : 'Setiap Minggu'}
                   </div>
                 </div>
               </div>
@@ -3248,11 +3255,10 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
               <button
                 type="button"
                 onClick={() => handleFormChange('activity_type', 'kbm')}
-                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                  (form.activity_type || 'kbm') === 'kbm'
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
-                }`}
+                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all cursor-pointer ${(form.activity_type || 'kbm') === 'kbm'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
+                  }`}
               >
                 <BookOpen className="h-4 w-4 shrink-0" />
                 <span>KBM Mata Pelajaran</span>
@@ -3261,11 +3267,10 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
               <button
                 type="button"
                 onClick={() => handleFormChange('activity_type', 'activity')}
-                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                  form.activity_type !== 'kbm'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
-                }`}
+                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all cursor-pointer ${form.activity_type !== 'kbm'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
+                  }`}
               >
                 <Sparkles className="h-4 w-4 shrink-0" />
                 <span>Kegiatan Non-KBM (Aktivitas Sekolah)</span>
@@ -3313,9 +3318,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                     value={form.activity_name || ''}
                     onChange={(e) => handleFormChange('activity_name', e.target.value)}
                     placeholder="Contoh: Upacara, Dzikir Pagi, Waktu Istirahat, ISHOMA, Senam, dll."
-                    className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-[#111827] ${
-                      formErrors.activity_name ? 'border-rose-500' : 'border-slate-200'
-                    }`}
+                    className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-[#111827] ${formErrors.activity_name ? 'border-rose-500' : 'border-slate-200'
+                      }`}
                   />
                   {formErrors.activity_name && (
                     <p className="mt-1.5 text-[11px] font-medium text-rose-500">
@@ -3579,9 +3583,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                         type="time"
                         value={form.time_start}
                         onChange={(e) => handleFormChange('time_start', e.target.value)}
-                        className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                          formErrors.time_start ? 'border-rose-500' : 'border-slate-200'
-                        }`}
+                        className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${formErrors.time_start ? 'border-rose-500' : 'border-slate-200'
+                          }`}
                       />
                       {formErrors.time_start && (
                         <p className="mt-1 text-[11px] font-medium text-rose-500">
@@ -3601,9 +3604,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                         type="time"
                         value={form.time_end}
                         onChange={(e) => handleFormChange('time_end', e.target.value)}
-                        className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                          formErrors.time_end ? 'border-rose-500' : 'border-slate-200'
-                        }`}
+                        className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${formErrors.time_end ? 'border-rose-500' : 'border-slate-200'
+                          }`}
                       />
                       {formErrors.time_end && (
                         <p className="mt-1 text-[11px] font-medium text-rose-500">
@@ -3844,11 +3846,10 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                           handleFormChange('employee_id', guru.id)
                           setGuruPickerOpen(false)
                         }}
-                        className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'
-                            : 'border-slate-100 hover:border-emerald-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40'
-                        }`}
+                        className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${isSelected
+                          ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'
+                          : 'border-slate-100 hover:border-emerald-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40'
+                          }`}
                       >
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-2xl bg-emerald-100 font-bold text-emerald-800 flex items-center justify-center text-sm shadow-sm">
@@ -3868,11 +3869,10 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                             handleFormChange('employee_id', guru.id)
                             setGuruPickerOpen(false)
                           }}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                            isSelected
-                              ? 'bg-[#0E5C44] text-white'
-                              : 'bg-slate-100 text-slate-700 hover:bg-[#0E5C44] hover:text-white dark:bg-slate-800 dark:text-slate-200'
-                          }`}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${isSelected
+                            ? 'bg-[#0E5C44] text-white'
+                            : 'bg-slate-100 text-slate-700 hover:bg-[#0E5C44] hover:text-white dark:bg-slate-800 dark:text-slate-200'
+                            }`}
                         >
                           {isSelected ? 'Terpilih' : 'Pilih Guru'}
                         </button>

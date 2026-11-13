@@ -1232,7 +1232,7 @@ export default function LmsRaporPage({ tabNav = null }) {
                     LMS Penilaian &amp; Rapor
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Kalkulasi otomatis capaian nilai, cetak rapor resmi Kurikulum Merdeka, serta distribusi laporan hasil belajar digital santri/siswa.
                 </p>
               </div>

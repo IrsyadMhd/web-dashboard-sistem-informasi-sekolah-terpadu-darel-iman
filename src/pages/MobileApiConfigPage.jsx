@@ -695,7 +695,7 @@ export default function MobileApiConfigPage() {
               <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 Pengaturan Mobile App Android
               </h1>
-              <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+              <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                 Pusat kendali identitas, tema visual, susunan menu beranda, fitur dinamis, dan rilis sistem aplikasi mobile santri, wali santri, guru, dan pegawai.
               </p>
             </div>

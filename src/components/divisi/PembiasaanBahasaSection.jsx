@@ -22,6 +22,7 @@ import { Input } from '../ui/input'
 import { TextArea } from '../ui/text-area'
 import { Badge } from '../ui/badge'
 import { Modal } from '../ui/modal'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { divisiPendidikanWorkspaceService } from '../../services/divisiPendidikanWorkspaceService'
 
 export default function PembiasaanBahasaSection({ onDataMutate }) {
@@ -142,16 +143,23 @@ export default function PembiasaanBahasaSection({ onDataMutate }) {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2.5">
-              <select
-                value={selectedUnit}
-                onChange={(e) => setSelectedUnit(e.target.value)}
-                className="h-9 px-3 rounded-xl border border-sky-200 text-xs font-bold text-sky-900 bg-white dark:bg-slate-800 shadow-xs"
-              >
-                <option value="all">Semua Unit Lembaga</option>
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
+              <div className="w-52">
+                <HeroUiFilterSelect
+                  size="sm"
+                  searchable
+                  value={String(selectedUnit)}
+                  onChange={(val) => setSelectedUnit(val)}
+                  options={[
+                    { value: 'all', label: 'Semua Unit Lembaga' },
+                    ...units.map((u) => ({
+                      value: String(u.id),
+                      label: u.name,
+                    })),
+                  ]}
+                  placeholder="Semua Unit Lembaga"
+                  aria-label="Filter Unit Lembaga"
+                />
+              </div>
 
               <Button
                 variant="primary"
@@ -436,15 +444,18 @@ export default function PembiasaanBahasaSection({ onDataMutate }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Unit Pendidikan</label>
-              <select
-                value={formData.unit_id}
-                onChange={(e) => setFormData((p) => ({ ...p, unit_id: e.target.value }))}
-                className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
+              <HeroUiFilterSelect
+                size="sm"
+                searchable
+                value={String(formData.unit_id)}
+                onChange={(val) => setFormData((p) => ({ ...p, unit_id: val }))}
+                options={units.map((u) => ({
+                  value: String(u.id),
+                  label: u.name,
+                }))}
+                placeholder="Pilih Unit"
+                aria-label="Unit Pendidikan"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Tema Kosakata</label>

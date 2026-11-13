@@ -1549,7 +1549,7 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
                       LMS &amp; Nilai Rapor
                     </span>
                   </div>
-                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                     Kalkulasi nilai akhir terpadu dari Penugasan dan Ujian CBT dengan bobot formula adaptif, cetak transkrip, dan analisis KKM.
                   </p>
                 </div>

@@ -519,15 +519,18 @@ export default function ReviewLaporanBulananSection({ onDataMutate }) {
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
               Keputusan Status Validasi
             </label>
-            <select
+            <HeroUiFilterSelect
+              size="sm"
               value={reviewForm.status_validasi}
-              onChange={(e) => setReviewForm((p) => ({ ...p, status_validasi: e.target.value }))}
-              className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
-            >
-              <option value="disetujui">Setujui Penuh (Laporan Lengkap & Memenuhi Standar)</option>
-              <option value="revisi">Kembalikan untuk Revisi (Perlu Perbaikan Data Unit)</option>
-              <option value="menunggu">Dalam Peninjauan Lanjutan (Menunggu Dokumen Pelengkap)</option>
-            </select>
+              onChange={(val) => setReviewForm((p) => ({ ...p, status_validasi: val }))}
+              options={[
+                { value: 'disetujui', label: 'Setujui Penuh (Laporan Lengkap & Memenuhi Standar)' },
+                { value: 'revisi', label: 'Kembalikan untuk Revisi (Perlu Perbaikan Data Unit)' },
+                { value: 'menunggu', label: 'Dalam Peninjauan Lanjutan (Menunggu Dokumen Pelengkap)' },
+              ]}
+              placeholder="Pilih Status Validasi"
+              aria-label="Keputusan Status Validasi"
+            />
           </div>
 
           <div>
@@ -575,17 +578,17 @@ export default function ReviewLaporanBulananSection({ onDataMutate }) {
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
               Unit Sekolah Pelapor <span className="text-rose-500">*</span>
             </label>
-            <select
-              value={addForm.unit_id}
-              onChange={(e) => setAddForm((p) => ({ ...p, unit_id: e.target.value }))}
-              className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold bg-white dark:bg-slate-800"
-            >
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.code})
-                </option>
-              ))}
-            </select>
+            <HeroUiFilterSelect
+              size="sm"
+              value={String(addForm.unit_id)}
+              onChange={(val) => setAddForm((p) => ({ ...p, unit_id: val }))}
+              options={units.map((u) => ({
+                value: String(u.id),
+                label: `${u.name} (${u.code})`,
+              }))}
+              placeholder="Pilih Unit Sekolah"
+              aria-label="Unit Sekolah Pelapor"
+            />
           </div>
 
           <div>
@@ -612,15 +615,18 @@ export default function ReviewLaporanBulananSection({ onDataMutate }) {
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Status Awal</label>
-              <select
+              <HeroUiFilterSelect
+                size="sm"
                 value={addForm.status_validasi}
-                onChange={(e) => setAddForm((p) => ({ ...p, status_validasi: e.target.value }))}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold bg-white dark:bg-slate-800"
-              >
-                <option value="menunggu">Menunggu Reviu</option>
-                <option value="disetujui">Disetujui Penuh</option>
-                <option value="revisi">Perlu Revisi Unit</option>
-              </select>
+                onChange={(val) => setAddForm((p) => ({ ...p, status_validasi: val }))}
+                options={[
+                  { value: 'menunggu', label: 'Menunggu Reviu' },
+                  { value: 'disetujui', label: 'Disetujui Penuh' },
+                  { value: 'revisi', label: 'Perlu Revisi Unit' },
+                ]}
+                placeholder="Pilih Status"
+                aria-label="Status Awal"
+              />
             </div>
           </div>
 

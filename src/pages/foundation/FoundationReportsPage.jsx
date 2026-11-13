@@ -170,7 +170,7 @@ export function FoundationReportsPage() {
                     Laporan Yayasan
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Rekapitulasi komparatif, analisis statistik SDM, siswa, mutasi, tahfizh, kelulusan, alumni, dan rekapitulasi prestasi seluruh unit pendidikan.
                 </p>
               </div>

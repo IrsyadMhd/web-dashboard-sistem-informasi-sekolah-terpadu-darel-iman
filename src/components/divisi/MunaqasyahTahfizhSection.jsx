@@ -607,18 +607,21 @@ export default function MunaqasyahTahfizhSection({ onDataMutate }) {
             <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
               Pilih Santri / Siswa (Master Database)
             </label>
-            <select
+            <HeroUiFilterSelect
+              size="sm"
+              searchable
               value={formData.student_id}
-              onChange={(e) => handleSelectStudent(e.target.value)}
-              className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-            >
-              <option value="">-- Cari / Pilih dari Data Santri Terdaftar --</option>
-              {availableStudentsForForm.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} (NIS: {s.nis}) • {s.unit_name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => handleSelectStudent(val)}
+              options={[
+                { value: '', label: '-- Cari / Pilih dari Data Santri Terdaftar --' },
+                ...availableStudentsForForm.map((s) => ({
+                  value: String(s.id),
+                  label: `${s.name} (NIS: ${s.nis}) • ${s.unit_name}`,
+                })),
+              ]}
+              placeholder="Pilih Santri / Siswa"
+              aria-label="Pilih Santri / Siswa"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -651,25 +654,28 @@ export default function MunaqasyahTahfizhSection({ onDataMutate }) {
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Asal Unit Sekolah <span className="text-rose-500">*</span>
               </label>
-              <select
-                value={formData.education_unit_id}
-                onChange={(e) => {
-                  const selUnit = units.find((u) => u.id === e.target.value)
+              <HeroUiFilterSelect
+                size="sm"
+                searchable
+                value={String(formData.education_unit_id)}
+                onChange={(val) => {
+                  const selUnit = units.find((u) => String(u.id) === String(val))
                   setFormData((p) => ({
                     ...p,
-                    education_unit_id: e.target.value,
+                    education_unit_id: val,
                     unit_name: selUnit?.name || p.unit_name,
                   }))
                 }}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                <option value="">-- Pilih Unit Sekolah --</option>
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.code})
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: '-- Pilih Unit Sekolah --' },
+                  ...units.map((u) => ({
+                    value: String(u.id),
+                    label: `${u.name} (${u.code})`,
+                  })),
+                ]}
+                placeholder="Pilih Unit Sekolah"
+                aria-label="Asal Unit Sekolah"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -689,18 +695,21 @@ export default function MunaqasyahTahfizhSection({ onDataMutate }) {
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Kategori Juz yang Diuji
               </label>
-              <select
+              <HeroUiFilterSelect
+                size="sm"
                 value={formData.juz_diuji}
-                onChange={(e) => setFormData((p) => ({ ...p, juz_diuji: e.target.value }))}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                <option value="Juz 30 (Sekali Duduk)">Juz 30 (Sekali Duduk)</option>
-                <option value="Juz 29 & 30 (2 Juz)">Juz 29 & 30 (2 Juz)</option>
-                <option value="Juz 1 s/d 5 (5 Juz Sekali Duduk)">Juz 1 s/d 5 (5 Juz Sekali Duduk)</option>
-                <option value="Juz 1 s/d 10 (10 Juz Sekali Duduk)">Juz 1 s/d 10 (10 Juz Sekali Duduk)</option>
-                <option value="Juz 1 s/d 15 (15 Juz Sekali Duduk)">Juz 1 s/d 15 (15 Juz Sekali Duduk)</option>
-                <option value="30 Juz Bil Ghaib (Sekali Duduk)">30 Juz Bil Ghaib (Sekali Duduk)</option>
-              </select>
+                onChange={(val) => setFormData((p) => ({ ...p, juz_diuji: val }))}
+                options={[
+                  { value: 'Juz 30 (Sekali Duduk)', label: 'Juz 30 (Sekali Duduk)' },
+                  { value: 'Juz 29 & 30 (2 Juz)', label: 'Juz 29 & 30 (2 Juz)' },
+                  { value: 'Juz 1 s/d 5 (5 Juz Sekali Duduk)', label: 'Juz 1 s/d 5 (5 Juz Sekali Duduk)' },
+                  { value: 'Juz 1 s/d 10 (10 Juz Sekali Duduk)', label: 'Juz 1 s/d 10 (10 Juz Sekali Duduk)' },
+                  { value: 'Juz 1 s/d 15 (15 Juz Sekali Duduk)', label: 'Juz 1 s/d 15 (15 Juz Sekali Duduk)' },
+                  { value: '30 Juz Bil Ghaib (Sekali Duduk)', label: '30 Juz Bil Ghaib (Sekali Duduk)' },
+                ]}
+                placeholder="Pilih Kategori Juz"
+                aria-label="Kategori Juz yang Diuji"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -720,25 +729,28 @@ export default function MunaqasyahTahfizhSection({ onDataMutate }) {
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Dewan Penguji (Guru Tahfizh Database)
               </label>
-              <select
-                value={formData.penguji_employee_id}
-                onChange={(e) => {
-                  const selExp = examiners.find((ex) => ex.id === e.target.value)
+              <HeroUiFilterSelect
+                size="sm"
+                searchable
+                value={String(formData.penguji_employee_id)}
+                onChange={(val) => {
+                  const selExp = examiners.find((ex) => String(ex.id) === String(val))
                   setFormData((p) => ({
                     ...p,
-                    penguji_employee_id: e.target.value,
+                    penguji_employee_id: val,
                     penguji: selExp?.name || p.penguji,
                   }))
                 }}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                <option value="">-- Pilih dari Dewan Penguji / Asatidzah --</option>
-                {availableExaminersForForm.map((ex) => (
-                  <option key={ex.id} value={ex.id}>
-                    {ex.name} ({ex.unit_name})
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: '-- Pilih dari Dewan Penguji / Asatidzah --' },
+                  ...availableExaminersForForm.map((ex) => ({
+                    value: String(ex.id),
+                    label: `${ex.name} (${ex.unit_name})`,
+                  })),
+                ]}
+                placeholder="Pilih Dewan Penguji"
+                aria-label="Dewan Penguji"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -810,15 +822,18 @@ export default function MunaqasyahTahfizhSection({ onDataMutate }) {
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Status Keputusan Dewan Penguji
               </label>
-              <select
+              <HeroUiFilterSelect
+                size="sm"
                 value={formData.status}
-                onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-bold dark:bg-slate-800 text-slate-800 dark:text-slate-100"
-              >
-                <option value="terjadwal">TERJADWAL (Ujian Mendatang / Belum Diuji)</option>
-                <option value="lulus">LULUS (Diterbitkan Nomor Syahadah Resmi)</option>
-                <option value="mengulang">MENGULANG (Perlu Pendampingan Tahsin Lanjutan)</option>
-              </select>
+                onChange={(val) => setFormData((p) => ({ ...p, status: val }))}
+                options={[
+                  { value: 'terjadwal', label: 'TERJADWAL (Ujian Mendatang / Belum Diuji)' },
+                  { value: 'lulus', label: 'LULUS (Diterbitkan Nomor Syahadah Resmi)' },
+                  { value: 'mengulang', label: 'MENGULANG (Perlu Pendampingan Tahsin Lanjutan)' },
+                ]}
+                placeholder="Pilih Status"
+                aria-label="Status Keputusan Dewan Penguji"
+              />
             </div>
           </div>
 

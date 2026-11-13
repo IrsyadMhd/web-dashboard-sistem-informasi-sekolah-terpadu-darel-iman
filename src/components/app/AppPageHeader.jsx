@@ -46,7 +46,7 @@ export default function AppPageHeader({
                 {title}
               </h1>
               {description && (
-                <p className="mt-1 max-w-3xl text-xs text-slate-500 sm:text-sm leading-relaxed dark:text-slate-400">
+                <p className="mt-1 w-full text-xs text-slate-500 sm:text-sm leading-relaxed dark:text-slate-400">
                   {description}
                 </p>
               )}
@@ -130,7 +130,7 @@ export default function AppPageHeader({
           )}
           <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold tracking-tight text-white leading-tight">{title}</h1>
           {description && (
-            <p className="max-w-3xl text-xs leading-relaxed text-emerald-100/95 sm:text-sm">{description}</p>
+            <p className="w-full text-xs leading-relaxed text-emerald-100/95 sm:text-sm">{description}</p>
           )}
           {chips.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 pt-1">

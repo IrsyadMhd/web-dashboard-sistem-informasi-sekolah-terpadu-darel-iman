@@ -24,6 +24,7 @@ import { TextArea } from '../ui/text-area'
 import { Badge } from '../ui/badge'
 import { Modal } from '../ui/modal'
 import { Avatar, AvatarFallback } from '../ui/avatar'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { divisiPendidikanWorkspaceService } from '../../services/divisiPendidikanWorkspaceService'
 
 export default function SupervisiKbmSection({ onDataMutate }) {
@@ -213,28 +214,38 @@ export default function SupervisiKbmSection({ onDataMutate }) {
                 className="w-full text-xs"
               />
             </div>
-            <select
-              value={filterUnit}
-              onChange={(e) => setFilterUnit(e.target.value)}
-              className="h-10 px-3 rounded-xl border border-slate-200/80 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200"
-              aria-label="Filter Unit"
-            >
-              <option value="all">Semua Unit Pendidikan</option>
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-            </select>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="h-10 px-3 rounded-xl border border-slate-200/80 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200"
-              aria-label="Filter Status"
-            >
-              <option value="all">Semua Status</option>
-              <option value="selesai">Selesai (Sudah Dinilai)</option>
-              <option value="terjadwal">Terjadwal (Mendatang)</option>
-              <option value="pendampingan">Perlu Pendampingan</option>
-            </select>
+            <div className="w-52">
+              <HeroUiFilterSelect
+                size="sm"
+                searchable
+                value={String(filterUnit)}
+                onChange={(val) => setFilterUnit(val)}
+                options={[
+                  { value: 'all', label: 'Semua Unit Pendidikan' },
+                  ...units.map((u) => ({
+                    value: String(u.id),
+                    label: u.name,
+                  })),
+                ]}
+                placeholder="Semua Unit"
+                aria-label="Filter Unit"
+              />
+            </div>
+            <div className="w-44">
+              <HeroUiFilterSelect
+                size="sm"
+                value={filterStatus}
+                onChange={(val) => setFilterStatus(val)}
+                options={[
+                  { value: 'all', label: 'Semua Status' },
+                  { value: 'selesai', label: 'Selesai (Sudah Dinilai)' },
+                  { value: 'terjadwal', label: 'Terjadwal (Mendatang)' },
+                  { value: 'pendampingan', label: 'Perlu Pendampingan' },
+                ]}
+                placeholder="Semua Status"
+                aria-label="Filter Status"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -442,40 +453,46 @@ export default function SupervisiKbmSection({ onDataMutate }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Pilih Guru Pengajar</label>
-              <select
-                value={formData.guru_id}
-                onChange={(e) => {
-                  const t = teachers.find((tc) => tc.id === e.target.value)
+              <HeroUiFilterSelect
+                size="sm"
+                searchable
+                value={String(formData.guru_id)}
+                onChange={(val) => {
+                  const t = teachers.find((tc) => String(tc.id) === String(val))
                   setFormData((p) => ({
                     ...p,
-                    guru_id: e.target.value,
+                    guru_id: val,
                     guru_name: t?.name || p.guru_name,
                     unit_id: t?.unit_id || p.unit_id,
                     unit_name: t?.unit_name || p.unit_name,
                   }))
                 }}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name} ({t.unit_name})</option>
-                ))}
-              </select>
+                options={teachers.map((t) => ({
+                  value: String(t.id),
+                  label: `${t.name} (${t.unit_name})`,
+                }))}
+                placeholder="Pilih Guru Pengajar"
+                aria-label="Pilih Guru Pengajar"
+              />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Unit Sekolah</label>
-              <select
-                value={formData.unit_id}
-                onChange={(e) => {
-                  const u = units.find((un) => un.id === e.target.value)
-                  setFormData((p) => ({ ...p, unit_id: e.target.value, unit_name: u?.name || p.unit_name }))
+              <HeroUiFilterSelect
+                size="sm"
+                searchable
+                value={String(formData.unit_id)}
+                onChange={(val) => {
+                  const u = units.find((un) => String(un.id) === String(val))
+                  setFormData((p) => ({ ...p, unit_id: val, unit_name: u?.name || p.unit_name }))
                 }}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
+                options={units.map((u) => ({
+                  value: String(u.id),
+                  label: u.name,
+                }))}
+                placeholder="Pilih Unit"
+                aria-label="Unit Sekolah"
+              />
             </div>
           </div>
 
@@ -519,15 +536,18 @@ export default function SupervisiKbmSection({ onDataMutate }) {
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Status Hasil</label>
-              <select
+              <HeroUiFilterSelect
+                size="sm"
                 value={formData.status}
-                onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                <option value="selesai">Selesai (Nilai Terpenuhi)</option>
-                <option value="terjadwal">Terjadwal</option>
-                <option value="pendampingan">Perlu Pendampingan Lanjutan</option>
-              </select>
+                onChange={(val) => setFormData((p) => ({ ...p, status: val }))}
+                options={[
+                  { value: 'selesai', label: 'Selesai (Nilai Terpenuhi)' },
+                  { value: 'terjadwal', label: 'Terjadwal' },
+                  { value: 'pendampingan', label: 'Perlu Pendampingan Lanjutan' },
+                ]}
+                placeholder="Pilih Status"
+                aria-label="Status Hasil"
+              />
             </div>
           </div>
 
@@ -547,16 +567,21 @@ export default function SupervisiKbmSection({ onDataMutate }) {
               ].map((param) => (
                 <div key={param.key} className="flex items-center justify-between bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-emerald-500/10">
                   <span className="font-semibold text-slate-700 dark:text-slate-300 pr-2">{param.label}</span>
-                  <select
-                    value={formData.rubrik[param.key]}
-                    onChange={(e) => handleRubrikChange(param.key, e.target.value)}
-                    className="h-8 px-2 rounded-lg border border-slate-200 text-xs font-bold text-emerald-800 dark:bg-slate-800"
-                  >
-                    <option value="4">4 (Amat Baik)</option>
-                    <option value="3">3 (Baik)</option>
-                    <option value="2">2 (Cukup)</option>
-                    <option value="1">1 (Kurang)</option>
-                  </select>
+                  <div className="w-36">
+                    <HeroUiFilterSelect
+                      size="sm"
+                      value={String(formData.rubrik[param.key])}
+                      onChange={(val) => handleRubrikChange(param.key, val)}
+                      options={[
+                        { value: '4', label: '4 (Amat Baik)' },
+                        { value: '3', label: '3 (Baik)' },
+                        { value: '2', label: '2 (Cukup)' },
+                        { value: '1', label: '1 (Kurang)' },
+                      ]}
+                      placeholder="Nilai"
+                      aria-label={param.label}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

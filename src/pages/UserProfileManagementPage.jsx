@@ -175,7 +175,7 @@ export default function UserProfileManagementPage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Pengaturan Profil & Keamanan Akun
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Kelola data pribadi {user?.name || user?.fullName || 'Pengguna'}, ganti kata sandi, verifikasi 2FA, pantau riwayat sesi login & aktivitas akun Anda secara terpadu.
                 </p>
               </div>

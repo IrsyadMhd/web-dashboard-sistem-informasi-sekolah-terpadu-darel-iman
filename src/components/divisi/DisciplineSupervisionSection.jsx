@@ -204,22 +204,22 @@ export default function DisciplineSupervisionSection() {
               size="sm"
               color="primary"
               variant="solid"
-              className="font-black rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm"
-              startContent={<Printer className="h-4 w-4" />}
+              className="inline-flex items-center gap-1.5 font-black rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm"
               onPress={() => setIsReportModalOpen(true)}
             >
-              Laporan Yayasan
+              <Printer className="h-4 w-4 shrink-0" />
+              <span>Laporan Yayasan</span>
             </HeroButton>
 
             <HeroButton
               size="sm"
               variant="flat"
               color="default"
-              className="font-black rounded-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-xs"
-              startContent={<RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />}
-              onPress={() => fetchOverview(selectedUnitId, sortBy)}
+              className="inline-flex items-center gap-1.5 font-black rounded-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-xs"
+              onPress={() => fetchOverview(selectedUnitId, selectedClassId, sortBy)}
             >
-              Segarkan
+              <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${loading ? 'animate-spin' : ''}`} />
+              <span>Segarkan</span>
             </HeroButton>
           </div>
         </div>
@@ -384,15 +384,13 @@ export default function DisciplineSupervisionSection() {
             )}
           </div>
 
-          <div className="w-full md:w-64">
+          <div className="relative w-full md:w-64">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <HeroInput
-              size="sm"
-              variant="bordered"
               placeholder="Cari santri/NIS/kelas..."
               value={studentSearch}
-              onValueChange={setStudentSearch}
-              startContent={<Search className="h-4 w-4 text-slate-400" />}
-              className="w-full"
+              onChange={(e) => setStudentSearch(e.target.value)}
+              className="w-full pl-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium"
             />
           </div>
         </div>
@@ -798,11 +796,11 @@ export default function DisciplineSupervisionSection() {
                     size="sm"
                     color="primary"
                     variant="solid"
-                    startContent={<Printer className="h-4 w-4" />}
-                    className="font-bold bg-emerald-600 text-white"
+                    className="inline-flex items-center gap-1.5 font-bold bg-emerald-600 text-white"
                     onPress={() => window.print()}
                   >
-                    Cetak Dokumen
+                    <Printer className="h-4 w-4 shrink-0" />
+                    <span>Cetak Dokumen</span>
                   </HeroButton>
                 </div>
               </div>

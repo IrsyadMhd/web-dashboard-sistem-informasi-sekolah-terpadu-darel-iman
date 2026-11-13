@@ -244,7 +244,7 @@ export default function DeleteApprovalPage() {
                     Superadmin Panel
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Tinjau dan verifikasi permohonan hapus data entitas penting dari seluruh unit. Penghapusan dieksekusi secara soft-delete teratur setelah disetujui Superadmin.
                 </p>
               </div>

@@ -23,6 +23,7 @@ export default function FloatingChatWidget() {
   const roles = user?.roles || []
   const permissions = user?.permissions || []
   const userLevel = getUserRoleLevel(user)
+  const policy = user?.access_policy || null
 
   const roleNames = useMemo(() => {
     return Array.isArray(roles)
@@ -38,6 +39,7 @@ export default function FloatingChatWidget() {
   }, [user, roleNames])
 
   const isSuperAdmin =
+    policy?.portal_group === 'super_admin' ||
     userLevel === ROLE_LEVELS.SUPER_ADMIN ||
     Boolean(user?.is_superadmin) ||
     roleNames.some((r) => ['Super Admin', 'super_admin', 'Superadmin'].includes(r)) ||
@@ -45,14 +47,19 @@ export default function FloatingChatWidget() {
     roleStr.includes('superadmin')
 
   const isTeacher =
+    policy?.portal_group === 'teacher' ||
     userLevel === ROLE_LEVELS.GURU ||
     roleNames.some((r) => ['Guru', 'Wali Kelas', 'Guru Pengajar', 'guru'].includes(r)) ||
     roleStr.includes('guru') ||
     roleStr.includes('walas')
 
-  const canEmployeeChat =
-    userLevel <= ROLE_LEVELS.MUSYRIF || // Level 1 s/d 7 (Staf Internal)
+  const isParent = policy?.portal_group === 'parent' || userLevel === ROLE_LEVELS.ORANG_TUA || isParentRole(user || roles) || roleStr.includes('orang') || roleStr.includes('parent')
+
+  const hasInternalRole =
+    ['super_admin', 'admin', 'foundation', 'education', 'principal', 'waka', 'tu', 'operator', 'teacher', 'musyrif', 'staff'].includes(policy?.portal_group) ||
+    userLevel <= ROLE_LEVELS.MUSYRIF || // Level 1 s/d 6 (Staf Internal)
     isSuperAdmin ||
+    isTeacher ||
     roleStr.includes('super') ||
     roleStr.includes('admin') ||
     roleStr.includes('yayasan') ||
@@ -63,14 +70,13 @@ export default function FloatingChatWidget() {
     /\b(tu|tata_usaha)\b/i.test(roleStr) ||
     roleStr.includes('pegawai') ||
     roleStr.includes('staf') ||
-    permissions.includes('chat.conversation.view') ||
     permissions.includes('chat.manage')
 
+  const canEmployeeChat = !isParent && hasInternalRole
   const isStaffOrTeacher = isSuperAdmin || canEmployeeChat || isTeacher
-  const isParent = userLevel === ROLE_LEVELS.ORANG_TUA || isParentRole(roles) || roleStr.includes('orang') || roleStr.includes('parent')
-  const isPureStudent = (userLevel === ROLE_LEVELS.SISWA || isStudentRole(roles) || roleStr.includes('siswa') || roleStr.includes('student')) && !isStaffOrTeacher && !isParent
+  const isPureStudent = (policy?.portal_group === 'student' || userLevel === ROLE_LEVELS.SISWA || isStudentRole(user || roles) || roleStr.includes('siswa') || roleStr.includes('student')) && !isStaffOrTeacher && !isParent
 
-  const isEmployee = canEmployeeChat && !isPureStudent
+  const isEmployee = canEmployeeChat && !isPureStudent && !isParent
   const shouldRender = Boolean(user) && !isPureStudent && (isParent || isTeacher || isEmployee || isSuperAdmin)
 
   const [isOpen, setIsOpen] = useState(false)

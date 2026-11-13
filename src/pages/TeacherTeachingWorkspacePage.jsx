@@ -5101,6 +5101,26 @@ export default function TeacherTeachingWorkspacePage() {
     return matched.length > 0 ? matched : classes
   }, [classes, materialMapelFilter, allTeacherSchedules, schedules, materials])
 
+  const activeWorkspaceClassValue = useMemo(() => {
+    if (!selectedClass || selectedClass === 'all') return 'all'
+    const match = filteredClassesOptions.find((c) =>
+      String(c.id) === String(selectedClass) ||
+      c.nama_kelas === selectedClass ||
+      c.name === selectedClass ||
+      c.kode_kelas === selectedClass
+    )
+    return match ? String(match.id) : String(selectedClass)
+  }, [filteredClassesOptions, selectedClass])
+
+  const activeWorkspaceMapelValue = useMemo(() => {
+    if (!materialMapelFilter || materialMapelFilter === 'all') return 'all'
+    const match = uniqueMapelOptions.find((m) =>
+      String(m.id) === String(materialMapelFilter) ||
+      m.name === materialMapelFilter
+    )
+    return match ? String(match.id) : String(materialMapelFilter)
+  }, [uniqueMapelOptions, materialMapelFilter])
+
   // Daftar rombel unik yang spesifik diajar untuk Mapel pada sesi Presensi (presensiModalSchedule)
   const presensiModalClasses = useMemo(() => {
     const activeSchedule = presensiModalSchedule || getCurrentSchedule() || schedules[0] || null
@@ -5888,7 +5908,7 @@ export default function TeacherTeachingWorkspacePage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Workspace Pembelajaran Guru
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Pusat kendali aktivitas mengajar Ustadz/Ustadzah — Kelola jadwal, presensi, materi, tugas, nilai, &amp; jurnal tahfizh terpadu.
                 </p>
               </div>
@@ -5987,71 +6007,103 @@ export default function TeacherTeachingWorkspacePage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="relative rounded-[20px] border-2 border-emerald-500/25 bg-white p-4 sm:p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-700/60 dark:bg-[#1B2433] z-20"
+        className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-white p-4 sm:p-5 shadow-md shadow-emerald-500/10 dark:border-emerald-700/60 dark:bg-[#1B2433] z-20"
       >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-600/30">
-              <Layers className="size-5" />
+        {/* Ambient Glow Accent */}
+        <div className="pointer-events-none absolute -top-12 -right-12 h-36 w-36 rounded-full bg-gradient-to-br from-emerald-500/20 via-teal-400/15 to-transparent blur-2xl" />
+
+        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          {/* Sisi Kiri: Ikon Squircle, Judul, Pill Aktif, dan Penjelasan */}
+          <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+            <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40">
+              <Layers className="size-5 sm:size-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
-                  Filter Rombel & Mata Pelajaran
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white">
+                  Filter Rombel &amp; Mata Pelajaran
                 </h3>
-                <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 px-2.5 py-0.5 text-[10px] font-extrabold border border-emerald-300/60 dark:border-emerald-800">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Aktif
                 </span>
+                {selectedClass && selectedClass !== 'all' && (
+                  <span className="hidden md:inline-flex items-center rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 px-2.5 py-0.5 text-[10px] font-bold border border-teal-200 dark:border-teal-800">
+                    Rombel: {selectedClassName || selectedClass}
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Pilih rombel dan mata pelajaran untuk memfilter jadwal, presensi, materi, tugas, nilai, &amp; mutaba'ah siswa.
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                Pilih rombel dan mata pelajaran untuk memfilter jadwal, presensi, materi, tugas, nilai, &amp; mutaba'ah siswa secara terpadu.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Pemilihan Rombel / Kelas */}
-            <HeroUiWorkspaceSelect
-              id="workspace-rombel-select"
-              value={selectedClass}
-              onChange={(val) => handleWorkspaceClassChange(val)}
-              options={[
-                { value: 'all', label: 'Semua Rombel', subtext: 'Seluruh rombel yang diampu' },
-                ...filteredClassesOptions.map((c) => ({
-                  value: c.id,
-                  label: `${c.nama_kelas || c.name}${c.kode_kelas ? ` · ${c.kode_kelas}` : ''}`,
-                })),
-              ]}
-              icon={Users}
-              label="Rombel"
-              placeholder="Pilih Rombel"
-              popoverWidth="w-72"
-              searchable
-            />
+          {/* Sisi Kanan: Kontrol Filter Presisi & Rapi */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* Filter Rombel */}
+            <div className="w-full sm:w-[220px]">
+              <HeroUiFilterSelect
+                id="workspace-rombel-select"
+                size="md"
+                value={activeWorkspaceClassValue}
+                onChange={(val) => handleWorkspaceClassChange(val)}
+                options={[
+                  { value: 'all', label: 'Semua Rombel', subtext: 'Seluruh rombel yang diampu' },
+                  ...filteredClassesOptions.map((c) => ({
+                    value: String(c.id),
+                    label: c.nama_kelas || c.name || `Kelas ${c.id}`,
+                    subtext: c.kode_kelas ? `Kode: ${c.kode_kelas}` : undefined,
+                  })),
+                ]}
+                icon={Users}
+                placeholder="Pilih Rombel"
+                ariaLabel="Pilih Rombel"
+                searchable
+              />
+            </div>
 
-            {/* Pemilihan Mata Pelajaran */}
-            <HeroUiWorkspaceSelect
-              id="workspace-mapel-select"
-              value={materialMapelFilter}
-              onChange={(val) => handleWorkspaceMapelChange(val)}
-              options={[
-                { value: 'all', label: 'Semua Mata Pelajaran', subtext: 'Seluruh mapel yang diampu' },
-                ...uniqueMapelOptions.map((subj) => ({
-                  value: subj.id,
-                  label: subj.name,
-                })),
-              ]}
-              icon={BookOpen}
-              label="Mapel"
-              placeholder="Pilih Mata Pelajaran"
-              popoverWidth="w-72"
-              searchable
-            />
+            {/* Filter Mata Pelajaran */}
+            <div className="w-full sm:w-[220px]">
+              <HeroUiFilterSelect
+                id="workspace-mapel-select"
+                size="md"
+                value={activeWorkspaceMapelValue}
+                onChange={(val) => handleWorkspaceMapelChange(val)}
+                options={[
+                  { value: 'all', label: 'Semua Mata Pelajaran', subtext: 'Seluruh mapel yang diampu' },
+                  ...uniqueMapelOptions.map((subj) => ({
+                    value: String(subj.id),
+                    label: subj.name,
+                  })),
+                ]}
+                icon={BookOpen}
+                placeholder="Pilih Mata Pelajaran"
+                ariaLabel="Pilih Mata Pelajaran"
+                searchable
+              />
+            </div>
 
-            {/* Pill Jumlah Siswa */}
-            <div className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/60 px-3 py-2 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-              <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>{students.length} Siswa Terdaftar</span>
+            {/* Tombol Reset Filter jika ada filter aktif */}
+            {(selectedClass !== 'all' || materialMapelFilter !== 'all') && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleWorkspaceClassChange('all')
+                  handleWorkspaceMapelChange('all')
+                }}
+                className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/80 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                title="Reset filter ke Semua Rombel & Semua Mapel"
+              >
+                <RefreshCw className="size-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
+
+            {/* Pill Siswa Terdaftar */}
+            <div className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-xs font-black text-emerald-900 dark:text-emerald-200 shadow-2xs">
+              <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>{students.length} Siswa</span>
             </div>
           </div>
         </div>
@@ -6374,8 +6426,8 @@ export default function TeacherTeachingWorkspacePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 xl:grid-cols-12 xl:items-start">
-                <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-7">
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-12 xl:items-stretch">
+                <section className="relative flex h-full flex-col overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-7">
                   {/* Header toolbar */}
                   <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -6597,7 +6649,7 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </section>
 
-                <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-5">
+                <section className="relative flex h-full flex-col overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-5">
                   {/* Header toolbar */}
                   <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5">
                     <div className="flex items-center gap-3">
@@ -8763,7 +8815,7 @@ export default function TeacherTeachingWorkspacePage() {
                             : 'Leaderboard Pencapaian Hafalan Tahfizh Seluruh Unit')
                           : `Jurnal & Ranking Setoran Tahfizh Al-Qur'an — ${teacherProfile?.education_unit || user?.education_unit?.name || 'Unit Sekolah'}${selectedClassName && selectedClass !== 'all' ? ` (Kelas ${selectedClassName})` : ''}`}
                       </h2>
-                      <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                      <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                         {isGlobalTahfizhScope
                           ? 'Menampilkan konsolidasi pencapaian hafalan tahfizh terbanyak dari seluruh unit pendidikan dengan kemampuan menyortir rincian teratas masing-masing unit.'
                           : `Menampilkan daftar peringkat hafalan tahfizh santri khusus untuk unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'pendidikan Anda'} diurutkan berdasarkan pencapaian hafalan terbanyak.`}
@@ -9889,7 +9941,7 @@ export default function TeacherTeachingWorkspacePage() {
                         <h2 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                           Buku Log &amp; Riwayat Presensi Guru
                         </h2>
-                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                           Rekam jejak kehadiran kedinasan guru resmi — Pemantauan jam check-in, check-out, akumulasi jam kerja, verifikasi perangkat biometrik/QR, dan sertifikasi disiplin kerja terpadu.
                         </p>
                       </div>
@@ -10271,7 +10323,7 @@ export default function TeacherTeachingWorkspacePage() {
                         <h2 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                           Jadwal Pelajaran Lengkap Sekolah
                         </h2>
-                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                           Tinjauan komprehensif seluruh persebaran jam KBM guru — Tampilan fleksibel filter harian, matriks mingguan, estimasi beban bulanan, dan tabel semesteran terintegrasi.
                         </p>
                       </div>
@@ -12374,12 +12426,12 @@ export default function TeacherTeachingWorkspacePage() {
             )}
 
             {modalType === 'delete-confirm' ? (
-              <div className="space-y-4 text-center py-2">
+              <div role="alertdialog" aria-modal="true" aria-labelledby="delete-confirm-title" className="space-y-4 text-center py-2">
                 <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
                   <AlertTriangle className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Konfirmasi Hapus Data</h3>
+                  <h3 id="delete-confirm-title" className="text-base font-bold text-slate-900 dark:text-white">Konfirmasi Hapus Data</h3>
                   <p className="text-xs text-slate-500 mt-1">
                     Apakah Anda yakin ingin menghapus data <strong>{deleteTarget?.title}</strong>? Tindakan ini tidak dapat dibatalkan.
                   </p>
@@ -13782,20 +13834,13 @@ export default function TeacherTeachingWorkspacePage() {
                       <div><label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Tanggal</label><DatePicker required value={catatanForm.date} onChange={(e) => setCatatanForm({ ...catatanForm, date: e.target.value })} /></div>
                       <div>
                         <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Kategori</label>
-                        <div className="relative flex items-center">
-                          <select
-                            value={catatanForm.category}
-                            onChange={(e) => setCatatanForm({ ...catatanForm, category: e.target.value })}
-                            className="h-10 w-full appearance-none rounded-xl border border-slate-200 pl-3 pr-9 text-xs font-semibold text-slate-800 transition hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
-                          >
-                            {['Akademik', 'Perilaku', 'Kedisiplinan', 'Prestasi', 'Konseling', 'Tahfizh', 'Ibadah', 'Kesehatan'].map((category) => (
-                              <option key={category}>{category}</option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute right-3 flex items-center text-slate-400">
-                            <ChevronDown className="size-4" />
-                          </div>
-                        </div>
+                        <HeroUiFilterSelect
+                          size="md"
+                          value={catatanForm.category}
+                          onChange={(val) => setCatatanForm({ ...catatanForm, category: val })}
+                          ariaLabel="Kategori"
+                          options={['Akademik', 'Perilaku', 'Kedisiplinan', 'Prestasi', 'Konseling', 'Tahfizh', 'Ibadah', 'Kesehatan']}
+                        />
                       </div>
                     </div>
                     {(catatanForm.category === 'Perilaku' || catatanForm.category === 'Kedisiplinan') && (
@@ -13844,21 +13889,18 @@ export default function TeacherTeachingWorkspacePage() {
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
                         <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Prioritas</label>
-                        <div className="relative flex items-center">
-                          <select
-                            value={catatanForm.priority}
-                            onChange={(e) => setCatatanForm({ ...catatanForm, priority: e.target.value })}
-                            className="h-10 w-full appearance-none rounded-xl border border-slate-200 pl-3 pr-9 text-xs font-semibold text-slate-800 transition hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
-                          >
-                            <option value="low">Rendah</option>
-                            <option value="medium">Sedang</option>
-                            <option value="high">Tinggi</option>
-                            <option value="urgent">Mendesak</option>
-                          </select>
-                          <div className="pointer-events-none absolute right-3 flex items-center text-slate-400">
-                            <ChevronDown className="size-4" />
-                          </div>
-                        </div>
+                        <HeroUiFilterSelect
+                          size="md"
+                          value={catatanForm.priority}
+                          onChange={(val) => setCatatanForm({ ...catatanForm, priority: val })}
+                          ariaLabel="Prioritas"
+                          options={[
+                            { value: 'low', label: 'Rendah' },
+                            { value: 'medium', label: 'Sedang' },
+                            { value: 'high', label: 'Tinggi' },
+                            { value: 'urgent', label: 'Mendesak' },
+                          ]}
+                        />
                       </div>
                       <div className="flex items-end gap-4 pb-2"><label className="flex items-center gap-2"><input type="checkbox" checked={catatanForm.visible_to_parent} onChange={(e) => setCatatanForm({ ...catatanForm, visible_to_parent: e.target.checked })} /> Orang tua</label><label className="flex items-center gap-2"><input type="checkbox" checked={catatanForm.visible_to_student} onChange={(e) => setCatatanForm({ ...catatanForm, visible_to_student: e.target.checked })} /> Siswa</label></div>
                     </div>

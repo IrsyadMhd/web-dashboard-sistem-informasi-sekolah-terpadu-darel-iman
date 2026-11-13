@@ -247,6 +247,13 @@ export default function ParentPortalPage() {
         const res = await familyPortalService.list('schedules', childId).catch(() => ({ data: [] }))
         const payload = res?.data || res || []
         setRecords(payload)
+      } else if (active === 'calendar') {
+        setRecords([])
+        const res = await api.get('/portal/academic-calendar', { params: childId ? { child_id: childId } : {} }).catch(() => ({ data: { data: [] } }))
+        setRecords(unwrap(res))
+      } else if (active === 'bahasa') {
+        // BahasaWorkspace memuat /vocabulary/submissions dan /vocabulary/banks secara mandiri
+        setRecords([])
       } else {
         setRecords([])
         const res = await familyPortalService.list(active, childId).catch(() => ({ data: [] }))
@@ -408,7 +415,7 @@ export default function ParentPortalPage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Portal Orang Tua / Wali Murid
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Pantau perkembangan nilai akademik, progres tahfizh Al-Qur'an, mutabaah harian, presensi, jadwal, serta pengumuman sekolah terpadu.
                 </p>
               </div>

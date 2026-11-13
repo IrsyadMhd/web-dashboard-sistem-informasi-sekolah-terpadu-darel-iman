@@ -5,6 +5,8 @@ import AppModal from '../app/AppModal'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
+import { Input } from '@/components/ui/input'
+import { TextArea } from '@/components/ui/text-area'
 import { codeGeneratorService } from '../../services/codeGeneratorService'
 
 const JENIS_OPTIONS = ['SIT', 'Merdeka', 'Nasional', 'Pesantren', 'Lokal', 'Lainnya']
@@ -199,15 +201,14 @@ export default function KurikulumFormModal({
               <label className="block font-bold text-slate-700 mb-1.5">
                 Kode Kurikulum <span className="text-rose-500">*</span>
               </label>
-              <input
+              <Input
                 type="text"
+                size="sm"
                 name="kode_kurikulum"
                 value={formData.kode_kurikulum}
                 onChange={handleChange}
                 placeholder="Misal: KUR-SD-SIT-2026"
-                className={`w-full px-3.5 py-2.5 rounded-xl border ${
-                  errors.kode_kurikulum ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 bg-slate-50/50'
-                } font-mono text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all`}
+                className={`font-mono ${errors.kode_kurikulum ? 'border-rose-400 bg-rose-50/30' : ''}`}
               />
               {errors.kode_kurikulum && (
                 <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
@@ -221,15 +222,14 @@ export default function KurikulumFormModal({
               <label className="block font-bold text-slate-700 mb-1.5">
                 Nama Kurikulum <span className="text-rose-500">*</span>
               </label>
-              <input
+              <Input
                 type="text"
+                size="sm"
                 name="nama_kurikulum"
                 value={formData.nama_kurikulum}
                 onChange={handleChange}
                 placeholder="Misal: Kurikulum Merdeka Terpadu SD"
-                className={`w-full px-3.5 py-2.5 rounded-xl border ${
-                  errors.nama_kurikulum ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 bg-slate-50/50'
-                } font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all`}
+                className={errors.nama_kurikulum ? 'border-rose-400 bg-rose-50/30' : ''}
               />
               {errors.nama_kurikulum && (
                 <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
@@ -397,14 +397,13 @@ export default function KurikulumFormModal({
           {/* Deskripsi */}
           <div>
             <label className="block font-bold text-slate-700 mb-1.5">Deskripsi / Catatan Kurikulum</label>
-            <textarea
+            <TextArea
               name="deskripsi"
               rows={3}
               value={formData.deskripsi}
               onChange={handleChange}
               placeholder="Catatan tambahan mengenai struktur kurikulum..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
-            ></textarea>
+            />
           </div>
 
           {/* Action Buttons */}

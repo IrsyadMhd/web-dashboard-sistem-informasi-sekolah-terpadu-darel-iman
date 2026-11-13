@@ -556,7 +556,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
                   <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Referensi Pembelajaran
                   </h1>
-                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                     Kelola buku acuan, jurnal, modul luar, dan sumber kepustakaan digital terpadu (Modul Ajar 1:N Referensi).
                   </p>
                 </div>

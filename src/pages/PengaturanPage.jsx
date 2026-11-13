@@ -1262,7 +1262,7 @@ export default function PengaturanPage() {
                   Akses Khusus Super Admin & Admin
                 </span>
               </div>
-              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                 Konfigurasi terpusat identitas sekolah, style & tema website, konten Bantuan & FAQ, serta preferensi operasional SIMSIT.
               </p>
             </div>
@@ -2377,7 +2377,7 @@ export default function PengaturanPage() {
                         <h3 className="mt-1 text-base sm:text-lg font-black text-slate-900 dark:text-white">
                           Konfigurasi API SIPDEI & Virtual Account (Nagari & BSI)
                         </h3>
-                        <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
+                        <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed w-full">
                           Kredensial disimpan langsung di database (<code className="font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/60 px-1 rounded">site_settings</code>) dan digunakan oleh server untuk memanggil <b>API Riwayat Tagihan Siswa</b> serta <b>API Pembuatan Virtual Account</b>. Super Admin dan Admin dapat memperbarui token sewaktu-waktu di form bawah ini.
                         </p>
                       </div>

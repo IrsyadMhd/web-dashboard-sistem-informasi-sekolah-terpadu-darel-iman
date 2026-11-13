@@ -35,6 +35,7 @@ import {
   Chip as HeroChip,
   Button as HeroButton,
 } from '@heroui/react'
+import { TextArea as HeroTextArea } from '../ui/text-area'
 import useDebounce from '../../hooks/useDebounce'
 import { DatePicker } from '@/components/ui/date-picker'
 import { cn } from '../../lib/utils'
@@ -1732,7 +1733,7 @@ export default function AttendanceWorkspace({
       {/* 4. HERO UI MODAL PENGAJUAN IZIN / SAKIT */}
       <AnimatePresence>
         {modalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Pengajuan Izin / Sakit">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -1813,7 +1814,7 @@ export default function AttendanceWorkspace({
                 </div>
 
                 {/* Rentang Tanggal Mulai & Selesai */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                       Tanggal Mulai
@@ -1847,13 +1848,13 @@ export default function AttendanceWorkspace({
                   <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
                     Alasan / Keterangan Izin
                   </label>
-                  <textarea
+                  <HeroTextArea
                     rows={3}
                     required
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     placeholder="Tuliskan alasan izin atau kondisi ananda secara rinci..."
-                    className="w-full rounded-2xl border-2 border-slate-200/80 bg-slate-50 p-3.5 text-xs font-medium text-slate-800 outline-none transition-all focus:border-sky-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    className="rounded-2xl border-2 border-slate-200/80 bg-slate-50 p-3.5 text-xs font-medium text-slate-800 focus:border-sky-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                   />
                 </div>
 

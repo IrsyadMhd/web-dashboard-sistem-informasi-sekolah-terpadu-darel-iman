@@ -1502,7 +1502,7 @@ export default function LmsUjianPage({
                 <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Ujian Online (CBT) &amp; Evaluasi Siswa
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                   Penyelenggaraan ujian berbasis komputer terintegrasi Bank Soal dengan Timer real-time, pengacakan butir soal &amp; opsi, auto scoring, dan rekapitulasi analisis nilai instan.
                 </p>
               </div>

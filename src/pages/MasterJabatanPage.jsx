@@ -913,7 +913,7 @@ export default function MasterJabatanPage() {
                     Manajemen Jabatan
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Struktur jabatan struktural & fungsional pegawai, hierarki kedudukan, hak akses sistem, dan distribusi SDM di seluruh unit.
                 </p>
               </div>

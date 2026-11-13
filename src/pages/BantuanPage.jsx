@@ -629,7 +629,7 @@ export default function BantuanPage() {
               <h2 className="text-xl sm:text-2xl font-black text-white">
                 Masih Mengalami Kendala Operasional SIMSIT?
               </h2>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed w-full">
                 Tim Support & Helpdesk IT {foundationName} siap membantu kendala teknis, pengurusan akun, perbaikan data master, dan konsultasi modul sekolah.
               </p>
 

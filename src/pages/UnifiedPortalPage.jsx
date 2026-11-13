@@ -651,7 +651,7 @@ export default function UnifiedPortalPage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   {isParent ? 'Portal Siswa & Wali Murid' : 'Portal Pembelajaran & Prestasi Siswa'}
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Pantau perkembangan akademik, setoran tahfizh, mutabaah yaumiyyah, jadwal KBM, tugas LMS, presensi digital, dan pengumuman sekolah.
                 </p>
               </div>

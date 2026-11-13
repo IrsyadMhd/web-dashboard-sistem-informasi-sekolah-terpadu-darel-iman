@@ -410,7 +410,7 @@ export default function LaporanSiswaPage() {
       nama_siswa: student.full_name || student.name || item.nama_siswa || item.student_name || 'Santri Mahad',
       nis: student.nis || item.nis || '-',
       kelas: student.kelas?.nama_kelas || student.kelas?.name || item.class_name || '-',
-      unit: student.education_unit?.name || student.education_unit?.code || item.unit_name || 'Mahad Abu Ja\'far',
+      unit: student.education_unit?.name || student.education_unit?.code || item.unit_name || user?.unit_name || user?.unit?.name || 'Unit Pendidikan',
       nama_prestasi: item.nama_prestasi || item.judul || item.prestasi || 'Prestasi Siswa',
       tingkat_prestasi: item.tingkat_prestasi || item.tingkat || 'Internal Sekolah',
       jenis_prestasi: item.jenis_prestasi || item.bidang || item.kategori || 'santri',
@@ -1069,7 +1069,7 @@ export default function LaporanSiswaPage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Laporan Rekap Data Siswa & Kelulusan
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Pusat rekapitulasi data kesiswaan terpadu: statistik status aktif/alumni/mutasi, breakdown per jenjang & unit pendidikan.
                 </p>
               </div>

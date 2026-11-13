@@ -1,7 +1,8 @@
 import { useToast } from '../components/app/ToastProvider'
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
-import { getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
+import { getUserRoleLevel, ROLE_LEVELS, isRestrictedToTeacherWorkspace, canSwitchEducationUnit } from '../auth/portalResolver'
+import { useDebounce } from '../hooks/useDebounce'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   QrCode,
@@ -44,6 +45,7 @@ import AppSkeleton from '../components/app/AppSkeleton'
 import AppEmptyState from '../components/app/AppEmptyState'
 import { SquircleActionButton, MasterActionButton, MasterActionIconButton } from '../components/master-data'
 import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
+import { Input as HeroInput } from '../components/ui/input'
 import AppTabs from '../components/app/AppTabs'
 import {
   TableRoot,
@@ -175,109 +177,6 @@ function GateKpiCard({ icon: Icon, title, value, subtext, tag, tone = 'emerald',
 }
 
 
-function HeroUiModalSelect({
-  value,
-  onChange,
-  options = [],
-  placeholder = 'Pilih...',
-  disabled = false,
-  searchable = false,
-  icon: Icon = null,
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const containerRef = useRef(null)
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const selectedOption = options.find((opt) => String(opt.value) === String(value))
-  const filteredOptions = searchable || options.length > 5
-    ? options.filter((opt) => String(opt.label).toLowerCase().includes(search.toLowerCase()))
-    : options
-
-  return (
-    <div ref={containerRef} className="relative w-full">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between gap-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 shadow-xs transition-all hover:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-      >
-        <span className="flex items-center gap-2.5 truncate">
-          {Icon && <Icon className="size-4 text-slate-400 shrink-0" />}
-          <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
-        </span>
-        <ChevronDown
-          className={`size-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
-            isOpen ? 'rotate-180 text-emerald-600' : ''
-          }`}
-        />
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -4, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="absolute left-0 top-full z-[80] mt-1.5 w-full min-w-[200px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40"
-          >
-            {(searchable || options.length > 5) && (
-              <div className="mb-1.5 px-1 pt-1">
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Cari..."
-                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  autoFocus
-                />
-              </div>
-            )}
-            <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
-              {filteredOptions.length === 0 ? (
-                <div className="py-2 text-center text-xs text-slate-400">Tidak ada pilihan</div>
-              ) : (
-                filteredOptions.map((opt) => {
-                  const isSelected = String(opt.value) === String(value)
-                  return (
-                    <button
-                      key={String(opt.value)}
-                      type="button"
-                      onClick={() => {
-                        onChange(opt.value)
-                        setIsOpen(false)
-                        setSearch('')
-                      }}
-                      className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-50 text-emerald-700 font-bold dark:bg-emerald-950/60 dark:text-emerald-300'
-                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60 font-medium'
-                      }`}
-                    >
-                      <span className="truncate">{opt.label}</span>
-                      {isSelected && <Check className="size-3.5 text-emerald-600 shrink-0" />}
-                    </button>
-                  )
-                })
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
-
 export default function GateAttendancePage() {
   const navigate = useNavigate()
   const storeUser = useAuthStore((state) => state.user)
@@ -296,41 +195,25 @@ export default function GateAttendancePage() {
     const list = Array.isArray(raw) ? raw : [raw]
     return list.map((r) => (typeof r === 'string' ? r : r?.name || r?.role_name || r?.nama || ''))
   }, [currentUser])
-  const isGuru = useMemo(() => {
-    if (authLevel === ROLE_LEVELS.GURU) return true
-    const hasGuru = userRoles.some((r) => /guru|pendidik|pengajar|walas|wali[\s_]*kelas/i.test(r))
-    const hasAdminOrKepsek = userRoles.some((r) => /admin|super|kepala[\s_]*sekolah|kepsek|waka|tata[\s_]*usaha|tu|operator|divisi|yayasan/i.test(r))
-    return hasGuru && !hasAdminOrKepsek
-  }, [authLevel, userRoles])
+  const isGuru = useMemo(
+    () => isRestrictedToTeacherWorkspace(currentUser, '/dashboard/absensi-gerbang'),
+    [currentUser]
+  )
 
   if (isGuru) {
     return <Navigate to="/portal-guru/workspace" replace />
   }
-
-  const userRole = String(
-    currentUser?.role || currentUser?.user_type || currentUser?.roles?.[0]?.name || ''
-  ).toLowerCase()
 
   const userUnitId =
     currentUser?.education_unit_id ||
     currentUser?.unit_id ||
     currentUser?.employee?.unit_id ||
     currentUser?.unit_pendidikan_id ||
+    currentUser?.metadata?.unit_id ||
+    currentUser?.metadata?.education_unit_id ||
     ''
 
-  const isMultiUnitUser =
-    !userRole ||
-    [
-      'superadmin',
-      'admin',
-      'yayasan',
-      'pengurus_yayasan',
-      'divisi_pendidikan',
-      'direktur_pendidikan',
-      'kabid_pendidikan',
-      'pimpinan',
-      'kepala_pendidikan',
-    ].some((r) => userRole.includes(r))
+  const isMultiUnitUser = useMemo(() => canSwitchEducationUnit(currentUser), [currentUser])
 
   const [activeTab, setActiveTab] = useState('scan') // 'scan' | 'logs'
   const [scanMode, setScanMode] = useState('checkin') // 'checkin' | 'checkout'
@@ -338,11 +221,12 @@ export default function GateAttendancePage() {
 
   const [cardInput, setCardInput] = useState('')
   const [modalCardInput, setModalCardInput] = useState('')
-  const [selectedUnit, setSelectedUnit] = useState(isMultiUnitUser ? '' : userUnitId)
+  const [selectedUnit, setSelectedUnit] = useState(isMultiUnitUser ? '' : String(userUnitId || ''))
   const [units, setUnits] = useState([])
 
   // Student search list for Manual TU Input mode
   const [studentSearch, setStudentSearch] = useState('')
+  const debouncedStudentSearch = useDebounce(studentSearch, 350)
   const [studentsList, setStudentsList] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
 
@@ -354,7 +238,7 @@ export default function GateAttendancePage() {
   }
 
   // Schedule Config State
-  const [targetUnitForConfig, setTargetUnitForConfig] = useState('')
+  const [targetUnitForConfig, setTargetUnitForConfig] = useState(isMultiUnitUser ? '' : String(userUnitId || ''))
   const [scheduleConfig, setScheduleConfig] = useState({
     jam_masuk: '07:15',
     toleransi_menit: 10,
@@ -375,10 +259,16 @@ export default function GateAttendancePage() {
     ]
   }, [isMultiUnitUser, units])
 
-  const targetUnitConfigOptions = useMemo(() => [
-    { value: '', label: '-- Default Global (Seluruh Unit) --' },
-    ...units.map((u) => ({ value: String(u.id), label: u.nama || u.name }))
-  ], [units])
+  const targetUnitConfigOptions = useMemo(() => {
+    const mapped = units.map((u) => ({ value: String(u.id), label: u.nama || u.name }))
+    if (!isMultiUnitUser) {
+      return mapped
+    }
+    return [
+      { value: '', label: '-- Default Global (Seluruh Unit) --' },
+      ...mapped,
+    ]
+  }, [isMultiUnitUser, units])
 
   const [stats, setStats] = useState({
     total_siswa: 0,
@@ -586,16 +476,20 @@ export default function GateAttendancePage() {
   }, [selectedUnit])
 
   useEffect(() => {
-    if (!isMultiUnitUser && userUnitId && selectedUnit !== userUnitId) {
-      setSelectedUnit(userUnitId)
+    const resolvedUnit = userUnitId || (!isMultiUnitUser && units.length === 1 ? String(units[0].id) : '')
+    if (!isMultiUnitUser && resolvedUnit && String(selectedUnit) !== String(resolvedUnit)) {
+      setSelectedUnit(String(resolvedUnit))
     }
-  }, [userUnitId, isMultiUnitUser])
+    if (!isMultiUnitUser && resolvedUnit && !targetUnitForConfig) {
+      setTargetUnitForConfig(String(resolvedUnit))
+    }
+  }, [userUnitId, isMultiUnitUser, units, selectedUnit, targetUnitForConfig])
 
   useEffect(() => {
     if (method === 'MANUAL') {
       fetchStudents()
     }
-  }, [method, studentSearch, selectedUnit])
+  }, [method, debouncedStudentSearch, selectedUnit])
 
   useEffect(() => {
     if (showScheduleModal) {
@@ -647,7 +541,7 @@ export default function GateAttendancePage() {
       pushToast('success', 'Pengaturan Disimpan!', res.data?.message || 'Pengaturan jam masuk dan jam pulang berhasil diperbarui.')
       setShowScheduleModal(false)
       fetchScheduleConfig()
-      fetchAllScheduleConfigs()
+      fetchAllUnitsSchedules()
     } catch (err) {
       pushToast('error', 'Gagal Menyimpan', err?.response?.data?.message || 'Gagal menyimpan pengaturan jadwal jam masuk/pulang.')
     } finally {
@@ -659,7 +553,7 @@ export default function GateAttendancePage() {
     setLoadingStudents(true)
     try {
       const res = await studentService.getDaftar({
-        search: studentSearch,
+        search: debouncedStudentSearch,
         unit_id: selectedUnit,
         per_page: 15,
       })
@@ -937,11 +831,11 @@ export default function GateAttendancePage() {
         </div>
 
           <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+            <div className="flex flex-1 items-start gap-3.5 sm:gap-4 min-w-0">
               <div className="flex size-11 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
                 <QrCode className="size-5 sm:size-7 text-white" />
               </div>
-              <div className="min-w-0">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-white shadow-md shadow-emerald-600/25 border border-emerald-300/40">
                     <ShieldCheck className="h-3.5 w-3.5" />
@@ -954,23 +848,23 @@ export default function GateAttendancePage() {
                 <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Absensi Gerbang Kedatangan &amp; Pulang Sekolah
                 </h1>
-              <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+              <p className="mt-0.5 w-full text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
                 Terminal pemindaian real-time kartu siswa, QR Code, RFID, dan verifikasi kepulangan siswa terpadu.
               </p>
             </div>
           </div>
 
           {/* Action Controls: Unit Filter & Schedule Config Button */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap z-10">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0 self-start lg:self-center z-10 w-full lg:w-auto">
             {/* Unit Filter Field */}
             <HeroUiFilterSelect
               disabled={!isMultiUnitUser}
               value={selectedUnit}
               onChange={(val) => setSelectedUnit(val)}
               options={unitFilterOptions}
-              placeholder="Semua Unit Pendidikan"
+              placeholder={isMultiUnitUser ? 'Semua Unit Pendidikan' : 'Memuat Unit...'}
               icon={isMultiUnitUser ? Building2 : Lock}
-              className="min-w-[210px]"
+              className="w-full sm:w-auto min-w-[210px]"
               size="sm"
             />
 
@@ -1137,7 +1031,7 @@ export default function GateAttendancePage() {
                   <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                     Metode Scan
                   </label>
-                  <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Metode pemindaian">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" role="tablist" aria-label="Metode pemindaian">
                     <button
                       type="button"
                       role="tab"
@@ -1183,18 +1077,18 @@ export default function GateAttendancePage() {
                 {/* DYNAMIC ACTION VIEW 1: QR CODE METHOD */}
                 {method === 'QRCODE' && (
                   <div className="space-y-4">
-                    <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 dark:border-emerald-950/50 dark:bg-emerald-950/20 flex items-center justify-between">
+                    <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 dark:border-emerald-950/50 dark:bg-emerald-950/20 flex flex-wrap items-center justify-between gap-3">
                       {/* Animated Laser Line */}
                       <motion.div
                         className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent shadow-[0_0_8px_rgba(16,185,129,0.8)] pointer-events-none"
                         animate={{ top: ['0%', '100%', '0%'] }}
                         transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
                       />
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm border border-emerald-300/40 shrink-0">
                           <QrCode className="h-5 w-5" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <h4 className="text-sm font-bold text-emerald-900 dark:text-emerald-200">Mode Pemindai QR Code Kartu</h4>
                           <p className="text-xs text-slate-600 dark:text-slate-400">Gunakan scanner USB atau buka kamera live browser.</p>
                         </div>
@@ -1214,22 +1108,22 @@ export default function GateAttendancePage() {
                     <form onSubmit={handleScanSubmit} className="space-y-2">
                       <label htmlFor="gate-qr-input" className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Input Hardware Scanner USB</label>
                       <div className="relative flex items-center">
-                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                        <div className="pointer-events-none absolute left-3.5 z-10 flex items-center text-slate-400 dark:text-slate-500">
                           <QrCode className="size-4" />
                         </div>
-                        <input
+                        <HeroInput
                           id="gate-qr-input"
                           type="text"
                           autoFocus
                           value={cardInput}
                           onChange={(e) => setCardInput(e.target.value)}
                           placeholder="Scan QR Code via scanner USB..."
-                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-28 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                          className="h-11 rounded-xl border-slate-200/90 bg-slate-50/50 pl-10 pr-28 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 dark:border-slate-700/80 dark:bg-slate-900/50"
                         />
                         <button
                           type="submit"
                           disabled={processingScan}
-                          className="absolute right-1.5 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-4 py-2 text-xs font-extrabold text-white border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                          className="absolute right-1.5 z-10 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-4 py-2 text-xs font-extrabold text-white border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
                         >
                           {processingScan ? (
                             <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -1244,23 +1138,23 @@ export default function GateAttendancePage() {
                 {/* DYNAMIC ACTION VIEW 2: RFID TAP METHOD */}
                 {method === 'RFID' && (
                   <div className="space-y-4">
-                    <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-blue-50/60 p-4 dark:border-blue-950/50 dark:bg-blue-950/30 flex items-center justify-between">
+                    <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-blue-50/60 p-4 dark:border-blue-950/50 dark:bg-blue-950/30 flex flex-wrap items-center justify-between gap-3">
                       {/* Animated Pulse Beam */}
                       <motion.div
                         className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent shadow-[0_0_8px_rgba(59,130,246,0.8)] pointer-events-none"
                         animate={{ top: ['0%', '100%', '0%'] }}
                         transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
                       />
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white shadow-sm border border-sky-300/40 shrink-0">
                           <Wifi className="h-5 w-5 animate-pulse" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <h4 className="text-sm font-bold text-blue-900 dark:text-blue-200">Perangkat RFID Reader Terhubung</h4>
                           <p className="text-xs text-slate-600 dark:text-slate-400">Silakan tap kartu RFID siswa pada alat pembaca.</p>
                         </div>
                       </div>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-extrabold text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-700 shadow-2xs">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-extrabold text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-700 shadow-2xs shrink-0">
                         <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                         Standby RFID
                       </span>
@@ -1269,22 +1163,22 @@ export default function GateAttendancePage() {
                     <form onSubmit={handleScanSubmit} className="space-y-2">
                       <label htmlFor="gate-rfid-input" className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Input RFID Card Tap Code</label>
                       <div className="relative flex items-center">
-                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                        <div className="pointer-events-none absolute left-3.5 z-10 flex items-center text-slate-400 dark:text-slate-500">
                           <Wifi className="size-4" />
                         </div>
-                        <input
+                        <HeroInput
                           id="gate-rfid-input"
                           type="text"
                           autoFocus
                           value={cardInput}
                           onChange={(e) => setCardInput(e.target.value)}
                           placeholder="Tap kartu RFID pada alat pembaca..."
-                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-32 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                          className="h-11 rounded-xl border-slate-200/90 bg-slate-50/50 pl-10 pr-32 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 dark:border-slate-700/80 dark:bg-slate-900/50"
                         />
                         <button
                           type="submit"
                           disabled={processingScan}
-                          className="absolute right-1.5 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 px-4 py-2 text-xs font-extrabold text-white border border-sky-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                          className="absolute right-1.5 z-10 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 px-4 py-2 text-xs font-extrabold text-white border border-sky-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
                         >
                           {processingScan ? (
                             <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -1300,22 +1194,22 @@ export default function GateAttendancePage() {
                 {method === 'MANUAL' && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">Pencarian & Absensi Manual Siswa/Santri</h4>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">Pencarian &amp; Absensi Manual Siswa/Santri</h4>
                       <span className="text-xs text-slate-500 font-medium">Petugas TU</span>
                     </div>
 
                     {/* Search Input */}
                     <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                      <div className="pointer-events-none absolute left-3.5 z-10 flex items-center text-slate-400 dark:text-slate-500">
                         <Search className="size-4" />
                       </div>
-                      <input
+                      <HeroInput
                         type="text"
                         value={studentSearch}
                         onChange={(e) => setStudentSearch(e.target.value)}
                         placeholder="Cari berdasarkan nama siswa, NIS, atau NISN..."
                         aria-label="Cari siswa untuk absensi manual"
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                        className="h-11 rounded-xl border-slate-200/90 bg-slate-50/50 pl-10 pr-4 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 dark:border-slate-700/80 dark:bg-slate-900/50"
                       />
                     </div>
 
@@ -1518,6 +1412,9 @@ export default function GateAttendancePage() {
       <AnimatePresence>
         {showScheduleModal && (
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label={kpiModal.title || 'Detail Data Siswa'}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1567,14 +1464,15 @@ export default function GateAttendancePage() {
                   <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                     Pilih Unit Pendidikan Target
                   </label>
-                  <HeroUiModalSelect
+                  <HeroUiFilterSelect
                     disabled={!isMultiUnitUser}
                     value={targetUnitForConfig}
                     onChange={(val) => setTargetUnitForConfig(val)}
                     options={targetUnitConfigOptions}
-                    placeholder="-- Default Global (Seluruh Unit) --"
+                    placeholder={isMultiUnitUser ? '-- Default Global (Seluruh Unit) --' : 'Unit Sekolah Aktif'}
                     icon={Building2}
                     searchable={true}
+                    className="w-full"
                   />
                 </div>
 
@@ -1592,16 +1490,17 @@ export default function GateAttendancePage() {
                         Jam Masuk Sekolah <span className="text-rose-500">*</span>
                       </label>
                       <div className="relative flex items-center">
-                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                        <div className="pointer-events-none absolute left-3.5 z-10 flex items-center text-slate-400 dark:text-slate-500">
                           <Clock className="size-4" />
                         </div>
-                        <input
+                        <HeroInput
                           id="gate-jam-masuk"
                           type="time"
+                          useNative
                           required
                           value={scheduleConfig.jam_masuk}
                           onChange={(e) => setScheduleConfig({ ...scheduleConfig, jam_masuk: e.target.value })}
-                          className="w-full rounded-xl border border-slate-200/90 bg-white pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:ring-[#3FBF75]/20"
+                          className="pl-10 text-xs font-semibold"
                         />
                       </div>
                     </div>
@@ -1611,10 +1510,10 @@ export default function GateAttendancePage() {
                         Toleransi Terlambat (Menit) <span className="text-rose-500">*</span>
                       </label>
                       <div className="relative flex items-center">
-                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                        <div className="pointer-events-none absolute left-3.5 z-10 flex items-center text-slate-400 dark:text-slate-500">
                           <Hash className="size-4" />
                         </div>
-                        <input
+                        <HeroInput
                           id="gate-toleransi"
                           type="number"
                           required
@@ -1622,7 +1521,7 @@ export default function GateAttendancePage() {
                           max="120"
                           value={scheduleConfig.toleransi_menit}
                           onChange={(e) => setScheduleConfig({ ...scheduleConfig, toleransi_menit: e.target.value })}
-                          className="w-full rounded-xl border border-slate-200/90 bg-white pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:ring-[#3FBF75]/20"
+                          className="pl-10 text-xs font-semibold"
                         />
                       </div>
                     </div>
@@ -1632,16 +1531,17 @@ export default function GateAttendancePage() {
                         Jam Pulang Sekolah <span className="text-rose-500">*</span>
                       </label>
                       <div className="relative flex items-center">
-                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                        <div className="pointer-events-none absolute left-3.5 z-10 flex items-center text-slate-400 dark:text-slate-500">
                           <Clock className="size-4" />
                         </div>
-                        <input
+                        <HeroInput
                           id="gate-jam-pulang"
                           type="time"
+                          useNative
                           required
                           value={scheduleConfig.jam_pulang}
                           onChange={(e) => setScheduleConfig({ ...scheduleConfig, jam_pulang: e.target.value })}
-                          className="w-full rounded-xl border border-slate-200/90 bg-white pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:ring-[#3FBF75]/20"
+                          className="pl-10 text-xs font-semibold"
                         />
                       </div>
                     </div>
@@ -1651,16 +1551,17 @@ export default function GateAttendancePage() {
                         Batas Jam Cutoff Alpha <span className="text-rose-500">*</span>
                       </label>
                       <div className="relative flex items-center">
-                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                        <div className="pointer-events-none absolute left-3.5 z-10 flex items-center text-slate-400 dark:text-slate-500">
                           <Clock className="size-4" />
                         </div>
-                        <input
+                        <HeroInput
                           id="gate-cutoff"
                           type="time"
+                          useNative
                           required
                           value={scheduleConfig.jam_cutoff_alpha}
                           onChange={(e) => setScheduleConfig({ ...scheduleConfig, jam_cutoff_alpha: e.target.value })}
-                          className="w-full rounded-xl border border-slate-200/90 bg-white pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:ring-[#3FBF75]/20"
+                          className="pl-10 text-xs font-semibold"
                         />
                       </div>
                     </div>
@@ -1765,6 +1666,9 @@ export default function GateAttendancePage() {
       <AnimatePresence>
         {showCameraModal && (
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pemindai QR Code Live"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1915,19 +1819,19 @@ export default function GateAttendancePage() {
                   <label htmlFor="gate-modal-scan" className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                     Hasil Pindai QR / Input Manual Kartu
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <div className="relative flex flex-1 items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                      <div className="pointer-events-none absolute left-3.5 z-10 flex items-center text-slate-400 dark:text-slate-500">
                         <QrCode className="size-4" />
                       </div>
-                      <input
+                      <HeroInput
                         id="gate-modal-scan"
                         type="text"
                         autoFocus
                         value={modalCardInput}
                         onChange={(e) => setModalCardInput(e.target.value)}
                         placeholder="Hasil deteksi QR otomatis / Ketik NISN..."
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                        className="h-11 rounded-xl border-slate-200/90 bg-slate-50/50 pl-10 pr-4 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400/80 dark:border-slate-700/80 dark:bg-slate-900/50"
                       />
                     </div>
                     <button
@@ -1985,6 +1889,9 @@ export default function GateAttendancePage() {
       <AnimatePresence>
         {kpiModal.isOpen && (
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label={kpiModal.title || 'Detail Data Siswa'}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2032,16 +1939,16 @@ export default function GateAttendancePage() {
               {/* Toolbar Filter / Search dalam Modal */}
               <div className="border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 p-4 dark:border-emerald-800/60 dark:from-emerald-950/20 dark:via-teal-950/10 dark:to-emerald-950/20 shrink-0 flex items-center justify-between gap-3">
                 <div className="relative flex-1 max-w-sm flex items-center">
-                  <div className="pointer-events-none absolute left-3.5 flex items-center text-emerald-600/70 dark:text-emerald-400">
+                  <div className="pointer-events-none absolute left-3.5 z-10 flex items-center text-emerald-600/70 dark:text-emerald-400">
                     <Search className="size-4" />
                   </div>
-                  <input
+                  <HeroInput
                     type="text"
                     value={kpiModal.search}
                     onChange={(e) => setKpiModal((prev) => ({ ...prev, search: e.target.value }))}
                     placeholder="Cari nama siswa, NIS, atau NISN..."
                     aria-label="Cari siswa dalam modal"
-                    className="w-full rounded-2xl border border-emerald-200/90 bg-white pl-10 pr-4 py-2 text-xs font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-100"
+                    className="h-10 rounded-2xl border-emerald-200/90 bg-white pl-10 pr-4 text-xs font-semibold text-slate-800 dark:border-emerald-800/70 dark:bg-slate-900"
                   />
                 </div>
                 {kpiModal.search && (

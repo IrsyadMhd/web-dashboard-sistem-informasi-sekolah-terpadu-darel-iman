@@ -1302,7 +1302,7 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                     LMS &amp; Evaluasi Siswa
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Kelola instruksi tugas, deadline, lampiran berkas, dan evaluasi hasil kerja siswa terhubung langsung dengan Modul Ajar.
                 </p>
               </div>

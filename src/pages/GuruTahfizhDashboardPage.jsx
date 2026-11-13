@@ -275,7 +275,7 @@ export default function GuruTahfizhDashboardPage() {
                   <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Dashboard Guru Tahfizh / Musyrif
                   </h1>
-                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                     Monitor setoran hafalan Al-Qur'an, murajaah harian, dan capaian target santri/siswa binaan secara terpadu.
                   </p>
                 </div>

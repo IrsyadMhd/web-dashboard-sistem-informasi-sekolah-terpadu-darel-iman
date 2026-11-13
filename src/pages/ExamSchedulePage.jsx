@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Input } from '@/components/ui/input'
+import { TextArea } from '@/components/ui/text-area'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CalendarDays,
@@ -39,7 +41,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
-import { getUserRoleLevel, ROLE_LEVELS, ROLES, hasAnyRole } from '../auth/portalResolver'
+import { getUserRoleLevel, ROLE_LEVELS, ROLES, hasAnyRole, isRestrictedToTeacherWorkspace, isReadOnlyUser } from '../auth/portalResolver'
 import { useToast } from '../components/app/ToastProvider'
 import useDebounce from '../hooks/useDebounce'
 import { examScheduleService } from '../services/examScheduleService'
@@ -191,14 +193,12 @@ export default function ExamSchedulePage() {
     return authLevel === ROLE_LEVELS.KEPALA_SEKOLAH || userRoles.some((r) => /kepala[\s_]*sekolah|kepsek/i.test(r))
   }, [authLevel, userRoles, canSelectUnit])
 
-  const isGuru = useMemo(() => {
-    if (authLevel === ROLE_LEVELS.GURU) return true
-    const hasGuru = userRoles.some((r) => /guru|pendidik|pengajar|walas|wali[\s_]*kelas/i.test(r))
-    const hasAdminOrKepsek = userRoles.some((r) => /admin|super|kepala[\s_]*sekolah|kepsek|waka|tata[\s_]*usaha|tu|operator|divisi|yayasan/i.test(r))
-    return hasGuru && !hasAdminOrKepsek
-  }, [authLevel, userRoles])
+  const isGuru = useMemo(
+    () => isRestrictedToTeacherWorkspace(user, '/dashboard/jadwal-ujian'),
+    [user]
+  )
   const isTu = useMemo(() => authLevel === ROLE_LEVELS.OPERATOR || authLevel === ROLE_LEVELS.TATA_USAHA || userRoles.some(r => /tata[\s_]*usaha|tu|staf[\s_]*tu|admin[\s_]*tu/i.test(r)), [authLevel, userRoles])
-  const canManage = useMemo(() => !isGuru && (authLevel <= ROLE_LEVELS.KEPALA_SEKOLAH || isTu), [isGuru, authLevel, isTu])
+  const canManage = useMemo(() => !isReadOnlyUser(user) && !isGuru && (authLevel <= ROLE_LEVELS.KEPALA_SEKOLAH || isTu), [user, isGuru, authLevel, isTu])
 
   // Guru dilarang mengakses halaman master jadwal ujian dan dialihkan ke Portal Guru
   if (isGuru) {
@@ -717,7 +717,7 @@ export default function ExamSchedulePage() {
                 <h1 className="mt-2 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
                   Jadwal Ujian &amp; Monitoring Pengawas Terpadu
                 </h1>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed w-full">
                   Kelola matriks jadwal ujian periodik, monitoring alokasi pengawas (guru &amp; tendik), supervisi rombel peserta, serta cegah bentrok ruang secara realtime.
                 </p>
               </div>
@@ -894,7 +894,11 @@ export default function ExamSchedulePage() {
                     <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>
                       {optionsData?.units?.find((u) => String(u.id) === String(selectedUnit))?.name ||
-                        (isKepsek ? 'Unit Sekolah Anda' : (isTu ? 'Unit Kerja TU' : 'Unit Terkunci'))}
+                        user?.unit?.name ||
+                        user?.unit_name ||
+                        user?.employee?.unit?.name ||
+                        user?.metadata?.unit_name ||
+                        'Unit Terkunci'}
                     </span>
                   </div>
                 ) : (
@@ -1210,7 +1214,7 @@ export default function ExamSchedulePage() {
               </span>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold text-slate-400">
-                  Unit: {optionsData?.units?.find(u => String(u.id) === selectedUnit)?.name || 'Semua Unit'}
+                  Unit: {optionsData?.units?.find(u => String(u.id) === String(selectedUnit))?.name || optionsData?.units?.find(u => String(u.id) === String(selectedUnit))?.nama || (!canSelectUnit ? (user?.unit_pendidikan?.name || user?.unit_name || 'Unit Terkunci') : 'Semua Unit')}
                 </span>
               </div>
             </div>
@@ -1637,12 +1641,13 @@ export default function ExamSchedulePage() {
                 <label className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-200">
                   Jam Mulai (HH:mm) *
                 </label>
-                <input
+                <Input
                   required
                   type="time"
+                  size="sm"
                   value={scheduleForm.time_start}
                   onChange={(e) => setScheduleForm({ ...scheduleForm, time_start: e.target.value })}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-slate-900"
+                  className="font-mono"
                 />
               </div>
 
@@ -1650,12 +1655,13 @@ export default function ExamSchedulePage() {
                 <label className="mb-1 block text-xs font-bold text-slate-700 dark:text-slate-200">
                   Jam Selesai (HH:mm) *
                 </label>
-                <input
+                <Input
                   required
                   type="time"
+                  size="sm"
                   value={scheduleForm.time_end}
                   onChange={(e) => setScheduleForm({ ...scheduleForm, time_end: e.target.value })}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-slate-900"
+                  className="font-mono"
                 />
               </div>
 
@@ -1839,12 +1845,11 @@ export default function ExamSchedulePage() {
             <label className="mb-1.5 block text-xs font-bold text-slate-800 dark:text-slate-100">
               Keterangan / Deskripsi
             </label>
-            <textarea
+            <TextArea
               rows={3}
               value={categoryForm.description}
               onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
               placeholder="Deskripsi tujuan atau ketentuan kategori ujian..."
-              className="w-full rounded-xl border border-slate-200 bg-white p-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
             />
           </div>
         </form>
@@ -1933,12 +1938,11 @@ export default function ExamSchedulePage() {
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-1.5">
                     Pesan Koordinasi:
                   </label>
-                  <textarea
+                  <TextArea
                     rows={3}
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
                     placeholder="Tulis pesan pengingat, instruksi khusus ruang ujian, dsb..."
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs font-medium outline-none focus:border-emerald-600 focus:bg-white dark:border-slate-700 dark:bg-slate-800/80 dark:text-white transition-all"
                   />
                 </div>
 

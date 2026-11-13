@@ -22,6 +22,7 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import { dashboardPemantauanService } from '../../services/dashboardPemantauanService'
+import HeroUiFilterSelect from '@/components/ui/HeroUiFilterSelect'
 
 const BULAN_LIST = [
   { value: '1', label: 'Januari' },
@@ -164,17 +165,17 @@ export default function InputLaporanBulananModal({
                 <FieldLabel className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-1 block">
                   Bulan Laporan
                 </FieldLabel>
-                <select
-                  value={bulan}
-                  onChange={(e) => setBulan(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 transition-all"
-                >
-                  {BULAN_LIST.map((b) => (
-                    <option key={b.value} value={b.value}>
-                      {b.label}
-                    </option>
-                  ))}
-                </select>
+                <HeroUiFilterSelect
+                  size="sm"
+                  value={String(bulan)}
+                  onChange={(val) => setBulan(val)}
+                  options={BULAN_LIST.map((b) => ({
+                    value: String(b.value),
+                    label: b.label,
+                  }))}
+                  placeholder="Pilih Bulan"
+                  aria-label="Bulan Laporan"
+                />
               </div>
 
               <div>
@@ -195,14 +196,17 @@ export default function InputLaporanBulananModal({
                 <FieldLabel className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-1 block">
                   Status Pengajuan
                 </FieldLabel>
-                <select
+                <HeroUiFilterSelect
+                  size="sm"
                   value={statusValidasi}
-                  onChange={(e) => setStatusValidasi(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 transition-all"
-                >
-                  <option value="diajukan">Ajukan Sekarang (Diajukan)</option>
-                  <option value="draf">Simpan Sebagai Draf</option>
-                </select>
+                  onChange={(val) => setStatusValidasi(val)}
+                  options={[
+                    { value: 'diajukan', label: 'Ajukan Sekarang (Diajukan)' },
+                    { value: 'draf', label: 'Simpan Sebagai Draf' },
+                  ]}
+                  placeholder="Pilih Status"
+                  aria-label="Status Pengajuan"
+                />
               </div>
             </div>
 

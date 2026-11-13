@@ -66,6 +66,7 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
   const studentMeta = student?.metadata || {}
   const studentPemb = studentMeta.pembiayaan || {}
   const studentName = student?.nama_lengkap || student?.full_name || student?.name || 'Ananda'
+  const studentNis = student?.nis || studentMeta?.nis || student?.nisn || ''
   const bsiPrefix = pengaturan?.bsi_va_prefix || '9023'
   const rawPaymentId =
     studentMeta.no_va ||

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { Breadcrumbs } from '../ui/breadcrumbs'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import {
   Button as HeroButton,
 } from '@heroui/react'
@@ -472,11 +473,52 @@ export function MasterSearchInput({ className = '', ...props }) {
   return <AppSearch className={className} {...props} />
 }
 
-export function MasterFilterSelect({ className = '', children, ...props }) {
+export function MasterFilterSelect({
+  className = '',
+  children,
+  value,
+  onChange,
+  disabled = false,
+  placeholder = 'Pilih...',
+  size = 'md',
+  ...props
+}) {
+  const flattenOptions = (nodes) => {
+    const result = []
+    React.Children.forEach(nodes, (child) => {
+      if (!child) return
+      if (Array.isArray(child)) {
+        result.push(...flattenOptions(child))
+      } else if (React.isValidElement(child)) {
+        if (child.type === React.Fragment) {
+          result.push(...flattenOptions(child.props.children))
+        } else if (child.type === 'option') {
+          const optValue = child.props.value !== undefined ? String(child.props.value) : String(child.props.children ?? '')
+          const optLabel = Array.isArray(child.props.children)
+            ? child.props.children.join('')
+            : String(child.props.children ?? optValue)
+          result.push({ value: optValue, label: optLabel })
+        }
+      }
+    })
+    return result
+  }
+
+  const options = flattenOptions(children)
+  const stringValue = value !== undefined && value !== null ? String(value) : ''
+
   return (
-    <div className={`relative min-w-38 ${className}`}>
-      <select className={`${masterStyles.control} w-full appearance-none px-3.5 pr-9`} {...props}>{children}</select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    <div className={`min-w-38 ${className}`}>
+      <HeroUiFilterSelect
+        id={props.id}
+        value={stringValue}
+        onChange={(nextVal) => onChange?.({ target: { value: nextVal } })}
+        options={options}
+        placeholder={placeholder}
+        disabled={disabled}
+        size={size}
+        ariaLabel={props['aria-label'] || props.ariaLabel || placeholder}
+      />
     </div>
   )
 }

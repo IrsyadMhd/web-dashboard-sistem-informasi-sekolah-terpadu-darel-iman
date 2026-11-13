@@ -175,7 +175,7 @@ export default function StudentAttendancePage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Rekap & Kehadiran Saya
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Pantau catatan presensi harian per mata pelajaran, riwayat ketepatan waktu, dan status verifikasi guru secara mandiri.
                 </p>
               </div>

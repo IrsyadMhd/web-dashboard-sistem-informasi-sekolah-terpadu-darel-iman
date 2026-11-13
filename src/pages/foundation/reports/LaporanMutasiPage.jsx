@@ -265,7 +265,7 @@ export function LaporanMutasiPage() {
                   Laporan Mutasi
                 </span>
               </div>
-              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                 {report.description}
               </p>
             </div>

@@ -2472,7 +2472,7 @@ export default function AttendanceWorkspacePage() {
                 <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Absensi Kelas & Mata Pelajaran
                 </h1>
-                <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                   Pencatatan presensi siswa sesuai jadwal mata pelajaran aktif dengan pengawasan keamanan jam mengajar.
                 </p>
               </div>

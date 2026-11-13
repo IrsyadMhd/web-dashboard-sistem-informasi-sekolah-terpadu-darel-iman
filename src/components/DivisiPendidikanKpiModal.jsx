@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
+import HeroUiFilterSelect from './ui/HeroUiFilterSelect'
 import {
   Building2,
   Users,
@@ -540,16 +541,19 @@ const MODAL_TONES = {
 
             <div className="flex items-center gap-2 shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400">
               <span>Tampilkan:</span>
-              <select
-                value={perPage}
-                onChange={handlePerPageChange}
-                className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-extrabold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 outline-none cursor-pointer shadow-2xs"
-              >
-                <option value={5}>5 baris</option>
-                <option value={10}>10 baris</option>
-                <option value={25}>25 baris</option>
-                <option value={50}>50 baris</option>
-              </select>
+              <HeroUiFilterSelect
+                value={String(perPage)}
+                onChange={(val) => handlePerPageChange({ target: { value: val } })}
+                options={[
+                  { value: '5', label: '5 baris' },
+                  { value: '10', label: '10 baris' },
+                  { value: '25', label: '25 baris' },
+                  { value: '50', label: '50 baris' },
+                ]}
+                ariaLabel="Jumlah baris per halaman"
+                size="sm"
+                className="w-28"
+              />
             </div>
           </div>
         </div>

@@ -31,6 +31,8 @@ import { Pagination } from '@/components/ui/pagination'
 import { tahfizhTargetService } from '../services/tahfizhTargetService'
 import useDebounce from '../hooks/useDebounce'
 import { useToast } from '../components/app'
+import { Input as UiInput } from '../components/ui/input'
+import { TextArea as UiTextArea } from '../components/ui/text-area'
 
 const PROGRAM_LABELS = {
   all: { label: 'Semua Program', color: 'gray' },
@@ -92,15 +94,14 @@ function HeroUiFilterSelect({
             setSearch('')
           }
         }}
-        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
-          disabled
-            ? 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-800/60 cursor-not-allowed'
-            : isOpen
+        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${disabled
+          ? 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-800/60 cursor-not-allowed'
+          : isOpen
             ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
             : value !== '' && value !== undefined && value !== null && value !== 'all'
-            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
-            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
-        }`}
+              ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+              : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
+          }`}
       >
         <div className="flex items-center gap-1.5 truncate">
           {IconComponent && (
@@ -111,9 +112,8 @@ function HeroUiFilterSelect({
           </span>
         </div>
         <ChevronDown
-          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+            }`}
         />
       </button>
 
@@ -129,13 +129,14 @@ function HeroUiFilterSelect({
             {searchable && options.length > 5 && (
               <div className="p-2 border-b border-slate-100 dark:border-slate-800">
                 <div className="relative">
-                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
+                  <Search className="pointer-events-none size-3.5 absolute left-2.5 top-1/2 z-10 -translate-y-1/2 text-slate-400" />
+                  <UiInput
                     type="text"
+                    size="sm"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Cari..."
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    className="w-full rounded-lg border-slate-200 bg-slate-50/60 pl-8 pr-2.5 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     autoFocus
                   />
                 </div>
@@ -159,11 +160,10 @@ function HeroUiFilterSelect({
                         onChange(opt.value)
                         setIsOpen(false)
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-500/15 text-emerald-900 font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
-                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
-                      }`}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${isSelected
+                        ? 'bg-emerald-500/15 text-emerald-900 font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
+                        : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                        }`}
                     >
                       <span className="truncate">{opt.label}</span>
                       {isSelected && (
@@ -244,13 +244,12 @@ function HeroUiModalSelect({
             setSearch('')
           }
         }}
-        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
-          disabled
-            ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
-            : isOpen
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${disabled
+          ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+          : isOpen
             ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
             : 'border-emerald-200 bg-white hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
-        }`}
+          }`}
       >
         <div className="flex items-center gap-2 truncate">
           {IconComponent && (
@@ -263,9 +262,8 @@ function HeroUiModalSelect({
           )}
         </div>
         <ChevronDown
-          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+            }`}
         />
       </button>
 
@@ -314,11 +312,10 @@ function HeroUiModalSelect({
                         onChange(opt.value)
                         setIsOpen(false)
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#0E5C44]/10 text-[#0E5C44] font-bold dark:bg-[#3FBF75]/15 dark:text-[#3FBF75]'
-                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
-                      }`}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${isSelected
+                        ? 'bg-[#0E5C44]/10 text-[#0E5C44] font-bold dark:bg-[#3FBF75]/15 dark:text-[#3FBF75]'
+                        : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                        }`}
                     >
                       <div className="truncate pr-2">
                         <div className="truncate">{opt.label}</div>
@@ -352,7 +349,7 @@ export default function TahfizhTargetSettingPage() {
   const [targets, setTargets] = useState([])
   const [loading, setLoading] = useState(true)
   const [options, setOptions] = useState({ units: [], levels: [], grades: [], program_types: [] })
-  
+
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 350)
   const [selectedUnit, setSelectedUnit] = useState('all')
@@ -413,7 +410,7 @@ export default function TahfizhTargetSettingPage() {
       label: `${u.name} (${u.level})`
     }))
   ], [options.units])
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -508,7 +505,7 @@ export default function TahfizhTargetSettingPage() {
       setFormData({
         target_name: '',
         education_unit_id: '',
-        unit_level: selectedLevel !== 'all' ? selectedLevel : 'SDIT',
+        unit_level: selectedLevel !== 'all' ? selectedLevel : (options?.unit_levels?.[0] || ''),
         grade_level: 'ALL',
         program_type: 'fullday',
         target_juz: 'Juz 30',
@@ -593,13 +590,13 @@ export default function TahfizhTargetSettingPage() {
       {/* 2. Hero Header Card (TailGrids Standard) */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
         <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-emerald-500/20 blur-3xl" />
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="flex flex-1 items-center gap-4 min-w-0">
             <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-600/20 border border-emerald-300/40">
               <Target className="size-7" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
                   <Sparkles className="size-3" />
                   Konfigurasi Kurikulum
@@ -611,13 +608,13 @@ export default function TahfizhTargetSettingPage() {
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1">
                 Pengaturan Target KPI Tahfizh
               </h1>
-              <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 mt-0.5">
+              <p className="w-full text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 mt-0.5">
                 Standar target capaian hafalan berdasarkan tingkatan jenjang unit, kelas rombel, dan tipe program santri.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto shrink-0">
             <button
               onClick={() => navigate('/dashboard/tahfizh')}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 bg-white/80 hover:bg-white border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:border-slate-700 transition shadow-sm"
@@ -663,13 +660,14 @@ export default function TahfizhTargetSettingPage() {
         {/* Baris 2 & 3: Filter & Search Bar */}
         <div className="bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 border-b border-emerald-200/80 p-4 dark:border-emerald-800/60 dark:bg-slate-900/40 space-y-3">
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-            <input
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 -translate-y-1/2 size-4 text-slate-400" />
+            <UiInput
               type="text"
+              size="sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari target berdasarkan nama, target juz, atau deskripsi kurikulum..."
-              className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm rounded-xl border border-emerald-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              className="w-full pl-10 pr-4 text-xs sm:text-sm rounded-xl border-emerald-200 bg-white text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
           </div>
 
@@ -955,13 +953,14 @@ export default function TahfizhTargetSettingPage() {
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Nama Target / Kurikulum *
               </label>
-              <input
+              <UiInput
                 type="text"
+                size="sm"
                 required
                 value={formData.target_name}
                 onChange={(e) => setFormData({ ...formData, target_name: e.target.value })}
-                placeholder="Contoh: Target Tahfizh SDIT Kelas 1 (Juz 30 Penuh)"
-                className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                placeholder="Contoh: Target Tahfizh Kelas 1 (Juz 30 Penuh)"
+                className="w-full rounded-xl border-emerald-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               />
             </div>
 
@@ -1010,12 +1009,13 @@ export default function TahfizhTargetSettingPage() {
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Target Cakupan Juz
                 </label>
-                <input
+                <UiInput
                   type="text"
+                  size="sm"
                   value={formData.target_juz}
                   onChange={(e) => setFormData({ ...formData, target_juz: e.target.value })}
                   placeholder="Contoh: Juz 30, Juz 29-30"
-                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  className="w-full rounded-xl border-emerald-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>
 
@@ -1023,14 +1023,15 @@ export default function TahfizhTargetSettingPage() {
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Target Jumlah Ayat *
                 </label>
-                <input
+                <UiInput
                   type="number"
+                  size="sm"
                   required
                   min={1}
                   max={6236}
                   value={formData.target_ayats}
                   onChange={(e) => setFormData({ ...formData, target_ayats: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-bold"
+                  className="w-full rounded-xl border-emerald-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-bold"
                 />
               </div>
 
@@ -1038,14 +1039,15 @@ export default function TahfizhTargetSettingPage() {
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Target Jumlah Surah *
                 </label>
-                <input
+                <UiInput
                   type="number"
+                  size="sm"
                   required
                   min={1}
                   max={114}
                   value={formData.target_surahs}
                   onChange={(e) => setFormData({ ...formData, target_surahs: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-bold"
+                  className="w-full rounded-xl border-emerald-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-bold"
                 />
               </div>
             </div>
@@ -1056,13 +1058,14 @@ export default function TahfizhTargetSettingPage() {
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Minimal KKM Kelulusan (Ayat)
                 </label>
-                <input
+                <UiInput
                   type="number"
+                  size="sm"
                   min={0}
                   value={formData.minimum_kkm_ayats}
                   onChange={(e) => setFormData({ ...formData, minimum_kkm_ayats: e.target.value })}
                   placeholder="Opsional, misal 350 ayat"
-                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  className="w-full rounded-xl border-emerald-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>
 
@@ -1084,12 +1087,12 @@ export default function TahfizhTargetSettingPage() {
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Deskripsi / Keterangan Kurikulum
               </label>
-              <textarea
+              <UiTextArea
                 rows={2}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Penjelasan standar kompetensi hafalan..."
-                className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="w-full rounded-xl border-emerald-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               />
             </div>
 
@@ -1128,7 +1131,12 @@ export default function TahfizhTargetSettingPage() {
       {/* 5. MODAL HAPUS HARMONIS (TailGrids Standard) */}
       <AnimatePresence>
         {showDeleteModal && targetToDelete && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-label="Hapus Target KPI"
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md"
+          >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

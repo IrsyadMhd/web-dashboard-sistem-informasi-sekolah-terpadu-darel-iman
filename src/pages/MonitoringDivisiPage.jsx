@@ -1154,7 +1154,7 @@ export default function MonitoringDivisiPage() {
                       : (filterUnit || (educationUnits.length > 0 ? `${educationUnits.length} Unit Pendidikan` : 'Seluruh Unit'))}
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   {isDivisi
                     ? 'Supervisi dan pemantauan kinerja Kepala Sekolah serta Pegawai & Guru di seluruh unit pendidikan (SD IT, SMP IT, SMA IT, Ponpes).'
                     : 'Pemantauan terpadu ketercapaian target divisi operasional di seluruh unit pendidikan.'}

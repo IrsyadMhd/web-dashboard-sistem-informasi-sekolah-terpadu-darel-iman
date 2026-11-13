@@ -32,6 +32,7 @@ import { Badge } from './ui/badge'
 import { Skeleton } from './ui/skeleton'
 import { EmptyState } from './ui/empty-state'
 import KpiDetailDrawer from './KpiDetailDrawer'
+import HeroUiFilterSelect from './ui/HeroUiFilterSelect'
 
 const MODAL_CONFIGS = {
   unit_pendidikan: {
@@ -522,32 +523,41 @@ export default function KpiQuickViewModal({ type, isOpen, onClose, initialUnitId
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {!['unit_pendidikan', 'role', 'pengguna', 'pengguna_tanpa_role', 'total_konseling'].includes(resolvedType) && units.length > 0 && (
-                <select
-                  value={selectedUnit}
-                  onChange={(e) => setSelectedUnit(e.target.value)}
-                  className="px-3 py-2 text-xs font-medium bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-100"
-                >
-                  <option value="all">Semua Unit</option>
-                  {units.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name || u.code}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-44">
+                  <HeroUiFilterSelect
+                    size="sm"
+                    value={String(selectedUnit)}
+                    onChange={(val) => setSelectedUnit(val)}
+                    options={[
+                      { value: 'all', label: 'Semua Unit' },
+                      ...units.map((u) => ({
+                        value: String(u.id),
+                        label: u.name || u.code,
+                      })),
+                    ]}
+                    placeholder="Semua Unit"
+                    aria-label="Filter Unit Pendidikan"
+                  />
+                </div>
               )}
 
               {resolvedType !== 'role' && resolvedType !== 'pengguna_tanpa_role' && (
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="px-3 py-2 text-xs font-medium bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-100"
-                >
-                  <option value="all">Semua Status</option>
-                  <option value="aktif">Aktif</option>
-                  <option value="nonaktif">Nonaktif</option>
-                </select>
+                <div className="w-36">
+                  <HeroUiFilterSelect
+                    size="sm"
+                    value={selectedStatus}
+                    onChange={(val) => setSelectedStatus(val)}
+                    options={[
+                      { value: 'all', label: 'Semua Status' },
+                      { value: 'aktif', label: 'Aktif' },
+                      { value: 'nonaktif', label: 'Nonaktif' },
+                    ]}
+                    placeholder="Semua Status"
+                    aria-label="Filter Status"
+                  />
+                </div>
               )}
             </div>
           </div>

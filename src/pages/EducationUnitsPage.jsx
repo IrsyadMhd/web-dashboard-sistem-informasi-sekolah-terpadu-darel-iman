@@ -1541,21 +1541,23 @@ export default function EducationUnitsPage() {
   )}
 
   {/* Export / Download Button (Vivid Amber / Orange Squircle) */}
-  <HeroTooltip>
-   <HeroTooltip.Trigger>
-    <HeroButton
-     isIconOnly
-     aria-label="Export Data Unit"
-     onPress={() => setShowExportModal(true)}
-     className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-xs"
-    >
-     <Download className="size-5 text-white" strokeWidth={2.2} />
-    </HeroButton>
-   </HeroTooltip.Trigger>
-   <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-    Export Data
-   </HeroTooltip.Content>
-  </HeroTooltip>
+  {(canCreate || permissions.includes('unit.export')) && (
+    <HeroTooltip>
+     <HeroTooltip.Trigger>
+      <HeroButton
+       isIconOnly
+       aria-label="Export Data Unit"
+       onPress={() => setShowExportModal(true)}
+       className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-xs"
+      >
+       <Download className="size-5 text-white" strokeWidth={2.2} />
+      </HeroButton>
+     </HeroTooltip.Trigger>
+     <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+      Export Data
+     </HeroTooltip.Content>
+    </HeroTooltip>
+  )}
 
   {/* Tambah Unit Button (HeroUI v3 Emerald Primary #065F46) */}
   {canCreate && (

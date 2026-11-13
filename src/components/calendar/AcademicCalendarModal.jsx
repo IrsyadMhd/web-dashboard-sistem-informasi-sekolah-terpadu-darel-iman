@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Input } from '@/components/ui/input'
+import { TextArea } from '@/components/ui/text-area'
 import {
   PRESET_CATEGORIES,
   COLOR_PALETTE,
@@ -235,8 +237,8 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
     setIsLoading(true)
     try {
       const [fetchedEvents, fetchedUnits] = await Promise.all([
-        academicCalendarService.getEvents(),
-        academicCalendarService.getEducationUnits()
+        academicCalendarService.getEvents({ isParentOrStudent }),
+        academicCalendarService.getEducationUnits({ isParentOrStudent })
       ])
       if (Array.isArray(fetchedEvents)) {
         setEvents(fetchedEvents)
@@ -1086,13 +1088,13 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Nama / Judul Agenda Kegiatan <span className="text-rose-500">*</span>
                       </label>
-                      <input
+                      <Input
                         type="text"
+                        size="sm"
                         required
                         placeholder="Contoh: Pembelajaran Bahasa Indonesia, Ujian Formatif Matematika..."
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                       />
                     </div>
 
@@ -1123,13 +1125,13 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                         <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                           Nama Kategori Custom <span className="text-rose-500">*</span>
                         </label>
-                        <input
+                        <Input
                           type="text"
+                          size="sm"
                           required
                           placeholder="Masukkan nama kategori baru..."
                           value={formData.customCategoryLabel}
                           onChange={(e) => setFormData({ ...formData, customCategoryLabel: e.target.value })}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                         />
                       </div>
                     )}
@@ -1229,12 +1231,11 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Catatan / Keterangan Khusus
                       </label>
-                      <textarea
+                      <TextArea
                         rows={3}
                         value={formData.notes}
                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                         placeholder="Penjelasan ringkas jadwal pendaftaran, lokasi, persyaratan, atau petunjuk pelaksanaan..."
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                       />
                     </div>
                   </div>

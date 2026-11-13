@@ -797,7 +797,7 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
                       Manajemen Kurikulum
                     </span>
                   </div>
-                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                     Kelola seluruh kurikulum pendidikan, integrasi standar SIT & Nasional, serta pengaturan jenjang setiap unit pendidikan.
                   </p>
                 </div>

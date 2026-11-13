@@ -289,17 +289,20 @@ export default function RadarAkreditasiSection({ onDataMutate }) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2 flex-1 max-w-md">
                 <span className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">Pilih Unit:</span>
-                <select
-                  value={selectedUnitId}
-                  onChange={(e) => setSelectedUnitId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-emerald-300/80 bg-white dark:bg-slate-900 text-xs font-extrabold text-slate-800 dark:text-white"
-                >
-                  {items.map((item) => (
-                    <option key={item.id} value={item.unit_id || item.id}>
-                      {item.unit_name} ({item.peringkat_saat_ini} - Kesiapan: {item.kesiapan_total}%)
-                    </option>
-                  ))}
-                </select>
+                <div className="flex-1">
+                  <HeroUiFilterSelect
+                    size="sm"
+                    searchable
+                    value={String(selectedUnitId)}
+                    onChange={(val) => setSelectedUnitId(val)}
+                    options={items.map((item) => ({
+                      value: String(item.unit_id || item.id),
+                      label: `${item.unit_name} (${item.peringkat_saat_ini} - Kesiapan: ${item.kesiapan_total}%)`,
+                    }))}
+                    placeholder="Pilih Unit"
+                    aria-label="Pilih Unit Akreditasi"
+                  />
+                </div>
               </div>
 
               {currentUnit && (
@@ -505,31 +508,34 @@ export default function RadarAkreditasiSection({ onDataMutate }) {
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
               Unit Sekolah <span className="text-rose-500">*</span>
             </label>
-            <select
-              value={addForm.unit_id}
-              onChange={(e) => setAddForm((p) => ({ ...p, unit_id: e.target.value }))}
-              className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold bg-white dark:bg-slate-800"
-            >
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.code})
-                </option>
-              ))}
-            </select>
+            <HeroUiFilterSelect
+              size="sm"
+              searchable
+              value={String(addForm.unit_id)}
+              onChange={(val) => setAddForm((p) => ({ ...p, unit_id: val }))}
+              options={units.map((u) => ({
+                value: String(u.id),
+                label: `${u.name} (${u.code})`,
+              }))}
+              placeholder="Pilih Unit Sekolah"
+              aria-label="Unit Sekolah"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Peringkat Akreditasi</label>
-              <select
+              <HeroUiFilterSelect
+                size="sm"
                 value={addForm.peringkat_saat_ini}
-                onChange={(e) => setAddForm((p) => ({ ...p, peringkat_saat_ini: e.target.value }))}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold bg-white dark:bg-slate-800"
-              >
-                {ranks.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+                onChange={(val) => setAddForm((p) => ({ ...p, peringkat_saat_ini: val }))}
+                options={ranks.map((r) => ({
+                  value: r,
+                  label: r,
+                }))}
+                placeholder="Pilih Peringkat"
+                aria-label="Peringkat Akreditasi"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Skor Akreditasi (0-100)</label>

@@ -16,28 +16,30 @@ export const academicCalendarService = {
   /**
    * Mengambil daftar Unit Pendidikan resmi dari database API backend
    */
-  getEducationUnits: async () => {
+  getEducationUnits: async ({ isParentOrStudent = false } = {}) => {
     const fName = resolveFoundationName(usePengaturanStore.getState()?.pengaturan)
     let units = [
       { value: 'Semua Unit', label: `Semua Unit (${fName})` }
     ]
 
-    try {
-      const res = await educationUnitService.getDaftar({ per_page: 100 })
-      const list = res?.data || res || []
-      if (Array.isArray(list) && list.length > 0) {
-        list.forEach((item) => {
-          const val = item.name || item.code || item.level
-          if (val && !units.some((u) => u.value === val)) {
-            units.push({
-              value: val,
-              label: item.code ? `${item.name} (${item.code})` : item.name
-            })
-          }
-        })
+    if (!isParentOrStudent) {
+      try {
+        const res = await educationUnitService.getDaftar({ per_page: 100 })
+        const list = res?.data || res || []
+        if (Array.isArray(list) && list.length > 0) {
+          list.forEach((item) => {
+            const val = item.name || item.code || item.level
+            if (val && !units.some((u) => u.value === val)) {
+              units.push({
+                value: val,
+                label: item.code ? `${item.name} (${item.code})` : item.name
+              })
+            }
+          })
+        }
+      } catch {
+        // Abaikan jika koneksi API backend tidak tersedia
       }
-    } catch {
-      // Abaikan jika koneksi API backend tidak tersedia
     }
 
     // Jika API belum mengembalikan data, sediakan fallback unit standar
@@ -63,41 +65,73 @@ export const academicCalendarService = {
       // Ignore
     }
 
+    const { isParentOrStudent = false, ...queryParams } = params || {}
     let realApiEvents = []
 
-    // 1. Ambil data Master Tahun Ajaran dari API Backend database
-    try {
-      const resTahun = await tahunAjaranService.getDaftar({ per_page: 50, ...params })
-      const listTahun = resTahun?.data || []
+    // 1. Ambil data Master Tahun Ajaran dari API Backend database (khusus akun internal/staf)
+    if (!isParentOrStudent) {
+      try {
+        const resTahun = await tahunAjaranService.getDaftar({ per_page: 50, ...queryParams })
+        const listTahun = resTahun?.data || []
 
-      if (Array.isArray(listTahun) && listTahun.length > 0) {
-        listTahun.forEach((t) => {
-          if (t.start_date && t.end_date) {
-            realApiEvents.push({
-              id: `api-ta-${t.id}`,
-              title: `Tahun Ajaran ${t.name} ${t.is_active ? '(Aktif)' : ''}`,
-              category: 'mulai_kbm',
-              customCategoryLabel: '',
-              color: 'emerald',
-              startDate: t.start_date,
-              endDate: t.end_date,
-              unit: 'Semua Unit',
-              targetModule: '/dashboard/master-tahun-ajaran',
-              audience: 'Semua Civitas',
-              isPublished: true,
-              notes: t.keterangan || `Periode resmi akademik tahun ajaran ${t.name}`
-            })
-          }
-        })
+        if (Array.isArray(listTahun) && listTahun.length > 0) {
+          listTahun.forEach((t) => {
+            if (t.start_date && t.end_date) {
+              realApiEvents.push({
+                id: `api-ta-${t.id}`,
+                title: `Tahun Ajaran ${t.name} ${t.is_active ? '(Aktif)' : ''}`,
+                category: 'mulai_kbm',
+                customCategoryLabel: '',
+                color: 'emerald',
+                startDate: t.start_date,
+                endDate: t.end_date,
+                unit: 'Semua Unit',
+                targetModule: '/dashboard/master-tahun-ajaran',
+                audience: 'Semua Civitas',
+                isPublished: true,
+                notes: t.keterangan || `Periode resmi akademik tahun ajaran ${t.name}`
+              })
+            }
+          })
+        }
+      } catch {
+        // Abaikan jika koneksi API backend belum tersedia
       }
-    } catch {
-      // Abaikan jika koneksi API backend belum tersedia
+    } else {
+      try {
+        const { data: portalCalRes } = await api.get('/portal/academic-calendar', { params: queryParams })
+        const portalList = portalCalRes?.data?.data || portalCalRes?.data || []
+        if (Array.isArray(portalList)) {
+          portalList.forEach((item) => {
+            if (item?.title) {
+              const startStr = String(item.start_date || item.calendar_date || item.published_at || new Date().toISOString()).split('T')[0]
+              const endStr = String(item.end_date || startStr).split('T')[0]
+              realApiEvents.push({
+                id: `api-portal-cal-${item.id}`,
+                title: item.title,
+                category: item.category || 'kegiatan',
+                customCategoryLabel: item.custom_category || '',
+                color: item.color || 'emerald',
+                startDate: startStr,
+                endDate: endStr,
+                unit: item.education_unit || item.unit_name || 'Semua Unit',
+                targetModule: '/portal-orangtua?tab=calendar',
+                audience: item.audience || 'Orang Tua & Siswa',
+                isPublished: true,
+                notes: item.description || item.content || item.notes || ''
+              })
+            }
+          })
+        }
+      } catch {
+        // Abaikan jika endpoint portal calendar belum tersedia
+      }
     }
 
     // 2. Ambil data agenda dari Portal Informasi Sekolah / Kalender Pendidikan Backend
     try {
       const { data: schoolInfoRes } = await api.get('/portal/school-information', {
-        params: { type: 'calendar', ...params }
+        params: { type: 'calendar', ...queryParams }
       })
       const rawData = schoolInfoRes?.data?.data || schoolInfoRes?.data || schoolInfoRes || []
       const infoList = Array.isArray(rawData) ? rawData : (Array.isArray(rawData?.data) ? rawData.data : [])

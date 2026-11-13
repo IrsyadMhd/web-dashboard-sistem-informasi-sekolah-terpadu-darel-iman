@@ -1387,9 +1387,32 @@ export default function TahfizhPage() {
         setNotification({ type: 'error', message: e.response?.data?.message || 'Gagal menyimpan data log harian.' })
       }
     } else {
+      const filledRows = weeklySheet.filter((row) =>
+        Boolean(
+          row.id ||
+          row.isModified ||
+          (row.tilawah_text && row.tilawah_text.trim()) ||
+          Number(row.tilawah_baris) > 0 ||
+          row.hafalan_surah_number ||
+          row.hafalan_surah_name ||
+          Number(row.hafalan_baris) > 0 ||
+          (row.murajaah_text && row.murajaah_text.trim()) ||
+          Number(row.murajaah_lembar) > 0 ||
+          row.audio_url
+        )
+      )
+
+      if (filledRows.length === 0) {
+        setNotification({
+          type: 'warning',
+          message: 'Belum ada data tilawah, hafalan, atau murajaah yang diisi pada pekan ini.',
+        })
+        return
+      }
+
       setSavingAll(true)
       try {
-        const savePromises = weeklySheet.map((row) => {
+        const savePromises = filledRows.map((row) => {
           const payload = {
             id: row.id || null,
             student_id: selectedStudentId,
@@ -1790,7 +1813,7 @@ export default function TahfizhPage() {
                   <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Setoran Tahfizh & Murajaah Santri
                   </h1>
-                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-0.5 sm:mt-1 w-full text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
                     Pencatatan ziyadah hafalan baru, murajaah pekanan, target 30 juz Al-Qur'an, dan rekapitulasi nilai santri per rombel.
                   </p>
                 </div>

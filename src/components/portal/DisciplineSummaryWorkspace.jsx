@@ -107,10 +107,10 @@ export default function DisciplineSummaryWorkspace({ childId }) {
           size="sm"
           variant="solid"
           onPress={loadData}
-          className="mt-4 font-bold cursor-pointer rounded-xl px-5"
-          startContent={<RefreshCw className="h-3.5 w-3.5" />}
+          className="mt-4 inline-flex items-center gap-1.5 font-bold cursor-pointer rounded-xl px-5"
         >
-          Muat Ulang
+          <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+          <span>Muat Ulang</span>
         </HeroButton>
       </div>
     )
