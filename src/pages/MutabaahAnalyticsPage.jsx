@@ -2451,7 +2451,7 @@ export default function MutabaahAnalyticsPage({ view }) {
             {/* Footer Dialog */}
             <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
               <span className="text-xs font-semibold text-slate-400">
-                Formulir Mutaba'ah Mingguan SIMSIT • {isSelectedBoarding ? 'Pesantren / Boarding' : 'Fullday School'}
+                Formulir Mutaba'ah Mingguan Dareliman Edu • {isSelectedBoarding ? 'Pesantren / Boarding' : 'Fullday School'}
               </span>
               <div className="flex items-center gap-2">
                 <button

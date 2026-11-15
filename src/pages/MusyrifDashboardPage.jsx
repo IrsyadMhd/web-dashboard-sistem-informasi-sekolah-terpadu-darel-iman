@@ -830,17 +830,27 @@ export default function MusyrifDashboardPage({ defaultTab }) {
   const context = data?.context || {}
   const charts = data?.charts || {}
   const tables = data?.tables || {}
-  const worshipPrayers = Array.isArray(charts?.worship_prayers) && charts.worship_prayers.length > 0
-    ? charts.worship_prayers
-    : [
-        { key: 'tahajud', name: 'Tahajud', color: '#8B5CF6', badge: 'Sunnah' },
-        { key: 'subuh', name: 'Subuh', color: '#064E3B', badge: 'Wajib' },
-        { key: 'dhuha', name: 'Dhuha', color: '#EC4899', badge: 'Sunnah' },
-        { key: 'dzuhur', name: 'Dzuhur', color: '#0D9488', badge: 'Wajib' },
-        { key: 'ashar', name: 'Ashar', color: '#2563EB', badge: 'Wajib' },
-        { key: 'magrib', name: 'Maghrib', color: '#D97706', badge: 'Wajib' },
-        { key: 'isya', name: 'Isya', color: '#059669', badge: 'Wajib' },
-      ]
+  const worshipPrayers = useMemo(() => {
+    const raw = Array.isArray(charts?.worship_prayers) && charts.worship_prayers.length > 0
+      ? charts.worship_prayers
+      : [
+          { key: 'tahajud', name: 'Tahajud', color: '#8B5CF6', badge: 'Sunnah' },
+          { key: 'subuh', name: 'Subuh', color: '#064E3B', badge: 'Wajib' },
+          { key: 'dhuha', name: 'Dhuha', color: '#EC4899', badge: 'Sunnah' },
+          { key: 'dzuhur', name: 'Dzuhur', color: '#0D9488', badge: 'Wajib' },
+          { key: 'ashar', name: 'Ashar', color: '#2563EB', badge: 'Wajib' },
+          { key: 'magrib', name: 'Maghrib', color: '#D97706', badge: 'Wajib' },
+          { key: 'isya', name: 'Isya', color: '#059669', badge: 'Wajib' },
+        ]
+    const map = new Map()
+    for (const item of raw) {
+      const k = String(item.key || '').toLowerCase().trim()
+      if (k && !map.has(k)) {
+        map.set(k, { ...item, key: k })
+      }
+    }
+    return Array.from(map.values())
+  }, [charts?.worship_prayers])
 
   const filteredWorshipPrayers = useMemo(() => {
     if (worshipFilter === 'wajib') {
@@ -1456,7 +1466,7 @@ export default function MusyrifDashboardPage({ defaultTab }) {
   }
 
   return (
-    <PageContainer maxW="7xl">
+    <PageContainer maxW="7xl" className="pb-20 xl:pb-8">
       <div className="space-y-6 pb-12">
         {/* Breadcrumb Navigation matching Teacher Workspace Style */}
         <AppBreadcrumb items={[{ label: 'Workspace Musyrif Asrama' }]} />

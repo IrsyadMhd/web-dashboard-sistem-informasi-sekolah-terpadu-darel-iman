@@ -208,7 +208,7 @@ function PrintCredentialsModal({ open, onClose, users = [] }) {
               return `
               <div class="card-item">
                 <div class="card-header">
-                  <div class="card-title">SLIP AKUN LOGIN SIMSIT</div>
+                  <div class="card-title">SLIP AKUN LOGIN DARELIMAN EDU</div>
                   <div class="card-subtitle">${foundationName}</div>
                 </div>
                 <div class="card-body">
@@ -233,7 +233,7 @@ function PrintCredentialsModal({ open, onClose, users = [] }) {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Cetak Kredensial Akun Login SIMSIT</title>
+        <title>Cetak Kredensial Akun Login Dareliman Edu</title>
         <style>
           @page { size: A4 portrait; margin: 15mm; }
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; color: #0f172a; margin: 0; padding: 0; }
@@ -271,7 +271,7 @@ function PrintCredentialsModal({ open, onClose, users = [] }) {
       <body>
         <div class="header-kop">
           <h2>${foundationName.toUpperCase()}</h2>
-          <h4>SISTEM MANAJEMEN SEKOLAH TERPADU (SIMSIT)</h4>
+          <h4>DARELIMAN EDU - SISTEM MANAJEMEN SEKOLAH TERPADU</h4>
           <p>${pengaturan?.address || 'Padang, Sumatera Barat'} • Telp: ${pengaturan?.phone || '-'} • Website: ${pengaturan?.website || '-'}</p>
         </div>
 

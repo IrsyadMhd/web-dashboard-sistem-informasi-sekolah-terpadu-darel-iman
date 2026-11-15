@@ -701,7 +701,7 @@ export function FoundationProfilePage() {
               <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
                 <div>
                   <h4 className="font-bold text-slate-800 dark:text-white">Bahasa Antarmuka</h4>
-                  <p className="text-[11px] text-slate-500">Pilihan bahasa tampilan SIMSIT.</p>
+                  <p className="text-[11px] text-slate-500">Pilihan bahasa tampilan Dareliman Edu.</p>
                 </div>
                 <div className="w-48">
                   <HeroUiFilterSelect

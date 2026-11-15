@@ -38,7 +38,7 @@ export function Dialog({
           if (!open && resolvedOnClose) resolvedOnClose()
         }}
       >
-        <HeroModal.Backdrop className="bg-slate-950/70 backdrop-blur-md fixed inset-0 z-50 flex items-center justify-center p-4">
+        <HeroModal.Backdrop className="bg-slate-950/70 backdrop-blur-md fixed inset-0 z-[80] flex items-center justify-center p-4">
           <HeroModal.Container className="w-full flex items-center justify-center min-h-full">
             <HeroModal.Dialog
               className={cn(

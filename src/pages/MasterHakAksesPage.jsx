@@ -113,19 +113,19 @@ const GLOBAL_ACCESS_PERMISSIONS = [
 ]
 
 const TIER_COLOR_MAP = {
-  red:     { bg: 'bg-red-50 dark:bg-red-950/40', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800/60' },
-  purple:  { bg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-800/60' },
-  blue:    { bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800/60' },
+  red: { bg: 'bg-red-50 dark:bg-red-950/40', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800/60' },
+  purple: { bg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-800/60' },
+  blue: { bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800/60' },
   emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-800/60' },
-  sky:     { bg: 'bg-sky-50 dark:bg-sky-950/40', text: 'text-sky-700 dark:text-sky-300', border: 'border-sky-200 dark:border-sky-800/60' },
-  amber:   { bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800/60' },
-  teal:    { bg: 'bg-teal-50 dark:bg-teal-950/40', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800/60' },
-  gray:    { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-300', border: 'border-slate-200 dark:border-slate-700' },
+  sky: { bg: 'bg-sky-50 dark:bg-sky-950/40', text: 'text-sky-700 dark:text-sky-300', border: 'border-sky-200 dark:border-sky-800/60' },
+  amber: { bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800/60' },
+  teal: { bg: 'bg-teal-50 dark:bg-teal-950/40', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800/60' },
+  gray: { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-300', border: 'border-slate-200 dark:border-slate-700' },
 }
 
 const SCOPE_LABEL = {
-  global:   { text: 'Global', bg: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/60' },
-  unit:     { text: 'Per Unit', bg: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60' },
+  global: { text: 'Global', bg: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/60' },
+  unit: { text: 'Per Unit', bg: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60' },
   external: { text: 'Eksternal', bg: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' },
 }
 
@@ -443,8 +443,8 @@ export default function MasterHakAksesPage() {
       const activeRoles = selectedRoleFilter
         ? undefined
         : selectedMatrixGroup !== 'semua'
-        ? ROLE_GROUPS[selectedMatrixGroup]?.roles?.join(',')
-        : undefined
+          ? ROLE_GROUPS[selectedMatrixGroup]?.roles?.join(',')
+          : undefined
 
       return hakAksesService.getPegawaiHakAkses({
         search: debouncedSearch,
@@ -466,14 +466,14 @@ export default function MasterHakAksesPage() {
   const assignableRoleNames = canManageGlobalAccess
     ? availableRoleNames
     : availableRoleNames.filter((name) => {
-        const dbRec = allRoleRecords.find((r) => (typeof r === 'string' ? r : r?.name) === name)
-        if (dbRec && typeof dbRec === 'object') {
-          if (dbRec.scope_type === 'global' || dbRec.can_manage_global_access || Number(dbRec.level ?? 99) <= 2) {
-            return false
-          }
+      const dbRec = allRoleRecords.find((r) => (typeof r === 'string' ? r : r?.name) === name)
+      if (dbRec && typeof dbRec === 'object') {
+        if (dbRec.scope_type === 'global' || dbRec.can_manage_global_access || Number(dbRec.level ?? 99) <= 2) {
+          return false
         }
-        return !hasAnyRole([name], GLOBAL_ROLE_NAMES)
-      })
+      }
+      return !hasAnyRole([name], GLOBAL_ROLE_NAMES)
+    })
 
   const permissionsGrouped = permData?.data || []
   const allPerms = permData?.flat_list || allPermData?.flat_list || []
@@ -687,11 +687,11 @@ export default function MasterHakAksesPage() {
 
   const hasActiveFilters = Boolean(
     search ||
-      selectedUnitId ||
-      roleCategoryFilter !== 'semua' ||
-      statusFilter ||
-      selectedMatrixGroup !== 'semua' ||
-      selectedRoleFilter
+    selectedUnitId ||
+    roleCategoryFilter !== 'semua' ||
+    statusFilter ||
+    selectedMatrixGroup !== 'semua' ||
+    selectedRoleFilter
   )
 
   // Tab definitions
@@ -712,21 +712,21 @@ export default function MasterHakAksesPage() {
     },
     ...(canViewGlobalAccess
       ? [
-          {
-            key: 'roles',
-            label: 'Matriks Peran & Role',
-            count: `${stats.total_role || 0} Role`,
-            icon: Shield,
-            description: 'Struktur kelompok peran (RBAC) dan pemetaan izin sistem',
-          },
-          {
-            key: 'permissions',
-            label: 'Katalog Hak Akses',
-            count: `${stats.total_permission || 0} Izin`,
-            icon: Key,
-            description: 'Katalog aksi dan modul yang terproteksi dalam sistem',
-          },
-        ]
+        {
+          key: 'roles',
+          label: 'Matriks Peran & Role',
+          count: `${stats.total_role || 0} Role`,
+          icon: Shield,
+          description: 'Struktur kelompok peran (RBAC) dan pemetaan izin sistem',
+        },
+        {
+          key: 'permissions',
+          label: 'Katalog Hak Akses',
+          count: `${stats.total_permission || 0} Izin`,
+          icon: Key,
+          description: 'Katalog aksi dan modul yang terproteksi dalam sistem',
+        },
+      ]
       : []),
   ]
 
@@ -782,7 +782,7 @@ export default function MasterHakAksesPage() {
     if (isPdf) {
       downloadPdfTable({
         title: printTitle,
-        subtitle: `Sistem Manajemen Sekolah Terpadu - ${foundationName}`,
+        subtitle: `Dareliman Edu - ${foundationName}`,
         columns,
         rows,
         filename: `rekap_hak_akses_${activeTab}.pdf`,
@@ -790,7 +790,7 @@ export default function MasterHakAksesPage() {
     } else {
       printCleanTable({
         title: printTitle,
-        subtitle: `Sistem Manajemen Sekolah Terpadu - ${foundationName}`,
+        subtitle: `Dareliman Edu - ${foundationName}`,
         columns,
         rows,
       })
@@ -1163,8 +1163,8 @@ export default function MasterHakAksesPage() {
                                 isProtected
                                   ? 'bg-amber-50 border-amber-300 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-800'
                                   : isDefault
-                                  ? 'bg-sky-50 border-sky-300 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-800'
-                                  : 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800'
+                                    ? 'bg-sky-50 border-sky-300 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-800'
+                                    : 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800'
                               )}
                             >
                               {isProtected ? (
@@ -1942,47 +1942,47 @@ function RoleFormModal({
   const scopeOptions = Array.isArray(navOptions?.scope_options) && navOptions.scope_options.length > 0
     ? navOptions.scope_options
     : [
-        { value: 'global', label: 'Global (Semua Unit Pendidikan)' },
-        { value: 'cross_unit', label: 'Lintas Unit Terpilih (Divisi)' },
-        { value: 'education_unit', label: 'Unit Pendidikan Sendiri' },
-        { value: 'own_assignments', label: 'Penugasan / Kelas Sendiri' },
-        { value: 'linked_children', label: 'Data Anak Terhubung (Wali)' },
-        { value: 'self', label: 'Data Pribadi Sendiri' },
-      ]
+      { value: 'global', label: 'Global (Semua Unit Pendidikan)' },
+      { value: 'cross_unit', label: 'Lintas Unit Terpilih (Divisi)' },
+      { value: 'education_unit', label: 'Unit Pendidikan Sendiri' },
+      { value: 'own_assignments', label: 'Penugasan / Kelas Sendiri' },
+      { value: 'linked_children', label: 'Data Anak Terhubung (Wali)' },
+      { value: 'self', label: 'Data Pribadi Sendiri' },
+    ]
   const portalGroupOptions = Array.isArray(navOptions?.portal_group_options) && navOptions.portal_group_options.length > 0
     ? navOptions.portal_group_options
     : [
-        { value: 'staff', label: 'Staf / Peran Kustom Internal' },
-        { value: 'foundation', label: 'Yayasan (Eksekutif / Monitoring)' },
-        { value: 'education', label: 'Divisi Pendidikan' },
-        { value: 'principal', label: 'Kepala Sekolah' },
-        { value: 'waka', label: 'Wakil Kepala Sekolah (Waka)' },
-        { value: 'tu', label: 'Tata Usaha (TU)' },
-        { value: 'operator', label: 'Operator Unit' },
-        { value: 'teacher', label: 'Guru / Tenaga Pendidik' },
-        { value: 'musyrif', label: 'Musyrif / Kepengasuhan Asrama' },
-        { value: 'parent', label: 'Orang Tua / Wali Murid' },
-        { value: 'student', label: 'Siswa / Santri' },
-        { value: 'alumni', label: 'Alumni' },
-      ]
+      { value: 'staff', label: 'Staf / Peran Kustom Internal' },
+      { value: 'foundation', label: 'Yayasan (Eksekutif / Monitoring)' },
+      { value: 'education', label: 'Divisi Pendidikan' },
+      { value: 'principal', label: 'Kepala Sekolah' },
+      { value: 'waka', label: 'Wakil Kepala Sekolah (Waka)' },
+      { value: 'tu', label: 'Tata Usaha (TU)' },
+      { value: 'operator', label: 'Operator Unit' },
+      { value: 'teacher', label: 'Guru / Tenaga Pendidik' },
+      { value: 'musyrif', label: 'Musyrif / Kepengasuhan Asrama' },
+      { value: 'parent', label: 'Orang Tua / Wali Murid' },
+      { value: 'student', label: 'Siswa / Santri' },
+      { value: 'alumni', label: 'Alumni' },
+    ]
   const routeOptions = Array.isArray(navOptions?.route_options) && navOptions.route_options.length > 0
     ? navOptions.route_options
     : [
-        { value: '/dashboard', label: 'Dashboard Utama (/dashboard)' },
-        { value: '/dashboard/pemantauan', label: 'Dashboard Pemantauan (/dashboard/pemantauan)' },
-        { value: '/dashboard/yayasan', label: 'Dashboard Yayasan (/dashboard/yayasan)' },
-        { value: '/dashboard/divisi-pendidikan', label: 'Dashboard Divisi Pendidikan (/dashboard/divisi-pendidikan)' },
-        { value: '/dashboard/kepala-sekolah', label: 'Dashboard Kepala Sekolah (/dashboard/kepala-sekolah)' },
-        { value: '/dashboard/waka-kurikulum', label: 'Dashboard Waka Kurikulum (/dashboard/waka-kurikulum)' },
-        { value: '/dashboard/waka-kesiswaan', label: 'Dashboard Waka Kesiswaan (/dashboard/waka-kesiswaan)' },
-        { value: '/dashboard/tata-usaha', label: 'Dashboard Tata Usaha (/dashboard/tata-usaha)' },
-        { value: '/dashboard/operator', label: 'Dashboard Operator (/dashboard/operator)' },
-        { value: '/portal-guru', label: 'Portal Guru (/portal-guru)' },
-        { value: '/dashboard/musyrif', label: 'Dashboard Musyrif (/dashboard/musyrif)' },
-        { value: '/portal-orangtua', label: 'Portal Orang Tua (/portal-orangtua)' },
-        { value: '/portal-siswa', label: 'Portal Siswa (/portal-siswa)' },
-        { value: '/portal/alumni', label: 'Portal Alumni (/portal/alumni)' },
-      ]
+      { value: '/dashboard', label: 'Dashboard Utama (/dashboard)' },
+      { value: '/dashboard/pemantauan', label: 'Dashboard Pemantauan (/dashboard/pemantauan)' },
+      { value: '/dashboard/yayasan', label: 'Dashboard Yayasan (/dashboard/yayasan)' },
+      { value: '/dashboard/divisi-pendidikan', label: 'Dashboard Divisi Pendidikan (/dashboard/divisi-pendidikan)' },
+      { value: '/dashboard/kepala-sekolah', label: 'Dashboard Kepala Sekolah (/dashboard/kepala-sekolah)' },
+      { value: '/dashboard/waka-kurikulum', label: 'Dashboard Waka Kurikulum (/dashboard/waka-kurikulum)' },
+      { value: '/dashboard/waka-kesiswaan', label: 'Dashboard Waka Kesiswaan (/dashboard/waka-kesiswaan)' },
+      { value: '/dashboard/tata-usaha', label: 'Dashboard Tata Usaha (/dashboard/tata-usaha)' },
+      { value: '/dashboard/operator', label: 'Dashboard Operator (/dashboard/operator)' },
+      { value: '/portal-guru', label: 'Portal Guru (/portal-guru)' },
+      { value: '/dashboard/musyrif', label: 'Dashboard Musyrif (/dashboard/musyrif)' },
+      { value: '/portal-orangtua', label: 'Portal Orang Tua (/portal-orangtua)' },
+      { value: '/portal-siswa', label: 'Portal Siswa (/portal-siswa)' },
+      { value: '/portal/alumni', label: 'Portal Alumni (/portal/alumni)' },
+    ]
 
   React.useEffect(() => {
     if (isOpen) {
@@ -2809,8 +2809,8 @@ function PegawaiRoleModal({
       const existingRoles = Array.isArray(employee.roles)
         ? employee.roles
         : typeof employee.roles?.toArray === 'function'
-        ? employee.roles.toArray()
-        : []
+          ? employee.roles.toArray()
+          : []
       const extraRoles = existingRoles.filter(
         (r) => r !== initialRole && availableRoles.includes(r)
       )
@@ -3301,7 +3301,7 @@ function PegawaiRoleModal({
                           <input
                             type="checkbox"
                             checked={isChecked}
-                            onChange={() => {}} // handled by parent label click
+                            onChange={() => { }} // handled by parent label click
                             className="size-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer pointer-events-none"
                           />
                           <span className="truncate">{r}</span>

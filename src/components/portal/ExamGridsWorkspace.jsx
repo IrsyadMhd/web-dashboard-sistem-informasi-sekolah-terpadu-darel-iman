@@ -800,7 +800,7 @@ export default function ExamGridsWorkspace({
                   {/* Footer */}
                   <HeroModal.Footer className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
                     <span className="text-[11px] font-medium text-slate-400">
-                      Sistem Manajemen Sekolah Terpadu {student?.unit_name ? `· ${student.unit_name}` : ''}
+                      Dareliman Edu {student?.unit_name ? `· ${student.unit_name}` : ''}
                     </span>
                     <HeroButton
                       size="sm"

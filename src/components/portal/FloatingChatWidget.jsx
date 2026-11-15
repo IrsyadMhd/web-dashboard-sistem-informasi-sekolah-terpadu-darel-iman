@@ -83,9 +83,10 @@ export default function FloatingChatWidget() {
   const [isMinimized, setIsMinimized] = useState(false)
   const [isDocked, setIsDocked] = useState(() => {
     try {
-      return localStorage.getItem('school_erp_chat_fab_docked') === 'true'
+      const stored = localStorage.getItem('school_erp_chat_fab_docked')
+      return stored === 'false' ? false : true
     } catch {
-      return false
+      return true
     }
   })
   const [childId, setChildId] = useState('')
@@ -97,7 +98,7 @@ export default function FloatingChatWidget() {
       const next = !prev
       try {
         localStorage.setItem('school_erp_chat_fab_docked', String(next))
-      } catch {}
+      } catch { }
       return next
     })
   }
@@ -181,11 +182,10 @@ export default function FloatingChatWidget() {
       {/* Pop-Up Window / Minimized Pill */}
       {isOpen && (
         <div
-          className={`fixed right-3 sm:right-6 z-50 transition-all duration-300 transform origin-bottom-right flex flex-col overflow-hidden ${
-            isMinimized
-              ? 'bottom-6 w-auto max-w-[200px] h-12 px-3.5 rounded-full border border-emerald-500/60 bg-gradient-to-r from-[#0E5C44] via-[#187154] to-[#3FBF75] text-white shadow-2xl shadow-emerald-950/40 cursor-pointer hover:scale-105 active:scale-95'
-              : 'bottom-20 w-[96vw] max-w-[940px] h-[640px] max-h-[calc(100vh-6.5rem)] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900 shadow-2xl shadow-slate-950/25'
-          }`}
+          className={`fixed right-3 sm:right-6 z-40 transition-all duration-300 transform origin-bottom-right flex flex-col overflow-hidden ${isMinimized
+            ? 'bottom-6 w-auto max-w-[200px] h-12 px-3.5 rounded-full border border-emerald-500/60 bg-gradient-to-r from-[#0E5C44] via-[#187154] to-[#3FBF75] text-white shadow-2xl shadow-emerald-950/40 cursor-pointer hover:scale-105 active:scale-95'
+            : 'bottom-20 w-[96vw] max-w-[940px] h-[640px] max-h-[calc(100vh-6.5rem)] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900 shadow-2xl shadow-slate-950/25'
+            }`}
           onClick={isMinimized ? () => setIsMinimized(false) : undefined}
         >
           {/* Header Pop-Up */}
@@ -206,8 +206,8 @@ export default function FloatingChatWidget() {
                       {widgetMode === 'employee'
                         ? 'Chat Antar Pegawai'
                         : isTeacher
-                        ? 'Komunikasi Orang Tua'
-                        : 'Chat Guru & Wali Kelas'}
+                          ? 'Komunikasi Orang Tua'
+                          : 'Chat Guru & Wali Kelas'}
                     </h3>
                     <p className="truncate text-[10px] text-emerald-100/80 font-medium">
                       {isParent
@@ -268,22 +268,20 @@ export default function FloatingChatWidget() {
                 <button
                   type="button"
                   onClick={() => setWidgetMode('employee')}
-                  className={`flex-1 py-1 text-center rounded-md transition cursor-pointer ${
-                    widgetMode === 'employee'
-                      ? 'bg-white/20 text-white shadow-xs font-black'
-                      : 'text-white/70 hover:text-white'
-                  }`}
+                  className={`flex-1 py-1 text-center rounded-md transition cursor-pointer ${widgetMode === 'employee'
+                    ? 'bg-white/20 text-white shadow-xs font-black'
+                    : 'text-white/70 hover:text-white'
+                    }`}
                 >
                   Chat Pegawai
                 </button>
                 <button
                   type="button"
                   onClick={() => setWidgetMode(isParent && !isTeacher ? 'parent' : 'teacher')}
-                  className={`flex-1 py-1 text-center rounded-md transition cursor-pointer ${
-                    widgetMode !== 'employee'
-                      ? 'bg-white/20 text-white shadow-xs font-black'
-                      : 'text-white/70 hover:text-white'
-                  }`}
+                  className={`flex-1 py-1 text-center rounded-md transition cursor-pointer ${widgetMode !== 'employee'
+                    ? 'bg-white/20 text-white shadow-xs font-black'
+                    : 'text-white/70 hover:text-white'
+                    }`}
                 >
                   {isParent && !isTeacher ? 'Chat Guru' : 'Chat Orang Tua'}
                 </button>

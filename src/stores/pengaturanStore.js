@@ -39,7 +39,7 @@ export const INITIAL_FAQS = [
   {
     id: 'faq-1',
     category: 'Keamanan & Akun',
-    question: 'Bagaimana cara mengganti kata sandi (password) akun SIMSIT saya?',
+    question: 'Bagaimana cara mengganti kata sandi (password) akun Dareliman Edu saya?',
     answer: `Anda dapat mengubah kata sandi kapan saja demi keamanan akun:
 1. Buka menu Profil Akun di pojok kanan atas topbar.
 2. Pilih tab Keamanan & Kata Sandi.
@@ -122,7 +122,7 @@ export const INITIAL_FAQS = [
     category: 'Keamanan & Akun',
     question: 'Saya memiliki pesan error "Akses Ditolak / Forbidden", apa artinya?',
     answer: `Pesan "Akses Ditolak" muncul apabila akun Anda tidak memiliki Hak Akses / Permission Role untuk membuka halaman tersebut:
-- SIMSIT menerapkan sistem perizinan ketat berdasarkan peran (Super Admin, Yayasan, Kepsek, Guru, TU, Musyrif, Orang Tua, Siswa).
+- Dareliman Edu menerapkan sistem perizinan ketat berdasarkan peran (Super Admin, Yayasan, Kepsek, Guru, TU, Musyrif, Orang Tua, Siswa).
 - Jika Anda merasa seharusnya berhak mengakses halaman tersebut, silakan hubungi Operator IT / TU untuk memperbarui Hak Akses akun Anda pada menu Master Hak Akses.`,
     tags: ['akses ditolak', 'forbidden', 'hak akses', 'role', 'permission', 'admin'],
     actionUrl: null,
@@ -143,7 +143,7 @@ Untuk perubahan data administratif seperti Nomor NUPTK, SK Pengangkatan, Jabatan
 export const INITIAL_MANUALS = [
   {
     id: 'man-1',
-    title: 'Buku Panduan Guru & Wali Kelas SIMSIT',
+    title: 'Buku Panduan Guru & Wali Kelas Dareliman Edu',
     version: 'v2.4 (Terbaru 2026)',
     size: '3.8 MB',
     format: 'PDF',
@@ -184,7 +184,7 @@ export const INITIAL_MANUALS = [
 ]
 
 export const defaultPengaturan = {
-  application_name: 'Sistem Manajemen Sekolah',
+  application_name: 'Dareliman Edu',
   school_name: 'Yayasan Pendidikan Islam',
   logo_text: 'SIT',
   logo_url: '',
@@ -228,6 +228,9 @@ export const defaultPengaturan = {
 function readCached() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    if (saved.application_name === 'Sistem Manajemen Sekolah Terpadu' || saved.application_name === 'SIMSIT') {
+      saved.application_name = 'Dareliman Edu'
+    }
     return {
       ...defaultPengaturan,
       ...saved,
@@ -253,6 +256,9 @@ export const usePengaturanStore = create((set, get) => ({
     set({ loading: true })
     try {
       const fetched = await siteSettingService.get()
+      if (fetched?.application_name === 'Sistem Manajemen Sekolah Terpadu' || fetched?.application_name === 'SIMSIT') {
+        fetched.application_name = 'Dareliman Edu'
+      }
       const pengaturan = {
         ...defaultPengaturan,
         ...fetched,

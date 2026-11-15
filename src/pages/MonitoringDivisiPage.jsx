@@ -154,7 +154,6 @@ export default function MonitoringDivisiPage() {
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [localItems, setLocalItems] = useState([])
 
   // Auth & Role Context
   const user = useAuthStore((state) => state.user)
@@ -280,24 +279,13 @@ export default function MonitoringDivisiPage() {
   }, [rawDivisionsData, rawApiItems, isDivisi])
 
   const combinedItems = useMemo(() => {
-    const deletedSet = new Set(localItems.filter((i) => i._deleted).map((i) => i.id))
-    const localActive = localItems.filter((i) => !i._deleted)
-    const localMap = new Map(localActive.map((i) => [i.id, i]))
-
-    const fromApi = rawApiItems
-      .filter((item) => !deletedSet.has(item.id))
-      .map((item) => localMap.get(item.id) || item)
-
-    const newLocals = localActive.filter((i) => !rawApiItems.some((a) => a.id === i.id))
-    const all = [...newLocals, ...fromApi]
-
-    return all.map((item) => ({
+    return (rawApiItems || []).map((item) => ({
       unit_pendidikan: item.unit_pendidikan || item.unit?.name || 'Seluruh Unit / Umum',
       petugas_supervisi: item.petugas_supervisi || '',
       kategori_laporan: item.kategori_laporan || '',
       ...item,
     }))
-  }, [rawApiItems, localItems])
+  }, [rawApiItems])
 
   // Filter items by Unit scope, Divisi, Status, Search
   const filteredItems = useMemo(() => {
@@ -487,8 +475,8 @@ export default function MonitoringDivisiPage() {
   }
 
   // Handle Import Success
-  const handleImportSuccess = (newImportedItems) => {
-    setLocalItems((prev) => [...newImportedItems, ...prev])
+  const handleImportSuccess = () => {
+    refetch()
   }
 
   // KPI Statistics Calculation
@@ -527,9 +515,6 @@ export default function MonitoringDivisiPage() {
   const handleFormSubmit = async (formData) => {
     if (!canManage) return
     if (selectedRecord?.id) {
-      setLocalItems((prev) =>
-        prev.map((item) => (item.id === selectedRecord.id ? { ...item, ...formData } : item))
-      )
       await ubah.mutateAsync(
         { id: selectedRecord.id, payload: formData },
         {
@@ -537,24 +522,13 @@ export default function MonitoringDivisiPage() {
             setIsFormOpen(false)
             refetch()
           },
-          onError: () => {
-            setIsFormOpen(false)
-          },
         }
       )
     } else {
-      const newRec = {
-        id: `local_${Date.now()}`,
-        ...formData,
-      }
-      setLocalItems((prev) => [newRec, ...prev])
       await tambah.mutateAsync(formData, {
         onSuccess: () => {
           setIsFormOpen(false)
           refetch()
-        },
-        onError: () => {
-          setIsFormOpen(false)
         },
       })
     }
@@ -562,16 +536,11 @@ export default function MonitoringDivisiPage() {
 
   const handleConfirmDelete = async () => {
     if (!canManage || !deleteTargetId) return
-    setLocalItems((prev) => [...prev.filter((i) => i.id !== deleteTargetId), { id: deleteTargetId, _deleted: true }])
     await hapus.mutateAsync(deleteTargetId, {
       onSuccess: () => {
         setIsDeleteOpen(false)
         setDeleteTargetId(null)
         refetch()
-      },
-      onError: () => {
-        setIsDeleteOpen(false)
-        setDeleteTargetId(null)
       },
     })
   }

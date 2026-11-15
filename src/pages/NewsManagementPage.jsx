@@ -27,6 +27,7 @@ import { educationUnitService } from '../services/educationUnitService'
 import { dashboardPemantauanService } from '../services/dashboardPemantauanService'
 
 import { Button } from '../components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { DatePicker } from '@/components/ui/date-picker'
 import {

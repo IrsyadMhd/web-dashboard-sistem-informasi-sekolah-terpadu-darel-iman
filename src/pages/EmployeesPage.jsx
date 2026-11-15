@@ -203,7 +203,7 @@ function makeEmployeeQrPayload(employee) {
     employee.qr_code ||
     employee.niy ||
     employee.email ||
-    (employee.id ? `EMP-${employee.id}` : 'SIMSIT')
+    (employee.id ? `EMP-${employee.id}` : 'DARELIMAN-EDU')
   )
 }
 

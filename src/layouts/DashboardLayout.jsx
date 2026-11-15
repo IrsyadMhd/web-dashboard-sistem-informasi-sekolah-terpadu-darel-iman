@@ -241,7 +241,7 @@ export default function DashboardLayout() {
   }, [muatPengaturanRef])
 
   useEffect(() => {
-    document.title = pengaturan.application_name || 'Sistem Manajemen Sekolah'
+    document.title = (pengaturan.application_name && !pengaturan.application_name.includes('Sistem Manajemen Sekolah')) ? pengaturan.application_name : 'Dareliman Edu - Yayasan Dar El-Iman'
     let favicon = document.querySelector("link[rel~='icon']")
     if (!favicon) {
       favicon = document.createElement('link')
@@ -1087,7 +1087,7 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
                         <h1 className="text-xs font-black tracking-wider text-slate-900 dark:text-white uppercase truncate font-sans">
                           {namaSekolah}
                         </h1>
-                        <p className="text-[10px] font-bold tracking-widest text-emerald-600 dark:text-emerald-400">{pengaturan.application_name || 'Sistem Manajemen Sekolah'}</p>
+                        <p className="text-[10px] font-bold tracking-widest text-emerald-600 dark:text-emerald-400">{(pengaturan.application_name && !pengaturan.application_name.includes('Sistem Manajemen Sekolah')) ? pengaturan.application_name : 'Dareliman Edu'}</p>
                       </div>
                     )}
                   </div>

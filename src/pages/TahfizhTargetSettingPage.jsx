@@ -99,7 +99,7 @@ function HeroUiFilterSelect({
           : isOpen
             ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
             : value !== '' && value !== undefined && value !== null && value !== 'all'
-              ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
+              ? 'border-emerald-500/40 bg-emerald-50/40 text-emerald-950 dark:border-emerald-700/50 dark:bg-emerald-950/30 dark:text-emerald-100 shadow-xs'
               : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
           }`}
       >
@@ -918,36 +918,52 @@ export default function TahfizhTargetSettingPage() {
         </div>
       </div>
 
-      {/* 4. MODAL TAMBAH / UBAH TARGET (AppModal) */}
+      {/* 4. MODAL TAMBAH / UBAH TARGET (AppModal - Harmonized TailGrids/HeroUI) */}
       <AppModal
         isOpen={showFormModal}
         onClose={() => !isSubmitting && setShowFormModal(false)}
-        size="lg"
-      >
-        <div className="p-6 space-y-5">
-          <div className="flex items-center justify-between border-b border-emerald-200/80 pb-3 dark:border-emerald-800/60">
-            <div className="flex items-center gap-3">
-              <div className="size-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
-                <Target className="size-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                  {editingTarget ? 'Ubah Target KPI Tahfizh' : 'Tambah Target KPI Tahfizh Baru'}
-                </h3>
-                <p className="text-xs text-slate-500 font-medium dark:text-slate-400">
-                  Konfigurasikan batas capaian ayat & surah untuk kurikulum jenjang.
-                </p>
-              </div>
-            </div>
+        title={editingTarget ? 'Ubah Target KPI Tahfizh' : 'Tambah Target KPI Tahfizh Baru'}
+        description="Konfigurasikan batas capaian ayat & surah untuk kurikulum jenjang."
+        icon={Target}
+        maxWidth="max-w-2xl"
+        footer={
+          <div className="flex w-full items-center justify-between gap-3">
             <button
+              type="button"
               onClick={() => setShowFormModal(false)}
-              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer disabled:opacity-50 shadow-sm"
             >
-              <X className="size-5" />
+              <div className="flex size-4.5 items-center justify-center rounded-lg bg-white/20 text-white">
+                <X className="size-3 text-white" strokeWidth={2.2} />
+              </div>
+              <span>Batal</span>
+            </button>
+            <button
+              type="submit"
+              form="tahfizh-target-form"
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.02] transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 shadow-md shadow-emerald-700/20"
+            >
+              {isSubmitting ? (
+                <>
+                  <RefreshCw className="size-3.5 animate-spin text-white" />
+                  <span>Menyimpan...</span>
+                </>
+              ) : (
+                <>
+                  <div className="flex size-4.5 items-center justify-center rounded-lg bg-white/20 text-white">
+                    <CheckCircle2 className="size-3 text-white" strokeWidth={2.2} />
+                  </div>
+                  <span>{editingTarget ? 'Perbarui Target KPI' : 'Simpan Pengaturan Target'}</span>
+                </>
+              )}
             </button>
           </div>
-
-          <form onSubmit={handleSubmitForm} className="space-y-4 text-xs">
+        }
+      >
+        <div className="space-y-4">
+          <form id="tahfizh-target-form" onSubmit={handleSubmitForm} className="space-y-4 text-xs">
             {/* Nama Target */}
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -960,7 +976,7 @@ export default function TahfizhTargetSettingPage() {
                 value={formData.target_name}
                 onChange={(e) => setFormData({ ...formData, target_name: e.target.value })}
                 placeholder="Contoh: Target Tahfizh Kelas 1 (Juz 30 Penuh)"
-                className="w-full rounded-xl border-emerald-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="w-full rounded-xl border border-slate-200/90 bg-white text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white transition-all"
               />
             </div>
 
@@ -1015,7 +1031,7 @@ export default function TahfizhTargetSettingPage() {
                   value={formData.target_juz}
                   onChange={(e) => setFormData({ ...formData, target_juz: e.target.value })}
                   placeholder="Contoh: Juz 30, Juz 29-30"
-                  className="w-full rounded-xl border-emerald-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  className="w-full rounded-xl border border-slate-200/90 bg-white text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white transition-all"
                 />
               </div>
 
@@ -1031,7 +1047,7 @@ export default function TahfizhTargetSettingPage() {
                   max={6236}
                   value={formData.target_ayats}
                   onChange={(e) => setFormData({ ...formData, target_ayats: e.target.value })}
-                  className="w-full rounded-xl border-emerald-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-bold"
+                  className="w-full rounded-xl border border-slate-200/90 bg-white text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-bold transition-all"
                 />
               </div>
 
@@ -1047,7 +1063,7 @@ export default function TahfizhTargetSettingPage() {
                   max={114}
                   value={formData.target_surahs}
                   onChange={(e) => setFormData({ ...formData, target_surahs: e.target.value })}
-                  className="w-full rounded-xl border-emerald-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-bold"
+                  className="w-full rounded-xl border border-slate-200/90 bg-white text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-bold transition-all"
                 />
               </div>
             </div>
@@ -1065,7 +1081,7 @@ export default function TahfizhTargetSettingPage() {
                   value={formData.minimum_kkm_ayats}
                   onChange={(e) => setFormData({ ...formData, minimum_kkm_ayats: e.target.value })}
                   placeholder="Opsional, misal 350 ayat"
-                  className="w-full rounded-xl border-emerald-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  className="w-full rounded-xl border border-slate-200/90 bg-white text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white transition-all"
                 />
               </div>
 
@@ -1092,37 +1108,8 @@ export default function TahfizhTargetSettingPage() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Penjelasan standar kompetensi hafalan..."
-                className="w-full rounded-xl border-emerald-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="w-full rounded-xl border border-slate-200/90 bg-white text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white transition-all"
               />
-            </div>
-
-            {/* Tombol Aksi */}
-            <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowFormModal(false)}
-                disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-700/20 transition disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <RefreshCw className="size-3.5 animate-spin" />
-                    <span>Menyimpan...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="size-3.5" />
-                    <span>Simpan Pengaturan Target</span>
-                  </>
-                )}
-              </button>
             </div>
           </form>
         </div>
@@ -1135,7 +1122,7 @@ export default function TahfizhTargetSettingPage() {
             role="alertdialog"
             aria-modal="true"
             aria-label="Hapus Target KPI"
-            className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md"
+            className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}

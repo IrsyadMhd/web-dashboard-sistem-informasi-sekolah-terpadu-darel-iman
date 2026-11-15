@@ -899,7 +899,7 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
           <div className="max-w-xl mx-auto border-2 border-slate-800 p-6 rounded-lg text-slate-900">
             <div className="text-center border-b-2 border-slate-800 pb-4">
               <h2 className="text-lg font-black uppercase tracking-wider">{foundationName}</h2>
-              <p className="text-xs">Sistem Manajemen Sekolah Terpadu — Bukti Pelunasan Resmi (Kuitansi)</p>
+              <p className="text-xs">Dareliman Edu — Bukti Pelunasan Resmi (Kuitansi)</p>
             </div>
             <div className="mt-4 text-xs space-y-1">
               <div className="flex justify-between">

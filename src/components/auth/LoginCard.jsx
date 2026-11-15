@@ -324,7 +324,8 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
 
   const logoUrl = pengaturan?.logo_url || pengaturan?.logoUrl || ''
   const namaSekolah = pengaturan?.school_name || pengaturan?.namaSekolah || 'Yayasan Pendidikan Islam'
-  const namaAplikasi = pengaturan?.application_name || 'Sistem Manajemen Sekolah Terpadu'
+  const rawApp = pengaturan?.application_name
+  const namaAplikasi = (!rawApp || rawApp === 'Sistem Manajemen Sekolah Terpadu' || rawApp === 'SIMSIT') ? 'Dareliman Edu' : rawApp
 
   return (
     <div className="w-full max-w-md mx-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-emerald-100/80 dark:border-slate-800 transition-all duration-300">

@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, Component } from 'react'
+import React, { Suspense, lazy, Component, useEffect } from 'react'
 import { Navigate, Outlet, createBrowserRouter, useSearchParams, useLocation, RouterProvider } from 'react-router-dom'
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'))
@@ -248,6 +248,15 @@ function RouteTerlindungi() {
   const isSessionValid = useAuthStore((state) => state.isSessionValid)
   const clearSession = useAuthStore((state) => state.clearSession)
 
+  const sessionStatus = isSessionValid()
+  const isInvalid = !isAuthenticated || !sessionStatus.valid
+
+  useEffect(() => {
+    if (!isInitializing && isInvalid) {
+      clearSession()
+    }
+  }, [isInitializing, isInvalid, clearSession])
+
   if (isInitializing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-4">
@@ -257,9 +266,7 @@ function RouteTerlindungi() {
     )
   }
 
-  const sessionStatus = isSessionValid()
-  if (!isAuthenticated || !sessionStatus.valid) {
-    clearSession()
+  if (isInvalid) {
     const reasonParam = sessionStatus.reason && sessionStatus.reason !== 'no_token' ? `?reason=${sessionStatus.reason}` : ''
     return <Navigate to={`/masuk${reasonParam}`} replace />
   }

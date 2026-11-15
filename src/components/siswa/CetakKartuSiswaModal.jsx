@@ -426,7 +426,7 @@ export default function CetakKartuSiswaModal({ student, onClose, showSettings = 
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><FaIdCard /></span>
               <div>
                 <h2 className="text-base font-bold text-slate-900">Kartu Siswa (Pelajar)</h2>
-                <p className="text-[11px] text-slate-500">{showSettings ? 'Pratinjau kartu identitas, QR absensi SIMSIT, dan kustomisasi sisi belakang.' : 'Pratinjau kartu identitas resmi dan QR absensi SIMSIT.'}</p>
+                <p className="text-[11px] text-slate-500">{showSettings ? 'Pratinjau kartu identitas, QR absensi Dareliman Edu, dan kustomisasi sisi belakang.' : 'Pratinjau kartu identitas resmi dan QR absensi Dareliman Edu.'}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

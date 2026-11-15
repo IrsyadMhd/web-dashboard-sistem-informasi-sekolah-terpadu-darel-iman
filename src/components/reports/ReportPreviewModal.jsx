@@ -140,7 +140,7 @@ export function ReportPreviewModal({ isOpen, onClose, reportData, onPrint, onExp
 
           {/* Footer Notes */}
           <div className="border-t border-slate-200 pt-4 text-[10px] text-slate-400 flex justify-between">
-            <span>Sistem Manajemen Sekolah Terpadu • Dokumentasi Pengurus Yayasan</span>
+            <span>Dareliman Edu • Dokumentasi Pengurus Yayasan</span>
             <span>Halaman 1 / 1</span>
           </div>
         </DialogBody>

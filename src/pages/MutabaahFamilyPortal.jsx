@@ -971,7 +971,7 @@ function SignatureSheet({ close, submit, saving }) {
           </button>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); submit({ signature_status: status, comment: comment || null, device_info: { platform: navigator.platform, app: 'SIMSIT Web' } }) }} className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); submit({ signature_status: status, comment: comment || null, device_info: { platform: navigator.platform, app: 'Dareliman Edu Web' } }) }} className="space-y-4">
           <div className="space-y-2">
             <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${status === 'approved' ? 'border-[#0E5C44] bg-emerald-50/50 dark:bg-emerald-950/30' : 'border-slate-200 dark:border-slate-700'}`}>
               <input type="radio" value="approved" checked={status === 'approved'} onChange={(e) => setStatus(e.target.value)} className="mt-0.5 text-emerald-600 focus:ring-emerald-500" />

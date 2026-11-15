@@ -247,13 +247,13 @@ export default function EmployeeCardVertical({
         }}
       >
         <QRCodeSVG
-          value={qrPayload || employee.niy || employee.email || 'SIMSIT'}
+          value={qrPayload || employee.niy || employee.email || 'DARELIMAN-EDU'}
           size={91}
           level="M"
           marginSize={4}
           bgColor="#ffffff"
           fgColor="#0f172a"
-          title={`QR akses SIMSIT ${namaLengkap}`}
+          title={`QR akses Dareliman Edu ${namaLengkap}`}
         />
       </div>
 

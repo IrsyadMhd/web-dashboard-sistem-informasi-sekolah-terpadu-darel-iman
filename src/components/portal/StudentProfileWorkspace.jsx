@@ -639,7 +639,7 @@ export default function StudentProfileWorkspace({
               : 'Perubahan kontak darurat dan identitas resmi mengikuti proses verifikasi operator sekolah.'}
           </span>
           <span className="font-bold text-emerald-800 dark:text-emerald-300">
-            Sistem Manajemen Sekolah Terpadu
+            Dareliman Edu
           </span>
         </div>
       </HeroCard>
@@ -1081,11 +1081,10 @@ function ChildPasswordSettingsSection({ student }) {
 
       {message.text && (
         <div
-          className={`mb-4 rounded-xl p-3.5 text-xs font-bold ${
-            message.type === 'success'
+          className={`mb-4 rounded-xl p-3.5 text-xs font-bold ${message.type === 'success'
               ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300'
               : 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950 dark:text-rose-300'
-          }`}
+            }`}
         >
           {message.text}
         </div>
@@ -1153,4 +1152,8 @@ function ChildPasswordSettingsSection({ student }) {
       </form>
     </HeroCard>
   )
+}
+}
+}
+}
 }

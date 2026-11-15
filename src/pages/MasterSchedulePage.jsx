@@ -1044,7 +1044,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
       // If Kelas is selected directly: auto-populate unit, year, semester if empty
       if (field === 'kelas_id' && value) {
-        const selectedKelas = (options.kelas || []).find((k) => k.id === value)
+        const selectedKelas = (options.kelas || []).find((k) => String(k.id) === String(value))
         if (selectedKelas) {
           if (selectedKelas.unit_pendidikan_id) {
             updated.unit_pendidikan_id = selectedKelas.unit_pendidikan_id

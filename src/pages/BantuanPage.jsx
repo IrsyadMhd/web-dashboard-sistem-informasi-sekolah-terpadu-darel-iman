@@ -249,7 +249,7 @@ export default function BantuanPage() {
                   <LifeBuoy className="h-5 w-5 stroke-[2.2]" />
                 </div>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-sm">
-                  <Sparkles className="h-3.5 w-3.5" /> SIMSIT Support Hub
+                  <Sparkles className="h-3.5 w-3.5" /> Dareliman Edu Support Hub
                 </span>
                 <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
                   {settings.school_name || foundationName}
@@ -277,7 +277,7 @@ export default function BantuanPage() {
               </button>
 
               <a
-                href="https://wa.me/628116660000?text=Halo%20Helpdesk%20IT%20SIMSIT%20Darel%20Iman,%20saya%20butuh%20bantuan"
+                href="https://wa.me/628116660000?text=Halo%20Helpdesk%20IT%20Dareliman%20Edu,%20saya%20butuh%20bantuan"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-white/80 px-5 py-3 text-xs sm:text-sm font-bold text-emerald-800 shadow-sm hover:bg-emerald-50 hover:text-emerald-900 dark:bg-slate-800/80 dark:text-emerald-300 dark:hover:bg-slate-800 active:scale-[0.98] transition-all duration-200"
@@ -351,11 +351,10 @@ export default function BantuanPage() {
                   key={cat.id}
                   type="button"
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border-2 p-4 text-left transition-all duration-200 cursor-pointer ${
-                    isSelected
-                      ? 'border-emerald-500 bg-emerald-50/80 shadow-md shadow-emerald-500/10 dark:border-emerald-500 dark:bg-emerald-950/40'
-                      : 'border-slate-200/90 bg-white hover:border-emerald-400 hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-emerald-600 dark:hover:bg-slate-800/80'
-                  }`}
+                  className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border-2 p-4 text-left transition-all duration-200 cursor-pointer ${isSelected
+                    ? 'border-emerald-500 bg-emerald-50/80 shadow-md shadow-emerald-500/10 dark:border-emerald-500 dark:bg-emerald-950/40'
+                    : 'border-slate-200/90 bg-white hover:border-emerald-400 hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/90 dark:hover:border-emerald-600 dark:hover:bg-slate-800/80'
+                    }`}
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-3">
@@ -365,11 +364,10 @@ export default function BantuanPage() {
                         <IconComp className="h-5 w-5 stroke-[2.2]" />
                       </div>
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                          isSelected
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                        }`}
+                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${isSelected
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                          }`}
                       >
                         {cat.count} Topik
                       </span>
@@ -414,11 +412,10 @@ export default function BantuanPage() {
                   key={cat.id}
                   type="button"
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    selectedCategory === cat.id
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                  }`}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${selectedCategory === cat.id
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                    }`}
                 >
                   {cat.name}
                 </button>
@@ -459,11 +456,10 @@ export default function BantuanPage() {
                 return (
                   <div
                     key={faq.id}
-                    className={`rounded-2xl border-2 transition-all duration-200 overflow-hidden ${
-                      isOpen
-                        ? 'border-emerald-500/50 bg-emerald-50/30 shadow-sm dark:border-emerald-500/40 dark:bg-emerald-950/20'
-                        : 'border-slate-200/80 bg-white hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900/80 dark:hover:border-slate-700'
-                    }`}
+                    className={`rounded-2xl border-2 transition-all duration-200 overflow-hidden ${isOpen
+                      ? 'border-emerald-500/50 bg-emerald-50/30 shadow-sm dark:border-emerald-500/40 dark:bg-emerald-950/20'
+                      : 'border-slate-200/80 bg-white hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900/80 dark:hover:border-slate-700'
+                      }`}
                   >
                     <button
                       type="button"
@@ -472,11 +468,10 @@ export default function BantuanPage() {
                     >
                       <div className="flex items-start gap-3">
                         <div
-                          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
-                            isOpen
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                          }`}
+                          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${isOpen
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            }`}
                         >
                           ?
                         </div>
@@ -493,9 +488,8 @@ export default function BantuanPage() {
                       </div>
 
                       <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform duration-200 ${
-                          isOpen ? 'bg-emerald-500 text-white rotate-180' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                        }`}
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform duration-200 ${isOpen ? 'bg-emerald-500 text-white rotate-180' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                          }`}
                       >
                         <ChevronDown className="h-4 w-4 stroke-[2.5]" />
                       </div>
@@ -527,11 +521,10 @@ export default function BantuanPage() {
                             <button
                               type="button"
                               onClick={() => handleVote(faq.id, 'up')}
-                              className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                                helpfulVotes[faq.id] === 'up'
-                                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold'
-                                  : 'border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800'
-                              }`}
+                              className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${helpfulVotes[faq.id] === 'up'
+                                ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold'
+                                : 'border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800'
+                                }`}
                             >
                               <ThumbsUp className="h-3.5 w-3.5" />
                               <span>Ya</span>
@@ -539,11 +532,10 @@ export default function BantuanPage() {
                             <button
                               type="button"
                               onClick={() => handleVote(faq.id, 'down')}
-                              className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
-                                helpfulVotes[faq.id] === 'down'
-                                  ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 font-bold'
-                                  : 'border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800'
-                              }`}
+                              className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${helpfulVotes[faq.id] === 'down'
+                                ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 font-bold'
+                                : 'border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800'
+                                }`}
                             >
                               <ThumbsDown className="h-3.5 w-3.5" />
                               <span>Tidak</span>
@@ -567,7 +559,7 @@ export default function BantuanPage() {
               <span>Buku Panduan & PDF Manual Pengguna</span>
             </h2>
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Dokumen Resmi SIMSIT 2026
+              Dokumen Resmi Dareliman Edu 2026
             </span>
           </div>
 
@@ -627,7 +619,7 @@ export default function BantuanPage() {
                 <PhoneCall className="h-3.5 w-3.5" /> Layanan Bantuan Langsung Tim IT
               </span>
               <h2 className="text-xl sm:text-2xl font-black text-white">
-                Masih Mengalami Kendala Operasional SIMSIT?
+                Masih Mengalami Kendala Operasional Dareliman Edu?
               </h2>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed w-full">
                 Tim Support & Helpdesk IT {foundationName} siap membantu kendala teknis, pengurusan akun, perbaikan data master, dan konsultasi modul sekolah.
@@ -656,7 +648,7 @@ export default function BantuanPage() {
               </button>
 
               <a
-                href="https://wa.me/628116660000?text=Halo%20Helpdesk%20IT%20SIMSIT%20Darel%20Iman,%20saya%20butuh%20bantuan"
+                href="https://wa.me/628116660000?text=Halo%20Helpdesk%20IT%20Dareliman%20Edu,%20saya%20butuh%20bantuan"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-5 py-3 text-sm font-bold text-emerald-300 hover:bg-slate-800 hover:text-emerald-200 transition-all"
@@ -673,13 +665,40 @@ export default function BantuanPage() {
           isOpen={isTicketModalOpen}
           onClose={() => setIsTicketModalOpen(false)}
           title="Kirim Tiket Support Bantuan IT"
-          size="md"
+          description={`Sampaikan kendala teknis atau pertanyaan Anda. Tim IT ${foundationName} akan merespons melalui WhatsApp atau email yang terdaftar.`}
+          icon={LifeBuoy}
+          maxWidth="max-w-xl"
+          footer={
+            <div className="flex items-center justify-end gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => setIsTicketModalOpen(false)}
+                className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer"
+              >
+                <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                  <X className="size-3.5" strokeWidth={2.5} />
+                </span>
+                <span>Batal</span>
+              </button>
+              <button
+                type="submit"
+                form="support-ticket-form"
+                disabled={isSubmittingTicket}
+                className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-950/20 hover:from-emerald-600 hover:to-teal-800 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+              >
+                <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                  {isSubmittingTicket ? (
+                    <RefreshCw className="size-3.5 animate-spin" />
+                  ) : (
+                    <Send className="size-3.5" strokeWidth={2.5} />
+                  )}
+                </span>
+                <span>{isSubmittingTicket ? 'Mengirim Tiket...' : 'Kirim Tiket Support'}</span>
+              </button>
+            </div>
+          }
         >
-          <form onSubmit={handleTicketSubmit} className="space-y-4 pt-1">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Sampaikan kendala teknis atau pertanyaan Anda. Tim IT {foundationName} akan merespons melalui WhatsApp atau email yang terdaftar.
-            </p>
-
+          <form id="support-ticket-form" onSubmit={handleTicketSubmit} className="space-y-4 pt-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -691,7 +710,7 @@ export default function BantuanPage() {
                   placeholder="Masukkan nama Anda"
                   value={ticketForm.name}
                   onChange={(e) => setTicketForm({ ...ticketForm, name: e.target.value })}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 />
               </div>
 
@@ -705,7 +724,7 @@ export default function BantuanPage() {
                   placeholder="0812xxxxxxx"
                   value={ticketForm.phone}
                   onChange={(e) => setTicketForm({ ...ticketForm, phone: e.target.value })}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 />
               </div>
             </div>
@@ -718,7 +737,7 @@ export default function BantuanPage() {
                 <select
                   value={ticketForm.role}
                   onChange={(e) => setTicketForm({ ...ticketForm, role: e.target.value })}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 >
                   <option value="Guru">Guru Mata Pelajaran / Walas</option>
                   <option value="Musyrif">Musyrif / Guru Tahfizh</option>
@@ -735,7 +754,7 @@ export default function BantuanPage() {
                 <select
                   value={ticketForm.category}
                   onChange={(e) => setTicketForm({ ...ticketForm, category: e.target.value })}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 >
                   <option value="Akademik & LMS">Akademik & LMS</option>
                   <option value="Absensi Digital">Absensi Digital & Gerbang</option>
@@ -757,7 +776,7 @@ export default function BantuanPage() {
                 placeholder="Contoh: Tidak bisa akses menu input nilai rapor kelas 8A"
                 value={ticketForm.subject}
                 onChange={(e) => setTicketForm({ ...ticketForm, subject: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
 
@@ -771,26 +790,8 @@ export default function BantuanPage() {
                 placeholder="Jelaskan kronologi kendala, pesan error yang muncul, atau halaman lokasi masalah..."
                 value={ticketForm.description}
                 onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
-            </div>
-
-            <div className="pt-2 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsTicketModalOpen(false)}
-                className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmittingTicket}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 transition-all cursor-pointer"
-              >
-                <Send className="h-3.5 w-3.5" />
-                <span>{isSubmittingTicket ? 'Mengirim Tiket...' : 'Kirim Tiket Support'}</span>
-              </button>
             </div>
           </form>
         </AppModal>

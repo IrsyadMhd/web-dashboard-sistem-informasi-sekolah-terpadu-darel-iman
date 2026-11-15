@@ -1020,7 +1020,7 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
     if (format === 'print') {
       printCleanTable({
         title: 'Laporan Rekap Buku Nilai Akademik',
-        subtitle: `Dicetak ${targetList.length} Siswa | Sistem Manajemen Sekolah Terpadu`,
+        subtitle: `Dicetak ${targetList.length} Siswa | Dareliman Edu`,
         columns,
         data: targetList,
       })
@@ -1028,7 +1028,7 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
       downloadPdfTable({
         filename: 'rekap-buku-nilai-terpilih.pdf',
         title: 'Laporan Rekap Buku Nilai Akademik',
-        subtitle: `Dicetak ${targetList.length} Siswa | Sistem Manajemen Sekolah Terpadu`,
+        subtitle: `Dicetak ${targetList.length} Siswa | Dareliman Edu`,
         columns,
         data: targetList,
       })

@@ -860,7 +860,7 @@ export default function GradesWorkspace({
                 {/* Modal Footer */}
                 <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/80 px-5 py-3.5 dark:border-slate-800 dark:bg-slate-800/60">
                   <span className="text-[11px] text-slate-500">
-                    Sistem Manajemen Sekolah Terpadu{student?.unit_name || period?.unit_name ? ` · ${student?.unit_name || period?.unit_name}` : ''}
+                    Dareliman Edu{student?.unit_name || period?.unit_name ? ` · ${student?.unit_name || period?.unit_name}` : ''}
                   </span>
                   <Button
                     type="button"

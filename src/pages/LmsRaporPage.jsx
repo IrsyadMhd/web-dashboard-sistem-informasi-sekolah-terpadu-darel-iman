@@ -1050,7 +1050,7 @@ export default function LmsRaporPage({ tabNav = null }) {
     if (format === 'print') {
       printCleanTable({
         title: 'Laporan Rekap Rapor Digital Siswa',
-        subtitle: `Dicetak ${targetList.length} Siswa | Sistem Manajemen Sekolah Terpadu`,
+        subtitle: `Dicetak ${targetList.length} Siswa | Dareliman Edu`,
         columns,
         data: targetList,
       })
@@ -1058,7 +1058,7 @@ export default function LmsRaporPage({ tabNav = null }) {
       downloadPdfTable({
         filename: 'rekap-rapor-digital-siswa.pdf',
         title: 'Laporan Rekap Rapor Digital Siswa',
-        subtitle: `Dicetak ${targetList.length} Siswa | Sistem Manajemen Sekolah Terpadu`,
+        subtitle: `Dicetak ${targetList.length} Siswa | Dareliman Edu`,
         columns,
         data: targetList,
       })

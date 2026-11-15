@@ -32,6 +32,7 @@ import { Pagination } from '../../components/ui/pagination'
 import { DatePicker } from '@/components/ui/date-picker'
 import { printCleanTable, resolveFoundationName } from '../../utils/printHelper'
 import { usePengaturanStore } from '../../stores/pengaturanStore'
+import { useAuthStore } from '../../stores/authStore'
 
 const formatRupiah = (val) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(
@@ -126,6 +127,19 @@ export default function StudentBillsManagementPage() {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, bill: null, isSubmitting: false, error: '' })
   const pengaturan = usePengaturanStore((state) => state.pengaturan)
   const foundationName = resolveFoundationName(pengaturan)
+  const user = useAuthStore((state) => state.user)
+
+  const isGlobalUser = useMemo(() => {
+    return Boolean(
+      user?.is_superadmin ||
+      user?.roles?.some((r) => ['Super Admin', 'super_admin', 'Admin', 'admin', 'Yayasan', 'Ketua Yayasan', 'Pengurus Yayasan', 'Divisi Pendidikan'].includes(r))
+    )
+  }, [user])
+
+  const userUnitId = useMemo(() => {
+    return user?.unit_id || user?.education_unit_id || user?.employee?.unit_id || user?.metadata?.unit_id || user?.metadata?.education_unit_id || user?.scope?.unit_id || ''
+  }, [user])
+
   const [bills, setBills] = useState([])
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 20 })
   const [stats, setStats] = useState({
@@ -144,10 +158,16 @@ export default function StudentBillsManagementPage() {
   // Filter states
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 350)
-  const [selectedUnit, setSelectedUnit] = useState('')
+  const [selectedUnit, setSelectedUnit] = useState(() => (!isGlobalUser && userUnitId ? String(userUnitId) : ''))
   const [selectedClass, setSelectedClass] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
   const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    if (!isGlobalUser && userUnitId && !selectedUnit) {
+      setSelectedUnit(String(userUnitId))
+    }
+  }, [isGlobalUser, userUnitId, selectedUnit])
 
   // Master options
   const [units, setUnits] = useState([])
@@ -193,7 +213,7 @@ export default function StudentBillsManagementPage() {
         const d = res.data?.data?.data ?? res.data?.data ?? []
         setUnits(Array.isArray(d) ? d : [])
       })
-      .catch(() => {})
+      .catch(() => { })
 
     // Fee Categories
     api.get('/finance/fee-categories')
@@ -201,19 +221,20 @@ export default function StudentBillsManagementPage() {
         const d = res.data?.data ?? []
         setFeeCategories(Array.isArray(d) ? d : [])
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   // Fetch classes when selectedUnit changes or on initial load
   useEffect(() => {
-    const params = selectedUnit ? { unit_id: selectedUnit, per_page: 100 } : { per_page: 100 }
+    const effectiveUnit = selectedUnit || (!isGlobalUser ? userUnitId : '')
+    const params = effectiveUnit ? { unit_id: effectiveUnit, per_page: 100 } : { per_page: 100 }
     api.get('/classes', { params })
       .then((res) => {
         const d = res.data?.data?.data ?? res.data?.data ?? []
         setClasses(Array.isArray(d) ? d : [])
       })
-      .catch(() => {})
-  }, [selectedUnit])
+      .catch(() => { })
+  }, [selectedUnit, isGlobalUser, userUnitId])
 
   // Fetch students for create modal when class selected
   useEffect(() => {
@@ -223,7 +244,7 @@ export default function StudentBillsManagementPage() {
           const d = res.data?.data?.data ?? res.data?.data ?? []
           setStudents(Array.isArray(d) ? d : [])
         })
-        .catch(() => {})
+        .catch(() => { })
     } else {
       setStudents([])
     }
@@ -240,7 +261,7 @@ export default function StudentBillsManagementPage() {
           setStats(res.data.data)
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoadingStats(false))
   }, [selectedUnit])
 
@@ -569,19 +590,22 @@ export default function StudentBillsManagementPage() {
               {/* Unit Filter */}
               <select
                 value={selectedUnit}
+                disabled={!isGlobalUser && Boolean(userUnitId)}
                 onChange={(e) => {
                   setSelectedUnit(e.target.value)
                   setSelectedClass('')
                   setPage(1)
                 }}
-                className="h-9 rounded-xl border border-emerald-500/30 bg-white px-3 text-xs font-medium outline-none focus:border-emerald-500 dark:bg-slate-800 dark:text-slate-200"
+                className={`h-9 rounded-xl border border-emerald-500/30 bg-white px-3 text-xs font-medium outline-none focus:border-emerald-500 dark:bg-slate-800 dark:text-slate-200 ${!isGlobalUser && Boolean(userUnitId) ? 'cursor-not-allowed opacity-80' : ''}`}
               >
-                <option value="">Semua Unit Pendidikan</option>
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
-                ))}
+                {isGlobalUser && <option value="">Semua Unit Pendidikan</option>}
+                {units
+                  .filter((u) => isGlobalUser || String(u.id) === String(userUnitId))
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
               </select>
 
               {/* Class Filter */}
@@ -823,18 +847,16 @@ export default function StudentBillsManagementPage() {
                   <button
                     type="button"
                     onClick={() => setCreateForm((prev) => ({ ...prev, mode: 'single' }))}
-                    className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all ${
-                      createForm.mode === 'single' ? 'bg-white shadow-xs text-emerald-800 dark:bg-slate-700 dark:text-white' : 'text-slate-500'
-                    }`}
+                    className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all ${createForm.mode === 'single' ? 'bg-white shadow-xs text-emerald-800 dark:bg-slate-700 dark:text-white' : 'text-slate-500'
+                      }`}
                   >
                     Perorangan Siswa
                   </button>
                   <button
                     type="button"
                     onClick={() => setCreateForm((prev) => ({ ...prev, mode: 'bulk_class' }))}
-                    className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all ${
-                      createForm.mode === 'bulk_class' ? 'bg-white shadow-xs text-emerald-800 dark:bg-slate-700 dark:text-white' : 'text-slate-500'
-                    }`}
+                    className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all ${createForm.mode === 'bulk_class' ? 'bg-white shadow-xs text-emerald-800 dark:bg-slate-700 dark:text-white' : 'text-slate-500'
+                      }`}
                   >
                     Massal Per Rombel
                   </button>
@@ -1102,7 +1124,7 @@ export default function StudentBillsManagementPage() {
           <div className="max-w-xl mx-auto border-2 border-slate-800 p-6 rounded-lg text-slate-900">
             <div className="text-center border-b-2 border-slate-800 pb-4">
               <h2 className="text-lg font-black uppercase tracking-wider">{foundationName}</h2>
-              <p className="text-xs">Sistem Manajemen Sekolah Terpadu — Bukti Pelunasan Resmi (Kuitansi)</p>
+              <p className="text-xs">Dareliman Edu — Bukti Pelunasan Resmi (Kuitansi)</p>
             </div>
             <div className="mt-4 text-xs space-y-1">
               <div className="flex justify-between">
