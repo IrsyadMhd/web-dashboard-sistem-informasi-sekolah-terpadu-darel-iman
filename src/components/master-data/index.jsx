@@ -126,7 +126,7 @@ export function MasterHeaderActions({ children }) {
   return <div className="master-header-actions grid grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-center">{children}</div>
 }
 
-// ── Tombol Aksi Berlabel (§H.3/§H.6 Tailgrids_Pengaturan_Halaman) ──
+// ── Tombol Aksi Berlabel (§H.3/§H.6 HeroUI_Pengaturan_Halaman) ──
 // Bahasa visual = tombol submit modal: vivid gradient rounded-2xl + ikon dalam
 // wrapper putih/20. Varian secondary = slate outline netral (bukan cancel).
 const actionIcons = {
@@ -183,7 +183,7 @@ export function MasterActionButton({ variant = 'primary', icon: CustomIcon, chil
   )
 }
 
-// ── Vivid Gradient Squircle (§H Tailgrids_Pengaturan_Halaman — kontrak global) ──
+// ── Vivid Gradient Squircle (§H HeroUI_Pengaturan_Halaman — kontrak global) ──
 // WAJIB: bg-gradient-to-br + border [warna]-300/40 TANPA shadow.
 // DILARANG: pastel flat, solid, shadow-md/lg, bg-gradient-to-r.
 const squircleVariants = {
@@ -345,7 +345,7 @@ export function SquircleActionButton({
   )
 }
 
-// ── Kartu Akses Cepat Horizontal (§H.7 Tailgrids_Pengaturan_Halaman) ──
+// ── Kartu Akses Cepat Horizontal (§H.7 HeroUI_Pengaturan_Halaman) ──
 // Navigasi modul dashboard: ikon squircle putih/20 + judul + subjudul di atas
 // gradient vivid. Dilarang versi pastel flat.
 const quickAccessTones = {

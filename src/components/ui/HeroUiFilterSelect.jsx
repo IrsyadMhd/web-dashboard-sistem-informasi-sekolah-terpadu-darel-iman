@@ -6,7 +6,7 @@ import { ChevronDown, Search, Check, X } from 'lucide-react'
 
 /**
  * HeroUiFilterSelect - Canonical Hero UI dropdown filter component.
- * Provides custom interactive select styling matching TailGrids & Hero UI standards.
+ * Provides custom interactive select styling matching HeroUI & Hero UI standards.
  */
 export default function HeroUiFilterSelect({
   id = undefined,
@@ -22,8 +22,9 @@ export default function HeroUiFilterSelect({
   ariaLabel = '',
   disabled = false,
   size = 'md', // 'sm' (h-9), 'md' (h-10), 'lg' (h-11)
-  placement = 'bottom', // 'bottom' | 'top'
-  align = 'left', // 'left' | 'right'
+  placement = 'bottom-start', // 'bottom-start' | 'bottom' | 'top'
+  align = 'start', // 'start' | 'left' | 'right'
+  popoverProps = {},
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -32,14 +33,18 @@ export default function HeroUiFilterSelect({
   const triggerRef = useRef(null)
   const popoverRef = useRef(null)
 
+  const effectivePlacement = popoverProps?.placement || placement
+  const effectiveAlign = popoverProps?.align || align
+
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
     const spaceBelow = window.innerHeight - rect.bottom
     const estimatedHeight = 280
-    const openTop = placement === 'top' || (spaceBelow < estimatedHeight && rect.top > spaceBelow)
-    const minW = Math.max(rect.width, 220)
-    const leftPos = align === 'right'
+    const openTop = effectivePlacement.startsWith('top') || (spaceBelow < estimatedHeight && rect.top > spaceBelow)
+    const maxViewportW = Math.max(200, window.innerWidth - 16)
+    const minW = Math.min(Math.max(rect.width, 220), maxViewportW)
+    const leftPos = effectiveAlign === 'right' || effectiveAlign === 'end'
       ? Math.max(8, rect.right - minW)
       : Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - minW - 8))
 
@@ -47,10 +52,10 @@ export default function HeroUiFilterSelect({
       top: openTop ? null : rect.bottom + 6,
       bottom: openTop ? window.innerHeight - rect.top + 6 : null,
       left: leftPos,
-      width: rect.width,
+      width: Math.min(rect.width, maxViewportW),
       openTop,
     })
-  }, [align, placement])
+  }, [effectiveAlign, effectivePlacement])
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -190,7 +195,7 @@ export default function HeroUiFilterSelect({
                 top: coords.top !== null ? `${coords.top}px` : undefined,
                 bottom: coords.bottom !== null ? `${coords.bottom}px` : undefined,
                 left: `${coords.left}px`,
-                minWidth: `${Math.max(coords.width, 220)}px`,
+                minWidth: `${Math.min(Math.max(coords.width, 200), typeof window !== 'undefined' ? window.innerWidth - 16 : 200)}px`,
                 maxWidth: 'calc(100vw - 16px)',
               }}
               className={`z-[9999] ${popoverWidth !== 'w-full' ? popoverWidth : ''} overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/50 dark:shadow-black/60`}

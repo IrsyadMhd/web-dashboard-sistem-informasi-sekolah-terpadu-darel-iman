@@ -4,7 +4,7 @@ import { cn } from '../../lib/utils'
 
 /**
  * Canonical Table Component based on HeroUI Design System specifications.
- * Styled with SIMSIT Emerald Green palette and responsive container.
+ * Styled with Dareliman Edu Emerald Green palette and responsive container.
  */
 export const Table = React.forwardRef(({ className, fullBleed = false, ...props }, ref) => (
   <div className="w-full overflow-x-auto rounded-[20px] border border-emerald-200/80 dark:border-emerald-800/60 bg-white dark:bg-[#1B2433] shadow-xs">

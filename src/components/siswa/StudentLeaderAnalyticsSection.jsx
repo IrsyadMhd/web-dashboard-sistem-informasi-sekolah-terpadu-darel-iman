@@ -685,7 +685,7 @@ export default function StudentLeaderAnalyticsSection({
               </div>
             </div>
 
-            {/* TailGrids Datatable Structure */}
+            {/* HeroUI Datatable Structure */}
             <TableRoot className="mb-1 relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
               <TableHeader className="bg-[#F8FAFB] dark:bg-[#202B3A]">
                 <TableRow className="hover:bg-transparent border-b border-[#EDF0F4] dark:border-[#354153] bg-[#F8FAFB] dark:bg-[#202B3A]">
@@ -865,7 +865,7 @@ export default function StudentLeaderAnalyticsSection({
                 </div>
               </div>
 
-              {/* TailGrids Datatable inside Modal */}
+              {/* HeroUI Datatable inside Modal */}
               <TableRoot className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
                 <TableHeader>
                   <TableRow className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200/70 dark:border-slate-700">

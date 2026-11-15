@@ -1061,13 +1061,13 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
   const handlePrintSingleModul = (modul) => {
     if (!modul) return
 
-    let iframe = document.getElementById('simsit-print-iframe')
+    let iframe = document.getElementById('dareliman-print-iframe')
     if (iframe) {
       document.body.removeChild(iframe)
     }
 
     iframe = document.createElement('iframe')
-    iframe.id = 'simsit-print-iframe'
+    iframe.id = 'dareliman-print-iframe'
     iframe.style.position = 'fixed'
     iframe.style.right = '0'
     iframe.style.bottom = '0'

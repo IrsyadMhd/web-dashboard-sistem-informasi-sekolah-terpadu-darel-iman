@@ -565,7 +565,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
     })
   }
 
-  // ── Render Badges (TailGrids Badge Prompt Rules) ───────────────────────────
+  // ── Render Badges (HeroUI Badge Prompt Rules) ───────────────────────────
   const getStatusBadge = (status) => {
     const s = (status || '').toLowerCase()
     if (s === 'approved' || s === 'completed' || s === 'verified' || s === 'final') {
@@ -1593,7 +1593,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
         </div>
       </motion.div>
 
-      {/* ── TailGrids Dialog Modals ──────────────────────────────────────────── */}
+      {/* ── HeroUI Dialog Modals ──────────────────────────────────────────── */}
 
       {/* Modal 1: Detail Sesi Absensi Pelajaran */}
       <Backdrop isOpen={sessionDetailModalOpen} onOpenChange={setSessionDetailModalOpen}>
@@ -1875,7 +1875,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
         </Dialog>
       </Backdrop>
 
-      {/* Modal 5: TailGrids Opsi Cetak & Unduh PDF / Clean Print */}
+      {/* Modal 5: HeroUI Opsi Cetak & Unduh PDF / Clean Print */}
       <PrintOptionModal
         isOpen={printOptionModalOpen}
         onClose={() => setPrintOptionModalOpen(false)}

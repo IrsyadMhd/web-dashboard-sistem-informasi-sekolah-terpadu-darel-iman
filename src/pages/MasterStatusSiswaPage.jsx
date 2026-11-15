@@ -426,7 +426,7 @@ export default function MasterStatusSiswaPage() {
         </div>
 
         {/* Status Non-Aktif */}
-        <div className="group relative overflow-hidden rounded-2xl border border-slate-300/70 bg-gradient-to-br from-slate-50/80 via-gray-50/40 to-white p-5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900">
+        <div className="group relative overflow-hidden rounded-2xl border border-slate-300/70 bg-gradient-to-br from-slate-50/80 via-slate-50/40 to-white p-5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-400">
               Status Nonaktif

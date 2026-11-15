@@ -678,7 +678,7 @@ export default function LaporanTahfizhPage() {
         />
       </motion.div>
 
-      {/* 🟢 TAILGRIDS EMERALD DATATABLE CONTAINER (DATATABLE LAPORAN DENGAN 3-BARIS TOOLBAR) */}
+      {/* 🟢 HEROUI EMERALD DATATABLE CONTAINER (DATATABLE LAPORAN DENGAN 3-BARIS TOOLBAR) */}
       <motion.div variants={itemVariants} initial="hidden" animate="visible" id="tabel-laporan-tahfizh" className="scroll-mt-6 relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
         <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
         {/* BARIS 1: TITLE & VIVID GRADIENT SQUIRCLE ACTION BUTTONS (§H.5) */}

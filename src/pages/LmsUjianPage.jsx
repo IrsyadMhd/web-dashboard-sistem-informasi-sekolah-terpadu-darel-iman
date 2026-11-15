@@ -65,7 +65,7 @@ import {
 } from '../components/ui/table'
 import { downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
 
-// ── PALET WARNA RESMI MODERN KPI CARDS (TAILGRIDS STANDARDS) ──
+// ── PALET WARNA RESMI MODERN KPI CARDS (HEROUI STANDARDS) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -1565,7 +1565,7 @@ export default function LmsUjianPage({
       {/* Tab Navigation Slot if supplied */}
       {tabNav && <div className="my-2">{typeof tabNav === 'function' ? tabNav() : tabNav}</div>}
 
-      {/* ── MASTER DATATABLE CONTAINER (TAILGRIDS EMERALD STANDARD) ── */}
+      {/* ── MASTER DATATABLE CONTAINER (HEROUI EMERALD STANDARD) ── */}
       <section
         className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]"
         aria-labelledby="ujian-table-title"

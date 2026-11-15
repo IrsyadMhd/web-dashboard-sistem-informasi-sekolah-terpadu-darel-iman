@@ -236,7 +236,7 @@ export default function ParentDashboardPage() {
         ]}
       />
 
-      {/* 1. TAILGRIDS MODERN HERO CARD (VIVID EMERALD GRADIENT STANDARD) */}
+      {/* 1. HEROUI MODERN HERO CARD (VIVID EMERALD GRADIENT STANDARD) */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
         {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
         <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
@@ -348,7 +348,7 @@ export default function ParentDashboardPage() {
         </div>
       )}
 
-      {/* 3. MASTER STATS GRID (5 KPI CARDS - SESUAI TAILGRIDS_REPORT_PAGE_STYLE.MD) */}
+      {/* 3. MASTER STATS GRID (5 KPI CARDS - SESUAI HEROUI_REPORT_PAGE_STYLE.MD) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {/* KPI 1: KEHADIRAN (EMERALD TONE) */}
         <motion.article
@@ -1125,7 +1125,7 @@ export default function ParentDashboardPage() {
                         setActiveModal(null)
                         navigate('/portal-orangtua')
                       }}
-                      className="cursor-pointer !bg-blue-600 !text-white text-xs font-bold"
+                      className="cursor-pointer !bg-emerald-600 !text-white text-xs font-bold"
                     >
                       Buka Log Tahfizh Penuh
                     </Button>

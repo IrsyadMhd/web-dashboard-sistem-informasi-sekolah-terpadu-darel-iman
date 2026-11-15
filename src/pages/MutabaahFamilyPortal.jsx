@@ -55,7 +55,7 @@ const statusMeta = {
   na: { label: 'N/A', bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-500 dark:text-slate-400', icon: Clock3 },
 }
 
-// ── MODERN CARD TONES (§C Tailgrids_Pengaturan_Halaman) ──
+// ── MODERN CARD TONES (§C HeroUI_Pengaturan_Halaman) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',

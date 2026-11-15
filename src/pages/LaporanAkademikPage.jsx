@@ -311,7 +311,7 @@ export default function LaporanAkademikPage() {
         </div>
       </div>
 
-      {/* TAILGRIDS EMERALD DATATABLE CONTAINER */}
+      {/* HEROUI EMERALD DATATABLE CONTAINER */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* Toolbar Header Terstruktur 3-Baris */}
         <div className="p-4 sm:p-6 space-y-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60">

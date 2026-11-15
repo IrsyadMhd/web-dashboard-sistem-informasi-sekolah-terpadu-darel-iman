@@ -582,7 +582,7 @@ export default function NewsManagementPage() {
           </div>
         </motion.div>
 
-        {/* KPI STATS CARDS (TAILGRIDS_CARD_COMPONENT) */}
+        {/* KPI STATS CARDS (HEROUI_CARD_COMPONENT) */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
           <KpiTintedCard
             icon={Megaphone}
@@ -776,7 +776,7 @@ export default function NewsManagementPage() {
           </div>
         </div>
 
-        {/* TAILGRIDS TABLE ROOT & ROWS WITH RICH COLOR STYLING */}
+        {/* HEROUI TABLE ROOT & ROWS WITH RICH COLOR STYLING */}
         <div className="overflow-x-auto">
           <TableRoot fullBleed={false}>
             <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
@@ -1304,7 +1304,7 @@ export default function NewsManagementPage() {
         )}
       </AnimatePresence>
 
-      {/* MODAL KONFIRMASI HAPUS (ALERT DIALOG TAILGRIDS) */}
+      {/* MODAL KONFIRMASI HAPUS (ALERT DIALOG HEROUI) */}
       <AnimatePresence>
         <AlertDialog isOpen={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
           <DialogHeader>

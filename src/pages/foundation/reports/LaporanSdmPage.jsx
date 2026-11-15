@@ -23,7 +23,7 @@ import { printCleanTable } from '../../../utils/printHelper'
 import { usePengaturanStore } from '../../../stores/pengaturanStore'
 import { SmartScrollFab } from '../../../components/common'
 
-const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
+const COLORS = ['#0E5C44', '#059669', '#0D9488', '#10B981', '#1E8E5A', '#34D399', '#F59E0B']
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -215,7 +215,7 @@ export const LaporanSdmPage = () => {
       variants={containerVariants}
       className="laporan-page-content space-y-6 pb-12"
     >
-      {/* 🧭 TailGrids Breadcrumbs Navigation */}
+      {/* 🧭 HeroUI Breadcrumbs Navigation */}
       <motion.div variants={itemVariants} className="print:hidden">
         <Breadcrumbs
           dividerType="chevron"

@@ -1116,7 +1116,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                       className="hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 transition-colors"
                     >
                       {/* NO */}
-                      <td className="py-4 px-4 text-center font-bold text-gray-500 dark:text-slate-400 text-xs hidden sm:table-cell">
+                      <td className="py-4 px-4 text-center font-bold text-slate-500 dark:text-slate-400 text-xs hidden sm:table-cell">
                         {recordNo}
                       </td>
 
@@ -1131,11 +1131,11 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
 
                       {/* NAMA MODUL SEMESTER */}
                       <td className="py-4 px-4">
-                        <div className="font-bold text-gray-900 dark:text-white hover:text-emerald-700 transition">
+                        <div className="font-bold text-slate-900 dark:text-white hover:text-emerald-700 transition">
                           {item.nama_modul}
                         </div>
                         <div className="text-xs text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
-                          {item.kode_modul} &bull; <span className="text-gray-500 dark:text-slate-400">{item.kurikulum}</span>
+                          {item.kode_modul} &bull; <span className="text-slate-500 dark:text-slate-400">{item.kurikulum}</span>
                         </div>
                         {/* Compact Mobile Metadata Row */}
                         <div className="md:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
@@ -1162,10 +1162,10 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
 
                       {/* UNIT / KELAS */}
                       <td className="py-4 px-4 hidden lg:table-cell">
-                        <div className="font-semibold text-gray-800 dark:text-slate-200">
+                        <div className="font-semibold text-slate-800 dark:text-slate-200">
                           {item.unit_pendidikan?.name || item.jenjang || 'Semua Unit'}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-slate-400">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           Kelas {item.kelas?.nama_kelas || '-'} ({item.tahun_ajaran?.name || '-'})
                         </div>
                       </td>
@@ -1181,10 +1181,10 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
 
                       {/* PERTEMUAN / JP */}
                       <td className="py-4 px-4 text-center hidden xl:table-cell">
-                        <span className="font-bold text-gray-900 dark:text-white">
+                        <span className="font-bold text-slate-900 dark:text-white">
                           {item.jumlah_pertemuan || 0} Pertemuan
                         </span>
-                        <div className="text-xs text-gray-500 dark:text-slate-400">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           {item.alokasi_jam || 0} JP
                         </div>
                       </td>

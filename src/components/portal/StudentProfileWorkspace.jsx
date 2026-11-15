@@ -1153,7 +1153,3 @@ function ChildPasswordSettingsSection({ student }) {
     </HeroCard>
   )
 }
-}
-}
-}
-}

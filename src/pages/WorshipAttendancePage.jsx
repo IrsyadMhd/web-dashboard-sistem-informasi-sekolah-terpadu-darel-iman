@@ -692,7 +692,7 @@ export default function WorshipAttendancePage() {
 
       {activeTab === 'sessions' && (
         <>
-          {/* ── KPI CARDS ROW (Exact match with TailGrids reference) ──────────── */}
+          {/* ── KPI CARDS ROW (Exact match with HeroUI reference) ──────────── */}
           <motion.section variants={itemVariants} className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             <KpiTintedCard
               icon={Users}

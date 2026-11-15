@@ -83,7 +83,7 @@ import {
 import { Backdrop } from '@/components/ui/dialog'
 
 const angka = (nilai) => new Intl.NumberFormat('id-ID').format(Number(nilai || 0))
-const warnaPie = ['#059669', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+const warnaPie = ['#059669', '#0D9488', '#10B981', '#34D399', '#F59E0B', '#F43F5E']
 
 export default function LaporanPegawaiPage() {
   const [loading, setLoading] = useState(true)

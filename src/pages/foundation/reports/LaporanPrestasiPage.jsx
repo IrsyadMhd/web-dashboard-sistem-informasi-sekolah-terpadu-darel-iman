@@ -44,7 +44,7 @@ import { reportService } from '../../../services/reportService'
 import { useDebounce } from '../../../hooks/useDebounce'
 import { SmartScrollFab } from '../../../components/common'
 
-// TailGrids Core Components
+// HeroUI Core Components
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../../../components/ui/avatar'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
@@ -1339,7 +1339,7 @@ export function LaporanPrestasiPage() {
                         key={row.id}
                         className="transition hover:bg-emerald-50/30 dark:hover:bg-slate-800/50"
                       >
-                        {/* Student Profil with TailGrids Avatar */}
+                        {/* Student Profil with HeroUI Avatar */}
                         <TableCell className="py-3 px-4">
                           <div className="flex items-center gap-3">
                             <Avatar size="md" status="online">
@@ -1432,7 +1432,7 @@ export function LaporanPrestasiPage() {
               </TableRoot>
             </div>
 
-            {/* TailGrids Pagination */}
+            {/* HeroUI Pagination */}
             {meta && meta.last_page > 1 && (
               <div className="w-full border-t border-emerald-200/80 p-4 dark:border-slate-800">
                 <Pagination

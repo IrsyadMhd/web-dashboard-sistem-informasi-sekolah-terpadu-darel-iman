@@ -67,7 +67,7 @@ import {
   Tooltip as HeroTooltip,
 } from '@heroui/react'
 
-// TailGrids Core Components
+// HeroUI Core Components
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -99,7 +99,7 @@ import {
 } from '@/components/ui/dialog'
 import { Backdrop } from '@/components/ui/dialog'
 
-// ── MODERN CARD TONES (§C Tailgrids_Pengaturan_Halaman) ──
+// ── MODERN CARD TONES (§C HeroUI_Pengaturan_Halaman) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -3935,7 +3935,7 @@ export default function TahfizhPage() {
         )
       })()}
 
-      {/* Print Option Modal (TailGrids Standard) */}
+      {/* Print Option Modal (HeroUI Standard) */}
       <PrintOptionModal
         isOpen={showPrintModal}
         onClose={() => setShowPrintModal(false)}

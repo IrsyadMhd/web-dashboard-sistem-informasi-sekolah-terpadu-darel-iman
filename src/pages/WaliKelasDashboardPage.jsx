@@ -47,7 +47,7 @@ import ModalErrorBoundary from '../components/common/ModalErrorBoundary'
 
 import { waliKelasDashboardService } from '../services/waliKelasDashboardService'
 
-const COLORS = ['#0E5C44', '#F59E0B', '#3B82F6', '#EC4899', '#EF4444']
+const COLORS = ['#059669', '#0D9488', '#10B981', '#F59E0B', '#EF4444']
 
 const containerVariants = {
   hidden: { opacity: 0, y: 15 },

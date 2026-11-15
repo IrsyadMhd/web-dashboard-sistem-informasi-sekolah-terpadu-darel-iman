@@ -572,7 +572,7 @@ export default function MasterJenisUnitPendidikanPage() {
   const tableIsLoading = isLoading || isFetching
   const filtersAreClear = !search && !selectedStatusFilter && !selectedJenjangFilter && !denganSampahFilter
 
-  // Columns definition following TAILGRIDS_TABLE_COMPONENT standard
+  // Columns definition following HEROUI_TABLE_COMPONENT standard
   const columns = [
     {
       key: 'nama_jenis',

@@ -81,7 +81,7 @@ import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import { managementDashboardService } from '../services/managementDashboardService'
 import api from '../services/api'
 
-// TailGrids Core Components for Modal styling matching TahfizhPage
+// HeroUI Core Components for Modal styling matching TahfizhPage
 import {
   Dialog,
   DialogBody,
@@ -95,7 +95,7 @@ import { Backdrop } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
-// TailGrids Multi-Tone System for Master KPI Cards
+// HeroUI Multi-Tone System for Master KPI Cards
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/80 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-500 dark:border-emerald-700/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -2613,7 +2613,7 @@ export default function MusyrifDashboardPage({ defaultTab }) {
                                               notes: '',
                                             })
                                           }}
-                                          className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] shadow-sm inline-flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                                          className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-sm inline-flex items-center gap-1 transition active:scale-95 cursor-pointer"
                                         >
                                           <CheckCircle2 className="w-3 h-3" /> Absensi Kembali
                                         </button>
@@ -3259,7 +3259,7 @@ export default function MusyrifDashboardPage({ defaultTab }) {
                               setRfidInput('')
                             }
                           }}
-                          className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold transition shadow-sm"
+                          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-sm"
                         >
                           Tap RFID
                         </button>

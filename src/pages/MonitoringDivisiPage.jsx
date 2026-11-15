@@ -545,7 +545,7 @@ export default function MonitoringDivisiPage() {
     })
   }
 
-  // AppDataTable Columns Definition with TailGrids HoverCard
+  // AppDataTable Columns Definition with HeroUI HoverCard
   const columns = [
     {
       key: 'nama_divisi',
@@ -1247,7 +1247,7 @@ export default function MonitoringDivisiPage() {
           </div>
         </motion.div>
 
-        {/* KPI Stats Grid Complying with TAILGRIDS_CARD_COMPONENT */}
+        {/* KPI Stats Grid Complying with HEROUI_CARD_COMPONENT */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
           <KpiTintedCard
             label="Total Laporan Monitoring"
@@ -1279,7 +1279,7 @@ export default function MonitoringDivisiPage() {
           />
         </motion.div>
 
-        {/* AppDataTable complying with TailGrids Benchmark */}
+        {/* AppDataTable complying with HeroUI Benchmark */}
         <motion.div id="tabel-pemantauan-divisi" className="scroll-mt-6" variants={itemVariants}>
           <AppDataTable
             printableHeader={
@@ -1503,7 +1503,7 @@ export default function MonitoringDivisiPage() {
           ])}
         />
 
-        {/* Delete Confirmation Alert Dialog (TailGrids Hero UI Harmonized) */}
+        {/* Delete Confirmation Alert Dialog (HeroUI Hero UI Harmonized) */}
         <AnimatePresence>
           {isDeleteOpen && (
             <div

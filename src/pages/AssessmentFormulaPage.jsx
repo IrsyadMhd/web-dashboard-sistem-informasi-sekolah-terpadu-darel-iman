@@ -375,7 +375,7 @@ export default function AssessmentFormulaPage({
   const handleTransition = async (item, action) => {
     const actionLabels = {
       submit: { title: 'Ajukan Rumus?', verb: 'mengajukan', confirm: 'Ya, Ajukan', color: '#0284c7' },
-      approve: { title: 'Setujui Rumus Penilaian?', verb: 'menyetujui', confirm: 'Ya, Setujui', color: '#2563eb' },
+      approve: { title: 'Setujui Rumus Penilaian?', verb: 'menyetujui', confirm: 'Ya, Setujui', color: '#059669' },
       activate: {
         title: 'Aktifkan Rumus Penilaian?',
         verb: 'mengaktifkan (rumus aktif lama akan diarsipkan)',
@@ -820,7 +820,7 @@ export default function AssessmentFormulaPage({
                               type="button"
                               disabled={busy}
                               onClick={() => handleTransition(item, 'approve')}
-                              className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-2.5 py-1.5 text-xs font-black text-white hover:bg-blue-700 transition shadow-sm"
+                              className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-2.5 py-1.5 text-xs font-black text-white hover:bg-emerald-700 transition shadow-sm"
                               title="Setujui Formula"
                             >
                               <ShieldCheck className="h-3 w-3" />

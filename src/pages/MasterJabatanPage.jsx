@@ -340,7 +340,7 @@ export default function MasterJabatanPage() {
       const sk = item.satuan_kerja || 'Unit Pendidikan'
       counts[sk] = (counts[sk] || 0) + 1
     })
-    const COLORS = ['#0E5C44', '#0284C7', '#F59E0B', '#7C3AED', '#EC4899', '#06B6D4', '#10B981']
+    const COLORS = ['#0E5C44', '#059669', '#0D9488', '#10B981', '#14B8A6', '#34D399', '#F59E0B']
     return Object.keys(counts).map((k, i) => ({
       name: k,
       value: counts[k],
@@ -645,7 +645,7 @@ export default function MasterJabatanPage() {
     setPage(1)
   }
 
-  // Column Specification following TAILGRIDS_TABLE_COMPONENT Gold Standard Benchmark
+  // Column Specification following HEROUI_TABLE_COMPONENT Gold Standard Benchmark
   const columns = [
     {
       key: 'nama_jabatan',

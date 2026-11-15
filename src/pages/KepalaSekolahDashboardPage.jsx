@@ -151,7 +151,7 @@ const DEFAULT_FALLBACK_DATA = {
   },
 }
 
-// ── SUB-KOMPONEN MODERN KPI & SUMMARY CARDS (Spesifikasi TAILGRIDS_ALUMNI_MUTASI_CARDS) ──
+// ── SUB-KOMPONEN MODERN KPI & SUMMARY CARDS (Spesifikasi HEROUI_ALUMNI_MUTASI_CARDS) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -1113,7 +1113,7 @@ export default function KepalaSekolahDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setGuruSubFilter('teaching')}
-                  className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${guruSubFilter === 'teaching' ? 'bg-blue-600 text-white shadow-xs font-black' : 'text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40'}`}
+                  className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${guruSubFilter === 'teaching' ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'}`}
                 >
                   <BookOpen className="h-3 w-3" />
                   Sedang Mengajar ({guruMengajarCount})
@@ -1140,14 +1140,14 @@ export default function KepalaSekolahDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setGuruViewMode('cards')}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${guruViewMode === 'cards' ? 'bg-blue-600 text-white shadow-xs font-black' : 'text-blue-700 dark:text-blue-300'}`}
+                  className={`px-2.5 py-1 rounded-lg transition-all ${guruViewMode === 'cards' ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-emerald-700 dark:text-emerald-300'}`}
                 >
                   Profil Guru
                 </button>
                 <button
                   type="button"
                   onClick={() => setGuruViewMode('sessions')}
-                  className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${guruViewMode === 'sessions' ? 'bg-blue-600 text-white shadow-xs font-black' : 'text-blue-700 dark:text-blue-300'}`}
+                  className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${guruViewMode === 'sessions' ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-emerald-700 dark:text-emerald-300'}`}
                 >
                   <Clock className="h-3 w-3" />
                   Sesi KBM ({todaySessions.length})
@@ -1168,7 +1168,7 @@ export default function KepalaSekolahDashboardPage() {
               <button
                 type="button"
                 onClick={() => setTendikSubFilter('online')}
-                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${tendikSubFilter === 'online' ? 'bg-purple-600 text-white shadow-xs font-black' : 'text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40'}`}
+                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${tendikSubFilter === 'online' ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'}`}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
                 Online / Bertugas ({tendikOnlineCount})
@@ -1261,7 +1261,7 @@ export default function KepalaSekolahDashboardPage() {
                         onClick={() => setKbmSessionFilter(f)}
                         className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
                           kbmSessionFilter === f
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-emerald-600 text-white'
                             : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                         }`}
                       >
@@ -1325,7 +1325,7 @@ export default function KepalaSekolahDashboardPage() {
                             </div>
 
                             <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white font-black text-[10px]">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white font-black text-[10px]">
                                 {getInitials(sess.teacher_name || sess.guru)}
                               </div>
                               <div className="min-w-0 flex-1">
@@ -1455,7 +1455,7 @@ export default function KepalaSekolahDashboardPage() {
                             <button
                               type="button"
                               onClick={() => setActiveChatUser(guru)}
-                              className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 text-[11px] font-black transition-all cursor-pointer shadow-xs active:scale-95"
+                              className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 text-[11px] font-black transition-all cursor-pointer shadow-xs active:scale-95"
                             >
                               <MessageSquare className="h-3 w-3" />
                               <span>Chat</span>
@@ -1578,7 +1578,7 @@ export default function KepalaSekolahDashboardPage() {
                           <button
                             type="button"
                             onClick={() => setActiveChatUser(tendik)}
-                            className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1.5 text-[11px] font-black transition-all cursor-pointer shadow-xs active:scale-95"
+                            className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 text-[11px] font-black transition-all cursor-pointer shadow-xs active:scale-95"
                           >
                             <MessageSquare className="h-3 w-3" />
                             <span>Chat Staf</span>
@@ -2468,7 +2468,7 @@ export default function KepalaSekolahDashboardPage() {
         </AnimatePresence>
       </section>
 
-      {/* TailGrids Dialog Modal Detail Pengumuman Sekolah */}
+      {/* HeroUI Dialog Modal Detail Pengumuman Sekolah */}
       <Dialog
         isOpen={Boolean(selectedAnnouncement)}
         onOpenChange={(open) => {
@@ -2548,7 +2548,7 @@ export default function KepalaSekolahDashboardPage() {
         </DialogFooter>
       </Dialog>
 
-      {/* TailGrids Dialog Modal Pop Up untuk Monitoring Kehadiran Siswa */}
+      {/* HeroUI Dialog Modal Pop Up untuk Monitoring Kehadiran Siswa */}
       <Dialog
         isOpen={isAttendanceModalOpen}
         onOpenChange={setIsAttendanceModalOpen}
@@ -2848,7 +2848,7 @@ export default function KepalaSekolahDashboardPage() {
         </div>
       </Dialog>
 
-      {/* TailGrids Dialog Modal Chat Direct Pegawai / Guru */}
+      {/* HeroUI Dialog Modal Chat Direct Pegawai / Guru */}
       <Dialog
         isOpen={Boolean(activeChatUser)}
         onOpenChange={(open) => {

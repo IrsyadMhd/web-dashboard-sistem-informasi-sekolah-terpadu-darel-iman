@@ -423,7 +423,7 @@ export default function AcademicCalendarPage() {
           ]}
         />
 
-        {/* TailGrids Modern Hero Header dengan Tahun Ajaran Dinamis */}
+        {/* HeroUI Modern Hero Header dengan Tahun Ajaran Dinamis */}
         <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -963,7 +963,7 @@ export default function AcademicCalendarPage() {
           </form>
         </Dialog>
 
-        {/* TailGrids Harmonized Delete Confirmation Modal */}
+        {/* HeroUI Harmonized Delete Confirmation Modal */}
         {deleteEventItem && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
             <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]">

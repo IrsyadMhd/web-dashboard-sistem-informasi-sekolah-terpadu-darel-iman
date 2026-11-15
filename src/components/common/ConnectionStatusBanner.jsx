@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { resolveApiBaseUrl } from '../../services/api'
 
 /**
- * ConnectionStatusBanner - Banner global TailGrids untuk mendeteksi:
+ * ConnectionStatusBanner - Banner global HeroUI untuk mendeteksi:
  * 1. Internet klien terputus (Offline / window 'offline' event)
  * 2. Layanan database tidak terjangkau (Database Connection Error)
  * 3. Server backend mati / tidak terjangkau (Network Error)

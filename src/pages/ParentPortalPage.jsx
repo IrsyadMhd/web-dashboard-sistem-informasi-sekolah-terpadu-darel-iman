@@ -59,7 +59,7 @@ import ParentBillsWorkspace from '../components/portal/ParentBillsWorkspace'
 import ChatGuruWorkspace from '../components/portal/ChatGuruWorkspace'
 import AcademicCalendarModal from '../components/calendar/AcademicCalendarModal'
 
-// TailGrids Core Components
+// HeroUI Core Components
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -1540,7 +1540,7 @@ export default function ParentPortalPage() {
                           </h4>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="rounded-xl bg-blue-600 px-3 py-1 text-xs font-black text-white shadow-xs">
+                          <span className="rounded-xl bg-emerald-600 px-3 py-1 text-xs font-black text-white shadow-xs">
                             {dashboard?.tahfizh_evaluation_details?.persentase != null ? `${dashboard.tahfizh_evaluation_details.persentase}% Tercapai` : '-'}
                           </span>
                         </div>

@@ -71,6 +71,7 @@ import {
 import { Checkbox } from '../components/ui/checkbox'
 import { Label } from '../components/ui/label'
 import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
 
 const colorFields = [
   ['sidebar_color', 'Warna Latar Sidebar'],
@@ -392,19 +393,21 @@ function SaveConfirmModal({
           </div>
 
           <div className="flex items-center justify-end gap-2.5 pt-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
               disabled={isSaving}
-              className="h-10 px-4 rounded-xl border border-rose-300/80 bg-rose-50/60 hover:bg-rose-100 text-xs font-bold text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/50 transition cursor-pointer active:scale-95 disabled:opacity-50"
+              className="h-10 px-4 rounded-xl border border-rose-300/80 bg-rose-50/60 hover:bg-rose-100 text-xs font-bold text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/50"
             >
               Batal
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="primary"
               onClick={onConfirm}
               disabled={isSaving}
-              className="h-10 px-5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-xs font-black text-white shadow-md shadow-emerald-600/30 border border-emerald-400/40 transition active:scale-95 disabled:opacity-60 inline-flex items-center gap-2 cursor-pointer"
+              className="h-10 px-5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-xs font-black text-white shadow-md shadow-emerald-600/30 border border-emerald-400/40"
             >
               {isSaving ? (
                 <>
@@ -417,7 +420,7 @@ function SaveConfirmModal({
                   <span>Ya, Simpan Pengaturan</span>
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </motion.div>
@@ -836,7 +839,7 @@ export default function PengaturanPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `simsit-labels-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `dareliman-labels-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -1242,7 +1245,7 @@ export default function PengaturanPage() {
       {/* 1. App Breadcrumb Navigation */}
       <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Pengaturan Tampilan & Identitas' }]} />
 
-      {/* 2. TailGrids Modern Hero Card Header */}
+      {/* 2. HeroUI Modern Hero Card Header */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
         <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
         <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
@@ -1692,7 +1695,7 @@ export default function PengaturanPage() {
                       <SelectValue placeholder="Pilih kerapatan template..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem id="modern">Modern (Standar TailGrids)</SelectItem>
+                      <SelectItem id="modern">Modern (Standar HeroUI)</SelectItem>
                       <SelectItem id="compact">Ringkas (High Data Density)</SelectItem>
                       <SelectItem id="comfortable">Lapang (Spacious Padding)</SelectItem>
                     </SelectContent>
@@ -1728,7 +1731,7 @@ export default function PengaturanPage() {
                     </div>
                   </div>
 
-                  {/* PENGATURAN BREADCRUMB STANDAR TAILGRIDS */}
+                  {/* PENGATURAN BREADCRUMB STANDAR HEROUI */}
                   <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800 md:col-span-2">
                     <div className="flex items-center justify-between">
                       <div>
@@ -1752,7 +1755,7 @@ export default function PengaturanPage() {
                           <SelectValue placeholder="Pilih pemisah..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem id="chevron">Chevron (›) — Rekomendasi TailGrids</SelectItem>
+                          <SelectItem id="chevron">Chevron (›) — Rekomendasi HeroUI</SelectItem>
                           <SelectItem id="slash">Garis Miring (/) — Slash</SelectItem>
                           <SelectItem id="dot">Titik Bulat (•) — Dot</SelectItem>
                         </SelectContent>
@@ -2909,7 +2912,7 @@ export default function PengaturanPage() {
         title={previewPhotoModal.title}
       />
 
-      {/* Harmonized Status & Feedback Modal (TailGrids Standard) */}
+      {/* Harmonized Status & Feedback Modal (HeroUI Standard) */}
       <HarmonizedStatusModal
         isOpen={statusModal.isOpen}
         onClose={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
@@ -2918,7 +2921,7 @@ export default function PengaturanPage() {
         message={statusModal.message}
       />
 
-      {/* TailGrids Harmonized Action & Delete Confirmation Modal */}
+      {/* HeroUI Harmonized Action & Delete Confirmation Modal */}
       <HarmonizedActionModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
@@ -2950,11 +2953,11 @@ function Field({ label, value = '', onChange, icon: Icon, isTextarea = false, ..
           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-medium outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 leading-relaxed"
         />
       ) : (
-        <input
+        <Input
           {...props}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 disabled:opacity-60 shadow-2xs"
+          className="h-10 text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700"
         />
       )}
     </div>

@@ -28,6 +28,7 @@ import { Modal } from '../ui/modal'
 import { Table, TableHeader, TableBody, TableRow, TableCell } from '../ui/table'
 import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { divisiPendidikanWorkspaceService } from '../../services/divisiPendidikanWorkspaceService'
+import Swal from 'sweetalert2'
 
 export default function KurasiBankSoalSection({ onDataMutate }) {
   const [items, setItems] = useState([])
@@ -212,11 +213,11 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
 
   const handleSave = async () => {
     if (!formData.judul.trim()) {
-      alert('Mohon isi Judul Paket Soal.')
+      Swal.fire({ icon: 'warning', title: 'Judul Wajib Diisi', text: 'Mohon isi Judul Paket Soal.' })
       return
     }
     if (!formData.education_unit_id) {
-      alert('Mohon pilih Asal Unit Sekolah.')
+      Swal.fire({ icon: 'warning', title: 'Unit Wajib Dipilih', text: 'Mohon pilih Asal Unit Sekolah.' })
       return
     }
 
@@ -227,20 +228,30 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
       await loadData()
       onDataMutate?.()
     } catch (e) {
-      alert('Gagal menyimpan hasil kurasi soal. Silakan coba lagi.')
+      Swal.fire({ icon: 'error', title: 'Gagal', text: e.response?.data?.message || 'Gagal menyimpan hasil kurasi soal. Silakan coba lagi.' })
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Hapus paket bank soal kurasi ini secara permanen dari database?')) {
+    const res = await Swal.fire({
+      title: 'Hapus Paket Bank Soal?',
+      text: 'Hapus paket bank soal kurasi ini secara permanen dari database?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48',
+    })
+    if (res.isConfirmed) {
       try {
         await divisiPendidikanWorkspaceService.deleteKurasiSoal(id)
         await loadData()
         onDataMutate?.()
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Paket bank soal berhasil dihapus.', timer: 1500, showConfirmButton: false })
       } catch (e) {
-        alert('Gagal menghapus data kurasi soal.')
+        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus data kurasi soal.' })
       }
     }
   }
@@ -264,8 +275,9 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
       setSelectedForApprove(null)
       await loadData()
       onDataMutate?.()
+      Swal.fire({ icon: 'success', title: 'Disetujui', text: 'Paket bank soal berhasil disetujui.', timer: 1500, showConfirmButton: false })
     } catch (e) {
-      alert('Gagal menyetujui paket kurasi.')
+      Swal.fire({ icon: 'error', title: 'Gagal', text: e.response?.data?.message || 'Gagal menyetujui paket kurasi.' })
     } finally {
       setSaving(false)
     }
@@ -367,7 +379,7 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
               <Button
                 variant="primary"
                 size="sm"
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-600/30 rounded-xl"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/30 rounded-xl"
                 onClick={handleOpenAdd}
               >
                 <Plus className="w-4 h-4 mr-1.5" />
@@ -471,7 +483,7 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
                     variant="primary"
                     size="sm"
                     onClick={handleOpenAdd}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-md shadow-purple-600/30 cursor-pointer"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-purple-600/30 cursor-pointer"
                   >
                     <Plus className="w-4 h-4 mr-1.5" />
                     Tambah Paket Soal Baru
@@ -623,7 +635,7 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
             <Button
               variant="primary"
               size="sm"
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
               onClick={handleSave}
               disabled={saving}
             >

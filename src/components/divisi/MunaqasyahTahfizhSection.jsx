@@ -29,6 +29,7 @@ import { Table, TableHeader, TableBody, TableRow, TableCell } from '../ui/table'
 import { QRCodeSVG } from 'qrcode.react'
 import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { divisiPendidikanWorkspaceService } from '../../services/divisiPendidikanWorkspaceService'
+import Swal from 'sweetalert2'
 
 export default function MunaqasyahTahfizhSection({ onDataMutate }) {
   const [items, setItems] = useState([])
@@ -200,11 +201,11 @@ export default function MunaqasyahTahfizhSection({ onDataMutate }) {
 
   const handleSave = async () => {
     if (!formData.nama_siswa.trim()) {
-      alert('Mohon pilih Santri / Siswa atau isi nama santri.')
+      Swal.fire({ icon: 'warning', title: 'Santri Wajib Dipilih', text: 'Mohon pilih Santri / Siswa atau isi nama santri.' })
       return
     }
     if (!formData.education_unit_id) {
-      alert('Mohon pilih Asal Unit Sekolah.')
+      Swal.fire({ icon: 'warning', title: 'Unit Wajib Dipilih', text: 'Mohon pilih Asal Unit Sekolah.' })
       return
     }
 
@@ -215,20 +216,30 @@ export default function MunaqasyahTahfizhSection({ onDataMutate }) {
       await loadData()
       onDataMutate?.()
     } catch (e) {
-      alert('Gagal menyimpan data munaqasyah. Silakan coba lagi.')
+      Swal.fire({ icon: 'error', title: 'Gagal', text: e.response?.data?.message || 'Gagal menyimpan data munaqasyah. Silakan coba lagi.' })
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Hapus arsip munaqasyah ini secara permanen dari database?')) {
+    const res = await Swal.fire({
+      title: 'Hapus Arsip Munaqasyah?',
+      text: 'Hapus arsip munaqasyah ini secara permanen dari database?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48',
+    })
+    if (res.isConfirmed) {
       try {
         await divisiPendidikanWorkspaceService.deleteMunaqasyah(id)
         await loadData()
         onDataMutate?.()
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Arsip munaqasyah berhasil dihapus.', timer: 1500, showConfirmButton: false })
       } catch (e) {
-        alert('Gagal menghapus data munaqasyah.')
+        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus data munaqasyah.' })
       }
     }
   }

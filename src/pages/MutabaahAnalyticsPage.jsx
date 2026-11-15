@@ -437,7 +437,7 @@ export default function MutabaahAnalyticsPage({ view }) {
   const [printOptionModalOpen, setPrintOptionModalOpen] = useState(false)
   const [printReportType, setPrintReportType] = useState('pekanan')
 
-  // TailGrids Dialog States for Tambah & Edit
+  // HeroUI Dialog States for Tambah & Edit
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editStudent, setEditStudent] = useState(null)
@@ -1916,7 +1916,7 @@ export default function MutabaahAnalyticsPage({ view }) {
         </AnimatePresence>
       )}
 
-      {/* 🟢 TAILGRIDS DIALOG: MODAL TAMBAH DATA SANTRI */}
+      {/* 🟢 HEROUI DIALOG: MODAL TAMBAH DATA SANTRI */}
       <OverlayWrapper isOpen={showAddModal} onOpenChange={setShowAddModal}>
         <Backdrop isOpen={showAddModal} onOpenChange={setShowAddModal} isDismissable={true} className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
           <Dialog isOpen={showAddModal} onClose={() => setShowAddModal(false)} className="max-w-md w-full rounded-3xl bg-white dark:bg-[#182232] shadow-2xl shadow-emerald-950/20 dark:shadow-black/60 overflow-hidden p-0 border border-slate-200/80 dark:border-slate-800">
@@ -2053,7 +2053,7 @@ export default function MutabaahAnalyticsPage({ view }) {
         </Backdrop>
       </OverlayWrapper>
 
-      {/* 🟢 TAILGRIDS DIALOG: MODAL EDIT DATA SANTRI */}
+      {/* 🟢 HEROUI DIALOG: MODAL EDIT DATA SANTRI */}
       <OverlayWrapper isOpen={showEditModal} onOpenChange={setShowEditModal}>
         <Backdrop isOpen={showEditModal} onOpenChange={setShowEditModal} isDismissable={true} className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
           <Dialog isOpen={showEditModal} onClose={() => setShowEditModal(false)} className="max-w-md w-full rounded-3xl bg-white dark:bg-[#182232] shadow-2xl shadow-amber-950/20 dark:shadow-black/60 overflow-hidden p-0 border border-amber-200/60 dark:border-amber-900/50">
@@ -2186,7 +2186,7 @@ export default function MutabaahAnalyticsPage({ view }) {
         </Backdrop>
       </OverlayWrapper>
 
-      {/* 🟢 TAILGRIDS DIALOG: MODAL LIHAT DETAIL EVALUASI MUTABAAH SANTRI */}
+      {/* 🟢 HEROUI DIALOG: MODAL LIHAT DETAIL EVALUASI MUTABAAH SANTRI */}
       <OverlayWrapper isOpen={showDetailDrawer} onOpenChange={setShowDetailDrawer}>
         <Backdrop isOpen={showDetailDrawer} onOpenChange={setShowDetailDrawer} isDismissable={true} className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-2 sm:p-4">
           <Dialog isOpen={showDetailDrawer} onClose={() => setShowDetailDrawer(false)} className="max-w-5xl w-full rounded-3xl bg-white dark:bg-[#182232] shadow-2xl shadow-emerald-950/20 dark:shadow-black/60 overflow-hidden p-0 border border-slate-200/80 dark:border-slate-800 max-h-[94vh] flex flex-col">
@@ -2477,7 +2477,7 @@ export default function MutabaahAnalyticsPage({ view }) {
           </Dialog>
         </Backdrop>
       </OverlayWrapper>
-      {/* Modal: TailGrids Opsi Cetak & Unduh PDF / Clean Print */}
+      {/* Modal: HeroUI Opsi Cetak & Unduh PDF / Clean Print */}
       <PrintOptionModal
         isOpen={printOptionModalOpen}
         onClose={() => setPrintOptionModalOpen(false)}

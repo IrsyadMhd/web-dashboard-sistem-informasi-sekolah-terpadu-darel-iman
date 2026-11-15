@@ -451,7 +451,7 @@ export function FoundationInformationPage() {
           />
         </motion.div>
 
-        {/* Header Halaman Modern Hero Card (Kanonik TailGrids Emerald) */}
+        {/* Header Halaman Modern Hero Card (Kanonik HeroUI Emerald) */}
         <motion.div
           variants={itemVariants}
           className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden"
@@ -657,7 +657,7 @@ export function FoundationInformationPage() {
         </motion.div>
       </motion.div>
 
-      {/* Modal Detail Informasi (TailGrids Elevated Style) */}
+      {/* Modal Detail Informasi (HeroUI Elevated Style) */}
       <AnimatePresence>
         {selectedInfo && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
@@ -738,7 +738,7 @@ export function FoundationInformationPage() {
         )}
       </AnimatePresence>
 
-      {/* Modal Input & Kelola Berita / Pengumuman (TailGrids Harmonized Batch Modal) */}
+      {/* Modal Input & Kelola Berita / Pengumuman (HeroUI Harmonized Batch Modal) */}
       <AnimatePresence>
         {isManageModalOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto">

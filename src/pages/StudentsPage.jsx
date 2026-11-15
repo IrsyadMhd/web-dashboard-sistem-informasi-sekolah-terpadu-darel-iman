@@ -1576,7 +1576,7 @@ export default function StudentsPage() {
           </div>
         </div>
 
-        {/* Quick Summary Cards (TAILGRIDS_CARD_COMPONENT) */}
+        {/* Quick Summary Cards (HEROUI_CARD_COMPONENT) */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
           <KpiTintedCard
             icon={FaUserGraduate}
@@ -2483,7 +2483,7 @@ export default function StudentsPage() {
           onDownloadPdf={handleDownloadPdf}
         />
 
-        {/* POP UP MODAL 4: DASHBOARD IMPORT DATA SISWA (TAILGRIDS HARMONIZED BATCH MODAL) */}
+        {/* POP UP MODAL 4: DASHBOARD IMPORT DATA SISWA (HEROUI HARMONIZED BATCH MODAL) */}
         <AnimatePresence>
           {showImportModal && (
             <div
@@ -2915,7 +2915,7 @@ export default function StudentsPage() {
           )}
         </AnimatePresence>
 
-        {/* POP UP MODAL: DASHBOARD EXPORT DATA SISWA (TAILGRIDS HARMONIZED BATCH MODAL) */}
+        {/* POP UP MODAL: DASHBOARD EXPORT DATA SISWA (HEROUI HARMONIZED BATCH MODAL) */}
         <AnimatePresence>
           {showExportModal && (
             <div
@@ -3295,7 +3295,7 @@ export default function StudentsPage() {
           )}
         </AnimatePresence>
 
-        {/* MODAL: KONFIRMASI SIMPAN / PERBARUI DATA SISWA HARMONISASI TAILGRIDS */}
+        {/* MODAL: KONFIRMASI SIMPAN / PERBARUI DATA SISWA HARMONISASI HEROUI */}
         <AnimatePresence>
           {showSaveConfirmDialog && (
             <div
@@ -3475,7 +3475,7 @@ export default function StudentsPage() {
           )}
         </AnimatePresence>
 
-        {/* MODAL: KONFIRMASI HAPUS DATA SISWA HARMONISASI TAILGRIDS */}
+        {/* MODAL: KONFIRMASI HAPUS DATA SISWA HARMONISASI HEROUI */}
         <AnimatePresence>
           {deleteTarget && (
             <div

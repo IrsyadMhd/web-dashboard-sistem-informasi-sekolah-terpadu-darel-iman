@@ -31,6 +31,7 @@ import { Modal } from '../ui/modal'
 import { Table, TableHeader, TableBody, TableRow, TableCell } from '../ui/table'
 import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { divisiPendidikanWorkspaceService } from '../../services/divisiPendidikanWorkspaceService'
+import Swal from 'sweetalert2'
 
 export default function ReviewLaporanBulananSection({ onDataMutate }) {
   const [items, setItems] = useState([])
@@ -117,7 +118,7 @@ export default function ReviewLaporanBulananSection({ onDataMutate }) {
   const handleSaveReview = async () => {
     if (!selectedLaporan) return
     if (!reviewForm.catatan_divisi.trim()) {
-      alert('Mohon tuliskan catatan evaluasi atau rekomendasi dari Divisi Pendidikan.')
+      Swal.fire({ icon: 'warning', title: 'Catatan Diperlukan', text: 'Mohon tuliskan catatan evaluasi atau rekomendasi dari Divisi Pendidikan.' })
       return
     }
 
@@ -130,8 +131,9 @@ export default function ReviewLaporanBulananSection({ onDataMutate }) {
       setIsReviewModalOpen(false)
       await loadData()
       onDataMutate?.()
+      Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Evaluasi laporan bulanan berhasil disimpan.', timer: 1500, showConfirmButton: false })
     } catch (e) {
-      alert('Gagal menyimpan evaluasi laporan: ' + (e.response?.data?.message || e.message))
+      Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan evaluasi laporan: ' + (e.response?.data?.message || e.message) })
     } finally {
       setSaving(false)
     }
@@ -152,7 +154,7 @@ export default function ReviewLaporanBulananSection({ onDataMutate }) {
 
   const handleSaveAdd = async () => {
     if (!addForm.judul_laporan.trim()) {
-      alert('Mohon isi Judul Laporan.')
+      Swal.fire({ icon: 'warning', title: 'Judul Wajib Diisi', text: 'Mohon isi Judul Laporan.' })
       return
     }
 
@@ -163,20 +165,30 @@ export default function ReviewLaporanBulananSection({ onDataMutate }) {
       await loadData()
       onDataMutate?.()
     } catch (e) {
-      alert('Gagal membuat laporan bulanan: ' + (e.response?.data?.message || e.message))
+      Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal membuat laporan bulanan: ' + (e.response?.data?.message || e.message) })
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Hapus dokumen laporan bulanan ini secara permanen dari database?')) {
+    const res = await Swal.fire({
+      title: 'Hapus Laporan Bulanan?',
+      text: 'Hapus dokumen laporan bulanan ini secara permanen dari database?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48',
+    })
+    if (res.isConfirmed) {
       try {
         await divisiPendidikanWorkspaceService.deleteLaporanReview(id)
         await loadData()
         onDataMutate?.()
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Laporan bulanan telah dihapus.', timer: 1500, showConfirmButton: false })
       } catch (e) {
-        alert('Gagal menghapus laporan bulanan.')
+        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus laporan bulanan.' })
       }
     }
   }
@@ -246,7 +258,7 @@ export default function ReviewLaporanBulananSection({ onDataMutate }) {
         </Card>
       </div>
 
-      {/* Main Container Card (TailGrids Emerald Container) */}
+      {/* Main Container Card (HeroUI Emerald Container) */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* Toolbar Header Row 1 */}
         <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5">

@@ -70,6 +70,18 @@ const ToastItem = ({ toast, onClose }) => {
                 : (toast.description?.description || toast.description?.message || '')}
             </p>
           )}
+          {Boolean(toast.action) && (
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof toast.action.onClick === 'function') toast.action.onClick()
+                onClose()
+              }}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 dark:bg-emerald-700 px-2.5 py-1 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors cursor-pointer"
+            >
+              {toast.action.label || 'Coba Lagi'}
+            </button>
+          )}
         </div>
         <button
           type="button"
@@ -119,12 +131,14 @@ export function ToastProvider({ children }) {
     let description = ''
     let type = 'info'
     let duration = 4000
+    let action = null
 
     if (typeof arg1 === 'object' && arg1 !== null) {
       title = arg1.title || arg1.message || 'Notifikasi'
       description = sanitizeDesc(arg1.description || (arg1.title && arg1.message !== arg1.title ? arg1.message : ''))
       type = arg1.type || arg1.tone || 'info'
       duration = arg1.duration ?? (type === 'error' ? 6000 : 4000)
+      action = arg1.action || null
     } else if (typeof arg1 === 'string') {
       const knownTypes = ['success', 'error', 'warning', 'info', 'danger']
       if (knownTypes.includes(arg1.toLowerCase()) && typeof arg2 === 'string') {
@@ -155,7 +169,7 @@ export function ToastProvider({ children }) {
     if (type === 'error' && duration === 4000) duration = 6000
 
     const id = ++idRef.current
-    setToasts((prev) => [...prev, { id, title, description, type }])
+    setToasts((prev) => [...prev, { id, title, description, type, action }])
     if (duration > 0) {
       setTimeout(() => dismiss(id), duration)
     }

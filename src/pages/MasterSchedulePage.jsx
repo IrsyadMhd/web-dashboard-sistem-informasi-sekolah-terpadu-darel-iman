@@ -71,7 +71,7 @@ import {
   SquircleActionButton,
 } from '../components/master-data'
 
-// ── 1. DEFINISI TONE WARNA KARTU KPI MODERN (TAILGRIDS GOLD STANDARD) ──
+// ── 1. DEFINISI TONE WARNA KARTU KPI MODERN (HEROUI GOLD STANDARD) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -2141,7 +2141,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         </div>
       )}
 
-      {/* ── Modern Hero Header (TailGrids Standard) ── */}
+      {/* ── Modern Hero Header (HeroUI Standard) ── */}
       {!shouldHideHeader && (
         <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
           <div className="pointer-events-none absolute -left-12 -top-12 h-44 w-44 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-transparent blur-3xl" />
@@ -2181,7 +2181,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         </div>
       )}
 
-      {/* ── Stats Summary Cards (Modern 5-Card Grid - TailGrids Gold Standard) ── */}
+      {/* ── Stats Summary Cards (Modern 5-Card Grid - HeroUI Gold Standard) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <ModernKpiCard
           icon={CalendarDays}
@@ -2304,7 +2304,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
       {/* ── UNIFIED MASTER DATA CONTAINER (EMERALD DATATABLE CONTAINER) ── */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
-        {/* ── TOOLBAR 3-BARIS TERPADU (TailGrids Benchmark Standard) ── */}
+        {/* ── TOOLBAR 3-BARIS TERPADU (HeroUI Benchmark Standard) ── */}
         <div className="border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-4 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent print:hidden">
           {/* Baris 1: Header Action Row */}
           <div className="flex flex-col gap-3.5 xl:flex-row xl:items-center xl:justify-between border-b border-emerald-100 dark:border-emerald-900/50 pb-3.5">

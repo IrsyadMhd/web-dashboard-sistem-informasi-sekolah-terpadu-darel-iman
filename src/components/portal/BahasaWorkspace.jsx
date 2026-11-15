@@ -124,7 +124,7 @@ export default function BahasaWorkspace({ student, loading: parentLoading }) {
 
   return (
     <div className="space-y-6">
-      {/* ── 1. HERO HEADER BANNER (HERO UI / TAILGRIDS BENCHMARK) ── */}
+      {/* ── 1. HERO HEADER BANNER (HERO UI / HEROUI BENCHMARK) ── */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
         <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-500/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-8 right-1/4 h-32 w-32 rounded-full bg-teal-400/20 blur-2xl" />

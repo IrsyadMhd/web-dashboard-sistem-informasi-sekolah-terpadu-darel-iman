@@ -74,6 +74,9 @@ import {
   PrintOptionModal,
   MasterFilterSelect,
 } from '../components/master-data'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Badge } from '../components/ui/badge'
 import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import {
   TableRoot,
@@ -239,7 +242,7 @@ const PROJECT_DEFAULT_ROLES = [
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
-// KOMPONEN KPI METRIC CARD (TAILGRIDS GOLD STANDARD)
+// KOMPONEN KPI METRIC CARD (HEROUI GOLD STANDARD)
 // ─────────────────────────────────────────────────────────────────────────────
 const KPI_THEMES = {
   emerald: {
@@ -819,7 +822,7 @@ export default function MasterHakAksesPage() {
           ]}
         />
 
-        {/* ── HERO HEADER CARD (TAILGRIDS BENCHMARK STYLE) ── */}
+        {/* ── HERO HEADER CARD (HEROUI BENCHMARK STYLE) ── */}
         <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
           {/* Dual Multi-Tone Ambient Glow Blobs */}
           <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-600/30 dark:via-teal-500/20" />
@@ -2628,18 +2631,20 @@ function RoleFormModal({
 
             {/* Footer */}
             <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/30 shrink-0">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300 transition-all cursor-pointer"
+                className="rounded-2xl border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
               >
                 Batal
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
+                variant="primary"
                 disabled={isSubmitting || !name.trim()}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-600/30 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-600/30 hover:scale-[1.02] active:scale-95"
               >
                 {isSubmitting ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -2647,7 +2652,7 @@ function RoleFormModal({
                   <Save className="size-4" strokeWidth={2.2} />
                 )}
                 <span>{isEdit ? 'Simpan Matriks Role' : 'Tambah Role Baru'}</span>
-              </button>
+              </Button>
             </div>
           </form>
         </div>

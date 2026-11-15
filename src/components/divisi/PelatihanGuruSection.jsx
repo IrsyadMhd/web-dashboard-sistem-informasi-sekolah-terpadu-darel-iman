@@ -28,6 +28,7 @@ import { Table, TableHeader, TableBody, TableRow, TableCell } from '../ui/table'
 import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { useToast } from '../app/ToastProvider'
 import { divisiPendidikanWorkspaceService } from '../../services/divisiPendidikanWorkspaceService'
+import Swal from 'sweetalert2'
 
 export default function PelatihanGuruSection({ onDataMutate }) {
     const toast = useToast()
@@ -176,7 +177,16 @@ export default function PelatihanGuruSection({ onDataMutate }) {
     }
 
     const handleDelete = async (id) => {
-        if (window.confirm('Hapus program pelatihan ini secara permanen dari database?')) {
+        const res = await Swal.fire({
+            title: 'Hapus Program Pelatihan?',
+            text: 'Hapus program pelatihan ini secara permanen dari database?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#e11d48',
+        })
+        if (res.isConfirmed) {
             try {
                 await divisiPendidikanWorkspaceService.deletePelatihan(id)
                 toast('Program pelatihan berhasil dihapus.', 'success')

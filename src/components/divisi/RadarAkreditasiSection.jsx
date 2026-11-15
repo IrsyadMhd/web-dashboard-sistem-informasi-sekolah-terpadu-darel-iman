@@ -26,6 +26,7 @@ import { Badge } from '../ui/badge'
 import { Modal } from '../ui/modal'
 import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { divisiPendidikanWorkspaceService } from '../../services/divisiPendidikanWorkspaceService'
+import Swal from 'sweetalert2'
 
 export default function RadarAkreditasiSection({ onDataMutate }) {
   const [items, setItems] = useState([])
@@ -117,7 +118,7 @@ export default function RadarAkreditasiSection({ onDataMutate }) {
 
   const handleSaveAdd = async () => {
     if (!addForm.unit_id) {
-      alert('Mohon pilih unit pendidikan.')
+      Swal.fire({ icon: 'warning', title: 'Unit Wajib Dipilih', text: 'Mohon pilih unit pendidikan.' })
       return
     }
 
@@ -127,8 +128,9 @@ export default function RadarAkreditasiSection({ onDataMutate }) {
       setIsAddModalOpen(false)
       await loadData()
       onDataMutate?.()
+      Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Data audit akreditasi berhasil disimpan.', timer: 1500, showConfirmButton: false })
     } catch (e) {
-      alert('Gagal menyimpan audit akreditasi: ' + (e.response?.data?.message || e.message))
+      Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan audit akreditasi: ' + (e.response?.data?.message || e.message) })
     } finally {
       setSaving(false)
     }
@@ -155,20 +157,30 @@ export default function RadarAkreditasiSection({ onDataMutate }) {
       await loadData()
       onDataMutate?.()
     } catch (e) {
-      alert('Gagal memperbarui skor butir standar: ' + (e.response?.data?.message || e.message))
+      Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal memperbarui skor butir standar: ' + (e.response?.data?.message || e.message) })
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Hapus data audit akreditasi unit ini secara permanen dari database?')) {
+    const res = await Swal.fire({
+      title: 'Hapus Audit Akreditasi?',
+      text: 'Hapus data audit akreditasi unit ini secara permanen dari database?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48',
+    })
+    if (res.isConfirmed) {
       try {
         await divisiPendidikanWorkspaceService.deleteAkreditasi(id)
         await loadData()
         onDataMutate?.()
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data akreditasi berhasil dihapus.', timer: 1500, showConfirmButton: false })
       } catch (e) {
-        alert('Gagal menghapus data akreditasi.')
+        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus data akreditasi.' })
       }
     }
   }
@@ -238,7 +250,7 @@ export default function RadarAkreditasiSection({ onDataMutate }) {
         </Card>
       </div>
 
-      {/* Main Container Card (TailGrids Emerald Container) */}
+      {/* Main Container Card (HeroUI Emerald Container) */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* Toolbar Header Row */}
         <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5">
@@ -274,7 +286,7 @@ export default function RadarAkreditasiSection({ onDataMutate }) {
                 variant="primary"
                 size="sm"
                 onClick={handleOpenAdd}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/30 cursor-pointer"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/30 cursor-pointer"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Inisialisasi Audit Baru
@@ -348,7 +360,7 @@ export default function RadarAkreditasiSection({ onDataMutate }) {
                   variant="primary"
                   size="sm"
                   onClick={handleOpenAdd}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/30 cursor-pointer"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/30 cursor-pointer"
                 >
                   <Plus className="w-4 h-4 mr-1.5" />
                   Inisialisasi Audit Baru
@@ -493,7 +505,7 @@ export default function RadarAkreditasiSection({ onDataMutate }) {
             <Button
               variant="primary"
               size="sm"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-600/30 cursor-pointer"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-600/30 cursor-pointer"
               onClick={handleSaveAdd}
               disabled={saving}
             >
@@ -584,7 +596,7 @@ export default function RadarAkreditasiSection({ onDataMutate }) {
             <Button
               variant="primary"
               size="sm"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl cursor-pointer"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl cursor-pointer"
               onClick={handleSaveSkor}
               disabled={saving}
             >

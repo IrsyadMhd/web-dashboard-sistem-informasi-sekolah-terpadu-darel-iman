@@ -243,7 +243,7 @@ const ChatMessageBubble = React.memo(function ChatMessageBubble({
             </div>
 
             {msg.is_unread && (
-              <span className="h-2.5 w-2.5 rounded-full bg-blue-600 shrink-0 shadow-2xs mb-2" />
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-600 shrink-0 shadow-2xs mb-2" />
             )}
           </div>
         </div>
@@ -423,7 +423,7 @@ const ChatMessageComposer = React.memo(function ChatMessageComposer({ onSend, se
           <div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-600">
             <span>{totalUnreadCount} belum dibaca</span>
             {totalUnreadCount > 0 && (
-              <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
             )}
           </div>
         </div>
@@ -1394,7 +1394,7 @@ export default function ChatGuruWorkspace({
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2 px-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                       <span>BELUM DIBACA</span>
-                      <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] font-black text-white">
+                      <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-emerald-600 px-1 text-[9px] font-black text-white">
                         {unreadContacts.length}
                       </span>
                     </div>
@@ -1458,7 +1458,7 @@ export default function ChatGuruWorkspace({
 
                           <div className="flex items-center gap-1.5 shrink-0">
                             {contact.unread_count > 0 && (
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-black text-white shadow-2xs">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-black text-white shadow-2xs">
                                 {contact.unread_count}
                               </span>
                             )}
@@ -1543,7 +1543,7 @@ export default function ChatGuruWorkspace({
                         {/* Right: Unread Badge or Read Checkmark */}
                         <div className="flex items-center gap-1.5 shrink-0">
                           {contact.unread_count > 0 ? (
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-black text-white shadow-2xs">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-black text-white shadow-2xs">
                               {contact.unread_count}
                             </span>
                           ) : (

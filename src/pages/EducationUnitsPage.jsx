@@ -276,7 +276,7 @@ function InlineAlert({ type = 'error', message, onClose }) {
 
 
 
-// ── DEFINISI TONE WARNA KARTU KPI MODERN (TAILGRIDS SPEC) ──
+// ── DEFINISI TONE WARNA KARTU KPI MODERN (HEROUI SPEC) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -656,7 +656,7 @@ export default function EducationUnitsPage() {
   }, [items])
 
   const teacherChartData = useMemo(() => {
-    const COLORS = ['#0E5C44', '#0284C7', '#F59E0B', '#7C3AED', '#EC4899', '#06B6D4', '#10B981', '#6366F1']
+    const COLORS = ['#0E5C44', '#059669', '#0D9488', '#10B981', '#14B8A6', '#34D399', '#F59E0B', '#F43F5E']
     return items.map((u, i) => ({
       name: u.code || u.unit_type || (u.name ? u.name.substring(0, 8) : 'Unit'),
       fullName: u.name,
@@ -1688,7 +1688,7 @@ export default function EducationUnitsPage() {
       </motion.div>
 
       {/* ══════════════════════════════════════════════════════════════════
- DETAIL MODAL POPUP — TailGrids & Motion Structure
+ DETAIL MODAL POPUP — HeroUI & Motion Structure
  ══════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {detailUnit && (
@@ -4413,7 +4413,7 @@ export default function EducationUnitsPage() {
         )}
       </AnimatePresence>
 
-      {/* TailGrids Print & PDF Download Scope Selection Modal */}
+      {/* HeroUI Print & PDF Download Scope Selection Modal */}
       <AnimatePresence>
         {printOptionModalOpen && (
           <div

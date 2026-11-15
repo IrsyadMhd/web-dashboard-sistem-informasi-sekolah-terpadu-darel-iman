@@ -25,7 +25,7 @@ export default function AppSearch({
         placeholder={placeholder}
         autoFocus={autoFocus}
         className={cn(
-          'w-full rounded-xl border border-slate-200/80 bg-white pl-10 pr-9 font-medium text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-800 dark:bg-[#111827] dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:border-[#3FBF75] dark:focus:ring-[#3FBF75]/20',
+          'w-full rounded-xl border border-emerald-300/60 bg-white pl-10 pr-9 font-medium text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-emerald-800/60 dark:bg-[#111827] dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20',
           size === 'sm' ? 'h-9 text-xs' : 'h-10 text-sm'
         )}
         {...props}

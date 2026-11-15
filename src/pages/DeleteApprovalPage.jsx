@@ -302,7 +302,7 @@ export default function DeleteApprovalPage() {
           </div>
         </motion.div>
 
-        {/* ── TailGrids Emerald Datatable Container ── */}
+        {/* ── HeroUI Emerald Datatable Container ── */}
         <motion.div
           variants={itemVariants}
           className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]"

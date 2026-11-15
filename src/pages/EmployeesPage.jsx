@@ -409,7 +409,7 @@ function makePayload(form, assignmentOnly = false) {
   }
 }
 
-// ── DEFINISI TONE WARNA KARTU KPI MODERN (TAILGRIDS SPEC) ──
+// ── DEFINISI TONE WARNA KARTU KPI MODERN (HEROUI SPEC) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -1893,7 +1893,7 @@ export default function EmployeesPage() {
     return roles.length > 0 ? roles : ['Anggota Staf ERP']
   }, [])
 
-  // ── KOMPONEN TAILGRIDS HOVERCARD PREVIEW GURU & PEGAWAI ──
+  // ── KOMPONEN HEROUI HOVERCARD PREVIEW GURU & PEGAWAI ──
   const EmployeeHoverCard = useCallback(({ employee, children, onClick }) => {
     if (!employee) return children
 
@@ -2734,7 +2734,7 @@ export default function EmployeesPage() {
           </div>
         </div>
 
-        {/* 4. AppDataTable complying with TailGrids Benchmark */}
+        {/* 4. AppDataTable complying with HeroUI Benchmark */}
         <div id="tabel-direktori-pegawai" className="scroll-mt-6">
           <AppDataTable
           className={`main-page-app-data-table ${statCardModal.isOpen ? 'print:hidden' : ''}`}
@@ -3103,7 +3103,7 @@ export default function EmployeesPage() {
         )}
       </AnimatePresence>
 
-      {/* 5. MODAL WIZARD: TAMBAH / EDIT PEGAWAI (TailGrids + SSOT) */}
+      {/* 5. MODAL WIZARD: TAMBAH / EDIT PEGAWAI (HeroUI + SSOT) */}
       <EmployeeFormModal
         isOpen={isFormModalOpen && ((isEditMode && canUpdateEmployee) || (!isEditMode && canCreateEmployee))}
         onClose={closeFormModal}
@@ -4095,7 +4095,7 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* 8. MODAL KONFIRMASI HAPUS PEGAWAI — Harmonized TailGrids Modal */}
+      {/* 8. MODAL KONFIRMASI HAPUS PEGAWAI — Harmonized HeroUI Modal */}
       <AnimatePresence>
         {canDeleteEmployee && deleteTarget && (
           <div

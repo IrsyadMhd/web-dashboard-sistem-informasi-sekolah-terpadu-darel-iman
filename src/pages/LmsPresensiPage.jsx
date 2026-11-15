@@ -957,7 +957,7 @@ export default function LmsPresensiPage() {
               </TableRoot>
             </div>
 
-            {/* Pagination Bar (Modern TailGrids Emerald Squircle) */}
+            {/* Pagination Bar (Modern HeroUI Emerald Squircle) */}
             {pagination.total > 0 && (
               <div className="px-6 py-4 border-t border-emerald-100/80 dark:border-emerald-900/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400 bg-emerald-50/20 dark:bg-emerald-950/10">
                 <div>

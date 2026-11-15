@@ -24,6 +24,7 @@ import { Badge } from '../ui/badge'
 import { Modal } from '../ui/modal'
 import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { divisiPendidikanWorkspaceService } from '../../services/divisiPendidikanWorkspaceService'
+import Swal from 'sweetalert2'
 
 export default function PembiasaanBahasaSection({ onDataMutate }) {
   const [items, setItems] = useState([])
@@ -115,15 +116,29 @@ export default function PembiasaanBahasaSection({ onDataMutate }) {
       loadData()
       onDataMutate?.()
     } catch (e) {
-      alert('Gagal memproses verifikasi kosakata: ' + (e?.response?.data?.message || e.message))
+      Swal.fire({ icon: 'error', title: 'Gagal', text: e?.response?.data?.message || 'Gagal memproses verifikasi kosakata.' })
     }
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Hapus mufradat pekanan ini?')) {
-      await divisiPendidikanWorkspaceService.deleteBahasa(id)
-      loadData()
-      onDataMutate?.()
+    const res = await Swal.fire({
+      title: 'Hapus Mufradat Pekanan?',
+      text: 'Hapus mufradat pekanan ini secara permanen dari database?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48',
+    })
+    if (res.isConfirmed) {
+      try {
+        await divisiPendidikanWorkspaceService.deleteBahasa(id)
+        loadData()
+        onDataMutate?.()
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Mufradat pekanan berhasil dihapus.', timer: 1500, showConfirmButton: false })
+      } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus mufradat pekanan.' })
+      }
     }
   }
 

@@ -46,7 +46,7 @@ const ChartDarkTooltip = ({ active, payload, label }) => {
   return null
 }
 
-const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
+const COLORS = ['#0E5C44', '#059669', '#0D9488', '#10B981', '#1E8E5A', '#34D399', '#F59E0B']
 
 const containerVariants = {
   hidden: { opacity: 0, y: 15 },

@@ -26,6 +26,7 @@ import { Modal } from '../ui/modal'
 import { Avatar, AvatarFallback } from '../ui/avatar'
 import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { divisiPendidikanWorkspaceService } from '../../services/divisiPendidikanWorkspaceService'
+import Swal from 'sweetalert2'
 
 export default function SupervisiKbmSection({ onDataMutate }) {
   const [items, setItems] = useState([])
@@ -161,18 +162,28 @@ export default function SupervisiKbmSection({ onDataMutate }) {
       setIsModalOpen(false)
       onDataMutate?.()
     } catch (e) {
-      alert('Gagal menyimpan catatan supervisi KBM: ' + (e.response?.data?.message || e.message))
+      Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan catatan supervisi KBM: ' + (e.response?.data?.message || e.message) })
     }
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Yakin ingin menghapus catatan supervisi ini?')) {
+    const res = await Swal.fire({
+      title: 'Hapus Catatan Supervisi?',
+      text: 'Yakin ingin menghapus catatan supervisi ini secara permanen?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48',
+    })
+    if (res.isConfirmed) {
       try {
         await divisiPendidikanWorkspaceService.deleteSupervisiKbm(id)
         await loadData()
         onDataMutate?.()
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Catatan supervisi berhasil dihapus.', timer: 1500, showConfirmButton: false })
       } catch (e) {
-        alert('Gagal menghapus catatan supervisi: ' + (e.response?.data?.message || e.message))
+        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus catatan supervisi: ' + (e.response?.data?.message || e.message) })
       }
     }
   }

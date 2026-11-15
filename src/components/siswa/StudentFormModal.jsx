@@ -1222,7 +1222,7 @@ export default function StudentFormModal({
               {/* STEP 1: INFORMASI PRIBADI */}
               {activeStep === 0 && (
                 <div className="space-y-6">
-                  {/* Upload Foto Box - Sesuai TailGrids Dropzone Standar */}
+                  {/* Upload Foto Box - Sesuai HeroUI Dropzone Standar */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Foto Profil Siswa</label>
                     {formData.foto_url ? (

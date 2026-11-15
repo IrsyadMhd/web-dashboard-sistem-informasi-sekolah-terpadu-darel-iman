@@ -773,7 +773,7 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
           </motion.div>
         )}
 
-        {/* ── TailGrids Modern Hero Header Card ─────────────────────────── */}
+        {/* ── HeroUI Modern Hero Header Card ─────────────────────────── */}
         {!shouldHideHeader && (
           <motion.div
             variants={itemVariants}

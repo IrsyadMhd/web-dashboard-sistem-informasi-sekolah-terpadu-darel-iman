@@ -23,7 +23,7 @@ const statusLabel = {
 }
 
 function getDeviceId() {
-  const key = 'simsit.teacher.presence.device_id'
+  const key = 'dareliman.teacher.presence.device_id'
   const existing = window.localStorage.getItem(key)
   if (existing) return existing
   const created = window.crypto?.randomUUID?.() || `browser-${Date.now()}`

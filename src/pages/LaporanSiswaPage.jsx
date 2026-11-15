@@ -110,7 +110,7 @@ import {
 import { Backdrop } from '@/components/ui/dialog'
 
 const angka = (nilai) => new Intl.NumberFormat('id-ID').format(Number(nilai || 0))
-const warnaPie = ['#059669', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+const warnaPie = ['#059669', '#0D9488', '#10B981', '#34D399', '#F59E0B', '#F43F5E']
 
 const MODERN_CARD_TONES = {
   emerald: {
@@ -2093,7 +2093,7 @@ export default function LaporanSiswaPage() {
                         <XAxis dataKey="tingkat" tick={{ fontSize: 11 }} />
                         <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                         <Tooltip />
-                        <Bar dataKey="jumlah" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="jumlah" fill="#059669" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -2247,7 +2247,7 @@ export default function LaporanSiswaPage() {
       {/* ── KONTEN SUB-TAB 3: KELULUSAN & ALUMNI (Gaya Card Mutasi dengan Warna Khusus) ── */}
       {activeSubTab === 'kelulusan' && (
         <div className="space-y-6">
-          {/* ── 4 KPI Stat Cards for Kelulusan (Harmonized with TAILGRIDS_ALUMNI_MUTASI_CARDS & MutasiSiswaScreen) ── */}
+          {/* ── 4 KPI Stat Cards for Kelulusan (Harmonized with HEROUI_ALUMNI_MUTASI_CARDS & MutasiSiswaScreen) ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Card 1: Total Kelulusan (Emerald) */}
             <div className="relative overflow-hidden rounded-[20px] border-2 border-emerald-300/80 dark:border-emerald-700/60 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-white dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900 p-5 shadow-sm shadow-emerald-500/10">

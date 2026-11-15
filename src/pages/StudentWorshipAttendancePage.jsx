@@ -1383,7 +1383,7 @@ export default function StudentWorshipAttendancePage() {
                       setShowCameraModal(true)
                       startCamera()
                     }}
-                    className="flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-600/20 transition-all hover:bg-indigo-700"
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-all hover:bg-emerald-700"
                   >
                     <Camera className="h-4 w-4" />
                     <span>Buka Layar Scanner Kamera</span>
@@ -1592,7 +1592,7 @@ export default function StudentWorshipAttendancePage() {
                     </div>
                   )}
 
-                  {/* TailGrids Standard Action Buttons: Import, Export, Cetak (Printer) */}
+                  {/* HeroUI Standard Action Buttons: Import, Export, Cetak (Printer) */}
                   <SquircleActionButton
                     variant="import"
                     label="Import Data Presensi"
@@ -1791,7 +1791,7 @@ export default function StudentWorshipAttendancePage() {
                 </table>
               </div>
 
-              {/* TailGrids Standard Pagination Row */}
+              {/* HeroUI Standard Pagination Row */}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-xs text-slate-500 border-t border-emerald-100 px-4 py-3.5 sm:px-6 dark:border-emerald-900/50">
                 <p>
                   Menampilkan {filteredStudents.length > 0 ? (currentPage - 1) * perPage + 1 : 0}-{Math.min(currentPage * perPage, filteredStudents.length)} dari {filteredStudents.length} Siswa
@@ -2006,7 +2006,7 @@ export default function StudentWorshipAttendancePage() {
                   <button
                     onClick={() => handleProcessScan(scanInput)}
                     disabled={processingScan}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
                   >
                     Proses QR
                   </button>
@@ -2397,7 +2397,7 @@ export default function StudentWorshipAttendancePage() {
         </Dialog>
       </Backdrop>
 
-      {/* ── TAILGRIDS PRINT OPTION MODAL FOR MAIN DATATABLE ─────────────── */}
+      {/* ── HEROUI PRINT OPTION MODAL FOR MAIN DATATABLE ─────────────── */}
       <PrintOptionModal
         isOpen={isPrintTableModalOpen}
         onClose={() => setIsPrintTableModalOpen(false)}

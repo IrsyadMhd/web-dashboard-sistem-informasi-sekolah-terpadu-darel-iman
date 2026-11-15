@@ -662,7 +662,7 @@ const KpiCardPastelStyles = {
               {tabs.length} Menu Modul
             </Badge>
           </div>
-          {/* TOMBOL BUTTON GRID WITH TAILGRIDS PASTEL ACCENTS */}
+          {/* TOMBOL BUTTON GRID WITH HEROUI PASTEL ACCENTS */}
           <div className="flex flex-wrap items-center gap-2.5 pt-1">
             {tabs.map(({ id, label, icon: Icon, pastelColor }) => {
               const isActive = activeTab === id

@@ -168,7 +168,7 @@ const MODERN_CARD_TONES = {
   },
 }
 
-const PIE_COLORS = ['#059669', '#3B82F6', '#6366F1', '#F59E0B', '#EC4899']
+const PIE_COLORS = ['#059669', '#0D9488', '#10B981', '#34D399', '#F59E0B']
 
 // ── 3. KOMPONEN KARTU KPI MODERN (STABIL DI LUAR RENDER) ──
 function ModernKpiCard({ card, onClick }) {
@@ -562,7 +562,7 @@ export default function SuperAdminDashboardPage() {
           />
         </motion.div>
 
-        {/* 2. Operational Alert Section (TailGrids Alert) */}
+        {/* 2. Operational Alert Section (HeroUI Alert) */}
         <motion.div variants={itemVariants}>
           <Alert
             status={kpis.users_without_role?.total > 0 ? 'warning' : 'info'}

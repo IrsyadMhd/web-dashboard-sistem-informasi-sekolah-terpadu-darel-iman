@@ -84,7 +84,7 @@ export function resolveAvatarUrl(src) {
   }
   if (trimmed.startsWith('data:')) return trimmed
 
-  const envApiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+  const envApiBase = import.meta.env.VITE_API_BASE_URL || (typeof window !== 'undefined' && window.location?.origin ? `${window.location.origin}/api` : 'http://localhost:8000/api')
   let backendOrigin = envApiBase.replace(/\/api\/?$/, '')
 
   if (typeof window !== 'undefined' && window.location) {

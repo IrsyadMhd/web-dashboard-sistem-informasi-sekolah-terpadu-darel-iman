@@ -73,7 +73,7 @@ import ChatGuruWorkspace from '../components/portal/ChatGuruWorkspace'
 import AcademicCalendarModal from '../components/calendar/AcademicCalendarModal'
 import { useAuthStore } from '../stores/authStore'
 
-// TailGrids Core Components
+// HeroUI Core Components
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

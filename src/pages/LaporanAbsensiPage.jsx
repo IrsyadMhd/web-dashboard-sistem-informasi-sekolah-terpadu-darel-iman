@@ -1262,7 +1262,7 @@ export default function LaporanAbsensiPage() {
         </article>
       </div>
 
-      {/* Table Card - TailGrids Master Data Datatable (Dual Mode: Siswa & Mata Pelajaran) */}
+      {/* Table Card - HeroUI Master Data Datatable (Dual Mode: Siswa & Mata Pelajaran) */}
       <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
         <div className="pointer-events-none absolute -top-12 -right-12 h-44 w-44 rounded-full bg-emerald-400/10 blur-3xl dark:bg-emerald-400/15" />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-6 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20">
@@ -2534,7 +2534,7 @@ export default function LaporanAbsensiPage() {
         </Dialog>
       )}
 
-      {/* TailGrids Opsi Cetak & Unduh PDF / Clean Print */}
+      {/* HeroUI Opsi Cetak & Unduh PDF / Clean Print */}
       <PrintOptionModal
         isOpen={printOptionModalOpen}
         onClose={() => setPrintOptionModalOpen(false)}

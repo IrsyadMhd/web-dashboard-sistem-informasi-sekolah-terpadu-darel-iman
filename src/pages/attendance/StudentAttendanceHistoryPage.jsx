@@ -217,7 +217,7 @@ export default function StudentAttendanceHistoryPage() {
         </div>
       </motion.div>
 
-      {/* TailGrids Card KPI Metric Grid */}
+      {/* HeroUI Card KPI Metric Grid */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         <KpiTintedCard
           icon={CalendarRange}

@@ -2334,7 +2334,7 @@ export default function HomeroomAttendanceDashboardPage() {
                           {isAddScheduleModalOpen ? (
                             <button
                               type="button"
-                              className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition-colors shadow-2xs cursor-pointer"
+                              className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition-colors shadow-2xs cursor-pointer"
                               onClick={() => handleSelectTeacher(teacher)}
                             >
                               <span>Pilih</span>

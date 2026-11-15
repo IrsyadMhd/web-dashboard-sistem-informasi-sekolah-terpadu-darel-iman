@@ -38,7 +38,9 @@ export const resolveApiBaseUrl = () => {
     return `${window.location.origin}/api`
   }
 
-  return 'http://localhost:8000/api'
+  return (typeof window !== 'undefined' && window.location?.origin)
+    ? `${window.location.origin}/api`
+    : 'http://localhost:8000/api'
 }
 
 export const api = axios.create({
@@ -136,6 +138,14 @@ api.interceptors.response.use(
           title: friendlyTitle,
           description: friendlyDesc,
           type: 'error',
+          action: {
+            label: 'Coba Lagi',
+            onClick: () => {
+              if (typeof window !== 'undefined') {
+                window.location.reload()
+              }
+            },
+          },
         })
       }
 
@@ -168,6 +178,14 @@ api.interceptors.response.use(
           title: friendlyTitle,
           description: friendlyDesc,
           type: 'error',
+          action: {
+            label: 'Coba Lagi',
+            onClick: () => {
+              if (typeof window !== 'undefined') {
+                window.location.reload()
+              }
+            },
+          },
         })
       }
 
@@ -190,21 +208,39 @@ api.interceptors.response.use(
           title: friendlyTitle,
           description: friendlyDesc,
           type: 'error',
+          action: {
+            label: 'Coba Lagi',
+            onClick: () => {
+              if (typeof window !== 'undefined') {
+                window.location.reload()
+              }
+            },
+          },
         })
       }
 
       return Promise.reject(error)
     }
 
+    // Sanitasi Global Anti-SQL/PHP Stack Trace Leak
+    const TECHNICAL_ERROR_REGEX = /(?:SQLSTATE|PDOException|Undefined column|syntax error|at \/|Stack trace|QueryException|column .* does not exist|relation .* does not exist|violates foreign key|duplicate key)/i
+
+    if (error?.response?.data?.message && typeof error.response.data.message === 'string') {
+      if (TECHNICAL_ERROR_REGEX.test(error.response.data.message)) {
+        error.response.data.message = 'Terjadi kendala internal pada server. Silakan coba beberapa saat lagi.'
+      }
+    }
+
     if (status === 500) {
       const rawMsg = error?.response?.data?.message || ''
+      const isTechnical = TECHNICAL_ERROR_REGEX.test(rawMsg)
       const friendlyTitle = 'Kesalahan Server Internal'
       const friendlyDesc =
-        !rawMsg || rawMsg === 'Server Error'
+        !rawMsg || rawMsg === 'Server Error' || isTechnical
           ? 'Terjadi kendala pemrosesan internal pada server. Silakan coba beberapa saat lagi.'
           : rawMsg
 
-      if (error?.response?.data && (!rawMsg || rawMsg === 'Server Error')) {
+      if (error?.response?.data) {
         error.response.data.message = friendlyDesc
       }
 
@@ -213,6 +249,14 @@ api.interceptors.response.use(
           title: friendlyTitle,
           description: friendlyDesc,
           type: 'error',
+          action: {
+            label: 'Coba Lagi',
+            onClick: () => {
+              if (typeof window !== 'undefined') {
+                window.location.reload()
+              }
+            },
+          },
         })
       }
 

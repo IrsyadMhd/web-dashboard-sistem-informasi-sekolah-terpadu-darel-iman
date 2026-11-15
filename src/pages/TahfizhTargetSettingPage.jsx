@@ -587,7 +587,7 @@ export default function TahfizhTargetSettingPage() {
         ]}
       />
 
-      {/* 2. Hero Header Card (TailGrids Standard) */}
+      {/* 2. Hero Header Card (HeroUI Standard) */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
         <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-emerald-500/20 blur-3xl" />
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -918,7 +918,7 @@ export default function TahfizhTargetSettingPage() {
         </div>
       </div>
 
-      {/* 4. MODAL TAMBAH / UBAH TARGET (AppModal - Harmonized TailGrids/HeroUI) */}
+      {/* 4. MODAL TAMBAH / UBAH TARGET (AppModal - Harmonized HeroUI/HeroUI) */}
       <AppModal
         isOpen={showFormModal}
         onClose={() => !isSubmitting && setShowFormModal(false)}
@@ -1115,7 +1115,7 @@ export default function TahfizhTargetSettingPage() {
         </div>
       </AppModal>
 
-      {/* 5. MODAL HAPUS HARMONIS (TailGrids Standard) */}
+      {/* 5. MODAL HAPUS HARMONIS (HeroUI Standard) */}
       <AnimatePresence>
         {showDeleteModal && targetToDelete && (
           <div

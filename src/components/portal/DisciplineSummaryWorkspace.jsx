@@ -129,7 +129,7 @@ export default function DisciplineSummaryWorkspace({ childId }) {
 
   return (
     <div className="space-y-6">
-      {/* ── 1. HERO HEADER: POIN DISIPLIN SANTRI (MODERN HERO CARD TAILGRIDS) ── */}
+      {/* ── 1. HERO HEADER: POIN DISIPLIN SANTRI (MODERN HERO CARD HEROUI) ── */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
         {/* Dual Multi-tone Ambient Glow */}
         <div className="pointer-events-none absolute -right-12 -top-12 h-52 w-52 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />

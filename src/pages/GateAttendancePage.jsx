@@ -57,7 +57,7 @@ import {
 } from '../components/ui/table'
 
 
-// ── SUB-KOMPONEN MODERN KPI CARDS (§C Tailgrids_Pengaturan_Halaman) ──
+// ── SUB-KOMPONEN MODERN KPI CARDS (§C HeroUI_Pengaturan_Halaman) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -1662,7 +1662,7 @@ export default function GateAttendancePage() {
         )}
       </AnimatePresence>
 
-      {/* Pop-Up Camera Scanner Modal with TailGrids Prompt Style & Framer Motion Scan Animation */}
+      {/* Pop-Up Camera Scanner Modal with HeroUI Prompt Style & Framer Motion Scan Animation */}
       <AnimatePresence>
         {showCameraModal && (
           <motion.div

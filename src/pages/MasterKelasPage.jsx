@@ -1313,7 +1313,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
   return (
     <PageContainer maxW="7xl">
       {/* ══════════════════════════════════════════════════════════════════
-          EXPORT DIALOG — Harmonized TailGrids Batch Modal
+          EXPORT DIALOG — Harmonized HeroUI Batch Modal
           ══════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {showExportModal && (
@@ -1426,7 +1426,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
       </AnimatePresence>
 
       {/* ══════════════════════════════════════════════════════════════════
-          IMPORT DIALOG — Harmonized TailGrids Batch Modal
+          IMPORT DIALOG — Harmonized HeroUI Batch Modal
           ══════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {showImportModal && (
@@ -1839,7 +1839,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
       </AnimatePresence>
 
       {/* ══════════════════════════════════════════════════════════════════
-          CETAK & PDF DIALOG — Harmonized TailGrids Scope Selection Modal
+          CETAK & PDF DIALOG — Harmonized HeroUI Scope Selection Modal
           ══════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {printOptionModalOpen && (
@@ -3485,7 +3485,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
         )}
       </AnimatePresence>
 
-      {/* MODAL: KONFIRMASI SIMPAN / UPDATE DATA KELAS (HARMONIZED TAILGRIDS) */}
+      {/* MODAL: KONFIRMASI SIMPAN / UPDATE DATA KELAS (HARMONIZED HEROUI) */}
       <AnimatePresence>
         {showSaveConfirmModal && (
           <div
@@ -3671,7 +3671,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
         )}
       </AnimatePresence>
 
-      {/* MODAL: KONFIRMASI HAPUS KELAS (HARMONIZED TAILGRIDS) */}
+      {/* MODAL: KONFIRMASI HAPUS KELAS (HARMONIZED HEROUI) */}
       <AnimatePresence>
         {isDeleteModalOpen && deleteTarget && (
           <div

@@ -228,7 +228,7 @@ export const defaultPengaturan = {
 function readCached() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-    if (saved.application_name === 'Sistem Manajemen Sekolah Terpadu' || saved.application_name === 'SIMSIT') {
+    if (saved.application_name === 'Sistem Manajemen Sekolah Terpadu' || saved.application_name === 'Dareliman Edu') {
       saved.application_name = 'Dareliman Edu'
     }
     return {
@@ -256,7 +256,7 @@ export const usePengaturanStore = create((set, get) => ({
     set({ loading: true })
     try {
       const fetched = await siteSettingService.get()
-      if (fetched?.application_name === 'Sistem Manajemen Sekolah Terpadu' || fetched?.application_name === 'SIMSIT') {
+      if (fetched?.application_name === 'Sistem Manajemen Sekolah Terpadu' || fetched?.application_name === 'Dareliman Edu') {
         fetched.application_name = 'Dareliman Edu'
       }
       const pengaturan = {

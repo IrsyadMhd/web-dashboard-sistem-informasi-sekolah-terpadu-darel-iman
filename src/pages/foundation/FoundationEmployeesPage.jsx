@@ -463,8 +463,8 @@ export function FoundationEmployeesPage() {
             </div>
 
             {/* Badges */}
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-800 dark:bg-blue-950/50 dark:text-blue-300">
-              <span className="h-2 w-2 rounded-full bg-blue-600" /> Guru ({totalGuru})
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+              <span className="h-2 w-2 rounded-full bg-emerald-600" /> Guru ({totalGuru})
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
               <span className="h-2 w-2 rounded-full bg-amber-500" /> Tendik ({totalTendik})
@@ -477,8 +477,8 @@ export function FoundationEmployeesPage() {
             <AreaChart data={sdmChartData} margin={{ top: 10, right: 20, left: 0, bottom: 25 }}>
               <defs>
                 <linearGradient id="sdmGuruGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563EB" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#2563EB" stopOpacity={0.02} />
+                  <stop offset="5%" stopColor="#059669" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#059669" stopOpacity={0.02} />
                 </linearGradient>
                 <linearGradient id="sdmPegawaiGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.4} />
@@ -513,7 +513,7 @@ export function FoundationEmployeesPage() {
                 }}
               />
               <Legend wrapperStyle={{ paddingTop: 10 }} />
-              <Area type="monotone" dataKey="Guru" stroke="#2563EB" strokeWidth={3} fillOpacity={1} fill="url(#sdmGuruGrad)" dot={{ r: 5, fill: '#2563EB', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
+              <Area type="monotone" dataKey="Guru" stroke="#059669" strokeWidth={3} fillOpacity={1} fill="url(#sdmGuruGrad)" dot={{ r: 5, fill: '#059669', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
               <Area type="monotone" dataKey="Tendik" stroke="#F59E0B" strokeWidth={3} fillOpacity={1} fill="url(#sdmPegawaiGrad)" dot={{ r: 5, fill: '#F59E0B', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
             </AreaChart>
           </ResponsiveContainer>

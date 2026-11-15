@@ -639,7 +639,7 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
         )}
       </AnimatePresence>
 
-      {/* 6. MODAL PEMBAYARAN VIRTUAL ACCOUNT (TAILGRIDS HERO UI) */}
+      {/* 6. MODAL PEMBAYARAN VIRTUAL ACCOUNT (HEROUI HERO UI) */}
       <AnimatePresence>
         {isPayModalOpen && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">

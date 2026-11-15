@@ -147,11 +147,15 @@ function HeroUiWorkspaceSelect({
   disabled = false,
   badge = null,
   align = 'left',
-  placement = 'bottom',
+  placement = 'bottom-start',
+  popoverProps = {},
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef(null)
+
+  const effectivePlacement = popoverProps?.placement || placement
+  const effectiveAlign = popoverProps?.align || align
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -244,12 +248,12 @@ function HeroUiWorkspaceSelect({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: placement === 'top' ? 4 : -4 }}
+            initial={{ opacity: 0, scale: 0.96, y: effectivePlacement.startsWith('top') ? 4 : -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: placement === 'top' ? 4 : -4 }}
+            exit={{ opacity: 0, scale: 0.96, y: effectivePlacement.startsWith('top') ? 4 : -4 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} ${placement === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
-              } z-[100] ${popoverWidth} min-w-[220px] max-w-sm overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/50 dark:shadow-black/60`}
+            className={`absolute ${effectiveAlign === 'right' ? 'right-0' : 'left-0'} ${effectivePlacement.startsWith('top') ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+              } z-[100] ${popoverWidth} min-w-[200px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/50 dark:shadow-black/60`}
           >
             {shouldSearch && (
               <div className="p-1.5 border-b border-slate-100 dark:border-slate-800 mb-1">
@@ -848,6 +852,18 @@ export default function TeacherTeachingWorkspacePage() {
   // 3. Unit-Locked Scope: Guru, TU, Musyrif
   const isGuru = !isGlobalTahfizhScope && !isKepalaSekolahOrDivisiPendidikan
 
+  // 4. Hak Akses Manajerial & Supervisi (Super Admin, Waka Kurikulum, Kepala Sekolah, Divisi, Yayasan)
+  const isManagerial = React.useMemo(() => {
+    return isGlobalTahfizhScope || isKepalaSekolahOrDivisiPendidikan || hasAnyRole(userRoles, [
+      'Super Admin', 'SuperAdmin', 'super_admin',
+      'Admin', 'admin', 'administrator',
+      'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek',
+      'Wakil Kepala Sekolah', 'Waka Kurikulum', 'waka_kurikulum', 'waka',
+      'Wakil Kesiswaan', 'Waka Kesiswaan', 'waka_kesiswaan',
+      'Divisi Pendidikan', 'divisi_pendidikan'
+    ])
+  }, [isGlobalTahfizhScope, isKepalaSekolahOrDivisiPendidikan, userRoles])
+
   // Multi-unit Tahfizh Leaderboard state
   const [educationUnits, setEducationUnits] = useState([])
   const [selectedTahfizhUnit, setSelectedTahfizhUnit] = useState('semua')
@@ -1428,7 +1444,7 @@ export default function TeacherTeachingWorkspacePage() {
       }
 
       const [resClasses, resAllSch] = await Promise.all([
-        api.get('/teacher/classes'),
+        api.get('/teacher/classes').catch(() => null),
         api.get('/teacher/schedules').catch(() => null),
       ])
 
@@ -1438,9 +1454,22 @@ export default function TeacherTeachingWorkspacePage() {
         setSchedules(schList)
       }
 
+      let clsList = resClasses?.data?.data || []
+      if (isManagerial) {
+        // Hak akses manajerial (Super Admin / Waka Kurikulum / Kepala Sekolah / Divisi Pendidikan)
+        // Tetap dapat memilih seluruh rombel di unitnya saat meninjau ruang kerja guru
+        const resAllUnitClasses = await api.get('/kelas', { params: { per_page: 150 } }).catch(() => null)
+        const allCls = resAllUnitClasses?.data?.data || []
+        if (allCls.length > 0) {
+          const classMap = new Map()
+          clsList.forEach((c) => classMap.set(String(c.id), c))
+          allCls.forEach((c) => classMap.set(String(c.id), c))
+          clsList = Array.from(classMap.values()).sort((a, b) => (a.nama_kelas || a.name || '').localeCompare(b.nama_kelas || b.name || ''))
+        }
+      }
+
       let initialClassId = ''
-      if (resClasses?.data?.data) {
-        const clsList = resClasses.data.data
+      if (clsList.length > 0) {
         setClasses(clsList)
 
         // 1. Check URL query parameters (class_id or schedule_id)
@@ -5077,7 +5106,7 @@ export default function TeacherTeachingWorkspacePage() {
 
   // Daftar rombel unik yang disaring sesuai Mapel yang dipilih (jika memilih mapel tertentu)
   const filteredClassesOptions = useMemo(() => {
-    if (!materialMapelFilter || materialMapelFilter === 'all') {
+    if (isManagerial || !materialMapelFilter || materialMapelFilter === 'all') {
       return classes
     }
     const pool = (allTeacherSchedules && allTeacherSchedules.length > 0) ? allTeacherSchedules : schedules
@@ -5099,7 +5128,7 @@ export default function TeacherTeachingWorkspacePage() {
     })
     const matched = classes.filter((c) => matchingClassIds.has(String(c.id)))
     return matched.length > 0 ? matched : classes
-  }, [classes, materialMapelFilter, allTeacherSchedules, schedules, materials])
+  }, [classes, materialMapelFilter, allTeacherSchedules, schedules, materials, isManagerial])
 
   const activeWorkspaceClassValue = useMemo(() => {
     if (!selectedClass || selectedClass === 'all') return 'all'
@@ -6366,7 +6395,7 @@ export default function TeacherTeachingWorkspacePage() {
           {/* TAB 1: JADWAL MENGAJAR */}
           {activeTab === 'jadwal' && (
             <div className="space-y-5">
-              {/* TailGrids Modern Hero Card Banner */}
+              {/* HeroUI Modern Hero Card Banner */}
               <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
                 {/* Ambient Glows */}
                 <div className="pointer-events-none absolute -left-12 -top-12 h-44 w-44 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
@@ -6987,7 +7016,7 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </div>
 
-                {/* TailGrids KBM Session & Journal Input Card */}
+                {/* HeroUI KBM Session & Journal Input Card */}
                 <div className="mb-4 rounded-[22px] border-2 border-emerald-500/25 bg-gradient-to-r from-emerald-50/60 via-teal-50/30 to-emerald-50/60 p-4 shadow-sm dark:border-emerald-600/35 dark:bg-slate-900/60">
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/15 pb-2.5">
                     <div className="flex items-center gap-2">
@@ -7035,7 +7064,7 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </div>
 
-                {/* TailGrids Emerald Datatable Container */}
+                {/* HeroUI Emerald Datatable Container */}
                 <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
                   {/* Toolbar Header */}
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
@@ -8771,7 +8800,7 @@ export default function TeacherTeachingWorkspacePage() {
           {/* TAB 6: TAHFIZH */}
           {activeTab === 'tahfizh' && canAccessTahfizh && (
             <section className="space-y-6" aria-labelledby="tahfizh-heading">
-              {/* 1. TAILGRIDS MODERN HERO CARD BANNER */}
+              {/* 1. HEROUI MODERN HERO CARD BANNER */}
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -9054,7 +9083,7 @@ export default function TeacherTeachingWorkspacePage() {
                 </div>
               )}
 
-              {/* 4. TAILGRIDS EMERALD DATATABLE CONTAINER (Leaderboard Table) */}
+              {/* 4. HEROUI EMERALD DATATABLE CONTAINER (Leaderboard Table) */}
               <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
                 {/* Toolbar Header */}
                 <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
@@ -10084,7 +10113,7 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </div>
 
-                {/* ── TAILGRIDS EMERALD DATATABLE CONTAINER ──────────────────── */}
+                {/* ── HEROUI EMERALD DATATABLE CONTAINER ──────────────────── */}
                 <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
                   {/* Toolbar Header */}
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
@@ -12934,7 +12963,7 @@ export default function TeacherTeachingWorkspacePage() {
                             <h5 className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider">Kunci Jawaban Benar / Salah</h5>
                             <div className="flex gap-3">
                               {['Benar', 'Salah'].map((val) => (
-                                <label key={val} className={['flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer font-bold text-xs transition-all', soalForm.kunci_jawaban === val ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'].join(' ')}>
+                                <label key={val} className={['flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer font-bold text-xs transition-all', soalForm.kunci_jawaban === val ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'].join(' ')}>
                                   <input
                                     type="radio"
                                     name="kunci_bs"
@@ -15104,7 +15133,7 @@ export default function TeacherTeachingWorkspacePage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center gap-2"
                 >
                   <CheckCircle2 className="w-4 h-4" /> Simpan Presensi Wajah
                 </button>
@@ -15545,7 +15574,7 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                                 }`}
                             >
                               <span className={`w-8 h-8 rounded-xl font-black text-xs flex items-center justify-center shrink-0 transition-all ${isSelected
-                                ? 'bg-purple-600 text-white shadow-md scale-105'
+                                ? 'bg-emerald-600 text-white shadow-md scale-105'
                                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                                 }`}>
                                 {upperLetter}
@@ -15591,7 +15620,7 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                       <button
                         type="button"
                         onClick={() => setCurrentIdx((prev) => Math.min(totalQuestions - 1, prev + 1))}
-                        className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer"
+                        className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer"
                       >
                         Selanjutnya
                         <ChevronRight className="w-4 h-4" />
@@ -15712,7 +15741,7 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition cursor-pointer"
               >
                 <Check className="w-4 h-4" /> Tutup Pratinjau Runner
               </button>

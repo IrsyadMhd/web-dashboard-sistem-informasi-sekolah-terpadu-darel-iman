@@ -1929,7 +1929,7 @@ export default function UserAccountManagement({
     <div className="space-y-4">
 
 
-      {/* ── TAILGRIDS EMERALD DATATABLE CONTAINER ─────────────────────────── */}
+      {/* ── HEROUI EMERALD DATATABLE CONTAINER ─────────────────────────── */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* Toolbar Header (Baris 1: Judul, Status Count & Aksi) */}
         <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -2346,7 +2346,7 @@ export default function UserAccountManagement({
           </table>
         </div>
 
-        {/* Datatable Footer & TailGrids Pagination */}
+        {/* Datatable Footer & HeroUI Pagination */}
         <div className="p-4 border-t border-emerald-100/80 dark:border-emerald-900/40 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-emerald-50/30 via-transparent to-emerald-50/30">
           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             Menampilkan <strong className="text-slate-800 dark:text-slate-200">{users.length}</strong> akun (Halaman {page} dari {meta.last_page || 1})
