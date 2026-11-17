@@ -152,3 +152,66 @@ web-dashboard/
      rm -rf node_modules package-lock.json
      npm install
      ```
+
+
+---
+
+## 🌐 Panduan Deployment Server: Staging & Production
+
+### 1. Informasi Domain Resmi
+- **Staging Web Dashboard**: `https://demoedu.dareliman.sch.id/dashboard` (Root: `https://demoedu.dareliman.sch.id`)
+- **Staging Backend API**: `https://demoapi.dareliman.sch.id/api/v1`
+- **Production Web Dashboard**: `https://edu.dareliman.sch.id/dashboard`
+- **Production Backend API**: `https://api.dareliman.sch.id/api/v1`
+
+### 2. Prosedur Deploy Staging di Server Web
+
+Jika server web saat ini berada di branch `main`, lakukan langkah berikut untuk beralih ke branch `staging` dan melakukan build:
+
+```bash
+# 1. Masuk ke folder web-dashboard di server
+cd /var/www/dareliman-staging-web
+
+# 2. Amankan perubahan sementara
+git stash
+
+# 3. Ambil branch staging terbaru dari GitHub
+git fetch origin
+
+# 4. Pindah ke branch staging
+git checkout -B staging origin/staging
+git pull origin staging
+
+# 5. Pasang dependensi dan build dengan target API staging
+npm ci
+VITE_API_BASE_URL="https://demoapi.dareliman.sch.id/api/v1" npm run build
+```
+
+### 3. Konfigurasi Virtual Host Nginx (`demoedu.dareliman.sch.id`)
+
+```nginx
+server {
+    listen 80;
+    server_name demoedu.dareliman.sch.id;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name demoedu.dareliman.sch.id;
+
+    ssl_certificate /etc/letsencrypt/live/demoedu.dareliman.sch.id/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/demoedu.dareliman.sch.id/privkey.pem;
+
+    root /var/www/dareliman-staging-web/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /dashboard {
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
