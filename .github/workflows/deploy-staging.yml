@@ -1,0 +1,37 @@
+name: Deploy Staging Web Dashboard
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  deploy:
+    name: Deploy to Staging Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and Deploy to Staging
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            TARGET_DIR="${{ secrets.STAGING_WEB_PATH || '/var/www/demoedu.dareliman.sch.id' }}"
+            echo "🚀 Menuju direktori web staging: $TARGET_DIR"
+            cd "$TARGET_DIR"
+
+            echo "📥 Menarik kode terbaru dari branch staging..."
+            git pull origin staging
+
+            echo "📦 Memeriksa dependensi npm..."
+            npm ci || npm install
+
+            echo "⚡ Menjalankan Vite build produksi..."
+            npm run build
+
+            echo "✅ Deployment Web Dashboard ke Staging Berhasil!"
+

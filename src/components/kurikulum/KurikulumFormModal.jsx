@@ -103,7 +103,7 @@ export default function KurikulumFormModal({
             setFormData(prev => ({ ...prev, kode_kurikulum: res.preview_code }))
           }
         })
-        .catch(() => {})
+        .catch(() => { })
     }
     setErrors({})
   }, [initialData, isOpen, displayUnits, tahunAjarans])
@@ -225,217 +225,216 @@ export default function KurikulumFormModal({
       }
     >
       <form id="kurikulum-main-form" onSubmit={handleSubmit} className="space-y-5 text-xs text-slate-700">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Kode Kurikulum */}
-            <div>
-              <label className="block font-bold text-slate-700 mb-1.5">
-                Kode Kurikulum <span className="text-rose-500">*</span>
-              </label>
-              <Input
-                type="text"
-                size="sm"
-                name="kode_kurikulum"
-                value={formData.kode_kurikulum}
-                onChange={handleChange}
-                placeholder="Misal: KUR-SD-SIT-2026"
-                className={`font-mono ${errors.kode_kurikulum ? 'border-rose-400 bg-rose-50/30' : ''}`}
-              />
-              {errors.kode_kurikulum && (
-                <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {errors.kode_kurikulum}
-                </p>
-              )}
-            </div>
-
-            {/* Nama Kurikulum */}
-            <div>
-              <label className="block font-bold text-slate-700 mb-1.5">
-                Nama Kurikulum <span className="text-rose-500">*</span>
-              </label>
-              <Input
-                type="text"
-                size="sm"
-                name="nama_kurikulum"
-                value={formData.nama_kurikulum}
-                onChange={handleChange}
-                placeholder="Misal: Kurikulum Merdeka Terpadu SD"
-                className={errors.nama_kurikulum ? 'border-rose-400 bg-rose-50/30' : ''}
-              />
-              {errors.nama_kurikulum && (
-                <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {errors.nama_kurikulum}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Jenis Kurikulum */}
-            <div>
-              <label className="block font-bold text-slate-700 mb-1.5">
-                Jenis Kurikulum <span className="text-rose-500">*</span>
-              </label>
-              <HeroUiFilterSelect
-                value={formData.jenis_kurikulum}
-                onChange={(val) => handleChange({ target: { name: 'jenis_kurikulum', value: val } })}
-                options={JENIS_OPTIONS.map((j) => ({ value: j, label: j }))}
-                placeholder="Pilih Jenis Kurikulum"
-                icon={Layers}
-                ariaLabel="Pilih jenis kurikulum"
-                size="md"
-                searchable
-                className="w-full"
-              />
-            </div>
-
-            {/* Jenjang */}
-            <div>
-              <label className="block font-bold text-slate-700 mb-1.5">
-                Jenjang <span className="text-rose-500">*</span>
-              </label>
-              <HeroUiFilterSelect
-                value={formData.jenjang}
-                onChange={(val) => handleChange({ target: { name: 'jenjang', value: val } })}
-                options={availableJenjangModalOptions.map((j) => ({ value: j, label: j }))}
-                disabled={availableJenjangModalOptions.length <= 1}
-                placeholder="Pilih Jenjang"
-                icon={GraduationCap}
-                ariaLabel="Pilih jenjang"
-                size="md"
-                searchable
-                className="w-full"
-              />
-            </div>
-
-            {/* Status */}
-            <div>
-              <label className="block font-bold text-slate-700 mb-1.5">Status Berlaku</label>
-              <div className="flex items-center gap-3 pt-2">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="status"
-                    checked={formData.status}
-                    onChange={handleChange}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                  <span className="ml-2 font-bold text-slate-800">
-                    {formData.status ? 'Aktif' : 'Nonaktif'}
-                  </span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Unit Pendidikan */}
-            <div>
-              <label className="block font-bold text-slate-700 mb-1.5">
-                Unit Pendidikan <span className="text-rose-500">*</span>
-              </label>
-              <HeroUiFilterSelect
-                value={formData.unit_pendidikan_id ? String(formData.unit_pendidikan_id) : ''}
-                onChange={(val) => handleChange({ target: { name: 'unit_pendidikan_id', value: val } })}
-                options={[
-                  ...(canViewAllUnits ? [{ value: '', label: '-- Pilih Unit Pendidikan --' }] : []),
-                  ...displayUnits.map((u) => ({
-                    value: String(u.id),
-                    label: `${u.name || u.nama} (${u.code || u.kode})`,
-                  })),
-                ]}
-                disabled={!canViewAllUnits && displayUnits.length <= 1}
-                placeholder="Pilih Unit Pendidikan"
-                icon={Building2}
-                ariaLabel="Pilih unit pendidikan"
-                size="md"
-                searchable
-                className="w-full"
-              />
-              {errors.unit_pendidikan_id && (
-                <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {errors.unit_pendidikan_id}
-                </p>
-              )}
-            </div>
-
-            {/* Tahun Ajaran */}
-            <div>
-              <label className="block font-bold text-slate-700 mb-1.5">
-                Tahun Ajaran <span className="text-rose-500">*</span>
-              </label>
-              <HeroUiFilterSelect
-                value={formData.tahun_ajaran_id ? String(formData.tahun_ajaran_id) : ''}
-                onChange={(val) => handleChange({ target: { name: 'tahun_ajaran_id', value: val } })}
-                options={[
-                  { value: '', label: '-- Pilih Tahun Ajaran --' },
-                  ...tahunAjarans.map((t) => ({
-                    value: String(t.id),
-                    label: `${t.nama || t.name}${t.is_active ? ' (Aktif)' : ''}`,
-                  })),
-                ]}
-                placeholder="Pilih Tahun Ajaran"
-                icon={Calendar}
-                ariaLabel="Pilih tahun ajaran"
-                size="md"
-                searchable
-                className="w-full"
-              />
-              {errors.tahun_ajaran_id && (
-                <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {errors.tahun_ajaran_id}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Tanggal Mulai */}
-            <div>
-              <label className="block font-bold text-slate-700 mb-1.5">
-                Tanggal Mulai Berlaku <span className="text-rose-500">*</span>
-              </label>
-              <DatePicker
-                name="tanggal_mulai"
-                value={formData.tanggal_mulai}
-                onChange={handleChange}
-                inputClassName={`py-2.5 font-semibold ${
-                  errors.tanggal_mulai ? 'border-rose-400 bg-rose-50/30' : ''
-                }`}
-                placeholder="Pilih tanggal mulai..."
-              />
-              {errors.tanggal_mulai && (
-                <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {errors.tanggal_mulai}
-                </p>
-              )}
-            </div>
-
-            {/* Tanggal Selesai */}
-            <div>
-              <label className="block font-bold text-slate-700 mb-1.5">Tanggal Selesai (Opsional)</label>
-              <DatePicker
-                name="tanggal_selesai"
-                value={formData.tanggal_selesai}
-                onChange={handleChange}
-                inputClassName="py-2.5 font-semibold"
-                placeholder="Pilih tanggal selesai..."
-              />
-            </div>
-          </div>
-
-          {/* Deskripsi */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Kode Kurikulum */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1.5">Deskripsi / Catatan Kurikulum</label>
-            <TextArea
-              name="deskripsi"
-              rows={3}
-              value={formData.deskripsi}
+            <label className="block font-bold text-slate-700 mb-1.5">
+              Kode Kurikulum <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              type="text"
+              size="sm"
+              name="kode_kurikulum"
+              value={formData.kode_kurikulum}
               onChange={handleChange}
-              placeholder="Catatan tambahan mengenai struktur kurikulum..."
+              placeholder="Misal: KUR-SD-SIT-2026"
+              className={`font-mono ${errors.kode_kurikulum ? 'border-rose-400 bg-rose-50/30' : ''}`}
+            />
+            {errors.kode_kurikulum && (
+              <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {errors.kode_kurikulum}
+              </p>
+            )}
+          </div>
+
+          {/* Nama Kurikulum */}
+          <div>
+            <label className="block font-bold text-slate-700 mb-1.5">
+              Nama Kurikulum <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              type="text"
+              size="sm"
+              name="nama_kurikulum"
+              value={formData.nama_kurikulum}
+              onChange={handleChange}
+              placeholder="Misal: Kurikulum Merdeka Terpadu SD"
+              className={errors.nama_kurikulum ? 'border-rose-400 bg-rose-50/30' : ''}
+            />
+            {errors.nama_kurikulum && (
+              <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {errors.nama_kurikulum}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Jenis Kurikulum */}
+          <div>
+            <label className="block font-bold text-slate-700 mb-1.5">
+              Jenis Kurikulum <span className="text-rose-500">*</span>
+            </label>
+            <HeroUiFilterSelect
+              value={formData.jenis_kurikulum}
+              onChange={(val) => handleChange({ target: { name: 'jenis_kurikulum', value: val } })}
+              options={JENIS_OPTIONS.map((j) => ({ value: j, label: j }))}
+              placeholder="Pilih Jenis Kurikulum"
+              icon={Layers}
+              ariaLabel="Pilih jenis kurikulum"
+              size="md"
+              searchable
+              className="w-full"
             />
           </div>
-        </form>
+
+          {/* Jenjang */}
+          <div>
+            <label className="block font-bold text-slate-700 mb-1.5">
+              Jenjang <span className="text-rose-500">*</span>
+            </label>
+            <HeroUiFilterSelect
+              value={formData.jenjang}
+              onChange={(val) => handleChange({ target: { name: 'jenjang', value: val } })}
+              options={availableJenjangModalOptions.map((j) => ({ value: j, label: j }))}
+              disabled={availableJenjangModalOptions.length <= 1}
+              placeholder="Pilih Jenjang"
+              icon={GraduationCap}
+              ariaLabel="Pilih jenjang"
+              size="md"
+              searchable
+              className="w-full"
+            />
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="block font-bold text-slate-700 mb-1.5">Status Berlaku</label>
+            <div className="flex items-center gap-3 pt-2">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="status"
+                  checked={formData.status}
+                  onChange={handleChange}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                <span className="ml-2 font-bold text-slate-800">
+                  {formData.status ? 'Aktif' : 'Nonaktif'}
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Unit Pendidikan */}
+          <div>
+            <label className="block font-bold text-slate-700 mb-1.5">
+              Unit Pendidikan <span className="text-rose-500">*</span>
+            </label>
+            <HeroUiFilterSelect
+              value={formData.unit_pendidikan_id ? String(formData.unit_pendidikan_id) : ''}
+              onChange={(val) => handleChange({ target: { name: 'unit_pendidikan_id', value: val } })}
+              options={[
+                ...(canViewAllUnits ? [{ value: '', label: '-- Pilih Unit Pendidikan --' }] : []),
+                ...displayUnits.map((u) => ({
+                  value: String(u.id),
+                  label: `${u.name || u.nama} (${u.code || u.kode})`,
+                })),
+              ]}
+              disabled={!canViewAllUnits && displayUnits.length <= 1}
+              placeholder="Pilih Unit Pendidikan"
+              icon={Building2}
+              ariaLabel="Pilih unit pendidikan"
+              size="md"
+              searchable
+              className="w-full"
+            />
+            {errors.unit_pendidikan_id && (
+              <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {errors.unit_pendidikan_id}
+              </p>
+            )}
+          </div>
+
+          {/* Tahun Ajaran */}
+          <div>
+            <label className="block font-bold text-slate-700 mb-1.5">
+              Tahun Ajaran <span className="text-rose-500">*</span>
+            </label>
+            <HeroUiFilterSelect
+              value={formData.tahun_ajaran_id ? String(formData.tahun_ajaran_id) : ''}
+              onChange={(val) => handleChange({ target: { name: 'tahun_ajaran_id', value: val } })}
+              options={[
+                { value: '', label: '-- Pilih Tahun Ajaran --' },
+                ...tahunAjarans.map((t) => ({
+                  value: String(t.id),
+                  label: `${t.nama || t.name}${t.is_active ? ' (Aktif)' : ''}`,
+                })),
+              ]}
+              placeholder="Pilih Tahun Ajaran"
+              icon={Calendar}
+              ariaLabel="Pilih tahun ajaran"
+              size="md"
+              searchable
+              className="w-full"
+            />
+            {errors.tahun_ajaran_id && (
+              <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {errors.tahun_ajaran_id}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Tanggal Mulai */}
+          <div>
+            <label className="block font-bold text-slate-700 mb-1.5">
+              Tanggal Mulai Berlaku <span className="text-rose-500">*</span>
+            </label>
+            <DatePicker
+              name="tanggal_mulai"
+              value={formData.tanggal_mulai}
+              onChange={handleChange}
+              inputClassName={`py-2.5 font-semibold ${errors.tanggal_mulai ? 'border-rose-400 bg-rose-50/30' : ''
+                }`}
+              placeholder="Pilih tanggal mulai..."
+            />
+            {errors.tanggal_mulai && (
+              <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> {errors.tanggal_mulai}
+              </p>
+            )}
+          </div>
+
+          {/* Tanggal Selesai */}
+          <div>
+            <label className="block font-bold text-slate-700 mb-1.5">Tanggal Selesai (Opsional)</label>
+            <DatePicker
+              name="tanggal_selesai"
+              value={formData.tanggal_selesai}
+              onChange={handleChange}
+              inputClassName="py-2.5 font-semibold"
+              placeholder="Pilih tanggal selesai..."
+            />
+          </div>
+        </div>
+
+        {/* Deskripsi */}
+        <div>
+          <label className="block font-bold text-slate-700 mb-1.5">Deskripsi / Catatan Kurikulum</label>
+          <TextArea
+            name="deskripsi"
+            rows={3}
+            value={formData.deskripsi}
+            onChange={handleChange}
+            placeholder="Catatan tambahan mengenai struktur kurikulum..."
+          />
+        </div>
+      </form>
     </AppModal>
   )
 }

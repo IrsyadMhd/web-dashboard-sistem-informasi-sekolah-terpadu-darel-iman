@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, Fragment } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -960,7 +960,11 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
       }
     }
 
-    return result
+    // Pastikan grup menu Pengaturan selalu berada di urutan paling bawah
+    const nonSettings = result.filter((m) => m.key !== 'pengaturan')
+    const settings = result.filter((m) => m.key === 'pengaturan')
+
+    return [...nonSettings, ...settings]
   }, [
     isPureParent,
     isPureStudent,
@@ -1080,7 +1084,16 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
                 <div className={`flex items-center ${isEffectiveCollapsed ? 'justify-center' : 'justify-between'}`}>
                   <div className={`flex items-center gap-3 overflow-hidden ${isEffectiveCollapsed ? 'justify-center w-full' : ''}`}>
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white shadow-md shadow-emerald-600/20 bg-gradient-to-br from-emerald-600 to-teal-700 border border-emerald-500/30" style={{ backgroundColor: pengaturan.sidebar_accent_color || '#064E3B' }}>
-                      <img src={pengaturan.logo_url || '/logo.png'} alt={namaSekolah ? `Logo ${namaSekolah}` : 'Logo Sekolah'} className="h-full w-full bg-white object-contain p-0.5" />
+                      <img
+                        src={pengaturan.logo_url || '/logo.png'}
+                        onError={(e) => {
+                          if (e.currentTarget.src !== window.location.origin + '/logo.png') {
+                            e.currentTarget.src = '/logo.png'
+                          }
+                        }}
+                        alt={namaSekolah ? `Logo ${namaSekolah}` : 'Logo Sekolah'}
+                        className="h-full w-full bg-white object-contain p-0.5"
+                      />
                     </div>
                     {!isEffectiveCollapsed && (
                       <div className="min-w-0">
@@ -1152,87 +1165,142 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
 
             {sidebarMenu.map((item, idx) => {
               const Icon = item.icon
-              if (!item.submenus) {
-                const isActive = normalizePath(location.pathname) === normalizePath(item.to)
-                return (
-                  <div key={item.key} className="relative group">
-                    <NavLink
-                      to={item.to}
-                      onMouseEnter={() => prefetchRoute(item.to)}
-                      onFocus={() => prefetchRoute(item.to)}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`group/link relative flex items-center ${isEffectiveCollapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded-xl font-bold transition-all duration-200 ${isActive
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-500/40'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-800/80 hover:text-emerald-700 dark:hover:text-emerald-400 border border-transparent hover:border-emerald-200/60 dark:hover:border-slate-700'
-                        }`}
-                    >
-                      <div className={`flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${isActive ? 'bg-white/20 text-white border border-white/30' : getSidebarIconBadgeClass(item.key, idx)}`}>
-                        <Icon className="h-4 w-4 stroke-[2]" />
-                      </div>
-                      {!isEffectiveCollapsed && <span>{item.label}</span>}
-                    </NavLink>
-
-                    {/* Hover Tooltip when Collapsed */}
-                    {isEffectiveCollapsed && (
-                      <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-2 transition-all duration-150 z-50">
-                        <div className="relative rounded-xl bg-slate-900 dark:bg-slate-800 px-3 py-1.5 text-xs font-bold text-white shadow-xl shadow-slate-950/25 border border-slate-700/80 whitespace-nowrap">
-                          {item.label}
-                          <div className="absolute top-1/2 -left-1 -mt-1 h-2 w-2 rotate-45 bg-slate-900 dark:bg-slate-800 border-l border-b border-slate-700/80" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              }
-
-              const isOpen = openSection === item.key
-              const hasActiveChild = isOpen && item.submenus.some((sub) => isSubActive(sub.to, item.submenus, item.key))
-
-              return (
-                <div key={item.key} className="relative group space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isEffectiveCollapsed) setCollapsed(false)
-                      toggleSection(item.key)
-                    }}
-                    className={`flex w-full items-center ${isEffectiveCollapsed ? 'justify-center px-0' : 'justify-between px-3'} py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${isOpen || hasActiveChild
+              const isPengaturan = item.key === 'pengaturan'
+              const content = !item.submenus ? (
+                <div key={item.key} className="relative group">
+                  <NavLink
+                    to={item.to}
+                    onMouseEnter={() => prefetchRoute(item.to)}
+                    onFocus={() => prefetchRoute(item.to)}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`group/link relative flex items-center ${isEffectiveCollapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded-xl font-bold transition-all duration-200 ${normalizePath(location.pathname) === normalizePath(item.to)
                       ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-500/40'
                       : 'text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-800/80 hover:text-emerald-700 dark:hover:text-emerald-400 border border-transparent hover:border-emerald-200/60 dark:hover:border-slate-700'
                       }`}
                   >
-                    <div className={`flex items-center ${isEffectiveCollapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
-                      <div className={`flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${isOpen || hasActiveChild ? 'bg-white/20 text-white border border-white/30' : getSidebarIconBadgeClass(item.key, idx)}`}>
-                        <Icon className={`h-4 w-4 shrink-0 stroke-[2] ${isOpen || hasActiveChild ? 'text-white' : ''}`} />
-                      </div>
-                      {!isEffectiveCollapsed && <span className="truncate">{item.label}</span>}
+                    <div className={`flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${normalizePath(location.pathname) === normalizePath(item.to) ? 'bg-white/20 text-white border border-white/30' : getSidebarIconBadgeClass(item.key, idx)}`}>
+                      <Icon className="h-4 w-4 stroke-[2]" />
                     </div>
-                    {!isEffectiveCollapsed && (
-                      <span className="text-[10px]">
-                        {isOpen ? <ChevronDown className={`h-3.5 w-3.5 ${isOpen || hasActiveChild ? 'text-white' : 'text-slate-500'}`} /> : <ChevronRight className={`h-3.5 w-3.5 ${isOpen || hasActiveChild ? 'text-white' : 'text-slate-500'}`} />}
-                      </span>
-                    )}
-                  </button>
+                    {!isEffectiveCollapsed && <span>{item.label}</span>}
+                  </NavLink>
 
-                  {/* Hover Flyout Menu when Collapsed */}
+                  {/* Hover Tooltip when Collapsed */}
                   {isEffectiveCollapsed && (
-                    <div className="absolute left-full -top-1 pl-3 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-x-0 -translate-x-2 transition-all duration-150 z-50 min-w-[13.5rem]">
-                      <div className="relative rounded-2xl bg-white dark:bg-slate-900 p-2.5 shadow-xl shadow-slate-900/15 border border-slate-200/90 dark:border-slate-800 space-y-1">
-                        <div className="px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border-b border-slate-100 dark:border-slate-800 mb-1.5 flex items-center justify-between">
-                          <span>{item.label}</span>
-                          <span className="text-[9px] text-slate-400 font-normal">Submenu</span>
+                    <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-2 transition-all duration-150 z-50">
+                      <div className="relative rounded-xl bg-slate-900 dark:bg-slate-800 px-3 py-1.5 text-xs font-bold text-white shadow-xl shadow-slate-950/25 border border-slate-700/80 whitespace-nowrap">
+                        {item.label}
+                        <div className="absolute top-1/2 -left-1 -mt-1 h-2 w-2 rotate-45 bg-slate-900 dark:bg-slate-800 border-l border-b border-slate-700/80" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (() => {
+                const isOpen = openSection === item.key
+                const hasActiveChild = isOpen && item.submenus.some((sub) => isSubActive(sub.to, item.submenus, item.key))
+
+                return (
+                  <div key={item.key} className="relative group space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isEffectiveCollapsed) setCollapsed(false)
+                        toggleSection(item.key)
+                      }}
+                      className={`flex w-full items-center ${isEffectiveCollapsed ? 'justify-center px-0' : 'justify-between px-3'} py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${isOpen || hasActiveChild
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-500/40'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-800/80 hover:text-emerald-700 dark:hover:text-emerald-400 border border-transparent hover:border-emerald-200/60 dark:hover:border-slate-700'
+                        }`}
+                    >
+                      <div className={`flex items-center ${isEffectiveCollapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
+                        <div className={`flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${isOpen || hasActiveChild ? 'bg-white/20 text-white border border-white/30' : getSidebarIconBadgeClass(item.key, idx)}`}>
+                          <Icon className={`h-4 w-4 shrink-0 stroke-[2] ${isOpen || hasActiveChild ? 'text-white' : ''}`} />
                         </div>
+                        {!isEffectiveCollapsed && <span className="truncate">{item.label}</span>}
+                      </div>
+                      {!isEffectiveCollapsed && (
+                        <span className="text-[10px]">
+                          {isOpen ? <ChevronDown className={`h-3.5 w-3.5 ${isOpen || hasActiveChild ? 'text-white' : 'text-slate-500'}`} /> : <ChevronRight className={`h-3.5 w-3.5 ${isOpen || hasActiveChild ? 'text-white' : 'text-slate-500'}`} />}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Hover Flyout Menu when Collapsed */}
+                    {isEffectiveCollapsed && (
+                      <div className="absolute left-full -top-1 pl-3 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-x-0 -translate-x-2 transition-all duration-150 z-50 min-w-[13.5rem]">
+                        <div className="relative rounded-2xl bg-white dark:bg-slate-900 p-2.5 shadow-xl shadow-slate-900/15 border border-slate-200/90 dark:border-slate-800 space-y-1">
+                          <div className="px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border-b border-slate-100 dark:border-slate-800 mb-1.5 flex items-center justify-between">
+                            <span>{item.label}</span>
+                            <span className="text-[9px] text-slate-400 font-normal">Submenu</span>
+                          </div>
+                          {item.submenus.map((sub, sIdx) => {
+                            if (sub.action === 'calendar') {
+                              return (
+                                <button
+                                  key={`flyout-${item.key}-cal-${sIdx}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setMobileMenuOpen(false)
+                                    setIsAcademicCalendarOpen(true)
+                                  }}
+                                  className="flex items-center gap-2.5 w-full text-left rounded-lg px-2.5 py-1.5 text-xs transition-colors text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+                                >
+                                  <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition-all duration-150 ${SUBMENU_ICON_STYLES.calendar}`}>
+                                    <CalendarDays className="h-3.5 w-3.5 stroke-[2.2]" />
+                                  </div>
+                                  <span className="truncate">{sub.label}</span>
+                                </button>
+                              )
+                            }
+                            const SubIcon = typeof sub.icon === 'function' || (typeof sub.icon === 'object' && sub.icon !== null)
+                              ? sub.icon
+                              : (resolveSidebarIcon(sub.icon) || null)
+                            const active = isSubActive(sub.to, item.submenus, item.key)
+                            const badgeClass = getSubmenuIconBadgeClass(sub, sIdx)
+                            return (
+                              <NavLink
+                                key={`flyout-${item.key}-${sub.to || sub.label}-${sIdx}`}
+                                to={sub.to}
+                                onMouseEnter={() => prefetchRoute(sub.to)}
+                                onFocus={() => prefetchRoute(sub.to)}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className={`block rounded-lg px-2.5 py-1.5 text-xs transition-colors ${active
+                                  ? 'bg-emerald-50 text-emerald-700 font-bold dark:bg-emerald-950/60 dark:text-emerald-300'
+                                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+                                  }`}
+                              >
+                                <span className="flex items-center gap-2.5 min-w-0">
+                                  {SubIcon && (
+                                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition-all duration-150 ${active
+                                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs ring-1 ring-emerald-500/30'
+                                      : badgeClass
+                                      }`}>
+                                      <SubIcon className={`h-3.5 w-3.5 stroke-[2.2] ${active ? 'text-white' : ''}`} />
+                                    </div>
+                                  )}
+                                  <span className="truncate">{sub.label}</span>
+                                </span>
+                              </NavLink>
+                            )
+                          })}
+                          <div className="absolute top-4 -left-1 -mt-1 h-2 w-2 rotate-45 bg-white dark:bg-slate-900 border-l border-b border-slate-200/90 dark:border-slate-800" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Submenu Accordion when Expanded */}
+                    {!isEffectiveCollapsed && isOpen && (
+                      <div className="ml-5 space-y-1 border-l-2 border-emerald-500/50 dark:border-emerald-600/50 pl-3 pt-1 animate-[masterDropdownSlide_0.2s_ease-out]">
                         {item.submenus.map((sub, sIdx) => {
                           if (sub.action === 'calendar') {
                             return (
                               <button
-                                key={`flyout-${item.key}-cal-${sIdx}`}
+                                key={`${item.key}-cal-${sIdx}`}
                                 type="button"
                                 onClick={() => {
                                   setMobileMenuOpen(false)
                                   setIsAcademicCalendarOpen(true)
                                 }}
-                                className="flex items-center gap-2.5 w-full text-left rounded-lg px-2.5 py-1.5 text-xs transition-colors text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+                                className="flex items-center gap-2.5 w-full text-left rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
                               >
                                 <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition-all duration-150 ${SUBMENU_ICON_STYLES.calendar}`}>
                                   <CalendarDays className="h-3.5 w-3.5 stroke-[2.2]" />
@@ -1248,14 +1316,14 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
                           const badgeClass = getSubmenuIconBadgeClass(sub, sIdx)
                           return (
                             <NavLink
-                              key={`flyout-${item.key}-${sub.to || sub.label}-${sIdx}`}
+                              key={`${item.key}-${sub.to || sub.label}-${sIdx}`}
                               to={sub.to}
                               onMouseEnter={() => prefetchRoute(sub.to)}
                               onFocus={() => prefetchRoute(sub.to)}
                               onClick={() => setMobileMenuOpen(false)}
-                              className={`block rounded-lg px-2.5 py-1.5 text-xs transition-colors ${active
-                                ? 'bg-emerald-50 text-emerald-700 font-bold dark:bg-emerald-950/60 dark:text-emerald-300'
-                                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+                              className={`block rounded-lg px-2.5 py-1.5 text-xs transition-all duration-150 ${active
+                                ? 'bg-emerald-50/90 text-emerald-800 font-bold shadow-2xs border border-emerald-200/80 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800/50'
+                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-medium dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200'
                                 }`}
                             >
                               <span className="flex items-center gap-2.5 min-w-0">
@@ -1272,67 +1340,19 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
                             </NavLink>
                           )
                         })}
-                        <div className="absolute top-4 -left-1 -mt-1 h-2 w-2 rotate-45 bg-white dark:bg-slate-900 border-l border-b border-slate-200/90 dark:border-slate-800" />
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                )
+              })()
 
-                  {/* Submenu Accordion when Expanded */}
-                  {!isEffectiveCollapsed && isOpen && (
-                    <div className="ml-5 space-y-1 border-l-2 border-emerald-500/50 dark:border-emerald-600/50 pl-3 pt-1 animate-[masterDropdownSlide_0.2s_ease-out]">
-                      {item.submenus.map((sub, sIdx) => {
-                        if (sub.action === 'calendar') {
-                          return (
-                            <button
-                              key={`${item.key}-cal-${sIdx}`}
-                              type="button"
-                              onClick={() => {
-                                setMobileMenuOpen(false)
-                                setIsAcademicCalendarOpen(true)
-                              }}
-                              className="flex items-center gap-2.5 w-full text-left rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
-                            >
-                              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition-all duration-150 ${SUBMENU_ICON_STYLES.calendar}`}>
-                                <CalendarDays className="h-3.5 w-3.5 stroke-[2.2]" />
-                              </div>
-                              <span className="truncate">{sub.label}</span>
-                            </button>
-                          )
-                        }
-                        const SubIcon = typeof sub.icon === 'function' || (typeof sub.icon === 'object' && sub.icon !== null)
-                          ? sub.icon
-                          : (resolveSidebarIcon(sub.icon) || null)
-                        const active = isSubActive(sub.to, item.submenus, item.key)
-                        const badgeClass = getSubmenuIconBadgeClass(sub, sIdx)
-                        return (
-                          <NavLink
-                            key={`${item.key}-${sub.to || sub.label}-${sIdx}`}
-                            to={sub.to}
-                            onMouseEnter={() => prefetchRoute(sub.to)}
-                            onFocus={() => prefetchRoute(sub.to)}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className={`block rounded-lg px-2.5 py-1.5 text-xs transition-all duration-150 ${active
-                              ? 'bg-emerald-50/90 text-emerald-800 font-bold shadow-2xs border border-emerald-200/80 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800/50'
-                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-medium dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200'
-                              }`}
-                          >
-                            <span className="flex items-center gap-2.5 min-w-0">
-                              {SubIcon && (
-                                <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition-all duration-150 ${active
-                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs ring-1 ring-emerald-500/30'
-                                  : badgeClass
-                                  }`}>
-                                  <SubIcon className={`h-3.5 w-3.5 stroke-[2.2] ${active ? 'text-white' : ''}`} />
-                                </div>
-                              )}
-                              <span className="truncate">{sub.label}</span>
-                            </span>
-                          </NavLink>
-                        )
-                      })}
-                    </div>
+              return (
+                <Fragment key={item.key}>
+                  {isPengaturan && idx > 0 && (
+                    <div className="my-2 border-t border-slate-200/80 dark:border-slate-800" />
                   )}
-                </div>
+                  {content}
+                </Fragment>
               )
             })}
           </nav>

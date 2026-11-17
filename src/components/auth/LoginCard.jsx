@@ -322,7 +322,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
     }
   }
 
-  const logoUrl = pengaturan?.logo_url || pengaturan?.logoUrl || ''
+  const logoUrl = pengaturan?.logo_url || pengaturan?.logoUrl || '/logo.png'
   const namaSekolah = pengaturan?.school_name || pengaturan?.namaSekolah || 'Yayasan Pendidikan Islam'
   const rawApp = pengaturan?.application_name
   const namaAplikasi = (!rawApp || rawApp === 'Sistem Manajemen Sekolah Terpadu' || rawApp === 'Dareliman Edu') ? 'Dareliman Edu' : rawApp
@@ -336,7 +336,11 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
           {logoUrl ? (
             <img
               src={logoUrl}
-              onError={(e) => { e.target.src = '/logo.png' }}
+              onError={(e) => {
+                if (e.target.src !== window.location.origin + '/logo.png') {
+                  e.target.src = '/logo.png'
+                }
+              }}
               alt={`Logo ${namaSekolah || 'Yayasan'}`}
               className="w-16 h-16 sm:w-20 sm:h-20 object-contain mx-auto rounded-2xl bg-white p-1.5 shadow-xl border border-white/20"
             />
