@@ -55,7 +55,7 @@ const statusMeta = {
   na: { label: 'N/A', bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-500 dark:text-slate-400', icon: Clock3 },
 }
 
-// ── MODERN CARD TONES (§C HeroUI_Pengaturan_Halaman) ──
+// ── MODERN CARD TONES (§C Tailgrids_Pengaturan_Halaman) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -176,13 +176,12 @@ function HeroUiFilterSelect({
             setSearch('')
           }
         }}
-        className={`h-9 sm:h-10 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
-          isOpen
-            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
-            : hasValue
+        className={`h-9 sm:h-10 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${isOpen
+          ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+          : hasValue
             ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
             : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
-        }`}
+          }`}
       >
         <div className="flex items-center gap-2 truncate">
           {IconComponent && (
@@ -204,9 +203,8 @@ function HeroUiFilterSelect({
           </span>
         </div>
         <ChevronDown
-          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+            }`}
         />
       </button>
 
@@ -252,11 +250,10 @@ function HeroUiFilterSelect({
                         setIsOpen(false)
                         setSearch('')
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
-                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
-                      }`}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${isSelected
+                        ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                        : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                        }`}
                     >
                       <div className="truncate pr-2">
                         <div className="truncate font-semibold">{opt.label}</div>
@@ -956,93 +953,93 @@ function SignatureSheet({ close, submit, saving }) {
       >
         <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
         <div className="p-5 sm:p-6">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30">
-              <Signature className="h-5 w-5 text-white" strokeWidth={2.25} />
-            </div>
-            <div>
-              <span className="text-[10px] font-bold text-[#0E5C44] dark:text-emerald-400 uppercase tracking-wider">Konfirmasi Orang Tua</span>
-              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Paraf Mutaba’ah Yaumiyyah</h3>
-            </div>
-          </div>
-          <button type="button" onClick={close} aria-label="Tutup modal" className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0">
-            <X className="size-4 text-white" strokeWidth={2.25} />
-          </button>
-        </div>
-
-        <form onSubmit={(e) => { e.preventDefault(); submit({ signature_status: status, comment: comment || null, device_info: { platform: navigator.platform, app: 'Dareliman Edu Web' } }) }} className="space-y-4">
-          <div className="space-y-2">
-            <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${status === 'approved' ? 'border-[#0E5C44] bg-emerald-50/50 dark:bg-emerald-950/30' : 'border-slate-200 dark:border-slate-700'}`}>
-              <input type="radio" value="approved" checked={status === 'approved'} onChange={(e) => setStatus(e.target.value)} className="mt-0.5 text-emerald-600 focus:ring-emerald-500" />
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30">
+                <Signature className="h-5 w-5 text-white" strokeWidth={2.25} />
+              </div>
               <div>
-                <b className="block text-xs text-slate-900 dark:text-white">Setujui & Beri Paraf</b>
-                <small className="text-[10px] text-slate-400">Saya telah memeriksa hasil mutabaah harian anak.</small>
+                <span className="text-[10px] font-bold text-[#0E5C44] dark:text-emerald-400 uppercase tracking-wider">Konfirmasi Orang Tua</span>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Paraf Mutaba’ah Yaumiyyah</h3>
               </div>
-            </label>
-
-            <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${status === 'clarification_requested' ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/30' : 'border-slate-200 dark:border-slate-700'}`}>
-              <input type="radio" value="clarification_requested" checked={status === 'clarification_requested'} onChange={(e) => setStatus(e.target.value)} className="mt-0.5 text-amber-600 focus:ring-amber-500" />
-              <div>
-                <b className="block text-xs text-slate-900 dark:text-white">Minta Klarifikasi</b>
-                <small className="text-[10px] text-slate-400">Memerlukan penjelaskan lebih lanjut dari pembimbing.</small>
-              </div>
-            </label>
-
-            <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${status === 'unable_to_verify' ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/30' : 'border-slate-200 dark:border-slate-700'}`}>
-              <input type="radio" value="unable_to_verify" checked={status === 'unable_to_verify'} onChange={(e) => setStatus(e.target.value)} className="mt-0.5 text-rose-600 focus:ring-rose-500" />
-              <div>
-                <b className="block text-xs text-slate-900 dark:text-white">Tidak Dapat Memverifikasi</b>
-                <small className="text-[10px] text-slate-400">Data belum dapat saya pastikan kebenarannya.</small>
-              </div>
-            </label>
-          </div>
-
-          <div>
-            <label htmlFor="paraf-note" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Catatan Tambahan (Opsional)</label>
-            <div className="relative">
-              <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
-                <MessageSquareText className="size-4" />
-              </div>
-              <textarea
-                id="paraf-note"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                maxLength={1000}
-                rows={3}
-                placeholder="Tuliskan pesan untuk pembimbing..."
-                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 resize-none"
-              />
             </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-4 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={close}
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
-            >
-              <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                <X className="size-3.5 text-white" strokeWidth={2.2} />
-              </div>
-              <span>Batal</span>
+            <button type="button" onClick={close} aria-label="Tutup modal" className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0">
+              <X className="size-4 text-white" strokeWidth={2.25} />
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer shadow-md shadow-emerald-500/20"
-            >
-              {saving ? (
-                <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                  <Signature className="size-3.5 text-white" strokeWidth={2.2} />
+          </div>
+
+          <form onSubmit={(e) => { e.preventDefault(); submit({ signature_status: status, comment: comment || null, device_info: { platform: navigator.platform, app: 'Dareliman Edu Web' } }) }} className="space-y-4">
+            <div className="space-y-2">
+              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${status === 'approved' ? 'border-[#0E5C44] bg-emerald-50/50 dark:bg-emerald-950/30' : 'border-slate-200 dark:border-slate-700'}`}>
+                <input type="radio" value="approved" checked={status === 'approved'} onChange={(e) => setStatus(e.target.value)} className="mt-0.5 text-emerald-600 focus:ring-emerald-500" />
+                <div>
+                  <b className="block text-xs text-slate-900 dark:text-white">Setujui & Beri Paraf</b>
+                  <small className="text-[10px] text-slate-400">Saya telah memeriksa hasil mutabaah harian anak.</small>
                 </div>
-              )}
-              <span>{saving ? 'Menyimpan...' : 'Konfirmasi Paraf'}</span>
-            </button>
-          </div>
-        </form>
+              </label>
+
+              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${status === 'clarification_requested' ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/30' : 'border-slate-200 dark:border-slate-700'}`}>
+                <input type="radio" value="clarification_requested" checked={status === 'clarification_requested'} onChange={(e) => setStatus(e.target.value)} className="mt-0.5 text-amber-600 focus:ring-amber-500" />
+                <div>
+                  <b className="block text-xs text-slate-900 dark:text-white">Minta Klarifikasi</b>
+                  <small className="text-[10px] text-slate-400">Memerlukan penjelaskan lebih lanjut dari pembimbing.</small>
+                </div>
+              </label>
+
+              <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${status === 'unable_to_verify' ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/30' : 'border-slate-200 dark:border-slate-700'}`}>
+                <input type="radio" value="unable_to_verify" checked={status === 'unable_to_verify'} onChange={(e) => setStatus(e.target.value)} className="mt-0.5 text-rose-600 focus:ring-rose-500" />
+                <div>
+                  <b className="block text-xs text-slate-900 dark:text-white">Tidak Dapat Memverifikasi</b>
+                  <small className="text-[10px] text-slate-400">Data belum dapat saya pastikan kebenarannya.</small>
+                </div>
+              </label>
+            </div>
+
+            <div>
+              <label htmlFor="paraf-note" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Catatan Tambahan (Opsional)</label>
+              <div className="relative">
+                <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
+                  <MessageSquareText className="size-4" />
+                </div>
+                <textarea
+                  id="paraf-note"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  maxLength={1000}
+                  rows={3}
+                  placeholder="Tuliskan pesan untuk pembimbing..."
+                  className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-4 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={close}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              >
+                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                  <X className="size-3.5 text-white" strokeWidth={2.2} />
+                </div>
+                <span>Batal</span>
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer shadow-md shadow-emerald-500/20"
+              >
+                {saving ? (
+                  <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                    <Signature className="size-3.5 text-white" strokeWidth={2.2} />
+                  </div>
+                )}
+                <span>{saving ? 'Menyimpan...' : 'Konfirmasi Paraf'}</span>
+              </button>
+            </div>
+          </form>
         </div>
       </motion.div>
     </div>
@@ -1073,67 +1070,67 @@ function NoteSheet({ close, initialNote, submit, saving }) {
       >
         <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
         <div className="p-5 sm:p-6">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30">
-              <MessageSquareText className="h-5 w-5 text-white" strokeWidth={2.25} />
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30">
+                <MessageSquareText className="h-5 w-5 text-white" strokeWidth={2.25} />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-[#0E5C44] dark:text-emerald-400 uppercase tracking-wider">Supervisi Sekolah</span>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Edit Catatan Pembimbing / Musyrif</h3>
+              </div>
             </div>
+            <button type="button" onClick={close} aria-label="Tutup modal" className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0">
+              <X className="size-4 text-white" strokeWidth={2.25} />
+            </button>
+          </div>
+
+          <form onSubmit={(e) => { e.preventDefault(); submit(note) }} className="space-y-4">
             <div>
-              <span className="text-[10px] font-bold text-[#0E5C44] dark:text-emerald-400 uppercase tracking-wider">Supervisi Sekolah</span>
-              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Edit Catatan Pembimbing / Musyrif</h3>
-            </div>
-          </div>
-          <button type="button" onClick={close} aria-label="Tutup modal" className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0">
-            <X className="size-4 text-white" strokeWidth={2.25} />
-          </button>
-        </div>
-
-        <form onSubmit={(e) => { e.preventDefault(); submit(note) }} className="space-y-4">
-          <div>
-            <label htmlFor="note-text" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Pesan / Evaluasi Musyrif untuk Santri & Orang Tua</label>
-            <div className="relative">
-              <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
-                <MessageSquareText className="size-4" />
-              </div>
-              <textarea
-                id="note-text"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                maxLength={1000}
-                rows={4}
-                placeholder="Tuliskan evaluasi amalan ibadah santri hari ini..."
-                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 resize-none"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-4 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={close}
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
-            >
-              <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                <X className="size-3.5 text-white" strokeWidth={2.2} />
-              </div>
-              <span>Batal</span>
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer shadow-md shadow-emerald-500/20"
-            >
-              {saving ? (
-                <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                  <CheckCircle2 className="size-3.5 text-white" strokeWidth={2.2} />
+              <label htmlFor="note-text" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Pesan / Evaluasi Musyrif untuk Santri & Orang Tua</label>
+              <div className="relative">
+                <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
+                  <MessageSquareText className="size-4" />
                 </div>
-              )}
-              <span>{saving ? 'Menyimpan...' : 'Simpan Catatan'}</span>
-            </button>
-          </div>
-        </form>
+                <textarea
+                  id="note-text"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  maxLength={1000}
+                  rows={4}
+                  placeholder="Tuliskan evaluasi amalan ibadah santri hari ini..."
+                  className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-4 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={close}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              >
+                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                  <X className="size-3.5 text-white" strokeWidth={2.2} />
+                </div>
+                <span>Batal</span>
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer shadow-md shadow-emerald-500/20"
+              >
+                {saving ? (
+                  <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                    <CheckCircle2 className="size-3.5 text-white" strokeWidth={2.2} />
+                  </div>
+                )}
+                <span>{saving ? 'Menyimpan...' : 'Simpan Catatan'}</span>
+              </button>
+            </div>
+          </form>
         </div>
       </motion.div>
     </div>
