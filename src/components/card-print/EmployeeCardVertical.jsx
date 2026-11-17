@@ -104,9 +104,8 @@ export default function EmployeeCardVertical({
   return (
     <article
       id={isPrint ? undefined : 'printable-employee-card'}
-      className={`employee-id-card employee-id-card--vertical employee-id-card--${template} employee-id-card--frame-${frameStyle} ${
-        isEditing ? 'is-drag-mode' : ''
-      } ${isPrint ? 'employee-card-print-canvas--vertical' : ''}`}
+      className={`employee-id-card employee-id-card--vertical employee-id-card--${template} employee-id-card--frame-${frameStyle} ${isEditing ? 'is-drag-mode' : ''
+        } ${isPrint ? 'employee-card-print-canvas--vertical' : ''}`}
     >
       {showPattern && <div className="employee-id-card__pattern" aria-hidden="true" />}
       {showWave && <div className="employee-id-card__top-wave" aria-hidden="true" />}
@@ -147,9 +146,8 @@ export default function EmployeeCardVertical({
       </header>
 
       <div
-        className={`employee-id-card__photo employee-id-card__photo--${photoShape} ${isEditing ? 'employee-id-draggable' : ''} ${
-          activeDragKey === 'photo' ? 'is-dragging' : ''
-        }`}
+        className={`employee-id-card__photo employee-id-card__photo--${photoShape} ${isEditing ? 'employee-id-draggable' : ''} ${activeDragKey === 'photo' ? 'is-dragging' : ''
+          }`}
         style={getStyle('photo')}
         onMouseDown={(e) => {
           if (isEditing) {
