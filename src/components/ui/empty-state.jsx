@@ -15,8 +15,8 @@ export function EmptyState({
   const isReset = typeof actionLabel === 'string' && actionLabel.toLowerCase().includes('reset')
 
   return (
-    <HeroEmptyState className="flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 my-4 dark:border-slate-800 dark:bg-slate-900/40">
-      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 shadow-xs dark:bg-emerald-950/60 dark:text-emerald-300">
+    <HeroEmptyState className="flex flex-col items-center justify-center p-8 text-center rounded-[20px] border-2 border-dashed border-emerald-300/60 bg-emerald-50/20 my-4 dark:border-emerald-800/60 dark:bg-emerald-950/20">
+      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100/80 text-emerald-700 shadow-xs dark:bg-emerald-900/60 dark:text-emerald-300">
         {icon}
       </div>
       <h4 className="text-base font-bold text-slate-800 dark:text-white leading-snug">{title}</h4>

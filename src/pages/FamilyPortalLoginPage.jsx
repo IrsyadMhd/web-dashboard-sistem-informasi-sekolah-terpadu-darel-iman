@@ -71,7 +71,7 @@ export default function FamilyPortalLoginPage() {
       <div className="relative mx-auto grid min-h-[calc(100vh-6rem)] max-w-5xl overflow-hidden rounded-[24px] border border-white bg-white shadow-2xl shadow-emerald-950/10 dark:border-slate-800 dark:bg-slate-900 lg:grid-cols-[1.05fr_.95fr]">
         <section className="relative hidden overflow-hidden bg-gradient-to-br from-[#0E5C44] via-[#176E52] to-[#3FBF75] p-10 text-white lg:flex lg:flex-col lg:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[.22em] text-emerald-100">Portal Keluarga SIMSIT</p>
+            <p className="text-xs font-black uppercase tracking-[.22em] text-emerald-100">Portal Keluarga Dareliman Edu</p>
             <h1 className="mt-5 text-4xl font-black leading-tight">Sekolah dan keluarga, tumbuh bersama.</h1>
             <p className="mt-4 max-w-md text-sm leading-6 text-emerald-50">Pantau perkembangan akademik, ibadah, tugas, kehadiran, dan komunikasi sekolah dalam satu portal aman.</p>
           </div>

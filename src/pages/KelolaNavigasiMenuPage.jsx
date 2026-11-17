@@ -2209,8 +2209,8 @@ export default function KelolaNavigasiMenuPage() {
                               }}
                               className={`group relative flex flex-col items-center justify-center gap-1.5 rounded-2xl border p-3 transition-all text-center cursor-pointer ${
                                 isSelected
-                                  ? 'border-violet-500 bg-violet-50/80 shadow-md shadow-violet-500/10 ring-2 ring-violet-500/30 dark:border-violet-500 dark:bg-violet-950/50'
-                                  : 'border-slate-200/90 bg-white hover:border-violet-300 hover:bg-violet-50/30 hover:scale-[1.02] dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-violet-700/60'
+                                  ? 'border-emerald-500 bg-emerald-50/80 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/30 dark:border-emerald-500 dark:bg-emerald-950/50'
+                                  : 'border-slate-200/90 bg-white hover:border-emerald-300 hover:bg-emerald-50/30 hover:scale-[1.02] dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700/60'
                               }`}
                             >
                               <div
@@ -2235,7 +2235,7 @@ export default function KelolaNavigasiMenuPage() {
                                 {item.id}
                               </span>
                               {isSelected && (
-                                <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-violet-600 text-white">
+                                <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-white">
                                   <Check className="h-2.5 w-2.5" />
                                 </span>
                               )}

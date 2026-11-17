@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { kepalaSekolahDashboardService } from '../services/kepalaSekolahDashboardService'
 import { educationUnitService } from '../services/educationUnitService'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import {
   Users,
   UserCheck,
@@ -150,7 +151,7 @@ const DEFAULT_FALLBACK_DATA = {
   },
 }
 
-// ── SUB-KOMPONEN MODERN KPI & SUMMARY CARDS (Spesifikasi TAILGRIDS_ALUMNI_MUTASI_CARDS) ──
+// ── SUB-KOMPONEN MODERN KPI & SUMMARY CARDS (Spesifikasi HEROUI_ALUMNI_MUTASI_CARDS) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -777,74 +778,122 @@ export default function KepalaSekolahDashboardPage() {
           <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
           <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-emerald-500/20 dark:border-emerald-800/40">
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
-                <Building2 className="size-6 sm:size-7 text-white" />
+          {/* Row Utama Header: Identitas Judul & Filter Unit */}
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 pb-5 border-b border-emerald-500/20 dark:border-emerald-800/40">
+            {/* Sisi Kiri: Icon Badge, Judul, Pill Peran, dan Subtitle */}
+            <div className="flex items-start sm:items-center gap-4 min-w-0">
+              <div className="flex size-13 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <School className="size-6 sm:size-7 text-white" />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Dashboard Kepala Sekolah
+                  </h1>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
                     <ShieldCheck className="h-3.5 w-3.5" />
-                    Dashboard Kepala Sekolah
+                    Pusat Kendali Satuan Pendidikan
                   </span>
-                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
-                    {schoolInfo.status}
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 px-3 py-1 text-xs font-black text-emerald-800 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800/60">
+                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    {schoolInfo.status || 'Operasional Aktif'}
                   </span>
                 </div>
-                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                  {schoolInfo.nama}
-                </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
-                  NPSN: <span className="font-bold text-slate-900 dark:text-white">{schoolInfo.npsn}</span> • Kode Unit: <span className="font-bold text-slate-900 dark:text-white">{schoolInfo.kode}</span> • Akreditasi: <span className="font-bold text-slate-900 dark:text-white">{schoolInfo.akreditasi}</span>
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-3xl leading-relaxed">
+                  Pusat kendali dan supervisi terpadu {schoolInfo.nama ? <span className="font-bold text-slate-900 dark:text-white">{schoolInfo.nama}</span> : 'satuan pendidikan'}: monitoring harian KBM guru, kehadiran presensi santri &amp; tendik, serta evaluasi capaian kurikulum unit.
                 </p>
+
+                {/* Sub-baris: Pill Identitas NPSN, Kode Unit, Akreditasi */}
+                <div className="mt-2.5 flex items-center gap-2 flex-wrap text-xs">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/80 dark:bg-slate-900/80 px-2.5 py-1 text-xs font-bold text-slate-800 dark:text-slate-200 border border-emerald-500/25 dark:border-emerald-800/40 shadow-2xs">
+                    <Building2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Unit: <strong className="text-slate-900 dark:text-white font-extrabold">{schoolInfo.nama || 'Unit Pendidikan'}</strong></span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-white/80 dark:bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    NPSN: <strong className="text-slate-900 dark:text-white font-extrabold">{schoolInfo.npsn || '—'}</strong>
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-white/80 dark:bg-slate-900/80 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 shadow-2xs">
+                    Kode: <strong className="text-slate-900 dark:text-white font-extrabold">{schoolInfo.kode || '—'}</strong>
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-amber-50/90 dark:bg-amber-950/70 px-2.5 py-1 text-xs font-bold text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800/60 shadow-2xs">
+                    <Award className="size-3 text-amber-600 dark:text-amber-400" />
+                    <span>Akreditasi: <strong className="font-extrabold">{schoolInfo.akreditasi || '—'}</strong></span>
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 shrink-0 z-10">
-              <AppBadge variant="info" className="font-extrabold">TA {schoolInfo.tahun_ajaran}</AppBadge>
-              <AppBadge variant="purple" className="font-extrabold">{schoolInfo.semester}</AppBadge>
+            {/* Sisi Kanan: Tahun Ajaran, Semester & Pilihan Unit */}
+            <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-2.5 shrink-0 z-10">
+              <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-950 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+                <Calendar className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>T.A. {schoolInfo.tahun_ajaran || '2026/2027'} • {schoolInfo.semester || 'Semester Ganjil'}</span>
+              </div>
               {unitsList.length > 0 && (
-                <select
-                  value={selectedUnitId || context.unit?.id || ''}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    setSelectedUnitId(val)
-                    fetchDashboard(val)
-                  }}
-                  className="rounded-xl border border-emerald-500/30 bg-white/90 px-3.5 py-2 text-xs font-extrabold text-slate-800 shadow-sm focus:border-emerald-600 focus:outline-none dark:border-emerald-800 dark:bg-slate-900 dark:text-slate-100 cursor-pointer"
-                >
-                  <option value="">-- Pilih Unit Sekolah --</option>
-                  {unitsList.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.code} - {u.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full sm:w-[240px]">
+                  <HeroUiFilterSelect
+                    size="sm"
+                    value={String(selectedUnitId || context.unit?.id || '')}
+                    onChange={(val) => {
+                      setSelectedUnitId(val)
+                      fetchDashboard(val)
+                    }}
+                    placeholder="-- Ganti Unit Sekolah --"
+                    ariaLabel="Pilih Unit Sekolah"
+                    options={[
+                      { value: '', label: '-- Pilih Unit Sekolah --' },
+                      ...unitsList.map((u) => ({
+                        value: String(u.id),
+                        label: `${u.code} - ${u.name}`,
+                      })),
+                    ]}
+                  />
+                </div>
               )}
             </div>
           </div>
 
-          <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs text-slate-700 dark:text-slate-300">
-            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/60 dark:bg-slate-900/50 border border-emerald-500/20 dark:border-emerald-800/40">
-              <MapPin className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-              <div>
-                <span className="font-extrabold text-slate-900 dark:text-white block">Lokasi & Alamat Unit</span>
-                <span className="text-slate-600 dark:text-slate-400 font-medium">{schoolInfo.alamat}</span>
+          {/* Baris Informasi Alamat, Pimpinan, dan Kontak Resepsionis */}
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 text-xs text-slate-700 dark:text-slate-300">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-emerald-500/20 dark:border-emerald-800/40 shadow-2xs backdrop-blur-sm">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300/40">
+                <MapPin className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-500 dark:text-slate-400 block">
+                  Lokasi &amp; Alamat Unit
+                </span>
+                <span className="font-bold text-slate-900 dark:text-slate-100 truncate block text-xs" title={schoolInfo.alamat}>
+                  {schoolInfo.alamat && schoolInfo.alamat !== '—' ? schoolInfo.alamat : 'Padang, Sumatera Barat'}
+                </span>
               </div>
             </div>
-            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/60 dark:bg-slate-900/50 border border-emerald-500/20 dark:border-emerald-800/40">
-              <UserCheck className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400 mt-0.5" />
-              <div>
-                <span className="font-extrabold text-slate-900 dark:text-white block">Kepala Sekolah Unit</span>
-                <span className="text-slate-600 dark:text-slate-400 font-medium">{schoolInfo.kepala_sekolah}</span>
+
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-emerald-500/20 dark:border-emerald-800/40 shadow-2xs backdrop-blur-sm">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-teal-100 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-300/40">
+                <UserCheck className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-500 dark:text-slate-400 block">
+                  Kepala Sekolah Unit
+                </span>
+                <span className="font-bold text-slate-900 dark:text-slate-100 truncate block text-xs" title={schoolInfo.kepala_sekolah}>
+                  {schoolInfo.kepala_sekolah && schoolInfo.kepala_sekolah !== '—' ? schoolInfo.kepala_sekolah : 'Pimpinan Satuan Pendidikan'}
+                </span>
               </div>
             </div>
-            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/60 dark:bg-slate-900/50 border border-emerald-500/20 dark:border-emerald-800/40">
-              <Phone className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-              <div>
-                <span className="font-extrabold text-slate-900 dark:text-white block">Kontak Resepsionis / Admin</span>
-                <span className="text-slate-600 dark:text-slate-400 font-medium">{schoolInfo.kontak}</span>
+
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-emerald-500/20 dark:border-emerald-800/40 shadow-2xs backdrop-blur-sm">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300/40">
+                <Phone className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-500 dark:text-slate-400 block">
+                  Kontak Resepsionis / Admin
+                </span>
+                <span className="font-bold text-slate-900 dark:text-slate-100 truncate block text-xs" title={schoolInfo.kontak}>
+                  {schoolInfo.kontak && schoolInfo.kontak !== '—' && schoolInfo.kontak !== '-' ? schoolInfo.kontak : 'Hubungi Bagian Tata Usaha'}
+                </span>
               </div>
             </div>
           </div>
@@ -1064,7 +1113,7 @@ export default function KepalaSekolahDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setGuruSubFilter('teaching')}
-                  className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${guruSubFilter === 'teaching' ? 'bg-blue-600 text-white shadow-xs font-black' : 'text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40'}`}
+                  className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${guruSubFilter === 'teaching' ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'}`}
                 >
                   <BookOpen className="h-3 w-3" />
                   Sedang Mengajar ({guruMengajarCount})
@@ -1091,14 +1140,14 @@ export default function KepalaSekolahDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setGuruViewMode('cards')}
-                  className={`px-2.5 py-1 rounded-lg transition-all ${guruViewMode === 'cards' ? 'bg-blue-600 text-white shadow-xs font-black' : 'text-blue-700 dark:text-blue-300'}`}
+                  className={`px-2.5 py-1 rounded-lg transition-all ${guruViewMode === 'cards' ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-emerald-700 dark:text-emerald-300'}`}
                 >
                   Profil Guru
                 </button>
                 <button
                   type="button"
                   onClick={() => setGuruViewMode('sessions')}
-                  className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${guruViewMode === 'sessions' ? 'bg-blue-600 text-white shadow-xs font-black' : 'text-blue-700 dark:text-blue-300'}`}
+                  className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${guruViewMode === 'sessions' ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-emerald-700 dark:text-emerald-300'}`}
                 >
                   <Clock className="h-3 w-3" />
                   Sesi KBM ({todaySessions.length})
@@ -1119,7 +1168,7 @@ export default function KepalaSekolahDashboardPage() {
               <button
                 type="button"
                 onClick={() => setTendikSubFilter('online')}
-                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${tendikSubFilter === 'online' ? 'bg-purple-600 text-white shadow-xs font-black' : 'text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40'}`}
+                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${tendikSubFilter === 'online' ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'}`}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
                 Online / Bertugas ({tendikOnlineCount})
@@ -1212,7 +1261,7 @@ export default function KepalaSekolahDashboardPage() {
                         onClick={() => setKbmSessionFilter(f)}
                         className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
                           kbmSessionFilter === f
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-emerald-600 text-white'
                             : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                         }`}
                       >
@@ -1276,7 +1325,7 @@ export default function KepalaSekolahDashboardPage() {
                             </div>
 
                             <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white font-black text-[10px]">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white font-black text-[10px]">
                                 {getInitials(sess.teacher_name || sess.guru)}
                               </div>
                               <div className="min-w-0 flex-1">
@@ -1406,7 +1455,7 @@ export default function KepalaSekolahDashboardPage() {
                             <button
                               type="button"
                               onClick={() => setActiveChatUser(guru)}
-                              className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 text-[11px] font-black transition-all cursor-pointer shadow-xs active:scale-95"
+                              className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 text-[11px] font-black transition-all cursor-pointer shadow-xs active:scale-95"
                             >
                               <MessageSquare className="h-3 w-3" />
                               <span>Chat</span>
@@ -1529,7 +1578,7 @@ export default function KepalaSekolahDashboardPage() {
                           <button
                             type="button"
                             onClick={() => setActiveChatUser(tendik)}
-                            className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1.5 text-[11px] font-black transition-all cursor-pointer shadow-xs active:scale-95"
+                            className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 text-[11px] font-black transition-all cursor-pointer shadow-xs active:scale-95"
                           >
                             <MessageSquare className="h-3 w-3" />
                             <span>Chat Staf</span>
@@ -1590,7 +1639,7 @@ export default function KepalaSekolahDashboardPage() {
                     return (
                       <HoverCard key={student.id || idx}>
                         <HoverCardTrigger asChild>
-                          <div className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50/60 dark:border-slate-800 dark:bg-[#151D2A] p-3.5 transition-all duration-200 hover:shadow-md hover:bg-white dark:hover:bg-[#1B2433] flex flex-col justify-between cursor-pointer">
+                          <div className="group relative h-full overflow-hidden rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-white via-emerald-50/25 to-teal-50/25 dark:border-emerald-800/60 dark:from-[#151D2A] dark:to-emerald-950/20 p-3.5 transition-all duration-200 hover:border-emerald-400 hover:shadow-md hover:shadow-emerald-500/10 flex flex-col justify-between cursor-pointer">
                             <div className="space-y-2.5">
                               <div className="flex items-start justify-between gap-2">
                                 <Avatar size="md" className="ring-2 ring-emerald-500/30 shrink-0">
@@ -2374,7 +2423,7 @@ export default function KepalaSekolahDashboardPage() {
                     return (
                       <div
                         key={pengurus.id || pIdx}
-                        className="rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#151D2A] p-3.5 space-y-2.5 shadow-xs hover:border-emerald-400 transition-all flex flex-col justify-between"
+                        className="h-full rounded-2xl border border-emerald-200/80 bg-gradient-to-br from-white via-emerald-50/20 to-teal-50/20 dark:border-emerald-800/60 dark:from-[#151D2A] dark:to-emerald-950/20 p-3.5 space-y-2.5 shadow-xs hover:border-emerald-400 hover:shadow-md hover:shadow-emerald-500/10 transition-all flex flex-col justify-between"
                       >
                         <div className="flex items-center gap-3">
                           <Avatar size="md" className="ring-2 ring-emerald-500/30 shrink-0">
@@ -2419,7 +2468,7 @@ export default function KepalaSekolahDashboardPage() {
         </AnimatePresence>
       </section>
 
-      {/* TailGrids Dialog Modal Detail Pengumuman Sekolah */}
+      {/* HeroUI Dialog Modal Detail Pengumuman Sekolah */}
       <Dialog
         isOpen={Boolean(selectedAnnouncement)}
         onOpenChange={(open) => {
@@ -2499,7 +2548,7 @@ export default function KepalaSekolahDashboardPage() {
         </DialogFooter>
       </Dialog>
 
-      {/* TailGrids Dialog Modal Pop Up untuk Monitoring Kehadiran Siswa */}
+      {/* HeroUI Dialog Modal Pop Up untuk Monitoring Kehadiran Siswa */}
       <Dialog
         isOpen={isAttendanceModalOpen}
         onOpenChange={setIsAttendanceModalOpen}
@@ -2735,7 +2784,7 @@ export default function KepalaSekolahDashboardPage() {
           </div>
 
           {/* Topik / Pokok Bahasan */}
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-1">
+          <div className="h-full p-3.5 rounded-2xl bg-gradient-to-br from-white to-emerald-50/30 dark:from-slate-900 dark:to-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/60 space-y-1">
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Topik / Materi Pembelajaran</p>
             <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100">
               {selectedKbmSession?.topic || 'Topik materi KBM terpadu'}
@@ -2799,7 +2848,7 @@ export default function KepalaSekolahDashboardPage() {
         </div>
       </Dialog>
 
-      {/* TailGrids Dialog Modal Chat Direct Pegawai / Guru */}
+      {/* HeroUI Dialog Modal Chat Direct Pegawai / Guru */}
       <Dialog
         isOpen={Boolean(activeChatUser)}
         onOpenChange={(open) => {

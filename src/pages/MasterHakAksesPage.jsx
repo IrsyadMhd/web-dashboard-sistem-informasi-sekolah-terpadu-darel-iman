@@ -74,6 +74,9 @@ import {
   PrintOptionModal,
   MasterFilterSelect,
 } from '../components/master-data'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Badge } from '../components/ui/badge'
 import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import {
   TableRoot,
@@ -113,19 +116,19 @@ const GLOBAL_ACCESS_PERMISSIONS = [
 ]
 
 const TIER_COLOR_MAP = {
-  red:     { bg: 'bg-red-50 dark:bg-red-950/40', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800/60' },
-  purple:  { bg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-800/60' },
-  blue:    { bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800/60' },
+  red: { bg: 'bg-red-50 dark:bg-red-950/40', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800/60' },
+  purple: { bg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-800/60' },
+  blue: { bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800/60' },
   emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-800/60' },
-  sky:     { bg: 'bg-sky-50 dark:bg-sky-950/40', text: 'text-sky-700 dark:text-sky-300', border: 'border-sky-200 dark:border-sky-800/60' },
-  amber:   { bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800/60' },
-  teal:    { bg: 'bg-teal-50 dark:bg-teal-950/40', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800/60' },
-  gray:    { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-300', border: 'border-slate-200 dark:border-slate-700' },
+  sky: { bg: 'bg-sky-50 dark:bg-sky-950/40', text: 'text-sky-700 dark:text-sky-300', border: 'border-sky-200 dark:border-sky-800/60' },
+  amber: { bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800/60' },
+  teal: { bg: 'bg-teal-50 dark:bg-teal-950/40', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800/60' },
+  gray: { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-300', border: 'border-slate-200 dark:border-slate-700' },
 }
 
 const SCOPE_LABEL = {
-  global:   { text: 'Global', bg: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/60' },
-  unit:     { text: 'Per Unit', bg: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60' },
+  global: { text: 'Global', bg: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/60' },
+  unit: { text: 'Per Unit', bg: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60' },
   external: { text: 'Eksternal', bg: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' },
 }
 
@@ -239,7 +242,7 @@ const PROJECT_DEFAULT_ROLES = [
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
-// KOMPONEN KPI METRIC CARD (TAILGRIDS GOLD STANDARD)
+// KOMPONEN KPI METRIC CARD (HEROUI GOLD STANDARD)
 // ─────────────────────────────────────────────────────────────────────────────
 const KPI_THEMES = {
   emerald: {
@@ -410,12 +413,21 @@ export default function MasterHakAksesPage() {
   const { data: allPermData = {} } = useQuery({
     queryKey: ['hak-akses-permissions-all'],
     queryFn: () => hakAksesService.getDaftarPermission({ per_page: 1000 }),
+    enabled: canViewGlobalAccess,
     staleTime: 60000,
   })
 
   const { data: allRolesData = {} } = useQuery({
     queryKey: ['hak-akses-roles-all'],
     queryFn: () => hakAksesService.getDaftarRole({ per_page: 100 }),
+    enabled: canViewGlobalAccess,
+    staleTime: 60000,
+  })
+
+  const { data: navOptionsData = {} } = useQuery({
+    queryKey: ['hak-akses-nav-options'],
+    queryFn: hakAksesService.getNavigationOptions,
+    enabled: canViewGlobalAccess,
     staleTime: 60000,
   })
 
@@ -434,8 +446,8 @@ export default function MasterHakAksesPage() {
       const activeRoles = selectedRoleFilter
         ? undefined
         : selectedMatrixGroup !== 'semua'
-        ? ROLE_GROUPS[selectedMatrixGroup]?.roles?.join(',')
-        : undefined
+          ? ROLE_GROUPS[selectedMatrixGroup]?.roles?.join(',')
+          : undefined
 
       return hakAksesService.getPegawaiHakAkses({
         search: debouncedSearch,
@@ -456,7 +468,15 @@ export default function MasterHakAksesPage() {
   const availableRoleNames = Array.from(new Set([...PROJECT_DEFAULT_ROLES, ...backendRoleNames]))
   const assignableRoleNames = canManageGlobalAccess
     ? availableRoleNames
-    : availableRoleNames.filter((name) => !hasAnyRole([name], GLOBAL_ROLE_NAMES))
+    : availableRoleNames.filter((name) => {
+      const dbRec = allRoleRecords.find((r) => (typeof r === 'string' ? r : r?.name) === name)
+      if (dbRec && typeof dbRec === 'object') {
+        if (dbRec.scope_type === 'global' || dbRec.can_manage_global_access || Number(dbRec.level ?? 99) <= 2) {
+          return false
+        }
+      }
+      return !hasAnyRole([name], GLOBAL_ROLE_NAMES)
+    })
 
   const permissionsGrouped = permData?.data || []
   const allPerms = permData?.flat_list || allPermData?.flat_list || []
@@ -632,7 +652,7 @@ export default function MasterHakAksesPage() {
 
   const handleDeleteRole = (role) => {
     const tier = getTierForRole(role.name)
-    if (tier?.isProtected || role.is_default_preset) {
+    if (role.is_system_protected || tier?.isProtected || role.is_default_preset) {
       notify('Role Dilindungi', 'Role bawaan sistem tidak dapat dihapus.', 'warning')
       return
     }
@@ -670,11 +690,11 @@ export default function MasterHakAksesPage() {
 
   const hasActiveFilters = Boolean(
     search ||
-      selectedUnitId ||
-      roleCategoryFilter !== 'semua' ||
-      statusFilter ||
-      selectedMatrixGroup !== 'semua' ||
-      selectedRoleFilter
+    selectedUnitId ||
+    roleCategoryFilter !== 'semua' ||
+    statusFilter ||
+    selectedMatrixGroup !== 'semua' ||
+    selectedRoleFilter
   )
 
   // Tab definitions
@@ -695,21 +715,21 @@ export default function MasterHakAksesPage() {
     },
     ...(canViewGlobalAccess
       ? [
-          {
-            key: 'roles',
-            label: 'Matriks Peran & Role',
-            count: `${stats.total_role || 0} Role`,
-            icon: Shield,
-            description: 'Struktur kelompok peran (RBAC) dan pemetaan izin sistem',
-          },
-          {
-            key: 'permissions',
-            label: 'Katalog Hak Akses',
-            count: `${stats.total_permission || 0} Izin`,
-            icon: Key,
-            description: 'Katalog aksi dan modul yang terproteksi dalam sistem',
-          },
-        ]
+        {
+          key: 'roles',
+          label: 'Matriks Peran & Role',
+          count: `${stats.total_role || 0} Role`,
+          icon: Shield,
+          description: 'Struktur kelompok peran (RBAC) dan pemetaan izin sistem',
+        },
+        {
+          key: 'permissions',
+          label: 'Katalog Hak Akses',
+          count: `${stats.total_permission || 0} Izin`,
+          icon: Key,
+          description: 'Katalog aksi dan modul yang terproteksi dalam sistem',
+        },
+      ]
       : []),
   ]
 
@@ -765,7 +785,7 @@ export default function MasterHakAksesPage() {
     if (isPdf) {
       downloadPdfTable({
         title: printTitle,
-        subtitle: `Sistem Manajemen Sekolah Terpadu - ${foundationName}`,
+        subtitle: `Dareliman Edu - ${foundationName}`,
         columns,
         rows,
         filename: `rekap_hak_akses_${activeTab}.pdf`,
@@ -773,7 +793,7 @@ export default function MasterHakAksesPage() {
     } else {
       printCleanTable({
         title: printTitle,
-        subtitle: `Sistem Manajemen Sekolah Terpadu - ${foundationName}`,
+        subtitle: `Dareliman Edu - ${foundationName}`,
         columns,
         rows,
       })
@@ -802,7 +822,7 @@ export default function MasterHakAksesPage() {
           ]}
         />
 
-        {/* ── HERO HEADER CARD (TAILGRIDS BENCHMARK STYLE) ── */}
+        {/* ── HERO HEADER CARD (HEROUI BENCHMARK STYLE) ── */}
         <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
           {/* Dual Multi-Tone Ambient Glow Blobs */}
           <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-600/30 dark:via-teal-500/20" />
@@ -823,7 +843,7 @@ export default function MasterHakAksesPage() {
                     RBAC Keamanan
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Kelola penugasan peran (role), izin modul (permissions), matriks otoritas sistem, serta akun login civitas sekolah secara terpusat.
                 </p>
               </div>
@@ -1146,8 +1166,8 @@ export default function MasterHakAksesPage() {
                                 isProtected
                                   ? 'bg-amber-50 border-amber-300 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-800'
                                   : isDefault
-                                  ? 'bg-sky-50 border-sky-300 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-800'
-                                  : 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800'
+                                    ? 'bg-sky-50 border-sky-300 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-800'
+                                    : 'bg-emerald-50 border-emerald-300 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800'
                               )}
                             >
                               {isProtected ? (
@@ -1276,10 +1296,18 @@ export default function MasterHakAksesPage() {
                     {filteredRoles.map((role, idx) => {
                       const categoryGroup = getRoleCategoryGroup(role.name)
                       const tier = getTierForRole(role.name)
-                      const colors = tier ? TIER_COLOR_MAP[tier.color] || TIER_COLOR_MAP.gray : TIER_COLOR_MAP.gray
-                      const scopeInfo = tier ? SCOPE_LABEL[tier.scope] || SCOPE_LABEL.global : SCOPE_LABEL.global
+                      const colors = tier ? TIER_COLOR_MAP[tier.color] || TIER_COLOR_MAP.gray : TIER_COLOR_MAP.emerald
+                      const dbScopeMap = {
+                        global: { text: 'Lintas Semua Unit', bg: 'bg-indigo-50 text-indigo-800 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800' },
+                        cross_unit: { text: 'Lintas Unit Binaan', bg: 'bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800' },
+                        education_unit: { text: 'Per Unit Sekolah', bg: 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800' },
+                        own_assignments: { text: 'Penugasan / Kelas', bg: 'bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800' },
+                        linked_children: { text: 'Data Anak Wali', bg: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800' },
+                        self: { text: 'Data Pribadi', bg: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' },
+                      }
+                      const scopeInfo = (role.scope_type && dbScopeMap[role.scope_type]) || (tier ? SCOPE_LABEL[tier.scope] || SCOPE_LABEL.global : SCOPE_LABEL.unit)
                       const { allowed } = canEditRole(userRoles, role.name)
-                      const isProtected = tier?.isProtected || false
+                      const isProtected = Boolean(role.is_system_protected || tier?.isProtected)
 
                       return (
                         <TableRow key={role.id || role.name} className="hover:bg-emerald-50/35 dark:hover:bg-emerald-950/20 transition-colors">
@@ -1303,12 +1331,27 @@ export default function MasterHakAksesPage() {
                                       Bawaan Sistem
                                     </span>
                                   )}
+                                  {!tier && !role.is_default_preset && (
+                                    <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[9px] font-black text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                                      Role Dinamis
+                                    </span>
+                                  )}
                                 </div>
-                                <div className="mt-1">
+                                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                                   <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-extrabold border', categoryGroup.badgeColor)}>
-                                    {categoryGroup.label}
+                                    {tier ? categoryGroup.label : (role.portal_group || 'Staf Dinamis')}
                                   </span>
+                                  {role.default_route && (
+                                    <code className="rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-slate-600 dark:text-slate-300">
+                                      {role.default_route}
+                                    </code>
+                                  )}
                                 </div>
+                                {role.description && (
+                                  <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                                    {role.description}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </TableCell>
@@ -1325,12 +1368,20 @@ export default function MasterHakAksesPage() {
                                 <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-black border', colors.bg, colors.text, colors.border)}>
                                   {tier.label}
                                 </span>
-                              ) : (
-                                <span className="text-[10px] italic text-slate-400">-</span>
-                              )}
+                              ) : null}
                               <span className={cn('rounded-full px-2 py-0.5 text-[9px] font-bold border', scopeInfo.bg)}>
                                 {scopeInfo.text}
                               </span>
+                              {role.is_read_only && (
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.2 text-[9px] font-black text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
+                                  Mode Baca
+                                </span>
+                              )}
+                              {role.use_custom_menu_access && (
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-teal-50 border border-teal-200 px-1.5 py-0.2 text-[9px] font-black text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800">
+                                  {(role.allowed_menu_ids || []).length} Menu Kustom
+                                </span>
+                              )}
                               {isProtected && (
                                 <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-50 border border-rose-200 px-1.5 py-0.2 text-[9px] font-black text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800">
                                   <Lock className="size-2.5" /> Terproteksi
@@ -1586,6 +1637,8 @@ export default function MasterHakAksesPage() {
         onSubmit={handleRoleSubmit}
         initialData={selectedRole}
         allPermissions={allPerms}
+        navOptions={navOptionsData}
+        canAssignGlobalRole={isSuperAdmin}
         isSubmitting={tambahRoleMutation.isPending || ubahRoleMutation.isPending}
       />
 
@@ -1864,30 +1917,113 @@ function RoleFormModal({
   onSubmit,
   initialData = null,
   allPermissions = [],
+  navOptions = {},
+  canAssignGlobalRole = false,
   isSubmitting = false,
 }) {
   const isEdit = Boolean(initialData?.id && !String(initialData.id).startsWith('default-'))
+  const [modalTab, setModalTab] = useState('policy') // 'policy' | 'permissions' | 'menus'
   const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
   const [level, setLevel] = useState(5)
+  const [scopeType, setScopeType] = useState('education_unit')
+  const [portalGroup, setPortalGroup] = useState('staff')
+  const [defaultRoute, setDefaultRoute] = useState('/dashboard')
+  const [isReadOnly, setIsReadOnly] = useState(false)
+  const [canSwitchUnit, setCanSwitchUnit] = useState(false)
+  const [isAboveTu, setIsAboveTu] = useState(false)
+  const [canManageGlobalAccess, setCanManageGlobalAccess] = useState(false)
+  const [useCustomMenuAccess, setUseCustomMenuAccess] = useState(false)
   const [selectedPerms, setSelectedPerms] = useState([])
+  const [allowedMenuIds, setAllowedMenuIds] = useState([])
   const [searchPerm, setSearchPerm] = useState('')
+  const [searchMenu, setSearchMenu] = useState('')
   const [expandedModuls, setExpandedModuls] = useState({})
+  const [expandedNavModules, setExpandedNavModules] = useState({})
+
+  const navModules = Array.isArray(navOptions?.modules) ? navOptions.modules : []
+  const scopeOptions = Array.isArray(navOptions?.scope_options) && navOptions.scope_options.length > 0
+    ? navOptions.scope_options
+    : [
+      { value: 'global', label: 'Global (Semua Unit Pendidikan)' },
+      { value: 'cross_unit', label: 'Lintas Unit Terpilih (Divisi)' },
+      { value: 'education_unit', label: 'Unit Pendidikan Sendiri' },
+      { value: 'own_assignments', label: 'Penugasan / Kelas Sendiri' },
+      { value: 'linked_children', label: 'Data Anak Terhubung (Wali)' },
+      { value: 'self', label: 'Data Pribadi Sendiri' },
+    ]
+  const portalGroupOptions = Array.isArray(navOptions?.portal_group_options) && navOptions.portal_group_options.length > 0
+    ? navOptions.portal_group_options
+    : [
+      { value: 'staff', label: 'Staf / Peran Kustom Internal' },
+      { value: 'foundation', label: 'Yayasan (Eksekutif / Monitoring)' },
+      { value: 'education', label: 'Divisi Pendidikan' },
+      { value: 'principal', label: 'Kepala Sekolah' },
+      { value: 'waka', label: 'Wakil Kepala Sekolah (Waka)' },
+      { value: 'tu', label: 'Tata Usaha (TU)' },
+      { value: 'operator', label: 'Operator Unit' },
+      { value: 'teacher', label: 'Guru / Tenaga Pendidik' },
+      { value: 'musyrif', label: 'Musyrif / Kepengasuhan Asrama' },
+      { value: 'parent', label: 'Orang Tua / Wali Murid' },
+      { value: 'student', label: 'Siswa / Santri' },
+      { value: 'alumni', label: 'Alumni' },
+    ]
+  const routeOptions = Array.isArray(navOptions?.route_options) && navOptions.route_options.length > 0
+    ? navOptions.route_options
+    : [
+      { value: '/dashboard', label: 'Dashboard Utama (/dashboard)' },
+      { value: '/dashboard/pemantauan', label: 'Dashboard Pemantauan (/dashboard/pemantauan)' },
+      { value: '/dashboard/yayasan', label: 'Dashboard Yayasan (/dashboard/yayasan)' },
+      { value: '/dashboard/divisi-pendidikan', label: 'Dashboard Divisi Pendidikan (/dashboard/divisi-pendidikan)' },
+      { value: '/dashboard/kepala-sekolah', label: 'Dashboard Kepala Sekolah (/dashboard/kepala-sekolah)' },
+      { value: '/dashboard/waka-kurikulum', label: 'Dashboard Waka Kurikulum (/dashboard/waka-kurikulum)' },
+      { value: '/dashboard/waka-kesiswaan', label: 'Dashboard Waka Kesiswaan (/dashboard/waka-kesiswaan)' },
+      { value: '/dashboard/tata-usaha', label: 'Dashboard Tata Usaha (/dashboard/tata-usaha)' },
+      { value: '/dashboard/operator', label: 'Dashboard Operator (/dashboard/operator)' },
+      { value: '/portal-guru', label: 'Portal Guru (/portal-guru)' },
+      { value: '/dashboard/musyrif', label: 'Dashboard Musyrif (/dashboard/musyrif)' },
+      { value: '/portal-orangtua', label: 'Portal Orang Tua (/portal-orangtua)' },
+      { value: '/portal-siswa', label: 'Portal Siswa (/portal-siswa)' },
+      { value: '/portal/alumni', label: 'Portal Alumni (/portal/alumni)' },
+    ]
 
   React.useEffect(() => {
     if (isOpen) {
+      setModalTab('policy')
       if (initialData) {
         setName(initialData.name || '')
+        setDescription(initialData.description || '')
         setLevel(initialData.level ?? 5)
+        setScopeType(initialData.scope_type || 'education_unit')
+        setPortalGroup(initialData.portal_group || 'staff')
+        setDefaultRoute(initialData.default_route || '/dashboard')
+        setIsReadOnly(Boolean(initialData.is_read_only))
+        setCanSwitchUnit(Boolean(initialData.can_switch_unit))
+        setIsAboveTu(Boolean(initialData.is_above_tu))
+        setCanManageGlobalAccess(Boolean(initialData.can_manage_global_access))
+        setUseCustomMenuAccess(Boolean(initialData.use_custom_menu_access))
         const currentPerms = (initialData.permissions || []).map((p) =>
           typeof p === 'string' ? p : p.name
         )
         setSelectedPerms(currentPerms)
+        setAllowedMenuIds(Array.isArray(initialData.allowed_menu_ids) ? initialData.allowed_menu_ids : [])
       } else {
         setName('')
+        setDescription('')
         setLevel(5)
+        setScopeType('education_unit')
+        setPortalGroup('staff')
+        setDefaultRoute('/dashboard')
+        setIsReadOnly(false)
+        setCanSwitchUnit(false)
+        setIsAboveTu(false)
+        setCanManageGlobalAccess(false)
+        setUseCustomMenuAccess(false)
         setSelectedPerms([])
+        setAllowedMenuIds([])
       }
       setSearchPerm('')
+      setSearchMenu('')
     }
   }, [isOpen, initialData])
 
@@ -1900,6 +2036,8 @@ function RoleFormModal({
     acc[modul].push(pName)
     return acc
   }, {})
+
+  const allMenuIdsFlat = navModules.flatMap((m) => (m.menus || []).map((item) => item.id))
 
   const togglePerm = (perm) => {
     setSelectedPerms((prev) =>
@@ -1919,13 +2057,38 @@ function RoleFormModal({
     setExpandedModuls((prev) => ({ ...prev, [modul]: !prev[modul] }))
   }
 
+  const toggleMenu = (menuId) => {
+    setAllowedMenuIds((prev) =>
+      prev.includes(menuId) ? prev.filter((id) => id !== menuId) : [...prev, menuId]
+    )
+  }
+
+  const toggleNavModulAll = (menus, select) => {
+    const ids = menus.map((m) => m.id)
+    if (select) {
+      setAllowedMenuIds((prev) => Array.from(new Set([...prev, ...ids])))
+    } else {
+      setAllowedMenuIds((prev) => prev.filter((id) => !ids.includes(id)))
+    }
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!name.trim()) return
     onSubmit({
       name: name.trim(),
+      description: description.trim() || null,
       level: Number(level) || 5,
+      scope_type: scopeType,
+      portal_group: portalGroup,
+      default_route: defaultRoute || '/dashboard',
+      is_read_only: Boolean(isReadOnly),
+      can_switch_unit: Boolean(canSwitchUnit),
+      is_above_tu: Boolean(isAboveTu),
+      can_manage_global_access: Boolean(canManageGlobalAccess),
+      use_custom_menu_access: Boolean(useCustomMenuAccess),
       permissions: selectedPerms,
+      allowed_menu_ids: allowedMenuIds,
     })
   }
 
@@ -1943,7 +2106,7 @@ function RoleFormModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-        className="my-auto w-full max-w-2xl font-sans"
+        className="my-auto w-full max-w-3xl font-sans"
       >
         <div className="flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232]">
           {/* Top Accent Gradient Bar */}
@@ -1957,7 +2120,7 @@ function RoleFormModal({
           />
 
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950 shrink-0">
+          <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950 shrink-0">
             <div className="flex items-center gap-3.5">
               <div
                 className={cn(
@@ -1972,7 +2135,7 @@ function RoleFormModal({
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
-                    {isEdit ? 'Ubah Matriks Role' : 'Tambah Role Akses Baru'}
+                    {isEdit ? 'Ubah Matriks & Kebijakan Role' : 'Tambah Role Akses Dinamis'}
                   </h2>
                   <span
                     className={cn(
@@ -1983,11 +2146,11 @@ function RoleFormModal({
                     )}
                   >
                     <Sparkles className="size-3" />
-                    {isEdit ? 'Edit Data' : 'Role Baru'}
+                    {isEdit ? 'Edit Dinamis' : 'Role Dinamis'}
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Konfigurasikan nama peran dan centang izin hak akses modul yang diperbolehkan.
+                  Atur cakupan data, halaman awal, izin modul, serta daftar menu sidebar langsung dari database.
                 </p>
               </div>
             </div>
@@ -2001,195 +2164,487 @@ function RoleFormModal({
             </button>
           </div>
 
+          {/* Sub-Tab Selector inside Modal */}
+          <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50/70 px-6 py-2.5 dark:border-slate-800 dark:bg-slate-900/50 shrink-0 overflow-x-auto">
+            {[
+              { id: 'policy', label: '1. Kebijakan & Scope' },
+              { id: 'permissions', label: `2. Izin Modul (${selectedPerms.length})` },
+              { id: 'menus', label: `3. Menu Sidebar (${useCustomMenuAccess ? allowedMenuIds.length : 'Otomatis'})` },
+            ].map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setModalTab(t.id)}
+                className={cn(
+                  'rounded-xl px-3.5 py-1.5 text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer',
+                  modalTab === t.id
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           {/* Form Content */}
           <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
             <div className="flex-1 space-y-4 overflow-y-auto p-6 text-slate-800 dark:text-slate-100">
-              {/* Nama Role Input */}
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Nama Role <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <Shield className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-700 dark:text-emerald-400" />
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Contoh: Waka Kesiswaan, Operator CBT, Musyrif Asrama"
-                    className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                  />
-                </div>
-              </div>
+              {modalTab === 'policy' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Nama Role <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <Shield className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-700 dark:text-emerald-400" />
+                        <input
+                          type="text"
+                          required
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Contoh: Koordinator Ekskul, Audit Mutu"
+                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        />
+                      </div>
+                    </div>
 
-              {/* Tingkat Hierarki Tata Kelola (Level 1-9) */}
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Tingkat Tata Kelola (Level 1–9) <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={level}
-                    onChange={(e) => setLevel(Number(e.target.value))}
-                    disabled={initialData?.name === 'Super Admin'}
-                    className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 disabled:opacity-60"
-                  >
-                    <option value={1}>Tingkat 1 — Super Admin & Admin (IT & System Admin)</option>
-                    <option value={2}>Tingkat 2 — Pimpinan & Badan Hukum Yayasan</option>
-                    <option value={3}>Tingkat 3 — Operator & Tata Usaha (Pelaksana Administrasi)</option>
-                    <option value={4}>Tingkat 4 — Kepala Sekolah & Divisi Pendidikan (Pimpinan Satuan)</option>
-                    <option value={5}>Tingkat 5 — Tenaga Pendidik / Guru & Pembimbing</option>
-                    <option value={6}>Tingkat 6 — Musyrif Asrama / Kepengasuhan</option>
-                    <option value={7}>Tingkat 7 — Orang Tua / Wali Murid</option>
-                    <option value={8}>Tingkat 8 — Siswa / Peserta Didik</option>
-                    <option value={9}>Tingkat 9 — Alumni Lembaga</option>
-                  </select>
-                </div>
-                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  Hierarki tata kelola menentukan prioritas wewenang dan batasan akses sistem terpadu.
-                </p>
-              </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Tingkat Tata Kelola (Level 1–9) <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={level}
+                        onChange={(e) => setLevel(Number(e.target.value))}
+                        disabled={initialData?.name === 'Super Admin'}
+                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 disabled:opacity-60"
+                      >
+                        <option value={1}>Tingkat 1 — Super Admin & Admin (IT & System Admin)</option>
+                        <option value={2}>Tingkat 2 — Pimpinan & Badan Hukum Yayasan</option>
+                        <option value={3}>Tingkat 3 — Operator & Tata Usaha (Pelaksana Administrasi)</option>
+                        <option value={4}>Tingkat 4 — Kepala Sekolah & Divisi Pendidikan (Pimpinan Satuan)</option>
+                        <option value={5}>Tingkat 5 — Tenaga Pendidik / Staf Khusus / Koordinator</option>
+                        <option value={6}>Tingkat 6 — Musyrif Asrama / Kepengasuhan</option>
+                        <option value={7}>Tingkat 7 — Orang Tua / Wali Murid</option>
+                        <option value={8}>Tingkat 8 — Siswa / Peserta Didik</option>
+                        <option value={9}>Tingkat 9 — Alumni Lembaga</option>
+                      </select>
+                    </div>
+                  </div>
 
-              {/* Header Pemilihan Permissions */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <Key className="size-3.5 text-emerald-700 dark:text-emerald-400" />
-                    <span>Daftar Izin Modul Terpilih:</span>
-                    <span className="rounded-full bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 px-2 py-0.2 text-[10px] font-black">
-                      {selectedPerms.length} dari {allPermissions.length}
-                    </span>
-                  </label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelectedPerms(allPermissions.map((p) => (typeof p === 'string' ? p : p.name)))
-                      }
-                      className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                    >
-                      Pilih Semua
-                    </button>
-                    <span className="text-slate-300">|</span>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPerms([])}
-                      className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer"
-                    >
-                      Batal Pilih
-                    </button>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Deskripsi Peran (Opsional)
+                    </label>
+                    <input
+                      type="text"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Ringkasan tugas dan wewenang peran ini..."
+                      className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2 text-xs font-medium text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Cakupan Data (Scope)
+                      </label>
+                      <select
+                        value={scopeType}
+                        onChange={(e) => setScopeType(e.target.value)}
+                        disabled={!canAssignGlobalRole && scopeType === 'global'}
+                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      >
+                        {scopeOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value} disabled={opt.value === 'global' && !canAssignGlobalRole}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Grup Portal
+                      </label>
+                      <select
+                        value={portalGroup}
+                        onChange={(e) => setPortalGroup(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      >
+                        {portalGroupOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value} disabled={opt.value === 'super_admin' && !canAssignGlobalRole}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Halaman Awal (Default Route)
+                      </label>
+                      <select
+                        value={defaultRoute}
+                        onChange={(e) => setDefaultRoute(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      >
+                        {routeOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Policy Switches */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <label className="flex items-start gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 cursor-pointer hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-900/50">
+                      <input
+                        type="checkbox"
+                        checked={isReadOnly}
+                        disabled={initialData?.name === 'Super Admin'}
+                        onChange={(e) => setIsReadOnly(e.target.checked)}
+                        className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div>
+                        <span className="block text-xs font-black text-slate-800 dark:text-slate-100">Mode Baca Saja (Read-Only)</span>
+                        <span className="block text-[11px] text-slate-500 dark:text-slate-400">Blokir seluruh aksi tambah/ubah/hapus data operasional melalui API.</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 cursor-pointer hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-900/50">
+                      <input
+                        type="checkbox"
+                        checked={canSwitchUnit}
+                        onChange={(e) => setCanSwitchUnit(e.target.checked)}
+                        className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div>
+                        <span className="block text-xs font-black text-slate-800 dark:text-slate-100">Bisa Ganti Unit di Topbar</span>
+                        <span className="block text-[11px] text-slate-500 dark:text-slate-400">Tampilkan pemilih unit pendidikan pada topbar (untuk peran lintas unit).</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 cursor-pointer hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-900/50">
+                      <input
+                        type="checkbox"
+                        checked={isAboveTu}
+                        onChange={(e) => setIsAboveTu(e.target.checked)}
+                        className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div>
+                        <span className="block text-xs font-black text-slate-800 dark:text-slate-100">Kewenangan Supervisi (Di Atas TU)</span>
+                        <span className="block text-[11px] text-slate-500 dark:text-slate-400">Aktifkan akses supervisi laporan, persetujuan, dan pemantauan unit.</span>
+                      </div>
+                    </label>
+
+                    {canAssignGlobalRole && (
+                      <label className="flex items-start gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 cursor-pointer hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-900/50">
+                        <input
+                          type="checkbox"
+                          checked={canManageGlobalAccess}
+                          disabled={initialData?.name === 'Super Admin'}
+                          onChange={(e) => setCanManageGlobalAccess(e.target.checked)}
+                          className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <div>
+                          <span className="block text-xs font-black text-slate-800 dark:text-slate-100">Pengelola Hak Akses Global</span>
+                          <span className="block text-[11px] text-slate-500 dark:text-slate-400">Izinkan peran ini mengelola role & permission seluruh sistem.</span>
+                        </div>
+                      </label>
+                    )}
                   </div>
                 </div>
+              )}
 
-                {/* Filter Cari Permission */}
-                <div className="relative mb-3">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchPerm}
-                    onChange={(e) => setSearchPerm(e.target.value)}
-                    placeholder="Filter nama izin akses..."
-                    className="w-full rounded-xl border border-slate-200/80 bg-white pl-9 pr-3 py-1.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                  />
-                </div>
-
-                {/* Accordion List Modul Permissions */}
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                  {Object.entries(grouped).map(([modul, perms]) => {
-                    const filteredModulPerms = perms.filter(
-                      (p) =>
-                        !searchPerm ||
-                        p.toLowerCase().includes(searchPerm.toLowerCase()) ||
-                        getPermissionLabel(p).toLowerCase().includes(searchPerm.toLowerCase())
-                    )
-
-                    if (filteredModulPerms.length === 0) return null
-
-                    const allSelectedInModul = filteredModulPerms.every((p) => selectedPerms.includes(p))
-                    const selectedCountInModul = filteredModulPerms.filter((p) => selectedPerms.includes(p)).length
-                    const isExpanded = expandedModuls[modul] ?? (searchPerm.length > 0 || selectedCountInModul > 0)
-
-                    return (
-                      <div
-                        key={modul}
-                        className="rounded-2xl border border-slate-200/80 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/40 overflow-hidden"
+              {modalTab === 'permissions' && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Key className="size-3.5 text-emerald-700 dark:text-emerald-400" />
+                      <span>Daftar Izin Modul Terpilih:</span>
+                      <span className="rounded-full bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 px-2 py-0.2 text-[10px] font-black">
+                        {selectedPerms.length} dari {allPermissions.length}
+                      </span>
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedPerms(allPermissions.map((p) => (typeof p === 'string' ? p : p.name)))
+                        }
+                        className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
                       >
-                        <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-100/70 dark:bg-slate-800/70">
-                          <button
-                            type="button"
-                            onClick={() => toggleModulExpand(modul)}
-                            className="flex items-center gap-2 text-xs font-black text-slate-800 dark:text-slate-100 cursor-pointer"
-                          >
-                            {isExpanded ? <ChevronDown className="size-3.5 text-slate-500" /> : <ChevronRight className="size-3.5 text-slate-500" />}
-                            <span>{getModulLabel(modul)}</span>
-                            <span className="rounded-full bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 px-1.5 py-0.2 text-[10px] font-extrabold">
-                              {selectedCountInModul} / {filteredModulPerms.length}
-                            </span>
-                          </button>
+                        Pilih Semua
+                      </button>
+                      <span className="text-slate-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPerms([])}
+                        className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer"
+                      >
+                        Batal Pilih
+                      </button>
+                    </div>
+                  </div>
 
-                          <button
-                            type="button"
-                            onClick={() => toggleModulAll(filteredModulPerms, !allSelectedInModul)}
-                            className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 cursor-pointer"
-                          >
-                            {allSelectedInModul ? 'Batal Semua' : 'Centang Semua'}
-                          </button>
-                        </div>
+                  {/* Filter Cari Permission */}
+                  <div className="relative mb-3">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={searchPerm}
+                      onChange={(e) => setSearchPerm(e.target.value)}
+                      placeholder="Filter nama izin akses..."
+                      className="w-full rounded-xl border border-slate-200/80 bg-white pl-9 pr-3 py-1.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    />
+                  </div>
 
-                        {isExpanded && (
-                          <div className="p-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                            {filteredModulPerms.map((p) => {
-                              const checked = selectedPerms.includes(p)
-                              return (
-                                <label
-                                  key={p}
-                                  className={cn(
-                                    'flex items-start gap-2 rounded-xl p-2 border transition-all cursor-pointer text-xs',
-                                    checked
-                                      ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-100'
-                                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
-                                  )}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => togglePerm(p)}
-                                    className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <span className="font-bold block leading-tight truncate">
-                                      {getPermissionLabel(p)}
-                                    </span>
-                                    <code className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate block">
-                                      {p}
-                                    </code>
-                                  </div>
-                                </label>
-                              )
-                            })}
+                  {/* Accordion List Modul Permissions */}
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {Object.entries(grouped).map(([modul, perms]) => {
+                      const filteredModulPerms = perms.filter(
+                        (p) =>
+                          !searchPerm ||
+                          p.toLowerCase().includes(searchPerm.toLowerCase()) ||
+                          getPermissionLabel(p).toLowerCase().includes(searchPerm.toLowerCase())
+                      )
+
+                      if (filteredModulPerms.length === 0) return null
+
+                      const allSelectedInModul = filteredModulPerms.every((p) => selectedPerms.includes(p))
+                      const selectedCountInModul = filteredModulPerms.filter((p) => selectedPerms.includes(p)).length
+                      const isExpanded = expandedModuls[modul] ?? (searchPerm.length > 0 || selectedCountInModul > 0)
+
+                      return (
+                        <div
+                          key={modul}
+                          className="rounded-2xl border border-slate-200/80 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/40 overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-100/70 dark:bg-slate-800/70">
+                            <button
+                              type="button"
+                              onClick={() => toggleModulExpand(modul)}
+                              className="flex items-center gap-2 text-xs font-black text-slate-800 dark:text-slate-100 cursor-pointer"
+                            >
+                              {isExpanded ? <ChevronDown className="size-3.5 text-slate-500" /> : <ChevronRight className="size-3.5 text-slate-500" />}
+                              <span>{getModulLabel(modul)}</span>
+                              <span className="rounded-full bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 px-1.5 py-0.2 text-[10px] font-extrabold">
+                                {selectedCountInModul} / {filteredModulPerms.length}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => toggleModulAll(filteredModulPerms, !allSelectedInModul)}
+                              className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 cursor-pointer"
+                            >
+                              {allSelectedInModul ? 'Batal Semua' : 'Centang Semua'}
+                            </button>
                           </div>
-                        )}
-                      </div>
-                    )
-                  })}
+
+                          {isExpanded && (
+                            <div className="p-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                              {filteredModulPerms.map((p) => {
+                                const checked = selectedPerms.includes(p)
+                                return (
+                                  <label
+                                    key={p}
+                                    className={cn(
+                                      'flex items-start gap-2 rounded-xl p-2 border transition-all cursor-pointer text-xs',
+                                      checked
+                                        ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-100'
+                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
+                                    )}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => togglePerm(p)}
+                                      className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                      <span className="font-bold block leading-tight truncate">
+                                        {getPermissionLabel(p)}
+                                      </span>
+                                      <code className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate block">
+                                        {p}
+                                      </code>
+                                    </div>
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {modalTab === 'menus' && (
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3.5 dark:border-emerald-800/60 dark:bg-emerald-950/30">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useCustomMenuAccess}
+                        onChange={(e) => setUseCustomMenuAccess(e.target.checked)}
+                        className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <div>
+                        <span className="block text-xs font-black text-emerald-950 dark:text-emerald-100">
+                          Aktifkan Kontrol Menu Sidebar Kustom (Tentukan Menu Persis per Role)
+                        </span>
+                        <span className="block text-[11px] text-emerald-800/80 dark:text-emerald-300/80">
+                          Jika dicentang, HANYA menu sidebar yang dipilih di bawah ini yang muncul untuk role ini (menimpa aturan bawaan). Jika tidak dicentang, menu otomatis mengikuti Izin Modul (Permissions).
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="relative flex-1">
+                      <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+                      <input
+                        type="text"
+                        value={searchMenu}
+                        onChange={(e) => setSearchMenu(e.target.value)}
+                        placeholder="Cari nama menu atau path..."
+                        className="w-full rounded-xl border border-slate-200/80 bg-white pl-9 pr-3 py-1.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseCustomMenuAccess(true)
+                          setAllowedMenuIds(allMenuIdsFlat)
+                        }}
+                        className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
+                      >
+                        Pilih Semua
+                      </button>
+                      <span className="text-slate-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setAllowedMenuIds([])}
+                        className="text-[10px] font-bold text-rose-600 hover:underline cursor-pointer"
+                      >
+                        Bersihkan
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {navModules.map((mod) => {
+                      const menus = (mod.menus || []).filter(
+                        (item) =>
+                          !searchMenu ||
+                          item.name.toLowerCase().includes(searchMenu.toLowerCase()) ||
+                          item.path.toLowerCase().includes(searchMenu.toLowerCase())
+                      )
+                      if (menus.length === 0) return null
+
+                      const allSelected = menus.every((m) => allowedMenuIds.includes(m.id))
+                      const selectedCount = menus.filter((m) => allowedMenuIds.includes(m.id)).length
+                      const isExpanded = expandedNavModules[mod.id] ?? (searchMenu.length > 0 || selectedCount > 0)
+
+                      return (
+                        <div
+                          key={mod.id}
+                          className="rounded-2xl border border-slate-200/80 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/40 overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-100/70 dark:bg-slate-800/70">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedNavModules((prev) => ({ ...prev, [mod.id]: !prev[mod.id] }))}
+                              className="flex items-center gap-2 text-xs font-black text-slate-800 dark:text-slate-100 cursor-pointer"
+                            >
+                              {isExpanded ? <ChevronDown className="size-3.5 text-slate-500" /> : <ChevronRight className="size-3.5 text-slate-500" />}
+                              <span>{mod.name}</span>
+                              <span className="rounded-full bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 px-1.5 py-0.2 text-[10px] font-extrabold">
+                                {selectedCount} / {menus.length}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUseCustomMenuAccess(true)
+                                toggleNavModulAll(menus, !allSelected)
+                              }}
+                              className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 cursor-pointer"
+                            >
+                              {allSelected ? 'Batal Semua' : 'Centang Semua'}
+                            </button>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="p-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                              {menus.map((item) => {
+                                const checked = allowedMenuIds.includes(item.id)
+                                return (
+                                  <label
+                                    key={item.id}
+                                    className={cn(
+                                      'flex items-start gap-2 rounded-xl p-2 border transition-all cursor-pointer text-xs',
+                                      checked
+                                        ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-100'
+                                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
+                                    )}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => {
+                                        if (!checked && !useCustomMenuAccess) {
+                                          setUseCustomMenuAccess(true)
+                                        }
+                                        toggleMenu(item.id)
+                                      }}
+                                      className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                      <span className="font-bold block leading-tight truncate">{item.name}</span>
+                                      <code className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate block">
+                                        {item.path}
+                                      </code>
+                                    </div>
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
             <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/30 shrink-0">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300 transition-all cursor-pointer"
+                className="rounded-2xl border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
               >
                 Batal
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
+                variant="primary"
                 disabled={isSubmitting || !name.trim()}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-600/30 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-600/30 hover:scale-[1.02] active:scale-95"
               >
                 {isSubmitting ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -2197,7 +2652,7 @@ function RoleFormModal({
                   <Save className="size-4" strokeWidth={2.2} />
                 )}
                 <span>{isEdit ? 'Simpan Matriks Role' : 'Tambah Role Baru'}</span>
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -2359,8 +2814,8 @@ function PegawaiRoleModal({
       const existingRoles = Array.isArray(employee.roles)
         ? employee.roles
         : typeof employee.roles?.toArray === 'function'
-        ? employee.roles.toArray()
-        : []
+          ? employee.roles.toArray()
+          : []
       const extraRoles = existingRoles.filter(
         (r) => r !== initialRole && availableRoles.includes(r)
       )
@@ -2851,7 +3306,7 @@ function PegawaiRoleModal({
                           <input
                             type="checkbox"
                             checked={isChecked}
-                            onChange={() => {}} // handled by parent label click
+                            onChange={() => { }} // handled by parent label click
                             className="size-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer pointer-events-none"
                           />
                           <span className="truncate">{r}</span>

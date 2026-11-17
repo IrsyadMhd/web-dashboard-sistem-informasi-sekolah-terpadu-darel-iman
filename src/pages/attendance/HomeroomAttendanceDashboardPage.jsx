@@ -1064,7 +1064,7 @@ export default function HomeroomAttendanceDashboardPage() {
                   <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Dashboard Presensi Wali Kelas
                   </h1>
-                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                     Monitoring kehadiran siswa rombel binaan, verifikasi surat izin/sakit, rekapitulasi presensi, dan tindak lanjut siswa.
                   </p>
                 </div>
@@ -2334,7 +2334,7 @@ export default function HomeroomAttendanceDashboardPage() {
                           {isAddScheduleModalOpen ? (
                             <button
                               type="button"
-                              className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition-colors shadow-2xs cursor-pointer"
+                              className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition-colors shadow-2xs cursor-pointer"
                               onClick={() => handleSelectTeacher(teacher)}
                             >
                               <span>Pilih</span>

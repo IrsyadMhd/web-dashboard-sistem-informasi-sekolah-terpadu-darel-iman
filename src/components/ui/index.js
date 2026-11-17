@@ -1,6 +1,6 @@
 /**
  * Canonical UI Components Barrel based on HeroUI foundation.
- * Sistem Manajemen Sekolah Terpadu (SIMSIT).
+ * Sistem Manajemen Sekolah Terpadu (Dareliman Edu).
  */
 
 export { default as Button, Button as UIButton } from './button'

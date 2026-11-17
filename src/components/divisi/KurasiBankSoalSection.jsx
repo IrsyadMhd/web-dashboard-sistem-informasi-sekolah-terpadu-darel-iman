@@ -28,6 +28,7 @@ import { Modal } from '../ui/modal'
 import { Table, TableHeader, TableBody, TableRow, TableCell } from '../ui/table'
 import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { divisiPendidikanWorkspaceService } from '../../services/divisiPendidikanWorkspaceService'
+import Swal from 'sweetalert2'
 
 export default function KurasiBankSoalSection({ onDataMutate }) {
   const [items, setItems] = useState([])
@@ -212,11 +213,11 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
 
   const handleSave = async () => {
     if (!formData.judul.trim()) {
-      alert('Mohon isi Judul Paket Soal.')
+      Swal.fire({ icon: 'warning', title: 'Judul Wajib Diisi', text: 'Mohon isi Judul Paket Soal.' })
       return
     }
     if (!formData.education_unit_id) {
-      alert('Mohon pilih Asal Unit Sekolah.')
+      Swal.fire({ icon: 'warning', title: 'Unit Wajib Dipilih', text: 'Mohon pilih Asal Unit Sekolah.' })
       return
     }
 
@@ -227,20 +228,30 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
       await loadData()
       onDataMutate?.()
     } catch (e) {
-      alert('Gagal menyimpan hasil kurasi soal. Silakan coba lagi.')
+      Swal.fire({ icon: 'error', title: 'Gagal', text: e.response?.data?.message || 'Gagal menyimpan hasil kurasi soal. Silakan coba lagi.' })
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Hapus paket bank soal kurasi ini secara permanen dari database?')) {
+    const res = await Swal.fire({
+      title: 'Hapus Paket Bank Soal?',
+      text: 'Hapus paket bank soal kurasi ini secara permanen dari database?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#e11d48',
+    })
+    if (res.isConfirmed) {
       try {
         await divisiPendidikanWorkspaceService.deleteKurasiSoal(id)
         await loadData()
         onDataMutate?.()
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Paket bank soal berhasil dihapus.', timer: 1500, showConfirmButton: false })
       } catch (e) {
-        alert('Gagal menghapus data kurasi soal.')
+        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menghapus data kurasi soal.' })
       }
     }
   }
@@ -264,8 +275,9 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
       setSelectedForApprove(null)
       await loadData()
       onDataMutate?.()
+      Swal.fire({ icon: 'success', title: 'Disetujui', text: 'Paket bank soal berhasil disetujui.', timer: 1500, showConfirmButton: false })
     } catch (e) {
-      alert('Gagal menyetujui paket kurasi.')
+      Swal.fire({ icon: 'error', title: 'Gagal', text: e.response?.data?.message || 'Gagal menyetujui paket kurasi.' })
     } finally {
       setSaving(false)
     }
@@ -367,7 +379,7 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
               <Button
                 variant="primary"
                 size="sm"
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-600/30 rounded-xl"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/30 rounded-xl"
                 onClick={handleOpenAdd}
               >
                 <Plus className="w-4 h-4 mr-1.5" />
@@ -471,7 +483,7 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
                     variant="primary"
                     size="sm"
                     onClick={handleOpenAdd}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-md shadow-purple-600/30 cursor-pointer"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-purple-600/30 cursor-pointer"
                   >
                     <Plus className="w-4 h-4 mr-1.5" />
                     Tambah Paket Soal Baru
@@ -623,7 +635,7 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
             <Button
               variant="primary"
               size="sm"
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
               onClick={handleSave}
               disabled={saving}
             >
@@ -650,33 +662,39 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Asal Unit Sekolah <span className="text-rose-500">*</span>
               </label>
-              <select
-                value={formData.education_unit_id}
-                onChange={(e) => handleUnitChange(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                <option value="">-- Pilih Unit Sekolah --</option>
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.code})
-                  </option>
-                ))}
-              </select>
+              <HeroUiFilterSelect
+                size="sm"
+                searchable
+                value={String(formData.education_unit_id)}
+                onChange={(val) => handleUnitChange(val)}
+                options={[
+                  { value: '', label: '-- Pilih Unit Sekolah --' },
+                  ...units.map((u) => ({
+                    value: String(u.id),
+                    label: `${u.name} (${u.code})`,
+                  })),
+                ]}
+                placeholder="Pilih Unit Sekolah"
+                aria-label="Asal Unit Sekolah"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Jenjang Pendidikan
               </label>
-              <select
+              <HeroUiFilterSelect
+                size="sm"
                 value={formData.jenjang}
-                onChange={(e) => setFormData((p) => ({ ...p, jenjang: e.target.value }))}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                <option value="TK / PAUD">TK / PAUD</option>
-                <option value="SD / MI">SD / MI</option>
-                <option value="SMP / MTs">SMP / MTs</option>
-                <option value="SMA / MA / Ponpes">SMA / MA / Ponpes</option>
-              </select>
+                onChange={(val) => setFormData((p) => ({ ...p, jenjang: val }))}
+                options={[
+                  { value: 'TK / PAUD', label: 'TK / PAUD' },
+                  { value: 'SD / MI', label: 'SD / MI' },
+                  { value: 'SMP / MTs', label: 'SMP / MTs' },
+                  { value: 'SMA / MA / Ponpes', label: 'SMA / MA / Ponpes' },
+                ]}
+                placeholder="Pilih Jenjang"
+                aria-label="Jenjang Pendidikan"
+              />
             </div>
           </div>
 
@@ -685,18 +703,21 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Mata Pelajaran (Database)
               </label>
-              <select
-                value={formData.subject_id}
-                onChange={(e) => handleSubjectChange(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                <option value="">-- Pilih Mata Pelajaran --</option>
-                {subjects.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.kode_mapel || '-'})
-                  </option>
-                ))}
-              </select>
+              <HeroUiFilterSelect
+                size="sm"
+                searchable
+                value={String(formData.subject_id)}
+                onChange={(val) => handleSubjectChange(val)}
+                options={[
+                  { value: '', label: '-- Pilih Mata Pelajaran --' },
+                  ...subjects.map((s) => ({
+                    value: String(s.id),
+                    label: `${s.name} (${s.kode_mapel || '-'})`,
+                  })),
+                ]}
+                placeholder="Pilih Mata Pelajaran"
+                aria-label="Mata Pelajaran"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -716,18 +737,21 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Guru Penyusun (Pegawai Riil Unit Terpilih)
               </label>
-              <select
-                value={formData.penyusun_employee_id}
-                onChange={(e) => handleTeacherChange(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                <option value="">-- Pilih Guru Penyusun --</option>
-                {availableTeachersForForm.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} (NIY: {t.niy})
-                  </option>
-                ))}
-              </select>
+              <HeroUiFilterSelect
+                size="sm"
+                searchable
+                value={String(formData.penyusun_employee_id)}
+                onChange={(val) => handleTeacherChange(val)}
+                options={[
+                  { value: '', label: '-- Pilih Guru Penyusun --' },
+                  ...availableTeachersForForm.map((t) => ({
+                    value: String(t.id),
+                    label: `${t.name} (NIY: ${t.niy})`,
+                  })),
+                ]}
+                placeholder="Pilih Guru Penyusun"
+                aria-label="Guru Penyusun"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -747,44 +771,53 @@ export default function KurasiBankSoalSection({ onDataMutate }) {
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Klasifikasi Kognitif
               </label>
-              <select
+              <HeroUiFilterSelect
+                size="sm"
                 value={formData.klasifikasi}
-                onChange={(e) => setFormData((p) => ({ ...p, klasifikasi: e.target.value }))}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                <option value="HOTS">HOTS (C4-C6: Analisis & Evaluasi)</option>
-                <option value="MOTS">MOTS (C3: Penerapan)</option>
-                <option value="LOTS">LOTS (C1-C2: Pemahaman Dasar)</option>
-              </select>
+                onChange={(val) => setFormData((p) => ({ ...p, klasifikasi: val }))}
+                options={[
+                  { value: 'HOTS', label: 'HOTS (C4-C6: Analisis & Evaluasi)' },
+                  { value: 'MOTS', label: 'MOTS (C3: Penerapan)' },
+                  { value: 'LOTS', label: 'LOTS (C1-C2: Pemahaman Dasar)' },
+                ]}
+                placeholder="Pilih Klasifikasi"
+                aria-label="Klasifikasi Kognitif"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Tingkat Kesukaran
               </label>
-              <select
+              <HeroUiFilterSelect
+                size="sm"
                 value={formData.tingkat_kesukaran}
-                onChange={(e) => setFormData((p) => ({ ...p, tingkat_kesukaran: e.target.value }))}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                <option value="Mudah">Mudah</option>
-                <option value="Sedang">Sedang</option>
-                <option value="Sedang-Tinggi">Sedang-Tinggi</option>
-                <option value="Tinggi">Tinggi</option>
-              </select>
+                onChange={(val) => setFormData((p) => ({ ...p, tingkat_kesukaran: val }))}
+                options={[
+                  { value: 'Mudah', label: 'Mudah' },
+                  { value: 'Sedang', label: 'Sedang' },
+                  { value: 'Sedang-Tinggi', label: 'Sedang-Tinggi' },
+                  { value: 'Tinggi', label: 'Tinggi' },
+                ]}
+                placeholder="Pilih Kesukaran"
+                aria-label="Tingkat Kesukaran"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 Status Validasi Yayasan
               </label>
-              <select
+              <HeroUiFilterSelect
+                size="sm"
                 value={formData.status}
-                onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-medium dark:bg-slate-800"
-              >
-                <option value="disetujui">Disetujui Standar Yayasan</option>
-                <option value="perlu_revisi">Perlu Revisi Guru</option>
-                <option value="menunggu_reviu">Menunggu Reviu</option>
-              </select>
+                onChange={(val) => setFormData((p) => ({ ...p, status: val }))}
+                options={[
+                  { value: 'disetujui', label: 'Disetujui Standar Yayasan' },
+                  { value: 'perlu_revisi', label: 'Perlu Revisi Guru' },
+                  { value: 'menunggu_reviu', label: 'Menunggu Reviu' },
+                ]}
+                placeholder="Pilih Status"
+                aria-label="Status Validasi Yayasan"
+              />
             </div>
           </div>
 

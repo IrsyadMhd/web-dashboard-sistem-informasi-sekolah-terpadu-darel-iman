@@ -4,7 +4,7 @@ import { useUnitStore } from '../../stores/unitStore'
 import { usePengaturanStore } from '../../stores/pengaturanStore'
 
 /**
- * Reusable Official SIMSIT Print Header Component
+ * Reusable Official Dareliman Edu Print Header Component
  * Can be rendered directly in web pages, print preview modals, or printable sheets.
  */
 export function PrintHeader({
@@ -37,7 +37,7 @@ export function PrintHeader({
   })
 
   return (
-    <header className={`simsit-print-header-container font-sans text-slate-900 ${className}`}>
+    <header className={`dareliman-print-header-container font-sans text-slate-900 ${className}`}>
       {/* 3-Column Header Grid */}
       <div className="grid grid-cols-[80px_1fr_90px] items-center gap-3 pb-2 min-h-[52mm]">
         {/* Kolom Kiri: Logo Yayasan / Logo Sistem */}

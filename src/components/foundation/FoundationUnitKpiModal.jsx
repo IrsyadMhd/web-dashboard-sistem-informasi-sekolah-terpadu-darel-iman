@@ -10,8 +10,10 @@ import {
   UsersRound,
 } from 'lucide-react'
 import api from '../../services/api'
+import { Input as HeroInput } from '@heroui/react'
 import { Modal } from '../ui/modal'
 import { Button } from '../ui/button'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { MasterBadge, PrintOptionModal, SquircleActionButton } from '../master-data'
 import { PersonIdentityCell } from '../ui/PersonIdentityCell'
 import { printCleanTable, downloadPdfTable } from '../../utils/printHelper'
@@ -447,42 +449,50 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
           {/* Search & Filter Bar */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/50">
             <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10" />
+              <HeroInput
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari kata kunci data..."
-                className="w-full pl-10 pr-4 py-2 text-xs font-medium bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-100"
+                className="h-9 w-full pl-10 pr-4 text-xs font-medium bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-100"
+                aria-label="Cari kata kunci data"
               />
             </div>
 
             {type === 'siswa_mobility' && (
-              <select
-                value={mobilityFilter}
-                onChange={(e) => setMobilityFilter(e.target.value)}
-                className="px-3 py-2 text-xs font-bold bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-100 cursor-pointer shadow-2xs"
-              >
-                <option value="all">Semua Tipe Pergerakan</option>
-                <option value="masuk">🟢 Siswa Masuk</option>
-                <option value="keluar">🔴 Siswa Keluar</option>
-                <option value="proses">🟡 Diproses</option>
-              </select>
+              <div className="w-full sm:w-52">
+                <HeroUiFilterSelect
+                  size="sm"
+                  value={mobilityFilter}
+                  onChange={setMobilityFilter}
+                  ariaLabel="Filter Tipe Pergerakan"
+                  options={[
+                    { value: 'all', label: 'Semua Tipe Pergerakan' },
+                    { value: 'masuk', label: '🟢 Siswa Masuk' },
+                    { value: 'keluar', label: '🔴 Siswa Keluar' },
+                    { value: 'proses', label: '🟡 Diproses' },
+                  ]}
+                />
+              </div>
             )}
 
             {units.length > 0 && (
-              <select
-                value={selectedUnit}
-                onChange={(e) => setSelectedUnit(e.target.value)}
-                className="px-3 py-2 text-xs font-medium bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-100"
-              >
-                <option value="all">Semua Unit Pendidikan</option>
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name || u.code}
-                  </option>
-                ))}
-              </select>
+              <div className="w-full sm:w-52">
+                <HeroUiFilterSelect
+                  size="sm"
+                  value={String(selectedUnit)}
+                  onChange={setSelectedUnit}
+                  ariaLabel="Filter Unit Pendidikan"
+                  options={[
+                    { value: 'all', label: 'Semua Unit Pendidikan' },
+                    ...units.map((u) => ({
+                      value: String(u.id),
+                      label: u.name || u.code,
+                    })),
+                  ]}
+                />
+              </div>
             )}
 
             <button

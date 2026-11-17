@@ -336,7 +336,7 @@ function HeroUiModalSelect({
   )
 }
 
-// ── DEFINISI TONE WARNA KARTU KPI MODERN (TAILGRIDS SPEC) ──
+// ── DEFINISI TONE WARNA KARTU KPI MODERN (HEROUI SPEC) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -1173,7 +1173,7 @@ export default function MasterQuranSurahPage() {
             </div>
           )}
 
-          {/* TailGrids Pagination Footer */}
+          {/* HeroUI Pagination Footer */}
           {filteredSurahs.length > perPage && (
             <div className="border-t border-emerald-200/80 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">

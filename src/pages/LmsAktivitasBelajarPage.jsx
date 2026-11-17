@@ -866,7 +866,7 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
                   <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Aktivitas Belajar
                   </h1>
-                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                     Kelola alur skenario kegiatan pembelajaran (Pendahuluan, Inti, Penutup, Diskusi, Tugas) terintegrasi Modul Ajar.
                   </p>
                 </div>

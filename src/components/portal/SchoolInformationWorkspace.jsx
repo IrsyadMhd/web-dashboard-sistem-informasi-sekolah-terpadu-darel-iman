@@ -418,7 +418,7 @@ export default function SchoolInformationWorkspace({ studentId, student, embedde
           </div>
         </header>
       ) : (
-        /* MODERN HERO HEADER CARD (SINKRON DENGAN STANDAR PROYEK TAILGRIDS HERO) */
+        /* MODERN HERO HEADER CARD (SINKRON DENGAN STANDAR PROYEK HEROUI HERO) */
         <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
           <div className="pointer-events-none absolute -right-8 -top-8 h-44 w-44 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-400/10 blur-3xl dark:from-emerald-500/15" />
           <div className="relative flex flex-col justify-between gap-4 md:flex-row md:items-center">

@@ -252,7 +252,7 @@ export default function MonitoringDashboardPage() {
                     Monitoring Terpadu
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Pusat pemantauan terpadu statistik kehadiran siswa, guru, indikator kinerja operasional, dan keaktifan divisi.
                 </p>
               </div>

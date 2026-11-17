@@ -23,7 +23,7 @@ const statusLabel = {
 }
 
 function getDeviceId() {
-  const key = 'simsit.teacher.presence.device_id'
+  const key = 'dareliman.teacher.presence.device_id'
   const existing = window.localStorage.getItem(key)
   if (existing) return existing
   const created = window.crypto?.randomUUID?.() || `browser-${Date.now()}`
@@ -421,7 +421,24 @@ export default function TeacherTeachingSessionPanel({ onNotify, isModal = false 
       </AppModal>
 
       {/* Modal Konfirmasi Selesai Mengajar */}
-      <AppModal isOpen={showCompleteModal} onClose={() => setShowCompleteModal(false)} title="Selesai Sesi Mengajar" description="Konfirmasi penutupan sesi mengajar di kelas ini." icon={Square} maxWidth="max-w-md">
+      <AppModal
+        isOpen={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        title="Selesai Sesi Mengajar"
+        description="Konfirmasi penutupan sesi mengajar di kelas ini."
+        icon={Square}
+        maxWidth="max-w-md"
+        footer={
+          <div className="flex justify-end gap-2 w-full">
+            <AppButton variant="outline" onClick={() => setShowCompleteModal(false)}>
+              Batal
+            </AppButton>
+            <AppButton variant="danger" icon={Square} onClick={closeTeaching} loading={processing}>
+              Ya, Selesai Mengajar
+            </AppButton>
+          </div>
+        }
+      >
         <div className="space-y-4">
           <div className="rounded-2xl border border-slate-200/80 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Detail Sesi Mengajar</p>
@@ -440,14 +457,6 @@ export default function TeacherTeachingSessionPanel({ onNotify, isModal = false 
           <p className="text-xs text-slate-600 dark:text-slate-300">
             Apakah Anda yakin ingin menyelesaikan sesi mengajar ini? Kehadiran mengajar akan ditutup dan diselesaikan pada server.
           </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <AppButton variant="outline" onClick={() => setShowCompleteModal(false)}>
-              Batal
-            </AppButton>
-            <AppButton variant="danger" icon={Square} onClick={closeTeaching} loading={processing}>
-              Ya, Selesai Mengajar
-            </AppButton>
-          </div>
         </div>
       </AppModal>
     </>

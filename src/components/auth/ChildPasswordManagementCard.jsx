@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 
 export default function ChildPasswordManagementCard() {
   const [children, setChildren] = useState([])
@@ -140,17 +141,18 @@ export default function ChildPasswordManagementCard() {
         <div>
           <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Pilih Anak</label>
           {children.length > 0 ? (
-            <select
-              value={selectedChildId}
-              onChange={(e) => setSelectedChildId(e.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-xs font-bold outline-none focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            >
-              {children.map((child) => (
-                <option key={child.id} value={child.id}>
-                  {child.full_name || child.nama_lengkap} — {child.kelas?.nama_kelas || child.unit_name || 'Sekolah'} (NIS: {child.nis || '-'})
-                </option>
-              ))}
-            </select>
+            <HeroUiFilterSelect
+              value={String(selectedChildId)}
+              onChange={(val) => setSelectedChildId(val)}
+              options={children.map((child) => ({
+                value: String(child.id),
+                label: `${child.full_name || child.nama_lengkap} — ${child.kelas?.nama_kelas || child.unit_name || 'Sekolah'} (NIS: ${child.nis || '-'})`,
+              }))}
+              placeholder="Pilih Anak"
+              ariaLabel="Pilih Anak"
+              size="md"
+              className="w-full"
+            />
           ) : (
             <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
               Belum ada data anak terhubung.

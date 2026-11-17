@@ -324,7 +324,8 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
 
   const logoUrl = pengaturan?.logo_url || pengaturan?.logoUrl || ''
   const namaSekolah = pengaturan?.school_name || pengaturan?.namaSekolah || 'Yayasan Pendidikan Islam'
-  const namaAplikasi = pengaturan?.application_name || 'Sistem Manajemen Sekolah Terpadu'
+  const rawApp = pengaturan?.application_name
+  const namaAplikasi = (!rawApp || rawApp === 'Sistem Manajemen Sekolah Terpadu' || rawApp === 'Dareliman Edu') ? 'Dareliman Edu' : rawApp
 
   return (
     <div className="w-full max-w-md mx-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-emerald-100/80 dark:border-slate-800 transition-all duration-300">
@@ -372,7 +373,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
 
         {/* Form Input */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Success Notice Banner with TailGrids Alert */}
+          {/* Success Notice Banner with HeroUI Alert */}
           {successNotice && (
             <Alert status="success" className="animate-fade-in">
               <AlertIndicator />
@@ -383,7 +384,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
             </Alert>
           )}
 
-          {/* Session Notice Banner with TailGrids Alert */}
+          {/* Session Notice Banner with HeroUI Alert */}
           {sessionNotice && !successNotice && (
             <Alert
               status={typeof sessionNotice === 'object' ? sessionNotice.status : 'error'}
@@ -403,7 +404,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
             </Alert>
           )}
 
-          {/* Error Banner with TailGrids Alert */}
+          {/* Error Banner with HeroUI Alert */}
           {error && !successNotice && (
             <Alert status="error" className="animate-fade-in">
               <AlertIndicator />
@@ -505,7 +506,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
             </button>
           </div>
 
-          {/* Submit Button with TailGrids Button & Spinner */}
+          {/* Submit Button with HeroUI Button & Spinner */}
           <Button
             type="submit"
             disabled={loading || Boolean(successNotice)}

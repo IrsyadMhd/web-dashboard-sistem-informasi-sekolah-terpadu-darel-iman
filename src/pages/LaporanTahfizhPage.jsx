@@ -584,7 +584,7 @@ export default function LaporanTahfizhPage() {
                 <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Laporan Rekap Tahfizh & Mutabaah
                 </h1>
-                <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                   Rekapitulasi setoran hafalan Al-Qur’an harian, tilawah, murajaah, dan capaian santri dari data backend.
                 </p>
 
@@ -678,7 +678,7 @@ export default function LaporanTahfizhPage() {
         />
       </motion.div>
 
-      {/* 🟢 TAILGRIDS EMERALD DATATABLE CONTAINER (DATATABLE LAPORAN DENGAN 3-BARIS TOOLBAR) */}
+      {/* 🟢 HEROUI EMERALD DATATABLE CONTAINER (DATATABLE LAPORAN DENGAN 3-BARIS TOOLBAR) */}
       <motion.div variants={itemVariants} initial="hidden" animate="visible" id="tabel-laporan-tahfizh" className="scroll-mt-6 relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
         <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
         {/* BARIS 1: TITLE & VIVID GRADIENT SQUIRCLE ACTION BUTTONS (§H.5) */}

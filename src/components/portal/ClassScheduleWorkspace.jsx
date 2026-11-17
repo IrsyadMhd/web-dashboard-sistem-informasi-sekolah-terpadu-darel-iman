@@ -623,14 +623,14 @@ export default function ClassScheduleWorkspace({ schedules = [], loading = false
                       size="sm"
                       color="success"
                       variant="flat"
-                      startContent={<RotateCcw className="h-3.5 w-3.5" />}
                       onPress={() => {
                         setSelectedDate(new Date())
                         setSelectedDay(todayDayIndex)
                       }}
-                      className="font-bold text-xs"
+                      className="inline-flex items-center gap-1.5 font-bold text-xs"
                     >
-                      Kembali ke Hari Ini
+                      <RotateCcw className="h-3.5 w-3.5 shrink-0" />
+                      <span>Kembali ke Hari Ini</span>
                     </HeroButton>
                   )}
                 </div>
@@ -1104,12 +1104,12 @@ export default function ClassScheduleWorkspace({ schedules = [], loading = false
                     size="sm"
                     color="success"
                     variant="solid"
-                    startContent={<Printer className="h-4 w-4" />}
                     onClick={handlePrintAllSchedule}
-                    isLoading={isPrintingMatrix}
-                    className="font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs shrink-0 cursor-pointer"
+                    isPending={isPrintingMatrix}
+                    className="inline-flex items-center gap-1.5 font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs shrink-0 cursor-pointer"
                   >
-                    Cetak Semua Jadwal
+                    <Printer className="h-4 w-4 shrink-0" />
+                    <span>Cetak Semua Jadwal</span>
                   </HeroButton>
                 </div>
               </div>

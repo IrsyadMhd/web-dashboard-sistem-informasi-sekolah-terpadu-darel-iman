@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { X, BookOpen, Save, RefreshCw, AlertCircle, Building2, Calendar, Layers, GraduationCap } from 'lucide-react'
+import { X, BookOpen, Save, RefreshCw, AlertCircle, Building2, Calendar, Layers, GraduationCap, CheckCircle2 } from 'lucide-react'
 import { api } from '../../services/api'
 import AppModal from '../app/AppModal'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
+import { Input } from '@/components/ui/input'
+import { TextArea } from '@/components/ui/text-area'
 import { codeGeneratorService } from '../../services/codeGeneratorService'
 
 const JENIS_OPTIONS = ['SIT', 'Merdeka', 'Nasional', 'Pesantren', 'Lokal', 'Lainnya']
@@ -191,23 +193,52 @@ export default function KurikulumFormModal({
       subtitle={initialData ? 'Perbarui informasi rincian kurikulum yang berlaku.' : 'Lengkapi formulir untuk menambahkan kurikulum unit pendidikan.'}
       icon={<BookOpen className="h-5 w-5" />}
       maxWidth="max-w-2xl"
+      footer={
+        <div className="flex items-center justify-end gap-3 w-full">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+          >
+            <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+              <X className="size-3.5" strokeWidth={2.5} />
+            </span>
+            <span>Batal</span>
+          </button>
+          <button
+            type="submit"
+            form="kurikulum-main-form"
+            disabled={isSubmitting}
+            className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-950/20 hover:from-emerald-600 hover:to-teal-800 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+          >
+            <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+              {isSubmitting ? (
+                <RefreshCw className="size-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
+              )}
+            </span>
+            <span>{isSubmitting ? 'Menyimpan...' : (initialData ? 'Simpan Perubahan' : 'Simpan Data')}</span>
+          </button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-5 text-xs text-slate-700">
+      <form id="kurikulum-main-form" onSubmit={handleSubmit} className="space-y-5 text-xs text-slate-700">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Kode Kurikulum */}
             <div>
               <label className="block font-bold text-slate-700 mb-1.5">
                 Kode Kurikulum <span className="text-rose-500">*</span>
               </label>
-              <input
+              <Input
                 type="text"
+                size="sm"
                 name="kode_kurikulum"
                 value={formData.kode_kurikulum}
                 onChange={handleChange}
                 placeholder="Misal: KUR-SD-SIT-2026"
-                className={`w-full px-3.5 py-2.5 rounded-xl border ${
-                  errors.kode_kurikulum ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 bg-slate-50/50'
-                } font-mono text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all`}
+                className={`font-mono ${errors.kode_kurikulum ? 'border-rose-400 bg-rose-50/30' : ''}`}
               />
               {errors.kode_kurikulum && (
                 <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
@@ -221,15 +252,14 @@ export default function KurikulumFormModal({
               <label className="block font-bold text-slate-700 mb-1.5">
                 Nama Kurikulum <span className="text-rose-500">*</span>
               </label>
-              <input
+              <Input
                 type="text"
+                size="sm"
                 name="nama_kurikulum"
                 value={formData.nama_kurikulum}
                 onChange={handleChange}
                 placeholder="Misal: Kurikulum Merdeka Terpadu SD"
-                className={`w-full px-3.5 py-2.5 rounded-xl border ${
-                  errors.nama_kurikulum ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 bg-slate-50/50'
-                } font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all`}
+                className={errors.nama_kurikulum ? 'border-rose-400 bg-rose-50/30' : ''}
               />
               {errors.nama_kurikulum && (
                 <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
@@ -397,43 +427,13 @@ export default function KurikulumFormModal({
           {/* Deskripsi */}
           <div>
             <label className="block font-bold text-slate-700 mb-1.5">Deskripsi / Catatan Kurikulum</label>
-            <textarea
+            <TextArea
               name="deskripsi"
               rows={3}
               value={formData.deskripsi}
               onChange={handleChange}
               placeholder="Catatan tambahan mengenai struktur kurikulum..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
-            ></textarea>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <Button
-              type="button"
-              variant="ghost"
-              appearance="outline"
-              size="sm"
-              onClick={onClose}
-            >
-              Batal
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" /> Menyimpan...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-1.5" /> Simpan Data
-                </>
-              )}
-            </Button>
+            />
           </div>
         </form>
     </AppModal>

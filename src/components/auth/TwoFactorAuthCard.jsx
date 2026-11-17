@@ -187,13 +187,13 @@ export default function TwoFactorAuthCard() {
               <span className="text-xs font-bold text-slate-500">Secret Key Manual:</span>
               <div className="flex items-center justify-between">
                 <code className="text-sm font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                  {tfaData.secret_key || 'SIMSIT-SEC-7X9B-4Q2M'}
+                  {tfaData.secret_key || 'DARELIMAN-SEC-7X9B-4Q2M'}
                 </code>
                 <Button
                   type="button"
                   variant="ghost"
                   size="xs"
-                  onClick={() => copyToClipboard(tfaData.secret_key || 'SIMSIT-SEC-7X9B-4Q2M', 'Secret Key')}
+                  onClick={() => copyToClipboard(tfaData.secret_key || 'DARELIMAN-SEC-7X9B-4Q2M', 'Secret Key')}
                 >
                   Salin
                 </Button>

@@ -83,7 +83,7 @@ import {
 import { Backdrop } from '@/components/ui/dialog'
 
 const angka = (nilai) => new Intl.NumberFormat('id-ID').format(Number(nilai || 0))
-const warnaPie = ['#059669', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
+const warnaPie = ['#059669', '#0D9488', '#10B981', '#34D399', '#F59E0B', '#F43F5E']
 
 export default function LaporanPegawaiPage() {
   const [loading, setLoading] = useState(true)
@@ -383,7 +383,7 @@ export default function LaporanPegawaiPage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Laporan Rekap Data Pegawai & Guru
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Pusat rekapitulasi SDM terpadu: statistik status aktif/non-aktif, distribusi unit kerja, jenis kelamin, dan penugasan jabatan.
                 </p>
               </div>

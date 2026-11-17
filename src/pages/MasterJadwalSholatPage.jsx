@@ -1367,7 +1367,7 @@ export default function MasterJadwalSholatPage() {
             </table>
           </div>
 
-          {/* TailGrids Pagination Footer */}
+          {/* HeroUI Pagination Footer */}
           {masterList.length > 0 && (
             <div className="px-5 py-3 border-t border-emerald-100 dark:border-emerald-900/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-[#1B2433]">
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">

@@ -66,6 +66,7 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
   const studentMeta = student?.metadata || {}
   const studentPemb = studentMeta.pembiayaan || {}
   const studentName = student?.nama_lengkap || student?.full_name || student?.name || 'Ananda'
+  const studentNis = student?.nis || studentMeta?.nis || student?.nisn || ''
   const bsiPrefix = pengaturan?.bsi_va_prefix || '9023'
   const rawPaymentId =
     studentMeta.no_va ||
@@ -638,7 +639,7 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
         )}
       </AnimatePresence>
 
-      {/* 6. MODAL PEMBAYARAN VIRTUAL ACCOUNT (TAILGRIDS HERO UI) */}
+      {/* 6. MODAL PEMBAYARAN VIRTUAL ACCOUNT (HEROUI HERO UI) */}
       <AnimatePresence>
         {isPayModalOpen && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
@@ -898,7 +899,7 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
           <div className="max-w-xl mx-auto border-2 border-slate-800 p-6 rounded-lg text-slate-900">
             <div className="text-center border-b-2 border-slate-800 pb-4">
               <h2 className="text-lg font-black uppercase tracking-wider">{foundationName}</h2>
-              <p className="text-xs">Sistem Manajemen Sekolah Terpadu — Bukti Pelunasan Resmi (Kuitansi)</p>
+              <p className="text-xs">Dareliman Edu — Bukti Pelunasan Resmi (Kuitansi)</p>
             </div>
             <div className="mt-4 text-xs space-y-1">
               <div className="flex justify-between">

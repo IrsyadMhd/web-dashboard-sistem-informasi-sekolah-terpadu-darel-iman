@@ -154,7 +154,6 @@ export default function MonitoringDivisiPage() {
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [localItems, setLocalItems] = useState([])
 
   // Auth & Role Context
   const user = useAuthStore((state) => state.user)
@@ -280,24 +279,13 @@ export default function MonitoringDivisiPage() {
   }, [rawDivisionsData, rawApiItems, isDivisi])
 
   const combinedItems = useMemo(() => {
-    const deletedSet = new Set(localItems.filter((i) => i._deleted).map((i) => i.id))
-    const localActive = localItems.filter((i) => !i._deleted)
-    const localMap = new Map(localActive.map((i) => [i.id, i]))
-
-    const fromApi = rawApiItems
-      .filter((item) => !deletedSet.has(item.id))
-      .map((item) => localMap.get(item.id) || item)
-
-    const newLocals = localActive.filter((i) => !rawApiItems.some((a) => a.id === i.id))
-    const all = [...newLocals, ...fromApi]
-
-    return all.map((item) => ({
+    return (rawApiItems || []).map((item) => ({
       unit_pendidikan: item.unit_pendidikan || item.unit?.name || 'Seluruh Unit / Umum',
       petugas_supervisi: item.petugas_supervisi || '',
       kategori_laporan: item.kategori_laporan || '',
       ...item,
     }))
-  }, [rawApiItems, localItems])
+  }, [rawApiItems])
 
   // Filter items by Unit scope, Divisi, Status, Search
   const filteredItems = useMemo(() => {
@@ -487,8 +475,8 @@ export default function MonitoringDivisiPage() {
   }
 
   // Handle Import Success
-  const handleImportSuccess = (newImportedItems) => {
-    setLocalItems((prev) => [...newImportedItems, ...prev])
+  const handleImportSuccess = () => {
+    refetch()
   }
 
   // KPI Statistics Calculation
@@ -527,9 +515,6 @@ export default function MonitoringDivisiPage() {
   const handleFormSubmit = async (formData) => {
     if (!canManage) return
     if (selectedRecord?.id) {
-      setLocalItems((prev) =>
-        prev.map((item) => (item.id === selectedRecord.id ? { ...item, ...formData } : item))
-      )
       await ubah.mutateAsync(
         { id: selectedRecord.id, payload: formData },
         {
@@ -537,24 +522,13 @@ export default function MonitoringDivisiPage() {
             setIsFormOpen(false)
             refetch()
           },
-          onError: () => {
-            setIsFormOpen(false)
-          },
         }
       )
     } else {
-      const newRec = {
-        id: `local_${Date.now()}`,
-        ...formData,
-      }
-      setLocalItems((prev) => [newRec, ...prev])
       await tambah.mutateAsync(formData, {
         onSuccess: () => {
           setIsFormOpen(false)
           refetch()
-        },
-        onError: () => {
-          setIsFormOpen(false)
         },
       })
     }
@@ -562,21 +536,16 @@ export default function MonitoringDivisiPage() {
 
   const handleConfirmDelete = async () => {
     if (!canManage || !deleteTargetId) return
-    setLocalItems((prev) => [...prev.filter((i) => i.id !== deleteTargetId), { id: deleteTargetId, _deleted: true }])
     await hapus.mutateAsync(deleteTargetId, {
       onSuccess: () => {
         setIsDeleteOpen(false)
         setDeleteTargetId(null)
         refetch()
       },
-      onError: () => {
-        setIsDeleteOpen(false)
-        setDeleteTargetId(null)
-      },
     })
   }
 
-  // AppDataTable Columns Definition with TailGrids HoverCard
+  // AppDataTable Columns Definition with HeroUI HoverCard
   const columns = [
     {
       key: 'nama_divisi',
@@ -1154,7 +1123,7 @@ export default function MonitoringDivisiPage() {
                       : (filterUnit || (educationUnits.length > 0 ? `${educationUnits.length} Unit Pendidikan` : 'Seluruh Unit'))}
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   {isDivisi
                     ? 'Supervisi dan pemantauan kinerja Kepala Sekolah serta Pegawai & Guru di seluruh unit pendidikan (SD IT, SMP IT, SMA IT, Ponpes).'
                     : 'Pemantauan terpadu ketercapaian target divisi operasional di seluruh unit pendidikan.'}
@@ -1278,7 +1247,7 @@ export default function MonitoringDivisiPage() {
           </div>
         </motion.div>
 
-        {/* KPI Stats Grid Complying with TAILGRIDS_CARD_COMPONENT */}
+        {/* KPI Stats Grid Complying with HEROUI_CARD_COMPONENT */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
           <KpiTintedCard
             label="Total Laporan Monitoring"
@@ -1310,7 +1279,7 @@ export default function MonitoringDivisiPage() {
           />
         </motion.div>
 
-        {/* AppDataTable complying with TailGrids Benchmark */}
+        {/* AppDataTable complying with HeroUI Benchmark */}
         <motion.div id="tabel-pemantauan-divisi" className="scroll-mt-6" variants={itemVariants}>
           <AppDataTable
             printableHeader={
@@ -1534,7 +1503,7 @@ export default function MonitoringDivisiPage() {
           ])}
         />
 
-        {/* Delete Confirmation Alert Dialog (TailGrids Hero UI Harmonized) */}
+        {/* Delete Confirmation Alert Dialog (HeroUI Hero UI Harmonized) */}
         <AnimatePresence>
           {isDeleteOpen && (
             <div

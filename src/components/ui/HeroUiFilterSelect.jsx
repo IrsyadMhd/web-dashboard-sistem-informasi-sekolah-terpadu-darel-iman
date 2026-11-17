@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import PropTypes from 'prop-types'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Search, Check, X } from 'lucide-react'
 
 /**
  * HeroUiFilterSelect - Canonical Hero UI dropdown filter component.
- * Provides custom interactive select styling matching TailGrids & Hero UI standards.
+ * Provides custom interactive select styling matching HeroUI & Hero UI standards.
  */
 export default function HeroUiFilterSelect({
   id = undefined,
@@ -21,26 +22,61 @@ export default function HeroUiFilterSelect({
   ariaLabel = '',
   disabled = false,
   size = 'md', // 'sm' (h-9), 'md' (h-10), 'lg' (h-11)
-  placement = 'bottom', // 'bottom' | 'top'
-  align = 'left', // 'left' | 'right'
+  placement = 'bottom-start', // 'bottom-start' | 'bottom' | 'top'
+  align = 'start', // 'start' | 'left' | 'right'
+  popoverProps = {},
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [coords, setCoords] = useState({ top: 0, bottom: null, left: 0, width: 220, openTop: false })
   const containerRef = useRef(null)
+  const triggerRef = useRef(null)
+  const popoverRef = useRef(null)
+
+  const effectivePlacement = popoverProps?.placement || placement
+  const effectiveAlign = popoverProps?.align || align
+
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return
+    const rect = triggerRef.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    const estimatedHeight = 280
+    const openTop = effectivePlacement.startsWith('top') || (spaceBelow < estimatedHeight && rect.top > spaceBelow)
+    const maxViewportW = Math.max(200, window.innerWidth - 16)
+    const minW = Math.min(Math.max(rect.width, 220), maxViewportW)
+    const leftPos = effectiveAlign === 'right' || effectiveAlign === 'end'
+      ? Math.max(8, rect.right - minW)
+      : Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - minW - 8))
+
+    setCoords({
+      top: openTop ? null : rect.bottom + 6,
+      bottom: openTop ? window.innerHeight - rect.top + 6 : null,
+      left: leftPos,
+      width: Math.min(rect.width, maxViewportW),
+      openTop,
+    })
+  }, [effectiveAlign, effectivePlacement])
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      const insideTrigger = containerRef.current && containerRef.current.contains(event.target)
+      const insidePopover = popoverRef.current && popoverRef.current.contains(event.target)
+      if (!insideTrigger && !insidePopover) {
         setIsOpen(false)
       }
     }
     if (isOpen) {
+      updatePosition()
       document.addEventListener('mousedown', handleClickOutside)
+      window.addEventListener('scroll', updatePosition, true)
+      window.addEventListener('resize', updatePosition)
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('resize', updatePosition)
     }
-  }, [isOpen])
+  }, [isOpen, updatePosition])
 
   const normalizedOptions = useMemo(() => {
     return options.map((opt) => {
@@ -89,6 +125,7 @@ export default function HeroUiFilterSelect({
   return (
     <div className={`relative ${isOpen ? 'z-50' : 'z-10'} ${className}`} ref={containerRef} id={id ? `${id}-container` : undefined}>
       <button
+        ref={triggerRef}
         type="button"
         id={id}
         aria-label={ariaLabel || placeholder}
@@ -144,84 +181,94 @@ export default function HeroUiFilterSelect({
         </div>
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: placement === 'top' ? 4 : -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: placement === 'top' ? 4 : -4 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} ${
-              placement === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
-            } z-[100] ${popoverWidth} min-w-[220px] overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/50 dark:shadow-black/60`}
-          >
-            {searchable && normalizedOptions.length > 5 && (
-              <div className="p-1.5 border-b border-slate-100 dark:border-slate-800 mb-1">
-                <div className="relative">
-                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Ketik untuk mencari..."
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/80 pl-8 pr-2.5 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-2xs"
-                    autoFocus
-                  />
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              ref={popoverRef}
+              initial={{ opacity: 0, scale: 0.96, y: coords.openTop ? 4 : -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: coords.openTop ? 4 : -4 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              style={{
+                position: 'fixed',
+                top: coords.top !== null ? `${coords.top}px` : undefined,
+                bottom: coords.bottom !== null ? `${coords.bottom}px` : undefined,
+                left: `${coords.left}px`,
+                minWidth: `${Math.min(Math.max(coords.width, 200), typeof window !== 'undefined' ? window.innerWidth - 16 : 200)}px`,
+                maxWidth: 'calc(100vw - 16px)',
+              }}
+              className={`z-[9999] ${popoverWidth !== 'w-full' ? popoverWidth : ''} overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/50 dark:shadow-black/60`}
+            >
+              {searchable && normalizedOptions.length > 5 && (
+                <div className="p-1.5 border-b border-slate-100 dark:border-slate-800 mb-1">
+                  <div className="relative">
+                    <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Ketik untuk mencari..."
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/80 pl-8 pr-2.5 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-2xs"
+                      autoFocus
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="max-h-60 overflow-y-auto space-y-0.5 pr-0.5">
-              {filteredOptions.length === 0 ? (
-                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
-                  Tidak ada opsi yang cocok
-                </div>
-              ) : (
-                filteredOptions.map((opt, idx) => {
-                  const isSelected = String(opt.value) === String(value)
-                  return (
-                    <button
-                      key={`${String(opt.value)}-${idx}`}
-                      type="button"
-                      onClick={() => {
-                        onChange(opt.value)
-                        setIsOpen(false)
-                        setSearch('')
-                      }}
-                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-bold transition-all text-left cursor-pointer ${
-                        isSelected
-                          ? 'bg-gradient-to-r from-emerald-50 to-teal-50/70 text-emerald-950 dark:from-emerald-950/80 dark:to-teal-950/50 dark:text-emerald-200 font-black'
-                          : 'text-slate-700 hover:bg-emerald-50/60 hover:text-emerald-900 dark:text-slate-200 dark:hover:bg-slate-800/80 dark:hover:text-emerald-300'
-                      }`}
-                    >
-                      <div className="truncate pr-2 flex-1">
-                        <div className="truncate flex items-center gap-1.5">
-                          <span className="truncate">{opt.label}</span>
-                          {opt.badge && (
-                            <span className="shrink-0 text-[9.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/40">
-                              {opt.badge}
-                            </span>
+              <div className="max-h-60 overflow-y-auto space-y-0.5 pr-0.5">
+                {filteredOptions.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+                    Tidak ada opsi yang cocok
+                  </div>
+                ) : (
+                  filteredOptions.map((opt, idx) => {
+                    const isSelected = String(opt.value) === String(value)
+                    return (
+                      <button
+                        key={`${String(opt.value)}-${idx}`}
+                        type="button"
+                        onClick={() => {
+                          onChange(opt.value)
+                          setIsOpen(false)
+                          setSearch('')
+                        }}
+                        className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-bold transition-all text-left cursor-pointer ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-emerald-50 to-teal-50/70 text-emerald-950 dark:from-emerald-950/80 dark:to-teal-950/50 dark:text-emerald-200 font-black'
+                            : 'text-slate-700 hover:bg-emerald-50/60 hover:text-emerald-900 dark:text-slate-200 dark:hover:bg-slate-800/80 dark:hover:text-emerald-300'
+                        }`}
+                      >
+                        <div className="truncate pr-2 flex-1">
+                          <div className="truncate flex items-center gap-1.5">
+                            <span className="truncate">{opt.label}</span>
+                            {opt.badge && (
+                              <span className="shrink-0 text-[9.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/40">
+                                {opt.badge}
+                              </span>
+                            )}
+                          </div>
+                          {opt.subtext && (
+                            <div className="text-[10.5px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5">
+                              {opt.subtext}
+                            </div>
                           )}
                         </div>
-                        {opt.subtext && (
-                          <div className="text-[10.5px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5">
-                            {opt.subtext}
+                        {isSelected && (
+                          <div className="size-5 rounded-md bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                            <Check className="size-3.5" strokeWidth={3} />
                           </div>
                         )}
-                      </div>
-                      {isSelected && (
-                        <div className="size-5 rounded-md bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                          <Check className="size-3.5" strokeWidth={3} />
-                        </div>
-                      )}
-                    </button>
-                  )
-                })
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   )
 }

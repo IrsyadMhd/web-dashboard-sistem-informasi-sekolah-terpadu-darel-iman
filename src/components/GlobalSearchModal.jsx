@@ -21,7 +21,7 @@ const SYSTEM_INDEX = [
   { title: 'Unit Pendidikan', type: 'Unit', link: '/dashboard/students/unit-pendidikan', desc: 'Kelola TK, SD, SMP, SMA, Ponpes' },
   { title: 'Jenis Unit', type: 'Unit', link: '/dashboard/master-jenis-unit', desc: 'Master jenjang dan kategori unit' },
   { title: 'Master Jabatan', type: 'Pegawai', link: '/dashboard/master-jabatan', desc: 'Struktur jabatan & posisi pegawai' },
-  
+
   // Pegawai & Guru
   { title: 'Data Pegawai & Tendik', type: 'Pegawai', link: '/dashboard/employees', desc: 'Direktori pegawai kependidikan' },
   { title: 'Portal Guru & Workspace', type: 'Guru', link: '/portal-guru', desc: 'Jadwal, presensi, & kelas guru' },
@@ -138,9 +138,9 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
     const isTeacherOnly = roles.some((r) => [
       'guru', 'gurumatapelajaran', 'gurutahfizh', 'gurubk', 'walikelas', 'musyrif', 'musyrifah'
     ].includes(String(r).toLowerCase().replace(/[\s_-]+/g, ''))) &&
-    !roles.some((r) => [
-      'superadmin', 'admin', 'tatausaha', 'tu', 'operator', 'kepalasekolah', 'kepsek', 'divisipendidikan'
-    ].includes(String(r).toLowerCase().replace(/[\s_-]+/g, '')))
+      !roles.some((r) => [
+        'superadmin', 'admin', 'tatausaha', 'tu', 'operator', 'kepalasekolah', 'kepsek', 'divisipendidikan'
+      ].includes(String(r).toLowerCase().replace(/[\s_-]+/g, '')))
 
     if (isTeacherOnly && (
       item.link === '/dashboard/students' ||
@@ -219,11 +219,10 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setActiveTab(tab)}
-                className={`rounded-xl px-3 py-1 text-[11px] font-extrabold transition-all duration-200 whitespace-nowrap cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
-                  isActive
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm border border-emerald-400/40'
-                    : 'text-slate-600 hover:text-emerald-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-emerald-300 dark:hover:bg-slate-800 font-bold border border-transparent'
-                }`}
+                className={`rounded-xl px-3 py-1 text-[11px] font-extrabold transition-all duration-200 whitespace-nowrap cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${isActive
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm border border-emerald-400/40'
+                  : 'text-slate-600 hover:text-emerald-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-emerald-300 dark:hover:bg-slate-800 font-bold border border-transparent'
+                  }`}
               >
                 {tab}
               </button>
@@ -274,7 +273,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-2 text-[10px] font-semibold text-slate-400 dark:border-slate-800 dark:bg-slate-800/40">
           <span>Tekan <kbd className="font-bold text-slate-600 dark:text-slate-300">Enter</kbd> untuk memilih</span>
-          <span>Sistem Manajemen Sekolah Terpadu</span>
+          <span>Dareliman Edu</span>
         </div>
       </div>
     </div>

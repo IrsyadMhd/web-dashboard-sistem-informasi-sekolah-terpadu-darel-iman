@@ -315,7 +315,7 @@ export default function GradesWorkspace({
 
   return (
     <div className="space-y-5">
-      {/* 1. TAILGRIDS MODERN HERO HEADER CARD */}
+      {/* 1. HEROUI MODERN HERO HEADER CARD */}
       <header className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
         <div className="pointer-events-none absolute -right-8 -top-8 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-400/15 blur-3xl dark:from-emerald-500/15" />
         <div className="relative flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
@@ -699,7 +699,7 @@ export default function GradesWorkspace({
         )}
       </div>
 
-      {/* 5. TAILGRIDS HARMONIZED GRADE DETAIL DRILL-DOWN MODAL */}
+      {/* 5. HEROUI HARMONIZED GRADE DETAIL DRILL-DOWN MODAL */}
       <AnimatePresence>
         {selectedDetail && (() => {
           const detailFinal = selectedDetail.final_score ?? selectedDetail.score
@@ -860,7 +860,7 @@ export default function GradesWorkspace({
                 {/* Modal Footer */}
                 <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/80 px-5 py-3.5 dark:border-slate-800 dark:bg-slate-800/60">
                   <span className="text-[11px] text-slate-500">
-                    Sistem Manajemen Sekolah Terpadu{student?.unit_name || period?.unit_name ? ` · ${student?.unit_name || period?.unit_name}` : ''}
+                    Dareliman Edu{student?.unit_name || period?.unit_name ? ` · ${student?.unit_name || period?.unit_name}` : ''}
                   </span>
                   <Button
                     type="button"

@@ -50,6 +50,9 @@ import Swal from '@/components/ui/compat/swal-heroui'
 import { PageContainer, AppBreadcrumb, AppTabs } from '../components/app'
 import HeroUiHeader from '../components/ui/HeroUiHeader'
 import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
+import { Input as UiInput } from '../components/ui/input'
+import { TextArea as UiTextArea } from '../components/ui/text-area'
+import { canSwitchEducationUnit } from '../auth/portalResolver'
 import { useAuthStore } from '../stores/authStore'
 import { useDebounce } from '../hooks/useDebounce'
 import { disciplineService } from '../services/disciplineService'
@@ -304,21 +307,44 @@ export default function DisciplinePointManagementPage() {
     }
   }, [fetchCategories, activeTab, isInputModalOpen])
 
+  const canSwitchUnit = useMemo(() => canSwitchEducationUnit(user), [user])
+  const userAssignedUnitId =
+    user?.education_unit_id ||
+    user?.unit_id ||
+    user?.employee?.unit_id ||
+    user?.metadata?.unit_id ||
+    user?.metadata?.education_unit_id ||
+    ''
+
   // Unit Pendidikan Options untuk HeroUiFilterSelect (dengan badge Boarding/Fullday otomatis)
   const unitFilterOptions = useMemo(() => {
+    const mapped = educationUnits.map((u) => {
+      const isBoarding = u.program_type === 'boarding' || /PONPES|MAHAD|PESANTREN|ASRAMA/i.test(u.name || '')
+      return {
+        value: String(u.id),
+        label: u.name,
+        badge: isBoarding ? 'Boarding' : 'Fullday',
+        badgeColor: isBoarding ? 'warning' : 'primary',
+      }
+    })
+    if (!canSwitchUnit && mapped.length > 0) {
+      return mapped
+    }
     return [
       { value: 'all', label: 'Semua Unit Pendidikan' },
-      ...educationUnits.map((u) => {
-        const isBoarding = u.program_type === 'boarding' || /PONPES|MAHAD|PESANTREN|ASRAMA/i.test(u.name || '')
-        return {
-          value: String(u.id),
-          label: u.name,
-          badge: isBoarding ? 'Boarding' : 'Fullday',
-          badgeColor: isBoarding ? 'warning' : 'primary',
-        }
-      }),
+      ...mapped,
     ]
-  }, [educationUnits])
+  }, [educationUnits, canSwitchUnit])
+
+  useEffect(() => {
+    if (!canSwitchUnit) {
+      const targetId = String(userAssignedUnitId || (educationUnits.length === 1 ? educationUnits[0].id : ''))
+      if (targetId) {
+        if (selectedUnitId === 'all') setSelectedUnitId(targetId)
+        if (modalUnitFilter === 'all') setModalUnitFilter(targetId)
+      }
+    }
+  }, [canSwitchUnit, userAssignedUnitId, educationUnits, selectedUnitId, modalUnitFilter])
 
   // Class Options untuk HeroUiFilterSelect (terfilter otomatis berdasarkan unit yang dipilih)
   const classFilterOptions = useMemo(() => {
@@ -583,10 +609,11 @@ export default function DisciplinePointManagementPage() {
       <HeroUiHeader
         title="Tata Tertib & Poin"
         subtitle="Manajemen kedisiplinan berjenjang terintegrasi (1 - 250 Poin): Pencatatan langsung oleh Musyrif Asrama, Wali Kelas, Guru Mapel, Waka Kesantrian, dan Divisi Pendidikan."
-        roleTag={userRoles[0] || 'Petugas'}
+        icon={Scale}
+        roleBadge={userRoles[0] || 'Petugas'}
         theme="emerald"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <HeroButton
               color="primary"
               variant="shadow"
@@ -817,20 +844,26 @@ export default function DisciplinePointManagementPage() {
         <div className="mt-4 space-y-4">
           <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
             {/* Toolbar Search & Action (Row 1) */}
-            <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="w-full sm:flex-1 max-w-xl">
-                <HeroInput
-                  isClearable
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="relative w-full sm:flex-1">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 dark:text-emerald-400 z-10" />
+                <UiInput
+                  type="text"
                   placeholder="Cari santri, NIS, atau jenis pelanggaran..."
                   value={searchInput}
-                  onValueChange={setSearchInput}
-                  startContent={<Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
-                  size="sm"
-                  variant="bordered"
-                  classNames={{
-                    inputWrapper: 'border-emerald-300/80 dark:border-emerald-700 bg-white dark:bg-slate-900 shadow-2xs h-10 rounded-xl',
-                  }}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="h-10 rounded-xl border-emerald-300/80 dark:border-emerald-700 bg-white dark:bg-slate-900 pl-10 pr-8 text-xs sm:text-sm shadow-2xs"
                 />
+                {searchInput && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchInput('')}
+                    aria-label="Hapus pencarian"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
@@ -856,6 +889,7 @@ export default function DisciplinePointManagementPage() {
             <div className="bg-gradient-to-r from-emerald-50/60 via-teal-50/40 to-emerald-50/60 dark:bg-[#151D2A] p-3 sm:p-4 border-b border-emerald-200/80 dark:border-emerald-800/60 flex flex-wrap items-center gap-2.5">
               <div className="w-full sm:w-56">
                 <HeroUiFilterSelect
+                  disabled={!canSwitchUnit}
                   value={selectedUnitId}
                   onChange={(val) => {
                     setSelectedUnitId(val || 'all')
@@ -1148,17 +1182,17 @@ export default function DisciplinePointManagementPage() {
           <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
             {/* Toolbar Master */}
             <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <HeroInput
-                  isClearable
-                  placeholder="Cari pasal atau teks tata tertib..."
-                  value={masterSearch}
-                  onValueChange={setMasterSearch}
-                  startContent={<Search className="w-4 h-4 text-emerald-600" />}
-                  size="sm"
-                  variant="bordered"
-                  className="w-full sm:w-72"
-                />
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full sm:w-auto flex-1 max-w-2xl">
+                <div className="relative w-full sm:flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 z-10" />
+                  <UiInput
+                    type="text"
+                    placeholder="Cari pasal atau teks tata tertib..."
+                    value={masterSearch}
+                    onChange={(e) => setMasterSearch(e.target.value)}
+                    className="h-10 rounded-xl border-emerald-300/80 dark:border-emerald-700 bg-white dark:bg-slate-900 pl-9 pr-8 text-xs"
+                  />
+                </div>
                 <HeroUiFilterSelect
                   value={masterCluster}
                   onChange={(val) => setMasterCluster(val || 'all')}
@@ -1388,7 +1422,7 @@ export default function DisciplinePointManagementPage() {
       {/* ========================================================= */}
       <AnimatePresence>
         {isInputModalOpen && (
-          <div className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md">
+          <div className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md" role="dialog" aria-modal="true" aria-label="Catat Pelanggaran Tata Tertib">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1441,6 +1475,7 @@ export default function DisciplinePointManagementPage() {
                         {/* Filter Bar Siswa: Unit Pendidikan (Boarding/Fullday otomatis mengikuti Unit) & Search Input */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           <HeroUiFilterSelect
+                            disabled={!canSwitchUnit}
                             value={modalUnitFilter}
                             onChange={(val) => setModalUnitFilter(val || 'all')}
                             options={unitFilterOptions}
@@ -1452,18 +1487,16 @@ export default function DisciplinePointManagementPage() {
                           />
 
                           {/* Search Input Santri */}
-                          <HeroInput
-                            placeholder="Ketik nama lengkap, NIS, atau NISN santri..."
-                            value={studentSearchInput}
-                            onValueChange={setStudentSearchInput}
-                            isClearable
-                            startContent={<Search className="w-4 h-4 text-emerald-600" />}
-                            size="sm"
-                            variant="bordered"
-                            classNames={{
-                              inputWrapper: 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900',
-                            }}
-                          />
+                          <div className="relative w-full">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 z-10" />
+                            <UiInput
+                              type="text"
+                              placeholder="Ketik nama lengkap, NIS, atau NISN santri..."
+                              value={studentSearchInput}
+                              onChange={(e) => setStudentSearchInput(e.target.value)}
+                              className="h-9 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 pl-9 text-xs"
+                            />
+                          </div>
                         </div>
 
                         {/* Hasil Daftar Siswa / Santri */}
@@ -1618,18 +1651,16 @@ export default function DisciplinePointManagementPage() {
                         className="w-full"
                       />
 
-                      <HeroInput
-                        placeholder="Cari kata kunci pasal / pelanggaran..."
-                        value={modalCategorySearch}
-                        onValueChange={setModalCategorySearch}
-                        isClearable
-                        startContent={<Search className="w-3.5 h-3.5 text-slate-400" />}
-                        size="sm"
-                        variant="bordered"
-                        classNames={{
-                          inputWrapper: 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900',
-                        }}
-                      />
+                      <div className="relative w-full">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 z-10" />
+                        <UiInput
+                          type="text"
+                          placeholder="Cari kata kunci pasal / pelanggaran..."
+                          value={modalCategorySearch}
+                          onChange={(e) => setModalCategorySearch(e.target.value)}
+                          className="h-9 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 pl-9 text-xs"
+                        />
+                      </div>
                     </div>
 
                     {/* Dropdown Aturan Pelanggaran HeroUI */}
@@ -1720,11 +1751,13 @@ export default function DisciplinePointManagementPage() {
                         <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                           Tanggal Kejadian
                         </label>
-                        <input
+                        <UiInput
                           type="date"
+                          useNative
+                          size="sm"
                           value={violationForm.transaction_date}
                           onChange={(e) => setViolationForm({ ...violationForm, transaction_date: e.target.value })}
-                          className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                          className="w-full text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                         />
                       </div>
 
@@ -1752,11 +1785,12 @@ export default function DisciplinePointManagementPage() {
                         <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                           Poin Pelanggaran
                         </label>
-                        <input
+                        <UiInput
                           type="number"
+                          size="sm"
                           value={violationForm.points}
                           onChange={(e) => setViolationForm({ ...violationForm, points: e.target.value })}
-                          className="w-full text-xs font-black text-rose-600 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                          className="w-full text-xs font-black text-rose-600 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                         />
                       </div>
                     </div>
@@ -1765,12 +1799,12 @@ export default function DisciplinePointManagementPage() {
                       <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Kronologi / Keterangan Kejadian <span className="text-rose-500">*</span>
                       </label>
-                      <textarea
+                      <UiTextArea
                         rows={2}
                         placeholder="Jelaskan kronologi singkat, waktu kejadian, saksi, atau pembinaan yang telah dilakukan..."
                         value={violationForm.description}
                         onChange={(e) => setViolationForm({ ...violationForm, description: e.target.value })}
-                        className="w-full text-xs font-medium p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                        className="w-full text-xs font-medium rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                         required
                       />
                     </div>
@@ -1779,12 +1813,13 @@ export default function DisciplinePointManagementPage() {
                       <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Tindak Lanjut / Konsekuensi yang Telah Diberikan Langsung
                       </label>
-                      <input
+                      <UiInput
                         type="text"
+                        size="sm"
                         placeholder="Contoh: Barang disita ke kantor, berdiri membaca istighfar 15 menit, dll"
                         value={violationForm.direct_consequence_notes}
                         onChange={(e) => setViolationForm({ ...violationForm, direct_consequence_notes: e.target.value })}
-                        className="w-full text-xs font-medium p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                        className="w-full text-xs font-medium rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                       />
                     </div>
                   </div>
@@ -2019,7 +2054,7 @@ export default function DisciplinePointManagementPage() {
       {/* ========================================================= */}
       <AnimatePresence>
         {isLetterModalOpen && (
-          <div className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md">
+          <div role="dialog" aria-modal="true" aria-label="Penerbitan Surat Peringatan" className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -2064,12 +2099,13 @@ export default function DisciplinePointManagementPage() {
                     <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                       Nomor Surat (Biarkan kosong untuk penomoran otomatis)
                     </label>
-                    <input
+                    <UiInput
                       type="text"
+                      size="sm"
                       placeholder="Contoh: ST/PONDOK/XI/2026/001"
                       value={letterForm.letter_number}
                       onChange={(e) => setLetterForm({ ...letterForm, letter_number: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                      className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                     />
                   </div>
 
@@ -2077,11 +2113,13 @@ export default function DisciplinePointManagementPage() {
                     <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                       Jadwal Pemanggilan Orang Tua / Wali
                     </label>
-                    <input
+                    <UiInput
                       type="datetime-local"
+                      useNative
+                      size="sm"
                       value={letterForm.parent_summon_date}
                       onChange={(e) => setLetterForm({ ...letterForm, parent_summon_date: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                      className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                     />
                   </div>
 
@@ -2089,12 +2127,12 @@ export default function DisciplinePointManagementPage() {
                     <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                       Catatan Pembinaan / Isi Surat
                     </label>
-                    <textarea
+                    <UiTextArea
                       rows={3}
                       placeholder="Catatan tambahan untuk dicantumkan dalam surat peringatan..."
                       value={letterForm.notes}
                       onChange={(e) => setLetterForm({ ...letterForm, notes: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                      className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                     />
                   </div>
 
@@ -2119,7 +2157,7 @@ export default function DisciplinePointManagementPage() {
       {isAdmin && (
         <AnimatePresence>
           {isCategoryModalOpen && (
-            <div className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md">
+            <div role="dialog" aria-modal="true" aria-label={editingCategory ? 'Edit Aturan Tata Tertib' : 'Tambah Aturan Tata Tertib Baru'} className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 15 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -2159,7 +2197,7 @@ export default function DisciplinePointManagementPage() {
                     }}
                     className="flex-1 overflow-y-auto p-5 space-y-3 text-xs"
                   >
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Kluster</label>
                         <HeroUiFilterSelect
@@ -2179,11 +2217,12 @@ export default function DisciplinePointManagementPage() {
 
                       <div>
                         <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nomor / Pasal</label>
-                        <input
+                        <UiInput
                           type="text"
+                          size="sm"
                           value={categoryForm.pasal_number}
                           onChange={(e) => setCategoryForm({ ...categoryForm, pasal_number: e.target.value })}
-                          className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                          className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                         />
                       </div>
                     </div>
@@ -2192,12 +2231,13 @@ export default function DisciplinePointManagementPage() {
                       <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Peraturan Induk (Bab/Pasal)
                       </label>
-                      <input
+                      <UiInput
                         type="text"
+                        size="sm"
                         placeholder="Contoh: Santri wajib menjalankan ibadah sesuai syariat islam"
                         value={categoryForm.rule_name}
                         onChange={(e) => setCategoryForm({ ...categoryForm, rule_name: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                        className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                         required
                       />
                     </div>
@@ -2206,12 +2246,13 @@ export default function DisciplinePointManagementPage() {
                       <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Nama Pelanggaran
                       </label>
-                      <input
+                      <UiInput
                         type="text"
+                        size="sm"
                         placeholder="Contoh: Meninggalkan shalat 5 waktu"
                         value={categoryForm.name}
                         onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                        className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                         required
                       />
                     </div>
@@ -2220,34 +2261,37 @@ export default function DisciplinePointManagementPage() {
                       <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Rincian Spesifik Kasus (Opsional)
                       </label>
-                      <input
+                      <UiInput
                         type="text"
+                        size="sm"
                         placeholder="Contoh: Melukai dengan sengaja"
                         value={categoryForm.violation_detail}
                         onChange={(e) => setCategoryForm({ ...categoryForm, violation_detail: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                        className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                       />
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Kode Unik</label>
-                        <input
+                        <UiInput
                           type="text"
+                          size="sm"
                           value={categoryForm.code}
                           onChange={(e) => setCategoryForm({ ...categoryForm, code: e.target.value })}
-                          className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono font-bold outline-none"
+                          className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono font-bold"
                           required
                         />
                       </div>
 
                       <div>
                         <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Bobot Poin</label>
-                        <input
+                        <UiInput
                           type="number"
+                          size="sm"
                           value={categoryForm.point_weight}
                           onChange={(e) => setCategoryForm({ ...categoryForm, point_weight: e.target.value })}
-                          className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-rose-600 outline-none"
+                          className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-rose-600"
                           required
                         />
                       </div>
@@ -2273,12 +2317,13 @@ export default function DisciplinePointManagementPage() {
                       <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Konsekuensi Langsung (Opsional)
                       </label>
-                      <input
+                      <UiInput
                         type="text"
+                        size="sm"
                         placeholder="Contoh: Pakaian disita dan tidak dikembalikan, Diberdirikan, dll"
                         value={categoryForm.direct_consequence}
                         onChange={(e) => setCategoryForm({ ...categoryForm, direct_consequence: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none"
+                        className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                       />
                     </div>
 

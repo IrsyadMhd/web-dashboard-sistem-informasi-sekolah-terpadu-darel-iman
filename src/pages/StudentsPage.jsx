@@ -472,8 +472,8 @@ export default function StudentsPage() {
   const canCreateStudent = !isFoundationRole && (isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.create'))
   const canUpdateStudent = !isFoundationRole && (isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.update'))
   const canDeleteStudent = !isFoundationRole && (isSuperAdmin || isKepalaSekolah || permissions.includes('student.delete'))
-  const canExportStudent = isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.export') || isFoundationRole
-  const canImportStudent = !isFoundationRole && (isSuperAdmin || isKepalaSekolah || permissions.includes('student.import'))
+  const canExportStudent = !isFoundationRole && (isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.export'))
+  const canImportStudent = !isFoundationRole && (isSuperAdmin || permissions.includes('student.import') || hasAnyRole(user, ['Admin', 'Operator', 'Tata Usaha', 'TU']))
   const canManageVaBsi = !isFoundationRole && (isSuperAdmin || isLeaderRole || hasAnyRole(user, ['Super Admin', 'Admin', 'Operator', 'Tata Usaha', 'TU', 'Admin Madrasah', 'Admin Sekolah']))
   const [showGenerateVaModal, setShowGenerateVaModal] = useState(false)
   const [isGeneratingVa, setIsGeneratingVa] = useState(false)
@@ -762,8 +762,12 @@ export default function StudentsPage() {
   const selectedUnitName = useMemo(() => {
     if (!unitFilter || unitFilter === 'Semua') return ''
     const u = rawUnits.find((item) => String(item.id) === String(unitFilter))
-    return u?.name || u?.nama_unit || u?.nama || unitFilter
-  }, [unitFilter, rawUnits])
+    if (u?.name || u?.nama_unit || u?.nama) return u.name || u.nama_unit || u.nama
+    if (String(unitFilter) === String(userUnitId)) {
+      return user?.unit?.name || user?.unit_name || user?.employee?.unit?.name || user?.metadata?.unit_name || ''
+    }
+    return ''
+  }, [unitFilter, rawUnits, userUnitId, user])
 
   // ── Dynamic Available Classes per Selected Unit ─────────────────────────
   const availableClasses = useMemo(() => {
@@ -1515,7 +1519,7 @@ export default function StudentsPage() {
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   {isGlobalUser
                     ? `Pilih unit pendidikan untuk melihat total ${terms.siswa || 'siswa'} & KPI unit spesifik, atau pilih "Semua Unit" untuk melihat seluruh data unit${isDivisiPendidikan ? ' (Supervisi Divisi Pendidikan)' : ''}.`
-                    : `Menampilkan total kesiswaan dan KPI khusus untuk unit ${selectedUnitName || user?.unit_name || 'sekolah Anda'}.`}
+                    : `Menampilkan total kesiswaan dan KPI khusus untuk unit ${selectedUnitName || user?.unit?.name || user?.unit_name || user?.employee?.unit?.name || user?.metadata?.unit_name || 'Unit Terkunci'}.`}
                 </p>
               </div>
             </div>
@@ -1551,7 +1555,7 @@ export default function StudentsPage() {
               ) : (
                 <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/80 bg-emerald-50/80 px-3.5 py-2 text-xs font-bold text-emerald-900 shadow-2xs dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200">
                   <Lock className="size-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>Unit: {selectedUnitName || user?.unit_name || 'Unit Sekolah Anda'}</span>
+                  <span>Unit: {selectedUnitName || user?.unit?.name || user?.unit_name || user?.employee?.unit?.name || user?.metadata?.unit_name || 'Unit Terkunci'}</span>
                 </div>
               )}
 
@@ -1572,7 +1576,7 @@ export default function StudentsPage() {
           </div>
         </div>
 
-        {/* Quick Summary Cards (TAILGRIDS_CARD_COMPONENT) */}
+        {/* Quick Summary Cards (HEROUI_CARD_COMPONENT) */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
           <KpiTintedCard
             icon={FaUserGraduate}
@@ -2479,7 +2483,7 @@ export default function StudentsPage() {
           onDownloadPdf={handleDownloadPdf}
         />
 
-        {/* POP UP MODAL 4: DASHBOARD IMPORT DATA SISWA (TAILGRIDS HARMONIZED BATCH MODAL) */}
+        {/* POP UP MODAL 4: DASHBOARD IMPORT DATA SISWA (HEROUI HARMONIZED BATCH MODAL) */}
         <AnimatePresence>
           {showImportModal && (
             <div
@@ -2911,7 +2915,7 @@ export default function StudentsPage() {
           )}
         </AnimatePresence>
 
-        {/* POP UP MODAL: DASHBOARD EXPORT DATA SISWA (TAILGRIDS HARMONIZED BATCH MODAL) */}
+        {/* POP UP MODAL: DASHBOARD EXPORT DATA SISWA (HEROUI HARMONIZED BATCH MODAL) */}
         <AnimatePresence>
           {showExportModal && (
             <div
@@ -3291,7 +3295,7 @@ export default function StudentsPage() {
           )}
         </AnimatePresence>
 
-        {/* MODAL: KONFIRMASI SIMPAN / PERBARUI DATA SISWA HARMONISASI TAILGRIDS */}
+        {/* MODAL: KONFIRMASI SIMPAN / PERBARUI DATA SISWA HARMONISASI HEROUI */}
         <AnimatePresence>
           {showSaveConfirmDialog && (
             <div
@@ -3471,7 +3475,7 @@ export default function StudentsPage() {
           )}
         </AnimatePresence>
 
-        {/* MODAL: KONFIRMASI HAPUS DATA SISWA HARMONISASI TAILGRIDS */}
+        {/* MODAL: KONFIRMASI HAPUS DATA SISWA HARMONISASI HEROUI */}
         <AnimatePresence>
           {deleteTarget && (
             <div

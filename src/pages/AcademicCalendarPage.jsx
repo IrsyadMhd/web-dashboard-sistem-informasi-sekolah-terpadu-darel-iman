@@ -423,7 +423,7 @@ export default function AcademicCalendarPage() {
           ]}
         />
 
-        {/* TailGrids Modern Hero Header dengan Tahun Ajaran Dinamis */}
+        {/* HeroUI Modern Hero Header dengan Tahun Ajaran Dinamis */}
         <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -563,9 +563,8 @@ export default function AcademicCalendarPage() {
               {['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, i) => (
                 <div
                   key={d}
-                  className={`text-xs font-black uppercase tracking-wider ${
-                    i === 0 || i === 5 ? 'text-rose-500' : 'text-slate-600 dark:text-slate-400'
-                  }`}
+                  className={`text-xs font-black uppercase tracking-wider ${i === 0 || i === 5 ? 'text-rose-500' : 'text-slate-600 dark:text-slate-400'
+                    }`}
                 >
                   {d}
                 </div>
@@ -591,21 +590,19 @@ export default function AcademicCalendarPage() {
                   <div
                     key={cell.dateStr}
                     onClick={() => setSelectedDateEvents(cell)}
-                    className={`min-h-[92px] p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                      isSelected
-                        ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/40 shadow-sm'
-                        : isToday
+                    className={`min-h-[92px] p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${isSelected
+                      ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/40 shadow-sm'
+                      : isToday
                         ? 'border-emerald-400 bg-emerald-50/20 dark:border-emerald-700'
                         : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:border-emerald-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <span
-                        className={`text-xs font-extrabold ${
-                          isToday
-                            ? 'px-1.5 py-0.5 rounded-md bg-emerald-600 text-white'
-                            : 'text-slate-700 dark:text-slate-300'
-                        }`}
+                        className={`text-xs font-extrabold ${isToday
+                          ? 'px-1.5 py-0.5 rounded-md bg-emerald-600 text-white'
+                          : 'text-slate-700 dark:text-slate-300'
+                          }`}
                       >
                         {cell.day}
                       </span>
@@ -966,7 +963,7 @@ export default function AcademicCalendarPage() {
           </form>
         </Dialog>
 
-        {/* TailGrids Harmonized Delete Confirmation Modal */}
+        {/* HeroUI Harmonized Delete Confirmation Modal */}
         {deleteEventItem && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
             <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]">
@@ -999,7 +996,7 @@ export default function AcademicCalendarPage() {
                     Kategori:{' '}
                     {deleteEventItem?.category
                       ? PRESET_CATEGORIES[deleteEventItem.category]?.label ||
-                        deleteEventItem.category
+                      deleteEventItem.category
                       : '-'}{' '}
                     • Tanggal: {deleteEventItem?.startDate || '-'} • Unit:{' '}
                     {deleteEventItem?.unit || 'Semua Unit'}

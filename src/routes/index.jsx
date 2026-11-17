@@ -1,5 +1,5 @@
-import React, { Suspense, lazy, Component } from 'react'
-import { Navigate, Outlet, createBrowserRouter, useSearchParams, RouterProvider } from 'react-router-dom'
+import React, { Suspense, lazy, Component, useEffect } from 'react'
+import { Navigate, Outlet, createBrowserRouter, useSearchParams, useLocation, RouterProvider } from 'react-router-dom'
 
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'))
 const DashboardPage = lazy(() => import('../pages/DashboardPage'))
@@ -142,21 +142,28 @@ import { HeroUiTopProgressBar, HeroUiPageFallback } from '../components/common'
 import { useAuthStore } from '../stores/authStore'
 import { ROLES, hasAnyRole, resolveDefaultPortal, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 
-const portalDestination = (roles) => resolveDefaultPortal({ roles })
+const portalDestination = (userOrRoles) =>
+  resolveDefaultPortal(Array.isArray(userOrRoles) ? { roles: userOrRoles } : (userOrRoles || {}))
 
 function PortalRootRedirect() {
   const user = useAuthStore((state) => state.user)
   const roles = user?.roles || []
-  const isSuperAdminOrStaff = hasAnyRole(roles, [
-    ...ROLES.SUPER_ADMIN,
-    ...ROLES.ADMIN,
-    ...ROLES.YAYASAN,
-    ...ROLES.DIVISI,
-    ...ROLES.KEPALA_SEKOLAH,
-    ...ROLES.WAKA,
-    ...ROLES.TATA_USAHA,
-    ...ROLES.GURU,
-  ])
+  const dbRoute = user?.access_policy?.default_route || user?.default_redirect
+  if (typeof dbRoute === 'string' && dbRoute.startsWith('/portal')) {
+    return <Navigate to={dbRoute} replace />
+  }
+  const isSuperAdminOrStaff =
+    ['super_admin', 'admin', 'foundation', 'education', 'principal', 'waka', 'tu', 'operator', 'teacher', 'musyrif', 'staff'].includes(user?.access_policy?.portal_group) ||
+    hasAnyRole(roles, [
+      ...ROLES.SUPER_ADMIN,
+      ...ROLES.ADMIN,
+      ...ROLES.YAYASAN,
+      ...ROLES.DIVISI,
+      ...ROLES.KEPALA_SEKOLAH,
+      ...ROLES.WAKA,
+      ...ROLES.TATA_USAHA,
+      ...ROLES.GURU,
+    ])
 
   if (hasAnyRole(roles, ROLES.SISWA) && !isSuperAdminOrStaff) {
     return <Navigate to="/portal-siswa" replace />
@@ -241,6 +248,15 @@ function RouteTerlindungi() {
   const isSessionValid = useAuthStore((state) => state.isSessionValid)
   const clearSession = useAuthStore((state) => state.clearSession)
 
+  const sessionStatus = isSessionValid()
+  const isInvalid = !isAuthenticated || !sessionStatus.valid
+
+  useEffect(() => {
+    if (!isInitializing && isInvalid) {
+      clearSession()
+    }
+  }, [isInitializing, isInvalid, clearSession])
+
   if (isInitializing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-4">
@@ -250,9 +266,7 @@ function RouteTerlindungi() {
     )
   }
 
-  const sessionStatus = isSessionValid()
-  if (!isAuthenticated || !sessionStatus.valid) {
-    clearSession()
+  if (isInvalid) {
     const reasonParam = sessionStatus.reason && sessionStatus.reason !== 'no_token' ? `?reason=${sessionStatus.reason}` : ''
     return <Navigate to={`/masuk${reasonParam}`} replace />
   }
@@ -265,23 +279,38 @@ function RouteTerlindungi() {
   )
 }
 
+function isDbPathAllowed(user, pathname) {
+  const accessiblePaths = Array.isArray(user?.accessible_paths) ? user.accessible_paths : []
+  return accessiblePaths.some((p) => {
+    if (!p || typeof p !== 'string') return false
+    if (pathname === p) return true
+    if (p === '/' || p === '/dashboard') return false
+    return pathname.startsWith(p + '/')
+  })
+}
+
 function RouteRole({ allow, deny = [], children }) {
   const user = useAuthStore((state) => state.user)
+  const location = useLocation()
   const roles = user?.roles || []
   const permissions = user?.permissions || []
   const isSuperAdmin = getUserRoleLevel(user) === ROLE_LEVELS.SUPER_ADMIN || hasAnyRole(roles, ['Super Admin', 'SuperAdmin', 'super_admin']) // Level 1
-  const hasDeniedRole = deny.length > 0 && hasAnyRole(roles, deny)
-  const hasAccess = isSuperAdmin || (!hasDeniedRole && (
+  const explicitPathAllowed = isDbPathAllowed(user, location.pathname)
+  const isNonCanonicalCustom = Boolean(user?.access_policy && user.access_policy.is_canonical_role === false)
+  const portalGroup = user?.access_policy?.portal_group || ''
+  const isExternalPortal = ['parent', 'student', 'alumni'].includes(portalGroup)
+  const bypassDeny = explicitPathAllowed || (isNonCanonicalCustom && !isExternalPortal)
+  const hasDeniedRole = !bypassDeny && deny.length > 0 && hasAnyRole(roles, deny)
+  const hasAccess = isSuperAdmin || explicitPathAllowed || (!hasDeniedRole && (
     !allow ||
     allow.length === 0 ||
     hasAnyRole(roles, allow) ||
-    permissions.length > 0 ||
-    roles.length > 0
+    (isNonCanonicalCustom && !isExternalPortal && permissions.length > 0)
   ))
 
   if (!hasAccess) {
-    const dest = portalDestination(roles)
-    const currentPath = window.location.pathname
+    const dest = portalDestination(user || roles)
+    const currentPath = location.pathname
     if (dest === currentPath || currentPath.startsWith(dest)) {
       return <Navigate to="/masuk" replace />
     }
@@ -292,13 +321,15 @@ function RouteRole({ allow, deny = [], children }) {
 
 function RoleElement({ allow, children }) {
   const user = useAuthStore((state) => state.user)
+  const location = useLocation()
   const roles = user?.roles || []
   const permissions = user?.permissions || []
-  const isSuperAdmin = hasAnyRole(roles, ['Super Admin', 'SuperAdmin', 'super_admin'])
-  const hasAccess = isSuperAdmin || hasAnyRole(roles, allow) || permissions.length > 0
+  const isSuperAdmin = getUserRoleLevel(user) === ROLE_LEVELS.SUPER_ADMIN || hasAnyRole(roles, ['Super Admin', 'SuperAdmin', 'super_admin'])
+  const explicitPathAllowed = isDbPathAllowed(user, location.pathname)
+  const hasAccess = isSuperAdmin || explicitPathAllowed || hasAnyRole(roles, allow) || permissions.length > 0
   if (!hasAccess) {
-    const dest = portalDestination(roles)
-    const currentPath = window.location.pathname
+    const dest = portalDestination(user || roles)
+    const currentPath = location.pathname
     if (dest === currentPath || currentPath.startsWith(dest)) {
       return <Navigate to="/masuk" replace />
     }
@@ -309,19 +340,35 @@ function RoleElement({ allow, children }) {
 
 function PermissionElement({ any = [], roles: allowedRoles = [], deniedRoles = [], children }) {
   const user = useAuthStore((state) => state.user)
+  const location = useLocation()
   const roles = user?.roles || []
   const permissions = user?.permissions || []
   const isSuperAdmin = getUserRoleLevel(user) === ROLE_LEVELS.SUPER_ADMIN || hasAnyRole(roles, ['Super Admin', 'SuperAdmin', 'super_admin']) // Level 1
+  const explicitPathAllowed = isDbPathAllowed(user, location.pathname)
   const hasPermission = any.length === 0 || any.some((permission) => permissions.includes(permission))
   const hasRoleMatch = allowedRoles.length > 0 && hasAnyRole(roles, allowedRoles)
-  const hasDeniedRole = deniedRoles.length > 0 && hasAnyRole(roles, deniedRoles)
 
-  // DB-Driven: Granted database permissions take precedence
-  const isAllowed = isSuperAdmin || (hasPermission && !hasDeniedRole) || hasRoleMatch
+  const policy = user?.access_policy || null
+  const isCustomMenuMode = Boolean(policy?.has_custom_menu_access)
+  const isNonCanonicalCustom = Boolean(policy && policy.is_canonical_role === false)
+  const portalGroup = policy?.portal_group || ''
+  const isExternalPortal = ['parent', 'student', 'alumni'].includes(portalGroup)
+
+  const canBypassDeniedRoles =
+    explicitPathAllowed ||
+    (!isExternalPortal && any.length > 0 && hasPermission && (isCustomMenuMode || isNonCanonicalCustom))
+
+  const hasDeniedRole = !canBypassDeniedRoles && deniedRoles.length > 0 && hasAnyRole(roles, deniedRoles)
+
+  // DB-Driven: Explicit role_menu_access & database permissions take precedence over hardcoded fallback lists
+  const isAllowed =
+    isSuperAdmin ||
+    explicitPathAllowed ||
+    (any.length > 0 && isCustomMenuMode && !isExternalPortal ? hasPermission : (hasPermission && !hasDeniedRole) || hasRoleMatch)
 
   if (!isAllowed) {
-    const dest = portalDestination(roles)
-    const currentPath = window.location.pathname
+    const dest = portalDestination(user || roles)
+    const currentPath = location.pathname
     if (dest === currentPath || currentPath.startsWith(dest)) {
       return <Navigate to="/dashboard" replace />
     }
@@ -336,13 +383,14 @@ function AbsensiIndex() {
   const user = useAuthStore((state) => state.user)
   const roles = user?.roles || []
   const userLevel = getUserRoleLevel(user)
+  const portalGroup = user?.access_policy?.portal_group
 
-  if (userLevel === ROLE_LEVELS.SISWA || hasAnyRole(roles, ['Siswa'])) return <Navigate to="/absensi/kehadiran-saya" replace /> // Level 8
-  if (userLevel === ROLE_LEVELS.GURU || hasAnyRole(roles, ['Guru', 'Wali Kelas'])) { // Level 5
+  if (portalGroup === 'student' || userLevel === ROLE_LEVELS.SISWA || hasAnyRole(roles, ['Siswa'])) return <Navigate to="/absensi/kehadiran-saya" replace /> // Level 8
+  if (portalGroup === 'teacher' || userLevel === ROLE_LEVELS.GURU || hasAnyRole(roles, ['Guru', 'Wali Kelas'])) { // Level 5
     if (hasAnyRole(roles, ['Wali Kelas'])) return <Navigate to="/absensi/dashboard-wali-kelas" replace />
     return <Navigate to="/portal-guru" replace />
   }
-  if (userLevel <= ROLE_LEVELS.KEPALA_SEKOLAH || hasAnyRole(roles, [ // Level <= 4 (Admin, Yayasan, Operator, Kepsek)
+  if (['super_admin', 'admin', 'foundation', 'education', 'principal', 'waka', 'tu', 'operator'].includes(portalGroup) || userLevel <= ROLE_LEVELS.KEPALA_SEKOLAH || hasAnyRole(roles, [ // Level <= 4 (Admin, Yayasan, Operator, Kepsek)
     'Tata Usaha', 'TU', 'tu', 'tata_usaha', 'Operator', 'operator', 'Admin', 'Super Admin',
     'Kepala Sekolah', 'kepala_sekolah', 'kepsek', 'KepalaSekolah',
     'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan'
@@ -662,6 +710,7 @@ const router = createBrowserRouter([
             ...ROLES.DIVISI,
             ...ROLES.KEPALA_SEKOLAH,
             ...ROLES.WAKA,
+            'Waka Kesantrian', 'waka_kesantrian', 'Wakil Kesantrian', 'Kepala Asrama',
             ...ROLES.TATA_USAHA,
             ...ROLES.GURU,
             ...ROLES.SISWA,
@@ -685,7 +734,7 @@ const router = createBrowserRouter([
              path: 'yayasan/laporan/prestasi',
              element: (
                <PermissionElement
-                 roles={[...ROLES.KEPALA_SEKOLAH, ...ROLES.YAYASAN, ...ROLES.WAKA_KESISWAAN, ...ROLES.SUPER_ADMIN, ...ROLES.ADMIN]}
+                 roles={[...ROLES.KEPALA_SEKOLAH, ...ROLES.YAYASAN, ...ROLES.DIVISI, ...ROLES.WAKA_KESISWAAN, ...ROLES.SUPER_ADMIN, ...ROLES.ADMIN]}
                  any={['kesiswaan.rekap_prestasi', 'kesiswaan.prestasi_rekapitulasi', 'report.prestasi.view', 'report.view', 'foundation.report.view', 'dashboard.pemantauan.lihat']}
                >
                  <BungkusLazy>
@@ -784,8 +833,8 @@ const router = createBrowserRouter([
            { path: 'guru-tahfizh', element: <PermissionElement roles={['Guru Tahfizh', 'guru_tahfizh', 'Musyrif', 'musyrif', 'Musyrifah', 'musyrifah', 'Musyrif / Musyrifah', ...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.KEPALA_SEKOLAH]} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Pengurus', 'Tata Usaha', 'TU', 'tu', 'tata_usaha', 'Operator', 'operator', 'Orang Tua', 'orang_tua', 'Siswa', 'siswa']} any={['dashboard.guru-tahfizh.view', 'dashboard.kepala-sekolah.view']}><BungkusLazy><GuruTahfizhDashboardPage /></BungkusLazy></PermissionElement> },
            { path: 'guru-bk', element: <PermissionElement any={['dashboard.guru-bk.view']}><BungkusLazy><GuruBkDashboardPage /></BungkusLazy></PermissionElement> },
            { path: 'operator', element: <PermissionElement any={['dashboard.operator.view']}><BungkusLazy><OperatorDashboardPage /></BungkusLazy></PermissionElement> },
-            { path: 'musyrif', element: <PermissionElement any={['dashboard.guru-tahfizh.view']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Pengurus', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek']}><BungkusLazy><MusyrifDashboardPage /></BungkusLazy></PermissionElement> },
-           { path: 'asrama/izin', element: <PermissionElement any={['dashboard.guru-tahfizh.view', 'dashboard.musyrif.view', 'dormitory.view', 'asrama.activity.view', 'dormitory.permission.approve', 'dormitory.manage']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Pengurus', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek']}><BungkusLazy><MusyrifDashboardPage defaultTab="perizinan" /></BungkusLazy></PermissionElement> },
+            { path: 'musyrif', element: <PermissionElement any={['dashboard.musyrif.view', 'dashboard.guru-tahfizh.view', 'dormitory.view']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Pengurus', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Tata Usaha', 'TU', 'tu', 'tata_usaha', 'Operator', 'operator']}><BungkusLazy><MusyrifDashboardPage /></BungkusLazy></PermissionElement> },
+           { path: 'asrama/izin', element: <PermissionElement any={['dashboard.guru-tahfizh.view', 'dashboard.musyrif.view', 'dormitory.view', 'asrama.activity.view', 'dormitory.permission.approve', 'dormitory.manage']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Pengurus', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Tata Usaha', 'TU', 'tu', 'tata_usaha', 'Operator', 'operator']}><BungkusLazy><MusyrifDashboardPage defaultTab="perizinan" /></BungkusLazy></PermissionElement> },
           { path: 'chat-pegawai', element: <PermissionElement any={['chat.conversation.view', 'chat.manage']}><BungkusLazy><EmployeeChatPage /></BungkusLazy></PermissionElement> },
           { path: 'berita-informasi', element: <PermissionElement roles={[...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.YAYASAN, ...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH, ...ROLES.WAKA, ...ROLES.TATA_USAHA]} deniedRoles={ROLES.GURU} any={['foundation.information.view', 'sekolah.informasi_sekolah', 'sistem.master_data']}><BungkusLazy><NewsManagementPage /></BungkusLazy></PermissionElement> },
           { path: 'akademik', element: <PermissionElement deniedRoles={ROLES.GURU} any={['academic.view', 'academic.manage']}><Navigate to="/dashboard/akademik/dashboard" replace /></PermissionElement> },
@@ -1126,7 +1175,7 @@ const router = createBrowserRouter([
           {
             path: 'master/status-siswa',
             element: (
-              <PermissionElement any={['student.view', 'student.manage', 'student.view_all', 'operator.manage']}>
+              <PermissionElement any={['student.view', 'student.manage', 'student.view_all', 'kesiswaan.data_lengkap_siswa', 'sistem.master_data', 'operator.manage']}>
                 <BungkusLazy><MasterStatusSiswaPage /></BungkusLazy>
               </PermissionElement>
             ),

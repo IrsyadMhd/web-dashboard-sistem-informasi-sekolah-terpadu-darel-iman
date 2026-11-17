@@ -495,7 +495,7 @@ export default function StudentAchievementRecapSection({
         </div>
       </div>
 
-      {/* 2. TailGrids Master Data Table Container */}
+      {/* 2. HeroUI Master Data Table Container */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* Toolbar Baris 1: Title + Action Buttons */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-6 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30">
@@ -611,7 +611,7 @@ export default function StudentAchievementRecapSection({
           </div>
         </div>
 
-        {/* TailGrids Table */}
+        {/* HeroUI Table */}
         <div className="overflow-x-auto">
           <TableRoot className="w-full text-left border-collapse text-xs min-w-[940px]">
             <TableHeader className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:border-emerald-800/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-800 dark:text-slate-100">
@@ -764,7 +764,7 @@ export default function StudentAchievementRecapSection({
         </div>
       </div>
 
-      {/* 3. Detail View Modal (TailGrids Dialog & Overlay) */}
+      {/* 3. Detail View Modal (HeroUI Dialog & Overlay) */}
       {selectedDetail && (
         <OverlayWrapper isOpen={!!selectedDetail} onOpenChange={(open) => !open && setSelectedDetail(null)}>
           <Backdrop isOpen={!!selectedDetail} onOpenChange={(open) => !open && setSelectedDetail(null)} />

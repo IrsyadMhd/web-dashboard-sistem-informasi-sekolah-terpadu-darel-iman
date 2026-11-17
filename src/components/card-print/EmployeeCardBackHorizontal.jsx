@@ -39,10 +39,10 @@ export default function EmployeeCardBackHorizontal({
     pengaturan?.institution_name ||
     'Yayasan'
 
-  const appName = pengaturan?.application_name || pengaturan?.app_name || 'SIMSIT'
+  const appName = pengaturan?.application_name || pengaturan?.app_name || 'Dareliman Edu'
   const logoUrl = getCardLogoUrl(pengaturan, employee)
 
-  const defaultBackRules = `1. Kartu ini adalah milik resmi ${schoolName}.\n2. Wajib dibawa & dikenakan selama jam kerja.\n3. Apabila menemukan kartu ini, harap mengembalikan ke kantor yayasan.\n4. QR Code digunakan untuk absensi & verifikasi SIMSIT.`
+  const defaultBackRules = `1. Kartu ini adalah milik resmi ${schoolName}.\n2. Wajib dibawa & dikenakan selama jam kerja.\n3. Apabila menemukan kartu ini, harap mengembalikan ke kantor yayasan.\n4. QR Code digunakan untuk absensi & verifikasi Dareliman Edu.`
   const resolvedRulesText = backRules
     ? backRules.replace(/Yayasan\s+Dar\s*el-?Iman/gi, schoolName)
     : defaultBackRules
@@ -108,7 +108,7 @@ export default function EmployeeCardBackHorizontal({
         {backShowQr && (
           <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-white/90 shadow-2xs border border-slate-200/80 dark:border-slate-700 dark:bg-slate-800/90 text-center flex-shrink-0 w-[110px]">
             <QRCodeSVG
-              value={qrPayload || employee.niy || employee.email || 'SIMSIT'}
+              value={qrPayload || employee.niy || employee.email || 'DARELIMAN-EDU'}
               size={76}
               level="M"
               marginSize={2}
@@ -116,7 +116,7 @@ export default function EmployeeCardBackHorizontal({
               fgColor="#0f172a"
             />
             <span className="mt-1 text-[8.5px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">
-              Verifikasi SIMSIT
+              Verifikasi Dareliman Edu
             </span>
           </div>
         )}

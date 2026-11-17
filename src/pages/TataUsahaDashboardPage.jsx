@@ -511,11 +511,34 @@ function KelengkapanDonutChart({ data }) {
 export default function TataUsahaDashboardPage() {
   const navigate = useNavigate()
   const authUser = useAuthStore((s) => s.user)
-  const canViewStudentReport = useMemo(() => {
-    const perms = Array.isArray(authUser?.permissions) ? authUser.permissions : []
+  const canAccessPath = (targetPath, fallbackPerms = []) => {
     const roles = Array.isArray(authUser?.roles) ? authUser.roles : (authUser?.role ? [authUser.role] : [])
-    return roles.includes('Super Admin') || perms.some((p) => ['report.student.view', 'report.view'].includes(p))
-  }, [authUser])
+    if (roles.some((r) => String(typeof r === 'string' ? r : r?.name || '').toLowerCase() === 'super admin')) {
+      return true
+    }
+    const paths = Array.isArray(authUser?.accessible_paths) ? authUser.accessible_paths : []
+    if (paths.length > 0) {
+      return paths.includes(targetPath)
+    }
+    const perms = Array.isArray(authUser?.permissions) ? authUser.permissions : []
+    return fallbackPerms.length === 0 || perms.some((p) => fallbackPerms.includes(p))
+  }
+  const canViewStudentReport = useMemo(
+    () => canAccessPath('/dashboard/laporan-siswa', ['report.student.view', 'report.view']),
+    [authUser]
+  )
+  const canManageStudents = useMemo(
+    () => canAccessPath('/dashboard/students', ['student.view', 'students.view', 'siswa.view']),
+    [authUser]
+  )
+  const canManageEmployees = useMemo(
+    () => canAccessPath('/dashboard/employees', ['employee.view', 'employees.view', 'pegawai.view']),
+    [authUser]
+  )
+  const canManageAlumni = useMemo(
+    () => canAccessPath('/dashboard/master/alumni', ['alumni.view', 'student.view']),
+    [authUser]
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
@@ -600,11 +623,11 @@ export default function TataUsahaDashboardPage() {
           <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
           <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-4 min-w-0">
+            <div className="flex flex-1 items-center gap-4 min-w-0">
               <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
                 <Building2 className="size-6 sm:size-7 text-white" />
               </div>
-              <div className="min-w-0">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
                     <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
@@ -625,7 +648,7 @@ export default function TataUsahaDashboardPage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Dashboard Tata Usaha &amp; Administrasi Sekolah
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-0.5 w-full text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
                   Pusat pengelolaan master data siswa, SDM pegawai &amp; guru, rekap presensi gerbang, dan pelaporan administrasi terpadu.
                 </p>
               </div>
@@ -655,19 +678,23 @@ export default function TataUsahaDashboardPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
-              <SquircleActionButton
-                variant="view"
-                icon={Users}
-                label="Kelola Master Siswa"
-                onClick={() => navigate('/dashboard/students')}
-              />
-              <SquircleActionButton
-                variant="import"
-                icon={UserCheck}
-                label="Kelola Master Pegawai"
-                onClick={() => navigate('/dashboard/employees')}
-              />
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0 sm:overflow-x-auto py-1">
+              {canManageStudents && (
+                <SquircleActionButton
+                  variant="view"
+                  icon={Users}
+                  label="Kelola Master Siswa"
+                  onClick={() => navigate('/dashboard/students')}
+                />
+              )}
+              {canManageEmployees && (
+                <SquircleActionButton
+                  variant="import"
+                  icon={UserCheck}
+                  label="Kelola Master Pegawai"
+                  onClick={() => navigate('/dashboard/employees')}
+                />
+              )}
               <SquircleActionButton
                 variant="primary"
                 icon={CalendarCheck}
@@ -694,12 +721,14 @@ export default function TataUsahaDashboardPage() {
                   onClick={() => navigate('/dashboard/laporan-siswa')}
                 />
               )}
-              <SquircleActionButton
-                variant="secondary"
-                icon={GraduationCap}
-                label="Kelola Alumni & Mutasi"
-                onClick={() => navigate('/dashboard/master/alumni')}
-              />
+              {canManageAlumni && (
+                <SquircleActionButton
+                  variant="secondary"
+                  icon={GraduationCap}
+                  label="Kelola Alumni & Mutasi"
+                  onClick={() => navigate('/dashboard/master/alumni')}
+                />
+              )}
             </div>
           </div>
         </section>

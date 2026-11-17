@@ -214,7 +214,7 @@ export default function TeacherAttendanceDashboardPage() {
                     Pendidik Aktif
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Selamat datang, <strong className="text-emerald-700 dark:text-emerald-400 font-bold">{user?.name || 'Guru'}</strong> — {todayStr}. Pantau jadwal mengajar aktif hari ini, input kehadiran siswa di kelas, dan finalisasi berkas presensi KBM.
                 </p>
               </div>

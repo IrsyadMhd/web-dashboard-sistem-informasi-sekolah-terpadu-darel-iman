@@ -100,7 +100,7 @@ import { studentService } from '../services/studentService'
 import api from '../services/api'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 
-// Sub-komponen KpiTintedCard Modern Style (Identik Spesifikasi TAILGRIDS_ALUMNI_MUTASI_CARDS)
+// Sub-komponen KpiTintedCard Modern Style (Identik Spesifikasi HEROUI_ALUMNI_MUTASI_CARDS)
 function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', tag, active, onClick }) {
   const tones = {
     emerald: {
@@ -1007,7 +1007,7 @@ export default function KelolaAlumniPage() {
     exportCsv(exportData, `Data_Pengolahan_Alumni_${new Date().toISOString().slice(0, 10)}.csv`)
   }
 
-  // Official Global SIMSIT Print Handler
+  // Official Global Dareliman Edu Print Handler
   const handlePrintMainTable = () => {
     const rows = filteredList.map((std) => {
       const meta = std.metadata || {}
@@ -1443,7 +1443,7 @@ export default function KelolaAlumniPage() {
                     Manajemen Kelulusan
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Pemantauan terpadu data lulusan alumni, riwayat tujuan studi/kerja, mutasi internal unit, dan pindah keluar sekolah.
                 </p>
               </div>
@@ -2274,7 +2274,7 @@ export default function KelolaAlumniPage() {
         </div>
       </MasterDataPage>
 
-      {/* ── 1. MODAL TAMBAH DATA ALUMNI BARU (TailGrids Dialog) ───────────────────── */}
+      {/* ── 1. MODAL TAMBAH DATA ALUMNI BARU (HeroUI Dialog) ───────────────────── */}
       {addModalOpen && (
         <OverlayWrapper>
           <Backdrop isOpen={addModalOpen} onOpenChange={setAddModalOpen} />
@@ -2645,7 +2645,7 @@ export default function KelolaAlumniPage() {
         </OverlayWrapper>
       )}
 
-      {/* ── 1.1. MODAL DATATABLE SISWA / SANTRI SELECTOR (TailGrids Dialog) ────────── */}
+      {/* ── 1.1. MODAL DATATABLE SISWA / SANTRI SELECTOR (HeroUI Dialog) ────────── */}
       {studentTableModalOpen && (
         <OverlayWrapper>
           <Backdrop isOpen={studentTableModalOpen} onOpenChange={setStudentTableModalOpen} />
@@ -2796,7 +2796,7 @@ export default function KelolaAlumniPage() {
         </OverlayWrapper>
       )}
 
-      {/* ── 2. MODAL EDIT DATA ALUMNI (TailGrids Dialog) ───────────────────────── */}
+      {/* ── 2. MODAL EDIT DATA ALUMNI (HeroUI Dialog) ───────────────────────── */}
       {editModalOpen && selectedAlumni && (
         <OverlayWrapper>
           <Backdrop isOpen={editModalOpen} onOpenChange={setEditModalOpen} />
@@ -3272,7 +3272,7 @@ export default function KelolaAlumniPage() {
         </OverlayWrapper>
       )}
 
-      {/* ── 5. CONFIRM DIALOG HAPUS DATA ALUMNI (TailGrids AlertDialog) ───────────── */}
+      {/* ── 5. CONFIRM DIALOG HAPUS DATA ALUMNI (HeroUI AlertDialog) ───────────── */}
       <ConfirmDialog
         isOpen={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
@@ -3284,7 +3284,7 @@ export default function KelolaAlumniPage() {
         isDanger
       />
 
-      {/* ── 6. MODAL POPUP DETAIL SISWA CARD (TailGrids Dialog) ───────────── */}
+      {/* ── 6. MODAL POPUP DETAIL SISWA CARD (HeroUI Dialog) ───────────── */}
       {cardModalOpen && (
         <OverlayWrapper>
           <Backdrop isOpen={cardModalOpen} onOpenChange={setCardModalOpen} />
@@ -3498,7 +3498,7 @@ export default function KelolaAlumniPage() {
         </OverlayWrapper>
       )}
 
-      {/* ── 7. MODAL DETAIL ALUMNI (TailGrids Dialog Interactive Popup) ───────────── */}
+      {/* ── 7. MODAL DETAIL ALUMNI (HeroUI Dialog Interactive Popup) ───────────── */}
       {detailModalOpen && selectedAlumniDetail && (
         <OverlayWrapper>
           <Backdrop isOpen={detailModalOpen} onOpenChange={setDetailModalOpen} />

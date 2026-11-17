@@ -28,6 +28,7 @@ import { EmptyState } from '../../components/ui/empty-state'
 import AppTabs from '../../components/app/AppTabs'
 import { useToast } from '../../components/app'
 import { SmartScrollFab } from '../../components/common'
+import HeroUiFilterSelect from '../../components/ui/HeroUiFilterSelect'
 
 const TAB_CATEGORIES = [
   { key: 'all', label: 'Semua' },
@@ -258,16 +259,19 @@ export function FoundationNotificationsPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <select
+          <div className="w-44 shrink-0">
+            <HeroUiFilterSelect
+              size="sm"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
-            >
-              <option value="all">Semua Status</option>
-              <option value="unread">Belum Dibaca</option>
-              <option value="read">Sudah Dibaca</option>
-            </select>
+              onChange={(val) => setStatusFilter(val)}
+              options={[
+                { value: 'all', label: 'Semua Status' },
+                { value: 'unread', label: 'Belum Dibaca' },
+                { value: 'read', label: 'Sudah Dibaca' },
+              ]}
+              placeholder="Pilih Status"
+              aria-label="Filter status notifikasi"
+            />
           </div>
         </div>
 
@@ -356,7 +360,7 @@ export function FoundationNotificationsPage() {
                         )}
                       </div>
 
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed w-full">
                         {notif.message || notif.body || 'Tidak ada rincian pesan.'}
                       </p>
 

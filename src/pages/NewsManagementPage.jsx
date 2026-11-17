@@ -27,6 +27,7 @@ import { educationUnitService } from '../services/educationUnitService'
 import { dashboardPemantauanService } from '../services/dashboardPemantauanService'
 
 import { Button } from '../components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
@@ -564,7 +565,7 @@ export default function NewsManagementPage() {
                     {roleAnalysis.isGlobalAdmin ? 'Lintas Unit Yayasan' : `Unit: ${roleAnalysis.assignedUnitName}`}
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   {roleAnalysis.isGlobalAdmin
                     ? 'Pusat pengumuman dan publikasi berita resmi terpadu seluruh unit sekolah dan lembaga yayasan.'
                     : `Pusat pengumuman dan berita resmi khusus untuk unit ${roleAnalysis.assignedUnitName}.`}
@@ -581,7 +582,7 @@ export default function NewsManagementPage() {
           </div>
         </motion.div>
 
-        {/* KPI STATS CARDS (TAILGRIDS_CARD_COMPONENT) */}
+        {/* KPI STATS CARDS (HEROUI_CARD_COMPONENT) */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
           <KpiTintedCard
             icon={Megaphone}
@@ -775,7 +776,7 @@ export default function NewsManagementPage() {
           </div>
         </div>
 
-        {/* TAILGRIDS TABLE ROOT & ROWS WITH RICH COLOR STYLING */}
+        {/* HEROUI TABLE ROOT & ROWS WITH RICH COLOR STYLING */}
         <div className="overflow-x-auto">
           <TableRoot fullBleed={false}>
             <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
@@ -1303,7 +1304,7 @@ export default function NewsManagementPage() {
         )}
       </AnimatePresence>
 
-      {/* MODAL KONFIRMASI HAPUS (ALERT DIALOG TAILGRIDS) */}
+      {/* MODAL KONFIRMASI HAPUS (ALERT DIALOG HEROUI) */}
       <AnimatePresence>
         <AlertDialog isOpen={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
           <DialogHeader>

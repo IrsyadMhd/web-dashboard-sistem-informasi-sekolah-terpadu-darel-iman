@@ -208,7 +208,7 @@ function PrintCredentialsModal({ open, onClose, users = [] }) {
               return `
               <div class="card-item">
                 <div class="card-header">
-                  <div class="card-title">SLIP AKUN LOGIN SIMSIT</div>
+                  <div class="card-title">SLIP AKUN LOGIN DARELIMAN EDU</div>
                   <div class="card-subtitle">${foundationName}</div>
                 </div>
                 <div class="card-body">
@@ -233,7 +233,7 @@ function PrintCredentialsModal({ open, onClose, users = [] }) {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Cetak Kredensial Akun Login SIMSIT</title>
+        <title>Cetak Kredensial Akun Login Dareliman Edu</title>
         <style>
           @page { size: A4 portrait; margin: 15mm; }
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; color: #0f172a; margin: 0; padding: 0; }
@@ -271,7 +271,7 @@ function PrintCredentialsModal({ open, onClose, users = [] }) {
       <body>
         <div class="header-kop">
           <h2>${foundationName.toUpperCase()}</h2>
-          <h4>SISTEM MANAJEMEN SEKOLAH TERPADU (SIMSIT)</h4>
+          <h4>DARELIMAN EDU - SISTEM MANAJEMEN SEKOLAH TERPADU</h4>
           <p>${pengaturan?.address || 'Padang, Sumatera Barat'} • Telp: ${pengaturan?.phone || '-'} • Website: ${pengaturan?.website || '-'}</p>
         </div>
 
@@ -1929,7 +1929,7 @@ export default function UserAccountManagement({
     <div className="space-y-4">
 
 
-      {/* ── TAILGRIDS EMERALD DATATABLE CONTAINER ─────────────────────────── */}
+      {/* ── HEROUI EMERALD DATATABLE CONTAINER ─────────────────────────── */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* Toolbar Header (Baris 1: Judul, Status Count & Aksi) */}
         <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -2075,14 +2075,14 @@ export default function UserAccountManagement({
                     setCategoryFilter(cat.id)
                     setPage(1)
                   }}
-                  className={`cursor-pointer font-bold transition-all text-xs select-none hover:scale-105 active:scale-95 ${
+                  className={`inline-flex items-center gap-1.5 cursor-pointer font-bold transition-all text-xs select-none hover:scale-105 active:scale-95 ${
                     isSelected
                       ? 'shadow-xs ring-1 ring-emerald-500/30'
                       : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-emerald-500'
                   }`}
-                  startContent={<Icon className="size-3.5" />}
                 >
-                  {cat.label}
+                  <Icon className="size-3.5 shrink-0" />
+                  <span>{cat.label}</span>
                 </HeroChip>
               )
             })}
@@ -2346,7 +2346,7 @@ export default function UserAccountManagement({
           </table>
         </div>
 
-        {/* Datatable Footer & TailGrids Pagination */}
+        {/* Datatable Footer & HeroUI Pagination */}
         <div className="p-4 border-t border-emerald-100/80 dark:border-emerald-900/40 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-emerald-50/30 via-transparent to-emerald-50/30">
           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             Menampilkan <strong className="text-slate-800 dark:text-slate-200">{users.length}</strong> akun (Halaman {page} dari {meta.last_page || 1})

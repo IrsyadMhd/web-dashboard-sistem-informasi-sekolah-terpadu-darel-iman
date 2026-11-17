@@ -347,7 +347,29 @@ export default function AttendanceReportPage() {
     })
   }, [masterClasses, timeFilteredRows])
 
-  // ── 4. Summary Overall Metrics & 5 Colored Cards ────────────────────────
+  // ── 4. Filtering & Sorting ────────────────────────────────────────────────
+  const filteredReports = useMemo(() => {
+    return aggregatedReports.filter((item) => {
+      const term = search.toLowerCase()
+      const matchesSearch =
+        !term ||
+        item.rombel_name.toLowerCase().includes(term) ||
+        item.unit_name.toLowerCase().includes(term) ||
+        item.kode_kelas.toLowerCase().includes(term)
+
+      const matchesUnit = !selectedUnitId || String(item.unit_id) === String(selectedUnitId)
+      const matchesClass = !selectedClassId || String(item.id) === String(selectedClassId)
+
+      let matchesStatus = true
+      if (selectedStatusFilter === 'optimal') matchesStatus = item.attendance_rate >= 90
+      else if (selectedStatusFilter === 'cukup') matchesStatus = item.attendance_rate >= 75 && item.attendance_rate < 90
+      else if (selectedStatusFilter === 'evaluasi') matchesStatus = item.attendance_rate < 75
+
+      return matchesSearch && matchesUnit && matchesClass && matchesStatus
+    })
+  }, [aggregatedReports, search, selectedUnitId, selectedClassId, selectedStatusFilter])
+
+  // ── 5. Summary Overall Metrics & 5 Colored Cards ────────────────────────
   const overallSummary = useMemo(() => {
     const isFiltered = Boolean(search) || selectedStatusFilter !== 'all' || Boolean(selectedUnitId) || Boolean(selectedClassId)
     let present = 0, late = 0, permission = 0, sick = 0, absent = 0
@@ -454,28 +476,6 @@ export default function AttendanceReportPage() {
       alpa: item.alpa,
     }))
   }, [aggregatedReports])
-
-  // ── 5. Filtering & Sorting ────────────────────────────────────────────────
-  const filteredReports = useMemo(() => {
-    return aggregatedReports.filter((item) => {
-      const term = search.toLowerCase()
-      const matchesSearch =
-        !term ||
-        item.rombel_name.toLowerCase().includes(term) ||
-        item.unit_name.toLowerCase().includes(term) ||
-        item.kode_kelas.toLowerCase().includes(term)
-
-      const matchesUnit = !selectedUnitId || String(item.unit_id) === String(selectedUnitId)
-      const matchesClass = !selectedClassId || String(item.id) === String(selectedClassId)
-
-      let matchesStatus = true
-      if (selectedStatusFilter === 'optimal') matchesStatus = item.attendance_rate >= 90
-      else if (selectedStatusFilter === 'cukup') matchesStatus = item.attendance_rate >= 75 && item.attendance_rate < 90
-      else if (selectedStatusFilter === 'evaluasi') matchesStatus = item.attendance_rate < 75
-
-      return matchesSearch && matchesUnit && matchesClass && matchesStatus
-    })
-  }, [aggregatedReports, search, selectedUnitId, selectedClassId, selectedStatusFilter])
 
   const sortedReports = useMemo(() => {
     return [...filteredReports].sort((a, b) => {

@@ -565,7 +565,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
     })
   }
 
-  // ── Render Badges (TailGrids Badge Prompt Rules) ───────────────────────────
+  // ── Render Badges (HeroUI Badge Prompt Rules) ───────────────────────────
   const getStatusBadge = (status) => {
     const s = (status || '').toLowerCase()
     if (s === 'approved' || s === 'completed' || s === 'verified' || s === 'final') {
@@ -740,7 +740,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Rekapitulasi & Manajemen Kehadiran Siswa
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Kelola matriks rekapitulasi presensi bulanan, absensi per mata pelajaran & guru, verifikasi surat izin/sakit, koreksi presensi, serta tindak lanjut siswa.
                 </p>
               </div>
@@ -1593,7 +1593,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
         </div>
       </motion.div>
 
-      {/* ── TailGrids Dialog Modals ──────────────────────────────────────────── */}
+      {/* ── HeroUI Dialog Modals ──────────────────────────────────────────── */}
 
       {/* Modal 1: Detail Sesi Absensi Pelajaran */}
       <Backdrop isOpen={sessionDetailModalOpen} onOpenChange={setSessionDetailModalOpen}>
@@ -1875,7 +1875,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
         </Dialog>
       </Backdrop>
 
-      {/* Modal 5: TailGrids Opsi Cetak & Unduh PDF / Clean Print */}
+      {/* Modal 5: HeroUI Opsi Cetak & Unduh PDF / Clean Print */}
       <PrintOptionModal
         isOpen={printOptionModalOpen}
         onClose={() => setPrintOptionModalOpen(false)}

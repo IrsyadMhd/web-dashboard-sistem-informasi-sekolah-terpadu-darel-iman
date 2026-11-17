@@ -147,11 +147,15 @@ function HeroUiWorkspaceSelect({
   disabled = false,
   badge = null,
   align = 'left',
-  placement = 'bottom',
+  placement = 'bottom-start',
+  popoverProps = {},
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef(null)
+
+  const effectivePlacement = popoverProps?.placement || placement
+  const effectiveAlign = popoverProps?.align || align
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -211,10 +215,10 @@ function HeroUiWorkspaceSelect({
           }
         }}
         className={`h-9.5 flex items-center justify-between gap-2.5 rounded-xl border px-3 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 shadow-2xs ${isOpen
-            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/25 dark:border-emerald-400 dark:bg-slate-900 dark:ring-emerald-400/25 text-slate-900 dark:text-white shadow-xs'
-            : hasValue
-              ? 'border-emerald-500/80 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50 text-emerald-950 dark:border-emerald-600/80 dark:bg-gradient-to-r dark:from-emerald-950/60 dark:via-teal-950/40 dark:to-emerald-950/60 dark:text-emerald-200 font-extrabold shadow-emerald-500/10'
-              : 'border-slate-200 dark:border-slate-800 bg-white text-slate-700 hover:border-emerald-400 dark:bg-[#111827] dark:text-slate-200 dark:hover:border-emerald-600'
+          ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/25 dark:border-emerald-400 dark:bg-slate-900 dark:ring-emerald-400/25 text-slate-900 dark:text-white shadow-xs'
+          : hasValue
+            ? 'border-emerald-500/80 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50 text-emerald-950 dark:border-emerald-600/80 dark:bg-gradient-to-r dark:from-emerald-950/60 dark:via-teal-950/40 dark:to-emerald-950/60 dark:text-emerald-200 font-extrabold shadow-emerald-500/10'
+            : 'border-slate-200 dark:border-slate-800 bg-white text-slate-700 hover:border-emerald-400 dark:bg-[#111827] dark:text-slate-200 dark:hover:border-emerald-600'
           } ${buttonClassName}`}
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -244,12 +248,12 @@ function HeroUiWorkspaceSelect({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: placement === 'top' ? 4 : -4 }}
+            initial={{ opacity: 0, scale: 0.96, y: effectivePlacement.startsWith('top') ? 4 : -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: placement === 'top' ? 4 : -4 }}
+            exit={{ opacity: 0, scale: 0.96, y: effectivePlacement.startsWith('top') ? 4 : -4 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} ${placement === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
-              } z-[100] ${popoverWidth} min-w-[220px] max-w-sm overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/50 dark:shadow-black/60`}
+            className={`absolute ${effectiveAlign === 'right' ? 'right-0' : 'left-0'} ${effectivePlacement.startsWith('top') ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+              } z-[100] ${popoverWidth} min-w-[200px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/50 dark:shadow-black/60`}
           >
             {shouldSearch && (
               <div className="p-1.5 border-b border-slate-100 dark:border-slate-800 mb-1">
@@ -285,8 +289,8 @@ function HeroUiWorkspaceSelect({
                         setSearch('')
                       }}
                       className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-bold transition-all text-left cursor-pointer ${isSelected
-                          ? 'bg-gradient-to-r from-emerald-50 to-teal-50/70 text-emerald-950 dark:from-emerald-950/80 dark:to-teal-950/50 dark:text-emerald-200 font-black'
-                          : 'text-slate-700 hover:bg-emerald-50/60 hover:text-emerald-900 dark:text-slate-200 dark:hover:bg-slate-800/80 dark:hover:text-emerald-300'
+                        ? 'bg-gradient-to-r from-emerald-50 to-teal-50/70 text-emerald-950 dark:from-emerald-950/80 dark:to-teal-950/50 dark:text-emerald-200 font-black'
+                        : 'text-slate-700 hover:bg-emerald-50/60 hover:text-emerald-900 dark:text-slate-200 dark:hover:bg-slate-800/80 dark:hover:text-emerald-300'
                         }`}
                     >
                       <div className="truncate pr-2 flex-1">
@@ -847,6 +851,18 @@ export default function TeacherTeachingWorkspacePage() {
 
   // 3. Unit-Locked Scope: Guru, TU, Musyrif
   const isGuru = !isGlobalTahfizhScope && !isKepalaSekolahOrDivisiPendidikan
+
+  // 4. Hak Akses Manajerial & Supervisi (Super Admin, Waka Kurikulum, Kepala Sekolah, Divisi, Yayasan)
+  const isManagerial = React.useMemo(() => {
+    return isGlobalTahfizhScope || isKepalaSekolahOrDivisiPendidikan || hasAnyRole(userRoles, [
+      'Super Admin', 'SuperAdmin', 'super_admin',
+      'Admin', 'admin', 'administrator',
+      'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek',
+      'Wakil Kepala Sekolah', 'Waka Kurikulum', 'waka_kurikulum', 'waka',
+      'Wakil Kesiswaan', 'Waka Kesiswaan', 'waka_kesiswaan',
+      'Divisi Pendidikan', 'divisi_pendidikan'
+    ])
+  }, [isGlobalTahfizhScope, isKepalaSekolahOrDivisiPendidikan, userRoles])
 
   // Multi-unit Tahfizh Leaderboard state
   const [educationUnits, setEducationUnits] = useState([])
@@ -1428,7 +1444,7 @@ export default function TeacherTeachingWorkspacePage() {
       }
 
       const [resClasses, resAllSch] = await Promise.all([
-        api.get('/teacher/classes'),
+        api.get('/teacher/classes').catch(() => null),
         api.get('/teacher/schedules').catch(() => null),
       ])
 
@@ -1438,9 +1454,22 @@ export default function TeacherTeachingWorkspacePage() {
         setSchedules(schList)
       }
 
+      let clsList = resClasses?.data?.data || []
+      if (isManagerial) {
+        // Hak akses manajerial (Super Admin / Waka Kurikulum / Kepala Sekolah / Divisi Pendidikan)
+        // Tetap dapat memilih seluruh rombel di unitnya saat meninjau ruang kerja guru
+        const resAllUnitClasses = await api.get('/kelas', { params: { per_page: 150 } }).catch(() => null)
+        const allCls = resAllUnitClasses?.data?.data || []
+        if (allCls.length > 0) {
+          const classMap = new Map()
+          clsList.forEach((c) => classMap.set(String(c.id), c))
+          allCls.forEach((c) => classMap.set(String(c.id), c))
+          clsList = Array.from(classMap.values()).sort((a, b) => (a.nama_kelas || a.name || '').localeCompare(b.nama_kelas || b.name || ''))
+        }
+      }
+
       let initialClassId = ''
-      if (resClasses?.data?.data) {
-        const clsList = resClasses.data.data
+      if (clsList.length > 0) {
         setClasses(clsList)
 
         // 1. Check URL query parameters (class_id or schedule_id)
@@ -4662,8 +4691,8 @@ export default function TeacherTeachingWorkspacePage() {
                       type="button"
                       onClick={() => setAttendancePeriodFilter(item.id)}
                       className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${isActive
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
-                          : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
                         }`}
                     >
                       <Icon className="h-3.5 w-3.5" />
@@ -5077,7 +5106,7 @@ export default function TeacherTeachingWorkspacePage() {
 
   // Daftar rombel unik yang disaring sesuai Mapel yang dipilih (jika memilih mapel tertentu)
   const filteredClassesOptions = useMemo(() => {
-    if (!materialMapelFilter || materialMapelFilter === 'all') {
+    if (isManagerial || !materialMapelFilter || materialMapelFilter === 'all') {
       return classes
     }
     const pool = (allTeacherSchedules && allTeacherSchedules.length > 0) ? allTeacherSchedules : schedules
@@ -5099,7 +5128,27 @@ export default function TeacherTeachingWorkspacePage() {
     })
     const matched = classes.filter((c) => matchingClassIds.has(String(c.id)))
     return matched.length > 0 ? matched : classes
-  }, [classes, materialMapelFilter, allTeacherSchedules, schedules, materials])
+  }, [classes, materialMapelFilter, allTeacherSchedules, schedules, materials, isManagerial])
+
+  const activeWorkspaceClassValue = useMemo(() => {
+    if (!selectedClass || selectedClass === 'all') return 'all'
+    const match = filteredClassesOptions.find((c) =>
+      String(c.id) === String(selectedClass) ||
+      c.nama_kelas === selectedClass ||
+      c.name === selectedClass ||
+      c.kode_kelas === selectedClass
+    )
+    return match ? String(match.id) : String(selectedClass)
+  }, [filteredClassesOptions, selectedClass])
+
+  const activeWorkspaceMapelValue = useMemo(() => {
+    if (!materialMapelFilter || materialMapelFilter === 'all') return 'all'
+    const match = uniqueMapelOptions.find((m) =>
+      String(m.id) === String(materialMapelFilter) ||
+      m.name === materialMapelFilter
+    )
+    return match ? String(match.id) : String(materialMapelFilter)
+  }, [uniqueMapelOptions, materialMapelFilter])
 
   // Daftar rombel unik yang spesifik diajar untuk Mapel pada sesi Presensi (presensiModalSchedule)
   const presensiModalClasses = useMemo(() => {
@@ -5321,7 +5370,7 @@ export default function TeacherTeachingWorkspacePage() {
 
     printWindow.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(material.judul)} — Materi Belajar</title><style>
       @page{size:A4 portrait;margin:15mm}*{box-sizing:border-box}body{margin:0;color:#172033;font:10pt/1.5 Arial,sans-serif}.print-official-header{display:grid;grid-template-columns:80px 1fr 90px;align-items:center;gap:12px;min-height:50mm;padding-bottom:4px}.print-logo-left-box{width:76px;height:76px;display:flex;align-items:center;justify-content:center}.print-logo-left-img{max-width:76px;max-height:76px;width:auto;height:auto;object-fit:contain;display:block}.print-center-box{text-align:center;padding:0 4px}.print-org-name{font-size:11pt;font-weight:800;color:#0f172a;letter-spacing:0.5px;text-transform:uppercase;margin:0 0 2px 0;line-height:1.2}.print-school-unit{font-size:12.5pt;font-weight:900;color:#047857;letter-spacing:0.5px;text-transform:uppercase;margin:0 0 2px 0;line-height:1.2}.print-slogan{font-size:8.5pt;font-style:italic;font-weight:600;color:#475569;margin:1px 0}.print-address{font-size:7.8pt;color:#475569;margin:1px 0}.print-legality{font-size:7.8pt;font-weight:700;color:#0f172a;margin:1px 0 0 0}.print-logo-right-box{width:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.print-unit-logo-wrapper{width:74px;height:74px;display:flex;align-items:center;justify-content:center}.print-logo-right-img{max-width:74px;max-height:74px;width:auto;height:auto;object-fit:contain;display:block}.print-unit-type-badge{margin-top:3px;font-size:8pt;font-weight:900;color:#047857;letter-spacing:0.5px;text-transform:uppercase;text-align:center;line-height:1}.print-header-divider{border-bottom:2px solid #0f172a;margin-top:4px;margin-bottom:12px}.print-doc-title-container{text-align:center;margin-bottom:12px}.print-doc-title{font-size:13.5pt;font-weight:900;color:#047857;letter-spacing:0.5px;text-transform:uppercase;margin:0;line-height:1.25}.print-doc-period{font-size:9pt;font-weight:700;color:#334155;margin-top:3px}.print-doc-meta-row{display:flex;justify-content:space-between;align-items:center;font-size:8pt;color:#64748b;font-weight:600;margin-top:6px;padding-bottom:6px;border-bottom:1px dashed #cbd5e1}.summary{margin:18px 0;padding:14px 16px;border:1px solid #cce5da;border-radius:10px;background:#f0f9f5}.summary strong{display:block;margin-bottom:4px;color:#0e5c44}.content{white-space:normal;line-height:1.6}.footer{margin-top:32px;padding-top:10px;border-top:1px solid #dbe3ea;color:#64748b;font-size:8pt;display:flex;justify-content:space-between}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none}}@media screen{body{max-width:794px;margin:24px auto;padding:24px;box-shadow:0 8px 30px #0f172a20}.no-print{position:fixed;right:24px;top:24px;border:0;border-radius:10px;background:#0e5c44;color:white;padding:10px 16px;font-weight:700;cursor:pointer}}
-    </style></head><body><button class="no-print" onclick="window.print()">${saveAsPdf ? 'Simpan sebagai PDF' : 'Cetak Materi'}</button>${officialHeaderHtml}<section class="summary"><strong>Ringkasan Materi</strong>${summary}</section><main class="content">${content}</main><footer class="footer"><span>${escapeHtml(teacherName)}</span><span>Workspace Pengajaran Guru · Dokumen Sah SIMSIT</span></footer><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250))</script></body></html>`)
+    </style></head><body><button class="no-print" onclick="window.print()">${saveAsPdf ? 'Simpan sebagai PDF' : 'Cetak Materi'}</button>${officialHeaderHtml}<section class="summary"><strong>Ringkasan Materi</strong>${summary}</section><main class="content">${content}</main><footer class="footer"><span>${escapeHtml(teacherName)}</span><span>Workspace Pengajaran Guru · Dokumen Sah Dareliman Edu</span></footer><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250))</script></body></html>`)
     printWindow.document.close()
     if (saveAsPdf) addToast('info', 'Export PDF Dibuka', 'Pada dialog cetak, pilih “Save as PDF” atau “Simpan sebagai PDF”.')
   }
@@ -5854,7 +5903,7 @@ export default function TeacherTeachingWorkspacePage() {
 
 
   return (
-    <PageContainer className="teacher-workspace-page space-y-6 pb-12">
+    <PageContainer className="teacher-workspace-page space-y-6 pb-20 xl:pb-8">
       {/* ── BREADCRUMB NAV ────────────────────────────────────────── */}
       <AppBreadcrumb
         items={[
@@ -5888,7 +5937,7 @@ export default function TeacherTeachingWorkspacePage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Workspace Pembelajaran Guru
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Pusat kendali aktivitas mengajar Ustadz/Ustadzah — Kelola jadwal, presensi, materi, tugas, nilai, &amp; jurnal tahfizh terpadu.
                 </p>
               </div>
@@ -5987,71 +6036,103 @@ export default function TeacherTeachingWorkspacePage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="relative rounded-[20px] border-2 border-emerald-500/25 bg-white p-4 sm:p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-700/60 dark:bg-[#1B2433] z-20"
+        className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-white p-4 sm:p-5 shadow-md shadow-emerald-500/10 dark:border-emerald-700/60 dark:bg-[#1B2433] z-20"
       >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-600/30">
-              <Layers className="size-5" />
+        {/* Ambient Glow Accent */}
+        <div className="pointer-events-none absolute -top-12 -right-12 h-36 w-36 rounded-full bg-gradient-to-br from-emerald-500/20 via-teal-400/15 to-transparent blur-2xl" />
+
+        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          {/* Sisi Kiri: Ikon Squircle, Judul, Pill Aktif, dan Penjelasan */}
+          <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+            <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40">
+              <Layers className="size-5 sm:size-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
-                  Filter Rombel & Mata Pelajaran
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white">
+                  Filter Rombel &amp; Mata Pelajaran
                 </h3>
-                <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 px-2.5 py-0.5 text-[10px] font-extrabold border border-emerald-300/60 dark:border-emerald-800">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Aktif
                 </span>
+                {selectedClass && selectedClass !== 'all' && (
+                  <span className="hidden md:inline-flex items-center rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 px-2.5 py-0.5 text-[10px] font-bold border border-teal-200 dark:border-teal-800">
+                    Rombel: {selectedClassName || selectedClass}
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Pilih rombel dan mata pelajaran untuk memfilter jadwal, presensi, materi, tugas, nilai, &amp; mutaba'ah siswa.
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                Pilih rombel dan mata pelajaran untuk memfilter jadwal, presensi, materi, tugas, nilai, &amp; mutaba'ah siswa secara terpadu.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Pemilihan Rombel / Kelas */}
-            <HeroUiWorkspaceSelect
-              id="workspace-rombel-select"
-              value={selectedClass}
-              onChange={(val) => handleWorkspaceClassChange(val)}
-              options={[
-                { value: 'all', label: 'Semua Rombel', subtext: 'Seluruh rombel yang diampu' },
-                ...filteredClassesOptions.map((c) => ({
-                  value: c.id,
-                  label: `${c.nama_kelas || c.name}${c.kode_kelas ? ` · ${c.kode_kelas}` : ''}`,
-                })),
-              ]}
-              icon={Users}
-              label="Rombel"
-              placeholder="Pilih Rombel"
-              popoverWidth="w-72"
-              searchable
-            />
+          {/* Sisi Kanan: Kontrol Filter Presisi & Rapi */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* Filter Rombel */}
+            <div className="w-full sm:w-[220px]">
+              <HeroUiFilterSelect
+                id="workspace-rombel-select"
+                size="md"
+                value={activeWorkspaceClassValue}
+                onChange={(val) => handleWorkspaceClassChange(val)}
+                options={[
+                  { value: 'all', label: 'Semua Rombel', subtext: 'Seluruh rombel yang diampu' },
+                  ...filteredClassesOptions.map((c) => ({
+                    value: String(c.id),
+                    label: c.nama_kelas || c.name || `Kelas ${c.id}`,
+                    subtext: c.kode_kelas ? `Kode: ${c.kode_kelas}` : undefined,
+                  })),
+                ]}
+                icon={Users}
+                placeholder="Pilih Rombel"
+                ariaLabel="Pilih Rombel"
+                searchable
+              />
+            </div>
 
-            {/* Pemilihan Mata Pelajaran */}
-            <HeroUiWorkspaceSelect
-              id="workspace-mapel-select"
-              value={materialMapelFilter}
-              onChange={(val) => handleWorkspaceMapelChange(val)}
-              options={[
-                { value: 'all', label: 'Semua Mata Pelajaran', subtext: 'Seluruh mapel yang diampu' },
-                ...uniqueMapelOptions.map((subj) => ({
-                  value: subj.id,
-                  label: subj.name,
-                })),
-              ]}
-              icon={BookOpen}
-              label="Mapel"
-              placeholder="Pilih Mata Pelajaran"
-              popoverWidth="w-72"
-              searchable
-            />
+            {/* Filter Mata Pelajaran */}
+            <div className="w-full sm:w-[220px]">
+              <HeroUiFilterSelect
+                id="workspace-mapel-select"
+                size="md"
+                value={activeWorkspaceMapelValue}
+                onChange={(val) => handleWorkspaceMapelChange(val)}
+                options={[
+                  { value: 'all', label: 'Semua Mata Pelajaran', subtext: 'Seluruh mapel yang diampu' },
+                  ...uniqueMapelOptions.map((subj) => ({
+                    value: String(subj.id),
+                    label: subj.name,
+                  })),
+                ]}
+                icon={BookOpen}
+                placeholder="Pilih Mata Pelajaran"
+                ariaLabel="Pilih Mata Pelajaran"
+                searchable
+              />
+            </div>
 
-            {/* Pill Jumlah Siswa */}
-            <div className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/60 px-3 py-2 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-              <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>{students.length} Siswa Terdaftar</span>
+            {/* Tombol Reset Filter jika ada filter aktif */}
+            {(selectedClass !== 'all' || materialMapelFilter !== 'all') && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleWorkspaceClassChange('all')
+                  handleWorkspaceMapelChange('all')
+                }}
+                className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/80 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                title="Reset filter ke Semua Rombel & Semua Mapel"
+              >
+                <RefreshCw className="size-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
+
+            {/* Pill Siswa Terdaftar */}
+            <div className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-xs font-black text-emerald-900 dark:text-emerald-200 shadow-2xs">
+              <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>{students.length} Siswa</span>
             </div>
           </div>
         </div>
@@ -6066,12 +6147,12 @@ export default function TeacherTeachingWorkspacePage() {
           <div
             key={toast.id}
             className={`pointer-events-auto flex items-start gap-3 p-4 rounded-[18px] shadow-[var(--shadow-soft-xl)] border backdrop-blur-md transition-all animate-in slide-in-from-bottom duration-300 ${toast.type === 'success'
-                ? 'bg-emerald-900/90 text-emerald-100 border-emerald-700/80'
-                : toast.type === 'error'
-                  ? 'bg-rose-900/90 text-rose-100 border-rose-700/80'
-                  : toast.type === 'warning'
-                    ? 'bg-amber-900/90 text-amber-100 border-amber-700/80'
-                    : 'bg-slate-900/90 text-slate-100 border-slate-700/80'
+              ? 'bg-emerald-900/90 text-emerald-100 border-emerald-700/80'
+              : toast.type === 'error'
+                ? 'bg-rose-900/90 text-rose-100 border-rose-700/80'
+                : toast.type === 'warning'
+                  ? 'bg-amber-900/90 text-amber-100 border-amber-700/80'
+                  : 'bg-slate-900/90 text-slate-100 border-slate-700/80'
               }`}
           >
             {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />}
@@ -6285,8 +6366,8 @@ export default function TeacherTeachingWorkspacePage() {
                 role="tab"
                 aria-selected={isActive}
                 className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all text-center group cursor-pointer ${isActive
-                    ? 'border-emerald-600 dark:border-emerald-500 bg-gradient-to-b from-emerald-50/95 to-teal-50/70 dark:from-emerald-950/80 dark:to-teal-950/60 shadow-md ring-2 ring-emerald-600/30'
-                    : (mod.cardClass || 'border-emerald-100/80 dark:border-slate-800/90 bg-white dark:bg-slate-900/60 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/30 hover:border-emerald-300 dark:hover:border-emerald-700/80 hover:shadow-md')
+                  ? 'border-emerald-600 dark:border-emerald-500 bg-gradient-to-b from-emerald-50/95 to-teal-50/70 dark:from-emerald-950/80 dark:to-teal-950/60 shadow-md ring-2 ring-emerald-600/30'
+                  : (mod.cardClass || 'border-emerald-100/80 dark:border-slate-800/90 bg-white dark:bg-slate-900/60 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/30 hover:border-emerald-300 dark:hover:border-emerald-700/80 hover:shadow-md')
                   }`}
               >
                 <div className={`p-2.5 rounded-2xl ${mod.iconBox || 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-600/20'} mb-2 shrink-0 group-hover:scale-110 transition ${isActive ? 'ring-2 ring-emerald-500/40 shadow-xs' : ''}`}>
@@ -6314,7 +6395,7 @@ export default function TeacherTeachingWorkspacePage() {
           {/* TAB 1: JADWAL MENGAJAR */}
           {activeTab === 'jadwal' && (
             <div className="space-y-5">
-              {/* TailGrids Modern Hero Card Banner */}
+              {/* HeroUI Modern Hero Card Banner */}
               <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
                 {/* Ambient Glows */}
                 <div className="pointer-events-none absolute -left-12 -top-12 h-44 w-44 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
@@ -6374,8 +6455,8 @@ export default function TeacherTeachingWorkspacePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 xl:grid-cols-12 xl:items-start">
-                <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-7">
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-12 xl:items-stretch">
+                <section className="relative flex h-full flex-col overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-7">
                   {/* Header toolbar */}
                   <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -6433,8 +6514,8 @@ export default function TeacherTeachingWorkspacePage() {
                           type="button"
                           onClick={() => setTimelineFilter('hari_ini')}
                           className={`rounded-xl px-3 py-1.5 text-[11px] font-bold transition cursor-pointer ${timelineFilter === 'hari_ini'
-                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
-                              : 'border border-slate-200/80 bg-slate-100/80 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 hover:text-emerald-800 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
+                            : 'border border-slate-200/80 bg-slate-100/80 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 hover:text-emerald-800 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                             }`}
                         >
                           Hari Ini ({selectedDateDay}: {selectedDaySchedules.length})
@@ -6443,8 +6524,8 @@ export default function TeacherTeachingWorkspacePage() {
                           type="button"
                           onClick={() => setTimelineFilter('semua')}
                           className={`rounded-xl px-3 py-1.5 text-[11px] font-bold transition cursor-pointer ${timelineFilter === 'semua' || (timelineFilter === 'auto' && selectedDaySchedules.length === 0)
-                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
-                              : 'border border-slate-200/80 bg-slate-100/80 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 hover:text-emerald-800 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
+                            : 'border border-slate-200/80 bg-slate-100/80 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 hover:text-emerald-800 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                             }`}
                         >
                           Semua Hari ({sortedSchedules.length})
@@ -6461,8 +6542,8 @@ export default function TeacherTeachingWorkspacePage() {
                                 setWeeklySelectedDay(d.short)
                               }}
                               className={`rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition cursor-pointer ${timelineFilter === d.name
-                                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
-                                  : 'border border-emerald-200/80 bg-emerald-50/70 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-800/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60'
+                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
+                                : 'border border-emerald-200/80 bg-emerald-50/70 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-800/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60'
                                 }`}
                             >
                               {d.name} ({count})
@@ -6538,8 +6619,8 @@ export default function TeacherTeachingWorkspacePage() {
                             <article
                               key={schedule.id || index}
                               className={`group relative overflow-hidden rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${status.isActive
-                                  ? 'border-2 border-emerald-500 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-white shadow-md shadow-emerald-500/10 dark:border-emerald-500/70 dark:bg-gradient-to-r dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900'
-                                  : 'border-slate-200/90 bg-white hover:border-emerald-300 hover:bg-emerald-50/30 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700 dark:hover:bg-slate-900'
+                                ? 'border-2 border-emerald-500 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-white shadow-md shadow-emerald-500/10 dark:border-emerald-500/70 dark:bg-gradient-to-r dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900'
+                                : 'border-slate-200/90 bg-white hover:border-emerald-300 hover:bg-emerald-50/30 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700 dark:hover:bg-slate-900'
                                 } p-4`}
                             >
                               <div className={`absolute inset-y-0 left-0 ${status.isActive ? 'w-1.5 bg-gradient-to-b from-emerald-500 to-teal-600' : 'w-1 bg-emerald-600/70'}`} />
@@ -6572,8 +6653,8 @@ export default function TeacherTeachingWorkspacePage() {
                                     disabled={!status.isActive}
                                     title={status.isActive ? 'Buka Presensi Sesi KBM' : `Presensi Tidak Aktif (${status.label})`}
                                     className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition sm:flex-none ${status.isActive
-                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm shadow-emerald-600/25 cursor-pointer'
-                                        : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed opacity-60'
+                                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm shadow-emerald-600/25 cursor-pointer'
+                                      : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed opacity-60'
                                       }`}
                                   >
                                     <UserCheck className="h-3.5 w-3.5" />
@@ -6597,7 +6678,7 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </section>
 
-                <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-5">
+                <section className="relative flex h-full flex-col overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-5">
                   {/* Header toolbar */}
                   <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5">
                     <div className="flex items-center gap-3">
@@ -6625,14 +6706,14 @@ export default function TeacherTeachingWorkspacePage() {
                             role="tab"
                             aria-selected={weeklySelectedDay === day.short}
                             className={`rounded-xl px-2 py-2 text-[11px] font-bold transition flex flex-col items-center justify-center cursor-pointer ${weeklySelectedDay === day.short
-                                ? 'bg-white text-emerald-800 shadow-xs border border-emerald-200/60 dark:bg-slate-900 dark:text-emerald-300 dark:border-emerald-700/60'
-                                : 'text-slate-600 hover:text-emerald-800 hover:bg-white/60 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
+                              ? 'bg-white text-emerald-800 shadow-xs border border-emerald-200/60 dark:bg-slate-900 dark:text-emerald-300 dark:border-emerald-700/60'
+                              : 'text-slate-600 hover:text-emerald-800 hover:bg-white/60 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
                               }`}
                           >
                             <span>{day.short}</span>
                             <span className={`mt-0.5 text-[9px] font-extrabold px-1.5 py-0.2 rounded-full ${dayCount > 0
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                : 'text-slate-400 dark:text-slate-600'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : 'text-slate-400 dark:text-slate-600'
                               }`}>
                               {dayCount}
                             </span>
@@ -6849,8 +6930,8 @@ export default function TeacherTeachingWorkspacePage() {
                             type="button"
                             onClick={() => setAttendancePeriodFilter(item.id)}
                             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${isActive
-                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
-                                : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
+                              : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
                               }`}
                           >
                             <Icon className="h-3.5 w-3.5" />
@@ -6935,7 +7016,7 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </div>
 
-                {/* TailGrids KBM Session & Journal Input Card */}
+                {/* HeroUI KBM Session & Journal Input Card */}
                 <div className="mb-4 rounded-[22px] border-2 border-emerald-500/25 bg-gradient-to-r from-emerald-50/60 via-teal-50/30 to-emerald-50/60 p-4 shadow-sm dark:border-emerald-600/35 dark:bg-slate-900/60">
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/15 pb-2.5">
                     <div className="flex items-center gap-2">
@@ -6983,7 +7064,7 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </div>
 
-                {/* TailGrids Emerald Datatable Container */}
+                {/* HeroUI Emerald Datatable Container */}
                 <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
                   {/* Toolbar Header */}
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
@@ -7184,8 +7265,8 @@ export default function TeacherTeachingWorkspacePage() {
                               type="button"
                               onClick={() => toggleStudentChecklist(student, status !== 'Hadir')}
                               className={`inline-flex h-8 items-center justify-center gap-1 rounded-xl px-3 text-[10px] font-bold transition shadow-xs ${status === 'Hadir'
-                                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                  : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300'
                                 }`}
                             >
                               <Check className="h-3 w-3" />
@@ -7332,8 +7413,8 @@ export default function TeacherTeachingWorkspacePage() {
                                     {/* Badge izin ortu */}
                                     {perm && (isPending || isApproved) && (
                                       <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${isPending
-                                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
-                                          : 'bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300'
+                                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                                        : 'bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300'
                                         }`}>
                                         {isPending ? '⏳' : '✅'}
                                         {isPending ? 'Izin Pending' : 'Izin Disetujui'} · {String(perm.type || '').toUpperCase()}
@@ -7387,8 +7468,8 @@ export default function TeacherTeachingWorkspacePage() {
                                     type="button"
                                     onClick={() => toggleStudentChecklist(student, status !== 'Hadir')}
                                     className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${status === 'Hadir'
-                                        ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
-                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                                      ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
+                                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
                                       }`}
                                     title={status === 'Hadir' ? 'Batalkan (Set Belum Dicatat)' : 'Tandai Hadir Cepat'}
                                   >
@@ -8719,7 +8800,7 @@ export default function TeacherTeachingWorkspacePage() {
           {/* TAB 6: TAHFIZH */}
           {activeTab === 'tahfizh' && canAccessTahfizh && (
             <section className="space-y-6" aria-labelledby="tahfizh-heading">
-              {/* 1. TAILGRIDS MODERN HERO CARD BANNER */}
+              {/* 1. HEROUI MODERN HERO CARD BANNER */}
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -8742,8 +8823,8 @@ export default function TeacherTeachingWorkspacePage() {
                           Jurnal &amp; Monitoring Tahfizh
                         </span>
                         <span className={`inline-flex items-center gap-1 rounded-full px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-bold border ${isGlobalTahfizhScope
-                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border-purple-300/70'
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300/70'
+                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border-purple-300/70'
+                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300/70'
                           }`}>
                           {isGlobalTahfizhScope ? (
                             selectedTahfizhUnit && selectedTahfizhUnit !== 'semua' ? (
@@ -8763,7 +8844,7 @@ export default function TeacherTeachingWorkspacePage() {
                             : 'Leaderboard Pencapaian Hafalan Tahfizh Seluruh Unit')
                           : `Jurnal & Ranking Setoran Tahfizh Al-Qur'an — ${teacherProfile?.education_unit || user?.education_unit?.name || 'Unit Sekolah'}${selectedClassName && selectedClass !== 'all' ? ` (Kelas ${selectedClassName})` : ''}`}
                       </h2>
-                      <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                      <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                         {isGlobalTahfizhScope
                           ? 'Menampilkan konsolidasi pencapaian hafalan tahfizh terbanyak dari seluruh unit pendidikan dengan kemampuan menyortir rincian teratas masing-masing unit.'
                           : `Menampilkan daftar peringkat hafalan tahfizh santri khusus untuk unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'pendidikan Anda'} diurutkan berdasarkan pencapaian hafalan terbanyak.`}
@@ -9002,7 +9083,7 @@ export default function TeacherTeachingWorkspacePage() {
                 </div>
               )}
 
-              {/* 4. TAILGRIDS EMERALD DATATABLE CONTAINER (Leaderboard Table) */}
+              {/* 4. HEROUI EMERALD DATATABLE CONTAINER (Leaderboard Table) */}
               <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
                 {/* Toolbar Header */}
                 <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
@@ -9226,9 +9307,9 @@ export default function TeacherTeachingWorkspacePage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <span className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${isTop1 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                                isTop2 ? 'bg-slate-200 text-slate-800 border border-slate-300' :
-                                  isTop3 ? 'bg-orange-100 text-orange-800 border border-orange-300' :
-                                    'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                              isTop2 ? 'bg-slate-200 text-slate-800 border border-slate-300' :
+                                isTop3 ? 'bg-orange-100 text-orange-800 border border-orange-300' :
+                                  'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                               }`}>
                               {isTop1 ? '🥇' : isTop2 ? '🥈' : isTop3 ? '🥉' : `#${absoluteIndex + 1}`}
                             </span>
@@ -9309,9 +9390,9 @@ export default function TeacherTeachingWorkspacePage() {
                         <tr key={student.id} className="hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-colors">
                           <td className="p-3.5 text-center">
                             <span className={`inline-flex size-7 items-center justify-center rounded-full text-xs font-black ${isTop1 ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-xs' :
-                                isTop2 ? 'bg-slate-200 text-slate-800 border border-slate-300 shadow-xs' :
-                                  isTop3 ? 'bg-orange-100 text-orange-800 border border-orange-300 shadow-xs' :
-                                    'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                              isTop2 ? 'bg-slate-200 text-slate-800 border border-slate-300 shadow-xs' :
+                                isTop3 ? 'bg-orange-100 text-orange-800 border border-orange-300 shadow-xs' :
+                                  'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                               }`}>
                               {isTop1 ? '🥇' : isTop2 ? '🥈' : isTop3 ? '🥉' : `#${absoluteIndex + 1}`}
                             </span>
@@ -9322,9 +9403,9 @@ export default function TeacherTeachingWorkspacePage() {
                           </td>
                           <td className="p-3.5">
                             <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border ${unitName.includes('SMA') ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800' :
-                                unitName.includes('SMP') ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800' :
-                                  unitName.includes('SD') ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' :
-                                    'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                              unitName.includes('SMP') ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800' :
+                                unitName.includes('SD') ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' :
+                                  'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
                               }`}>
                               {unitName}
                             </span>
@@ -9889,7 +9970,7 @@ export default function TeacherTeachingWorkspacePage() {
                         <h2 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                           Buku Log &amp; Riwayat Presensi Guru
                         </h2>
-                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                           Rekam jejak kehadiran kedinasan guru resmi — Pemantauan jam check-in, check-out, akumulasi jam kerja, verifikasi perangkat biometrik/QR, dan sertifikasi disiplin kerja terpadu.
                         </p>
                       </div>
@@ -9931,8 +10012,8 @@ export default function TeacherTeachingWorkspacePage() {
                   <div
                     onClick={() => setTeacherLogStatus('semua')}
                     className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${teacherLogStatus === 'semua'
-                        ? 'bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-teal-500/20 border-2 border-emerald-500 ring-2 ring-emerald-500/30 shadow-lg shadow-emerald-500/20'
-                        : 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-teal-500/10 border-2 border-emerald-500/25 hover:border-emerald-500/60 shadow-sm shadow-emerald-500/5 hover:shadow-md hover:shadow-emerald-500/15 hover:-translate-y-0.5'
+                      ? 'bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-teal-500/20 border-2 border-emerald-500 ring-2 ring-emerald-500/30 shadow-lg shadow-emerald-500/20'
+                      : 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-teal-500/10 border-2 border-emerald-500/25 hover:border-emerald-500/60 shadow-sm shadow-emerald-500/5 hover:shadow-md hover:shadow-emerald-500/15 hover:-translate-y-0.5'
                       }`}
                   >
                     <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-emerald-400/20 blur-2xl group-hover:scale-125 transition-transform" />
@@ -9957,8 +10038,8 @@ export default function TeacherTeachingWorkspacePage() {
                   <div
                     onClick={() => setTeacherLogStatus('Hadir')}
                     className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${teacherLogStatus === 'Hadir'
-                        ? 'bg-gradient-to-br from-teal-500/20 via-teal-500/10 to-cyan-500/20 border-2 border-teal-500 ring-2 ring-teal-500/30 shadow-lg shadow-teal-500/20'
-                        : 'bg-gradient-to-br from-teal-500/10 via-teal-500/5 to-cyan-500/10 border-2 border-teal-500/25 hover:border-teal-500/60 shadow-sm shadow-teal-500/5 hover:shadow-md hover:shadow-teal-500/15 hover:-translate-y-0.5'
+                      ? 'bg-gradient-to-br from-teal-500/20 via-teal-500/10 to-cyan-500/20 border-2 border-teal-500 ring-2 ring-teal-500/30 shadow-lg shadow-teal-500/20'
+                      : 'bg-gradient-to-br from-teal-500/10 via-teal-500/5 to-cyan-500/10 border-2 border-teal-500/25 hover:border-teal-500/60 shadow-sm shadow-teal-500/5 hover:shadow-md hover:shadow-teal-500/15 hover:-translate-y-0.5'
                       }`}
                   >
                     <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-teal-400/20 blur-2xl group-hover:scale-125 transition-transform" />
@@ -9983,8 +10064,8 @@ export default function TeacherTeachingWorkspacePage() {
                   <div
                     onClick={() => setTeacherLogStatus('Terlambat')}
                     className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${teacherLogStatus === 'Terlambat'
-                        ? 'bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-orange-500/20 border-2 border-amber-500 ring-2 ring-amber-500/30 shadow-lg shadow-amber-500/20'
-                        : 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 border-2 border-amber-500/25 hover:border-amber-500/60 shadow-sm shadow-amber-500/5 hover:shadow-md hover:shadow-amber-500/15 hover:-translate-y-0.5'
+                      ? 'bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-orange-500/20 border-2 border-amber-500 ring-2 ring-amber-500/30 shadow-lg shadow-amber-500/20'
+                      : 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 border-2 border-amber-500/25 hover:border-amber-500/60 shadow-sm shadow-amber-500/5 hover:shadow-md hover:shadow-amber-500/15 hover:-translate-y-0.5'
                       }`}
                   >
                     <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-amber-400/20 blur-2xl group-hover:scale-125 transition-transform" />
@@ -10009,8 +10090,8 @@ export default function TeacherTeachingWorkspacePage() {
                   <div
                     onClick={() => setTeacherLogStatus(teacherLogStatus === 'Izin' ? 'Sakit' : 'Izin')}
                     className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${teacherLogStatus === 'Izin' || teacherLogStatus === 'Sakit'
-                        ? 'bg-gradient-to-br from-sky-500/20 via-sky-500/10 to-indigo-500/20 border-2 border-sky-500 ring-2 ring-sky-500/30 shadow-lg shadow-sky-500/20'
-                        : 'bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-indigo-500/10 border-2 border-sky-500/25 hover:border-sky-500/60 shadow-sm shadow-sky-500/5 hover:shadow-md hover:shadow-sky-500/15 hover:-translate-y-0.5'
+                      ? 'bg-gradient-to-br from-sky-500/20 via-sky-500/10 to-indigo-500/20 border-2 border-sky-500 ring-2 ring-sky-500/30 shadow-lg shadow-sky-500/20'
+                      : 'bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-indigo-500/10 border-2 border-sky-500/25 hover:border-sky-500/60 shadow-sm shadow-sky-500/5 hover:shadow-md hover:shadow-sky-500/15 hover:-translate-y-0.5'
                       }`}
                   >
                     <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-sky-400/20 blur-2xl group-hover:scale-125 transition-transform" />
@@ -10032,7 +10113,7 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </div>
 
-                {/* ── TAILGRIDS EMERALD DATATABLE CONTAINER ──────────────────── */}
+                {/* ── HEROUI EMERALD DATATABLE CONTAINER ──────────────────── */}
                 <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
                   {/* Toolbar Header */}
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
@@ -10089,8 +10170,8 @@ export default function TeacherTeachingWorkspacePage() {
                             type="button"
                             onClick={() => setTeacherLogStatus(st)}
                             className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${teacherLogStatus === st
-                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
-                                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                               }`}
                           >
                             {st === 'semua' ? 'Semua' : st}
@@ -10135,10 +10216,10 @@ export default function TeacherTeachingWorkspacePage() {
                             </td>
                             <td className="p-3.5">
                               <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 font-extrabold text-[10px] rounded-full border ${log.status === 'Hadir' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' :
-                                  log.status === 'Terlambat' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
-                                    log.status === 'Izin' ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' :
-                                      log.status === 'Sakit' ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
-                                        'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                log.status === 'Terlambat' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
+                                  log.status === 'Izin' ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' :
+                                    log.status === 'Sakit' ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
+                                      'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
                                 }`}>
                                 {log.status === 'Hadir' && <CheckCircle2 className="size-3" />}
                                 {log.status === 'Terlambat' && <Clock className="size-3" />}
@@ -10271,7 +10352,7 @@ export default function TeacherTeachingWorkspacePage() {
                         <h2 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                           Jadwal Pelajaran Lengkap Sekolah
                         </h2>
-                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                           Tinjauan komprehensif seluruh persebaran jam KBM guru — Tampilan fleksibel filter harian, matriks mingguan, estimasi beban bulanan, dan tabel semesteran terintegrasi.
                         </p>
                       </div>
@@ -10321,8 +10402,8 @@ export default function TeacherTeachingWorkspacePage() {
                           key={subt}
                           onClick={() => setJadwalLengkapTab(subt)}
                           className={`rounded-xl px-3.5 py-1.5 text-xs font-extrabold transition-all duration-150 cursor-pointer ${jadwalLengkapTab === subt
-                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 ring-1 ring-emerald-300/40'
-                              : 'text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-400'
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 ring-1 ring-emerald-300/40'
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-400'
                             }`}
                         >
                           {subt}
@@ -10345,8 +10426,8 @@ export default function TeacherTeachingWorkspacePage() {
                                 type="button"
                                 onClick={() => setSelectedHariFilter(d)}
                                 className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all duration-150 cursor-pointer ${selectedHariFilter === d
-                                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm ring-1 ring-emerald-300/40'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-300'
+                                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm ring-1 ring-emerald-300/40'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-300'
                                   }`}
                               >
                                 {d}
@@ -10397,8 +10478,8 @@ export default function TeacherTeachingWorkspacePage() {
                                         disabled={!sStatus.isActive}
                                         title={sStatus.isActive ? 'Presensi Sesi KBM' : `Presensi Tidak Aktif (${sStatus.label})`}
                                         className={`px-3 py-1.5 rounded-xl font-bold text-[11px] border transition ${sStatus.isActive
-                                            ? 'bg-emerald-50 hover:bg-emerald-100 text-[#0E5C44] dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/80 border-emerald-200 dark:border-emerald-800 cursor-pointer'
-                                            : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
+                                          ? 'bg-emerald-50 hover:bg-emerald-100 text-[#0E5C44] dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/80 border-emerald-200 dark:border-emerald-800 cursor-pointer'
+                                          : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
                                           }`}
                                       >
                                         {sStatus.isActive ? 'Presensi Sesi' : `Presensi (${sStatus.label})`}
@@ -10442,8 +10523,8 @@ export default function TeacherTeachingWorkspacePage() {
                                     <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider">{day}</h4>
                                   </div>
                                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${daySchedules.length > 0
-                                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                      : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                    : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
                                     }`}>
                                     {daySchedules.length} Sesi
                                   </span>
@@ -10753,13 +10834,13 @@ export default function TeacherTeachingWorkspacePage() {
 
               {qrCameraErrorInfo ? (
                 <div className={`rounded-2xl border p-4 text-xs ${qrCameraErrorInfo.actionType === 'notice'
-                    ? 'border-amber-200 bg-amber-50/80 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200'
-                    : 'border-rose-200 bg-rose-50/80 text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200'
+                  ? 'border-amber-200 bg-amber-50/80 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200'
+                  : 'border-rose-200 bg-rose-50/80 text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200'
                   }`}>
                   <div className="flex items-start gap-3">
                     <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl font-bold ${qrCameraErrorInfo.actionType === 'notice'
-                        ? 'bg-amber-200/80 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
-                        : 'bg-rose-200/80 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300'
+                      ? 'bg-amber-200/80 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                      : 'bg-rose-200/80 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300'
                       }`}>
                       !
                     </div>
@@ -10993,8 +11074,8 @@ export default function TeacherTeachingWorkspacePage() {
                             setStudentDetailPage(1)
                           }}
                           className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${isActive
-                              ? 'bg-emerald-700 text-white shadow-sm'
-                              : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                            ? 'bg-emerald-700 text-white shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
                             }`}
                         >
                           <span>{t.label}</span>
@@ -11382,8 +11463,8 @@ export default function TeacherTeachingWorkspacePage() {
                       }
                     }}
                     className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold shadow-xs transition cursor-pointer ${isEditingHistorySession
-                        ? 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600'
-                        : 'border-amber-500/40 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300'
+                      ? 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600'
+                      : 'border-amber-500/40 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300'
                       }`}
                     title={isEditingHistorySession ? 'Batalkan mode koreksi' : 'Koreksi kesalahan data presensi sesi ini'}
                   >
@@ -11665,6 +11746,30 @@ export default function TeacherTeachingWorkspacePage() {
         description={`Pusat kendali sesi belajar-mengajar hari ini • ${formattedLiveDate} • Jam: ${formattedLiveTime}`}
         icon={Play}
         maxWidth="max-w-2xl"
+        footer={
+          <div className="flex justify-between items-center w-full">
+            <button
+              type="button"
+              onClick={() => {
+                setShowMulaiMengajarModal(false)
+                changeTab('jadwal')
+              }}
+              className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Calendar className="h-4 w-4" /> Lihat Jadwal Lengkap
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMulaiMengajarModal(false)}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                <X className="size-3.5" strokeWidth={2.5} />
+              </span>
+              <span>Tutup</span>
+            </button>
+          </div>
+        }
       >
         <div className="space-y-4">
           {/* BANNER REALTIME: GURU PENGAMPU & WAKTU */}
@@ -11733,8 +11838,8 @@ export default function TeacherTeachingWorkspacePage() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase ${isToday
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
                             }`}>
                             {getScheduleDay(sch)}
                           </span>
@@ -11767,8 +11872,8 @@ export default function TeacherTeachingWorkspacePage() {
                                 openPresensiModal(sch)
                               }}
                               className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold shadow-sm transition ${schStatus.isActive
-                                  ? 'bg-[#0E5C44] hover:bg-emerald-800 text-white cursor-pointer'
-                                  : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400 cursor-not-allowed opacity-60'
+                                ? 'bg-[#0E5C44] hover:bg-emerald-800 text-white cursor-pointer'
+                                : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400 cursor-not-allowed opacity-60'
                                 }`}
                             >
                               <UserCheck className="h-4 w-4" />
@@ -11795,27 +11900,6 @@ export default function TeacherTeachingWorkspacePage() {
               })}
             </div>
           )}
-
-          {/* FOOTER MODAL */}
-          <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => {
-                setShowMulaiMengajarModal(false)
-                changeTab('jadwal')
-              }}
-              className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline font-semibold flex items-center gap-1"
-            >
-              <Calendar className="h-3.5 w-3.5" /> Lihat Jadwal Lengkap
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowMulaiMengajarModal(false)}
-              className="px-4 py-2 border rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
-            >
-              Tutup
-            </button>
-          </div>
         </div>
       </AppModal>
 
@@ -11828,6 +11912,53 @@ export default function TeacherTeachingWorkspacePage() {
         description={`Rombel: ${modalActiveClassName} • Mapel: ${presensiModalSchedule?.subject?.name || presensiModalSchedule?.subject?.nama_mapel || getScheduleSubject(presensiModalSchedule || {}) || 'Mata Pelajaran'} • Jam Pelajaran: ${getScheduleLessonHours(presensiModalSchedule)} • Waktu Sekarang: ${formattedLiveTime}`}
         icon={UserCheck}
         maxWidth="max-w-4xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <button
+              type="button"
+              onClick={() => setShowPresensiModal(false)}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                <X className="size-3.5" strokeWidth={2.5} />
+              </span>
+              <span>Batal</span>
+            </button>
+            {(() => {
+              const modalSchStatus = presensiModalSchedule ? getScheduleStatus(presensiModalSchedule) : null
+              const isModalInactive = modalSchStatus && !modalSchStatus.isActive
+              return (
+                <button
+                  type="button"
+                  disabled={isSavingAttendance || isModalInactive}
+                  onClick={handleSaveAttendance}
+                  title={isModalInactive ? `Presensi tidak aktif (${modalSchStatus.label})` : 'Simpan Presensi Pembelajaran'}
+                  className={`group inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-md transition-all active:scale-95 ${isModalInactive
+                    ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
+                    : 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-950/20 hover:from-emerald-600 hover:to-teal-800 cursor-pointer disabled:opacity-50'
+                    }`}
+                >
+                  <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                    {isSavingAttendance ? (
+                      <RefreshCw className="size-3.5 animate-spin" />
+                    ) : isModalInactive ? (
+                      <Clock className="size-3.5" />
+                    ) : (
+                      <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
+                    )}
+                  </span>
+                  <span>
+                    {isSavingAttendance
+                      ? 'Menyimpan Presensi...'
+                      : isModalInactive
+                        ? `Presensi Tidak Aktif (${modalSchStatus.label})`
+                        : 'Simpan Presensi Pembelajaran'}
+                  </span>
+                </button>
+              )
+            })()}
+          </div>
+        }
       >
         <div className="space-y-4">
           {/* BANNER REALTIME: WAKTU SEKARANG, JAM PELAJARAN & FILTER ROMBEL */}
@@ -11921,10 +12052,10 @@ export default function TeacherTeachingWorkspacePage() {
 
                 {/* Indikator Status Auto-Save Real-Time */}
                 <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold shadow-2xs border transition-all ${autoSaveStatus === 'saving'
-                    ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700'
-                    : autoSaveStatus === 'error'
-                      ? 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-700'
-                      : 'bg-emerald-100/90 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700'
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700'
+                  : autoSaveStatus === 'error'
+                    ? 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-700'
+                    : 'bg-emerald-100/90 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700'
                   }`}>
                   <span className="relative flex h-2 w-2">
                     <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${autoSaveStatus === 'saving' ? 'bg-amber-400' : autoSaveStatus === 'error' ? 'bg-rose-400' : 'bg-emerald-400'} opacity-75`}></span>
@@ -11955,8 +12086,8 @@ export default function TeacherTeachingWorkspacePage() {
                 type="button"
                 onClick={() => setAttendanceCenterTab(id)}
                 className={`shrink-0 border-b-2 px-4 pb-2.5 font-extrabold transition ${attendanceCenterTab === id
-                    ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                  ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
                   }`}
               >
                 {label}
@@ -11990,8 +12121,8 @@ export default function TeacherTeachingWorkspacePage() {
                           if (method.id !== 'rollcall') setTimeout(() => scanInputRef.current?.focus(), 50)
                         }}
                         className={`flex items-start gap-3 rounded-2xl border p-3 text-left transition ${active
-                            ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
-                            : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900/60'
+                          ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
+                          : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900/60'
                           }`}
                       >
                         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${active ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
@@ -12199,8 +12330,8 @@ export default function TeacherTeachingWorkspacePage() {
                                       type="button"
                                       onClick={() => markStudentAttendance(st, selectedMethod === 'qr' ? 'QR Code Kartu Siswa' : selectedMethod === 'rfid' ? 'RFID Kartu Siswa' : 'Roll Call Guru', option.id)}
                                       className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${currentStatus === option.id
-                                          ? `${option.tone} shadow-sm ring-2 ring-emerald-500/40`
-                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                                        ? `${option.tone} shadow-sm ring-2 ring-emerald-500/40`
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                                         }`}
                                     >
                                       {option.id}
@@ -12269,46 +12400,6 @@ export default function TeacherTeachingWorkspacePage() {
               />
             </div>
           )}
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => setShowPresensiModal(false)}
-              className="px-4 py-2.5 border rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              Batal
-            </button>
-            {(() => {
-              const modalSchStatus = presensiModalSchedule ? getScheduleStatus(presensiModalSchedule) : null
-              const isModalInactive = modalSchStatus && !modalSchStatus.isActive
-              return (
-                <button
-                  type="button"
-                  disabled={isSavingAttendance || isModalInactive}
-                  onClick={handleSaveAttendance}
-                  title={isModalInactive ? `Presensi tidak aktif (${modalSchStatus.label})` : 'Simpan Presensi Pembelajaran'}
-                  className={`px-5 py-2.5 text-xs font-bold rounded-xl shadow-md flex items-center gap-2 transition ${isModalInactive
-                      ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed shadow-none'
-                      : 'bg-[#0E5C44] hover:bg-emerald-800 disabled:opacity-50 text-white cursor-pointer'
-                    }`}
-                >
-                  {isSavingAttendance ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" /> Menyimpan Presensi...
-                    </>
-                  ) : isModalInactive ? (
-                    <>
-                      <Clock className="w-4 h-4" /> Presensi Tidak Aktif ({modalSchStatus.label})
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" /> Simpan Presensi Pembelajaran
-                    </>
-                  )}
-                </button>
-              )
-            })()}
-          </div>
         </div>
       </AppModal>
 
@@ -12374,12 +12465,12 @@ export default function TeacherTeachingWorkspacePage() {
             )}
 
             {modalType === 'delete-confirm' ? (
-              <div className="space-y-4 text-center py-2">
+              <div role="alertdialog" aria-modal="true" aria-labelledby="delete-confirm-title" className="space-y-4 text-center py-2">
                 <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
                   <AlertTriangle className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Konfirmasi Hapus Data</h3>
+                  <h3 id="delete-confirm-title" className="text-base font-bold text-slate-900 dark:text-white">Konfirmasi Hapus Data</h3>
                   <p className="text-xs text-slate-500 mt-1">
                     Apakah Anda yakin ingin menghapus data <strong>{deleteTarget?.title}</strong>? Tindakan ini tidak dapat dibatalkan.
                   </p>
@@ -12442,8 +12533,8 @@ export default function TeacherTeachingWorkspacePage() {
                         type="button"
                         onClick={() => setTugasForm({ ...tugasForm, jenis_tugas: 'tugas' })}
                         className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${tugasForm.jenis_tugas !== 'quiz'
-                            ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-200 dark:border-emerald-800'
-                            : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                          ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-200 dark:border-emerald-800'
+                          : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                           }`}
                       >
                         <FileText className="w-3.5 h-3.5" />
@@ -12453,8 +12544,8 @@ export default function TeacherTeachingWorkspacePage() {
                         type="button"
                         onClick={() => setTugasForm({ ...tugasForm, jenis_tugas: 'quiz', tipe_tugas: 'online' })}
                         className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${tugasForm.jenis_tugas === 'quiz'
-                            ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm font-black'
-                            : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                          ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm font-black'
+                          : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                           }`}
                       >
                         <Zap className="w-3.5 h-3.5" />
@@ -12872,7 +12963,7 @@ export default function TeacherTeachingWorkspacePage() {
                             <h5 className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider">Kunci Jawaban Benar / Salah</h5>
                             <div className="flex gap-3">
                               {['Benar', 'Salah'].map((val) => (
-                                <label key={val} className={['flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer font-bold text-xs transition-all', soalForm.kunci_jawaban === val ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'].join(' ')}>
+                                <label key={val} className={['flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer font-bold text-xs transition-all', soalForm.kunci_jawaban === val ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'].join(' ')}>
                                   <input
                                     type="radio"
                                     name="kunci_bs"
@@ -13610,8 +13701,8 @@ export default function TeacherTeachingWorkspacePage() {
                               setShowStudentSearchModal(false)
                             }}
                             className={`flex items-center gap-3 w-full p-3 rounded-2xl border text-left transition ${isSelected
-                                ? 'border-emerald-500 bg-emerald-50/90 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
-                                : 'border-slate-200/80 hover:border-emerald-400 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900/60'
+                              ? 'border-emerald-500 bg-emerald-50/90 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
+                              : 'border-slate-200/80 hover:border-emerald-400 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900/60'
                               }`}
                           >
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-extrabold flex items-center justify-center text-xs shadow-sm shrink-0 overflow-hidden">
@@ -13682,8 +13773,8 @@ export default function TeacherTeachingWorkspacePage() {
                             setShowSetoranTypeModal(false)
                           }}
                           className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between ${isSelected
-                              ? 'ring-2 ring-emerald-500 border-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/50'
-                              : 'border-slate-200/80 hover:border-emerald-300 bg-white dark:bg-slate-900'
+                            ? 'ring-2 ring-emerald-500 border-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/50'
+                            : 'border-slate-200/80 hover:border-emerald-300 bg-white dark:bg-slate-900'
                             }`}
                         >
                           <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${item.color}`}>
@@ -13741,8 +13832,8 @@ export default function TeacherTeachingWorkspacePage() {
                                 setShowSurahSearchModal(false)
                               }}
                               className={`flex items-center justify-between w-full p-3 rounded-2xl border text-left transition ${isSelected
-                                  ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
-                                  : 'border-slate-200/80 hover:border-emerald-300 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900'
+                                ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
+                                : 'border-slate-200/80 hover:border-emerald-300 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900'
                                 }`}
                             >
                               <div className="flex items-center gap-3">
@@ -13782,20 +13873,13 @@ export default function TeacherTeachingWorkspacePage() {
                       <div><label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Tanggal</label><DatePicker required value={catatanForm.date} onChange={(e) => setCatatanForm({ ...catatanForm, date: e.target.value })} /></div>
                       <div>
                         <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Kategori</label>
-                        <div className="relative flex items-center">
-                          <select
-                            value={catatanForm.category}
-                            onChange={(e) => setCatatanForm({ ...catatanForm, category: e.target.value })}
-                            className="h-10 w-full appearance-none rounded-xl border border-slate-200 pl-3 pr-9 text-xs font-semibold text-slate-800 transition hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
-                          >
-                            {['Akademik', 'Perilaku', 'Kedisiplinan', 'Prestasi', 'Konseling', 'Tahfizh', 'Ibadah', 'Kesehatan'].map((category) => (
-                              <option key={category}>{category}</option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute right-3 flex items-center text-slate-400">
-                            <ChevronDown className="size-4" />
-                          </div>
-                        </div>
+                        <HeroUiFilterSelect
+                          size="md"
+                          value={catatanForm.category}
+                          onChange={(val) => setCatatanForm({ ...catatanForm, category: val })}
+                          ariaLabel="Kategori"
+                          options={['Akademik', 'Perilaku', 'Kedisiplinan', 'Prestasi', 'Konseling', 'Tahfizh', 'Ibadah', 'Kesehatan']}
+                        />
                       </div>
                     </div>
                     {(catatanForm.category === 'Perilaku' || catatanForm.category === 'Kedisiplinan') && (
@@ -13844,21 +13928,18 @@ export default function TeacherTeachingWorkspacePage() {
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
                         <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Prioritas</label>
-                        <div className="relative flex items-center">
-                          <select
-                            value={catatanForm.priority}
-                            onChange={(e) => setCatatanForm({ ...catatanForm, priority: e.target.value })}
-                            className="h-10 w-full appearance-none rounded-xl border border-slate-200 pl-3 pr-9 text-xs font-semibold text-slate-800 transition hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
-                          >
-                            <option value="low">Rendah</option>
-                            <option value="medium">Sedang</option>
-                            <option value="high">Tinggi</option>
-                            <option value="urgent">Mendesak</option>
-                          </select>
-                          <div className="pointer-events-none absolute right-3 flex items-center text-slate-400">
-                            <ChevronDown className="size-4" />
-                          </div>
-                        </div>
+                        <HeroUiFilterSelect
+                          size="md"
+                          value={catatanForm.priority}
+                          onChange={(val) => setCatatanForm({ ...catatanForm, priority: val })}
+                          ariaLabel="Prioritas"
+                          options={[
+                            { value: 'low', label: 'Rendah' },
+                            { value: 'medium', label: 'Sedang' },
+                            { value: 'high', label: 'Tinggi' },
+                            { value: 'urgent', label: 'Mendesak' },
+                          ]}
+                        />
                       </div>
                       <div className="flex items-end gap-4 pb-2"><label className="flex items-center gap-2"><input type="checkbox" checked={catatanForm.visible_to_parent} onChange={(e) => setCatatanForm({ ...catatanForm, visible_to_parent: e.target.checked })} /> Orang tua</label><label className="flex items-center gap-2"><input type="checkbox" checked={catatanForm.visible_to_student} onChange={(e) => setCatatanForm({ ...catatanForm, visible_to_student: e.target.checked })} /> Siswa</label></div>
                     </div>
@@ -14252,8 +14333,8 @@ export default function TeacherTeachingWorkspacePage() {
                     type="button"
                     onClick={() => setExportFormat(fmt.id)}
                     className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition ${isSel
-                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-[#0E5C44] text-[#0E5C44] dark:text-emerald-400 font-bold'
-                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-[#0E5C44] text-[#0E5C44] dark:text-emerald-400 font-bold'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50'
                       }`}
                   >
                     <Icon className="w-6 h-6" />
@@ -14526,8 +14607,8 @@ export default function TeacherTeachingWorkspacePage() {
                         </span>
                       )}
                       <span className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-black ${tidakHadirCount > 0
-                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300'
-                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                        ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300'
+                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
                         }`}>
                         <XCircle className="h-3.5 w-3.5 text-rose-600" />
                         <span>Tidak Hadir: {tidakHadirCount}</span>
@@ -14766,10 +14847,10 @@ export default function TeacherTeachingWorkspacePage() {
                                 {note.category || 'Akademik'}
                               </span>
                               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold capitalize ${note.priority === 'urgent'
-                                  ? 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950 dark:text-rose-300'
-                                  : note.priority === 'high'
-                                    ? 'bg-orange-100 text-orange-800 border border-orange-200 dark:bg-orange-950 dark:text-orange-300'
-                                    : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-700 dark:text-slate-300'
+                                ? 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950 dark:text-rose-300'
+                                : note.priority === 'high'
+                                  ? 'bg-orange-100 text-orange-800 border border-orange-200 dark:bg-orange-950 dark:text-orange-300'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-700 dark:text-slate-300'
                                 }`}>
                                 {note.priority || 'medium'}
                               </span>
@@ -15052,7 +15133,7 @@ export default function TeacherTeachingWorkspacePage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center gap-2"
                 >
                   <CheckCircle2 className="w-4 h-4" /> Simpan Presensi Wajah
                 </button>
@@ -15077,10 +15158,44 @@ export default function TeacherTeachingWorkspacePage() {
             ? `${selectedPendingSession.schedule?.subject?.name || 'Mata Pelajaran'} • ${selectedPendingSession.schedule?.kelas?.nama_kelas || 'Kelas'} • Pertemuan #${selectedPendingSession.meeting_number || 1} (${selectedPendingSession.attendance_date})`
             : 'Isi ringkasan materi dan evaluasi KBM'
         }
-        size="lg"
+        icon={BookOpen}
+        maxWidth="max-w-xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <button
+              type="button"
+              disabled={savingJournalNotes}
+              onClick={() => {
+                setShowPendingJournalModal(false)
+                setSelectedPendingSession(null)
+              }}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                <X className="size-3.5" strokeWidth={2.5} />
+              </span>
+              <span>Batal</span>
+            </button>
+            <button
+              type="submit"
+              form="pending-journal-form"
+              disabled={savingJournalNotes}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-950/20 hover:from-emerald-600 hover:to-teal-800 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                {savingJournalNotes ? (
+                  <RefreshCw className="size-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
+                )}
+              </span>
+              <span>{savingJournalNotes ? 'Menyimpan...' : 'Simpan Rangkuman & Selesaikan'}</span>
+            </button>
+          </div>
+        }
       >
         {selectedPendingSession && (
-          <form onSubmit={handleSavePendingJournal} className="space-y-4 pt-1">
+          <form id="pending-journal-form" onSubmit={handleSavePendingJournal} className="space-y-4 pt-1">
             <div className="rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/10 via-amber-50/50 to-transparent p-3.5 dark:border-amber-700/60 dark:bg-amber-950/20">
               <div className="flex items-center gap-2">
                 <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white shadow-xs">
@@ -15106,7 +15221,7 @@ export default function TeacherTeachingWorkspacePage() {
                 value={journalTopicInput}
                 onChange={(e) => setJournalTopicInput(e.target.value)}
                 placeholder="Contoh: Bab 4 - Persamaan Linier & Soal Cerita"
-                className="h-10 w-full rounded-xl border border-emerald-500/30 bg-white px-3.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="h-10 w-full rounded-xl border border-slate-200/90 bg-white px-3.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                 required
               />
             </div>
@@ -15120,43 +15235,12 @@ export default function TeacherTeachingWorkspacePage() {
                 value={journalNotesInput}
                 onChange={(e) => setJournalNotesInput(e.target.value)}
                 placeholder="Tuliskan rangkuman materi yang telah diajarkan, pemahaman siswa, evaluasi singkat, atau tugas yang diberikan..."
-                className="w-full rounded-xl border border-emerald-500/30 bg-white p-3.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="w-full rounded-xl border border-slate-200/90 bg-white p-3.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 required
               />
               <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                 Minimal 3 karakter. Catatan ini juga dapat dibaca oleh orang tua di modul portal santri.
               </p>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                disabled={savingJournalNotes}
-                onClick={() => {
-                  setShowPendingJournalModal(false)
-                  setSelectedPendingSession(null)
-                }}
-                className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={savingJournalNotes}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-600 transition-all cursor-pointer disabled:opacity-50"
-              >
-                {savingJournalNotes ? (
-                  <>
-                    <RefreshCw className="size-3.5 animate-spin text-white" />
-                    <span>Menyimpan...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="size-3.5 text-white" />
-                    <span>Simpan Rangkuman & Selesaikan</span>
-                  </>
-                )}
-              </button>
             </div>
           </form>
         )}
@@ -15302,8 +15386,8 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
           <div className="flex items-center gap-3">
             {/* TIMER BADGE */}
             <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border backdrop-blur-md transition-all shadow-inner ${timeLeft < 300
-                ? 'bg-rose-500/30 border-rose-400 text-rose-100 animate-pulse'
-                : 'bg-white/15 border-white/25 text-white'
+              ? 'bg-rose-500/30 border-rose-400 text-rose-100 animate-pulse'
+              : 'bg-white/15 border-white/25 text-white'
               }`}>
               <Clock className="w-4 h-4" />
               <span className="text-xs sm:text-sm font-black font-mono tracking-wide">
@@ -15452,8 +15536,8 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                                 type="button"
                                 onClick={() => handleSelectAnswer(opt.val)}
                                 className={`p-4 rounded-2xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${isSelected
-                                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 shadow-md ring-2 ring-purple-600/30'
-                                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200'
+                                  ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 shadow-md ring-2 ring-purple-600/30'
+                                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200'
                                   }`}
                               >
                                 {opt.label}
@@ -15485,19 +15569,19 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                               type="button"
                               onClick={() => handleSelectAnswer(upperLetter)}
                               className={`w-full p-3.5 sm:p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-3.5 cursor-pointer ${isSelected
-                                  ? 'border-purple-600 bg-purple-50/80 dark:bg-purple-950/40 shadow-sm ring-2 ring-purple-600/30'
-                                  : 'border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
+                                ? 'border-purple-600 bg-purple-50/80 dark:bg-purple-950/40 shadow-sm ring-2 ring-purple-600/30'
+                                : 'border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
                                 }`}
                             >
                               <span className={`w-8 h-8 rounded-xl font-black text-xs flex items-center justify-center shrink-0 transition-all ${isSelected
-                                  ? 'bg-purple-600 text-white shadow-md scale-105'
-                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                ? 'bg-emerald-600 text-white shadow-md scale-105'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                                 }`}>
                                 {upperLetter}
                               </span>
                               <span className={`text-xs sm:text-sm font-medium flex-1 ${isSelected
-                                  ? 'text-purple-950 dark:text-purple-200 font-bold'
-                                  : 'text-slate-800 dark:text-slate-200'
+                                ? 'text-purple-950 dark:text-purple-200 font-bold'
+                                : 'text-slate-800 dark:text-slate-200'
                                 }`}>
                                 {optionText}
                               </span>
@@ -15524,8 +15608,8 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                       type="button"
                       onClick={toggleDoubtful}
                       className={`px-4 py-2.5 rounded-xl border font-bold text-xs flex items-center gap-1.5 transition cursor-pointer ${doubtful[currentIdx]
-                          ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
-                          : 'border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 hover:bg-amber-100/60'
+                        ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                        : 'border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 hover:bg-amber-100/60'
                         }`}
                     >
                       <AlertTriangle className="w-4 h-4" />
@@ -15536,7 +15620,7 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                       <button
                         type="button"
                         onClick={() => setCurrentIdx((prev) => Math.min(totalQuestions - 1, prev + 1))}
-                        className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer"
+                        className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer"
                       >
                         Selanjutnya
                         <ChevronRight className="w-4 h-4" />
@@ -15561,15 +15645,15 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
           <div className="flex-1 p-6 sm:p-8 overflow-y-auto space-y-6">
             <div className="text-center max-w-lg mx-auto space-y-3">
               <div className={`w-16 h-16 mx-auto rounded-3xl flex items-center justify-center shadow-lg ${resultData?.passed
-                  ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white ring-4 ring-emerald-500/20'
-                  : 'bg-gradient-to-br from-rose-500 to-amber-600 text-white ring-4 ring-rose-500/20'
+                ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white ring-4 ring-emerald-500/20'
+                : 'bg-gradient-to-br from-rose-500 to-amber-600 text-white ring-4 ring-rose-500/20'
                 }`}>
                 {resultData?.passed ? <Trophy className="w-8 h-8" /> : <AlertTriangle className="w-8 h-8" />}
               </div>
 
               <span className={`inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${resultData?.passed
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                  : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
                 }`}>
                 {resultData?.passed ? 'Tuntas / Memenuhi KKM' : 'Belum Memenuhi KKM'}
               </span>
@@ -15624,8 +15708,8 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                           {idx + 1}. {s.pertanyaan || s.soal}
                         </p>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${isCorrect
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                            : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
                           }`}>
                           {isCorrect ? 'Benar (+poin)' : 'Salah'}
                         </span>
@@ -15657,7 +15741,7 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition cursor-pointer"
               >
                 <Check className="w-4 h-4" /> Tutup Pratinjau Runner
               </button>

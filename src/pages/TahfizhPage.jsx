@@ -67,7 +67,7 @@ import {
   Tooltip as HeroTooltip,
 } from '@heroui/react'
 
-// TailGrids Core Components
+// HeroUI Core Components
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -99,7 +99,7 @@ import {
 } from '@/components/ui/dialog'
 import { Backdrop } from '@/components/ui/dialog'
 
-// ── MODERN CARD TONES (§C Tailgrids_Pengaturan_Halaman) ──
+// ── MODERN CARD TONES (§C HeroUI_Pengaturan_Halaman) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -1387,9 +1387,32 @@ export default function TahfizhPage() {
         setNotification({ type: 'error', message: e.response?.data?.message || 'Gagal menyimpan data log harian.' })
       }
     } else {
+      const filledRows = weeklySheet.filter((row) =>
+        Boolean(
+          row.id ||
+          row.isModified ||
+          (row.tilawah_text && row.tilawah_text.trim()) ||
+          Number(row.tilawah_baris) > 0 ||
+          row.hafalan_surah_number ||
+          row.hafalan_surah_name ||
+          Number(row.hafalan_baris) > 0 ||
+          (row.murajaah_text && row.murajaah_text.trim()) ||
+          Number(row.murajaah_lembar) > 0 ||
+          row.audio_url
+        )
+      )
+
+      if (filledRows.length === 0) {
+        setNotification({
+          type: 'warning',
+          message: 'Belum ada data tilawah, hafalan, atau murajaah yang diisi pada pekan ini.',
+        })
+        return
+      }
+
       setSavingAll(true)
       try {
-        const savePromises = weeklySheet.map((row) => {
+        const savePromises = filledRows.map((row) => {
           const payload = {
             id: row.id || null,
             student_id: selectedStudentId,
@@ -1790,7 +1813,7 @@ export default function TahfizhPage() {
                   <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Setoran Tahfizh & Murajaah Santri
                   </h1>
-                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-0.5 sm:mt-1 w-full text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
                     Pencatatan ziyadah hafalan baru, murajaah pekanan, target 30 juz Al-Qur'an, dan rekapitulasi nilai santri per rombel.
                   </p>
                 </div>
@@ -3912,7 +3935,7 @@ export default function TahfizhPage() {
         )
       })()}
 
-      {/* Print Option Modal (TailGrids Standard) */}
+      {/* Print Option Modal (HeroUI Standard) */}
       <PrintOptionModal
         isOpen={showPrintModal}
         onClose={() => setShowPrintModal(false)}

@@ -13,6 +13,11 @@ export const hakAksesService = {
     return data
   },
 
+  getNavigationOptions: async () => {
+    const { data } = await api.get('/hak-akses/navigation-options')
+    return data?.data || {}
+  },
+
   getDetailRole: async (id) => {
     const { data } = await api.get(`/hak-akses/roles/${id}`)
     return data?.data || {}

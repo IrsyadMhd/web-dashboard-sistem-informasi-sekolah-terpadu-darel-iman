@@ -572,7 +572,7 @@ export default function MasterJenisUnitPendidikanPage() {
   const tableIsLoading = isLoading || isFetching
   const filtersAreClear = !search && !selectedStatusFilter && !selectedJenjangFilter && !denganSampahFilter
 
-  // Columns definition following TAILGRIDS_TABLE_COMPONENT standard
+  // Columns definition following HEROUI_TABLE_COMPONENT standard
   const columns = [
     {
       key: 'nama_jenis',
@@ -778,7 +778,7 @@ export default function MasterJenisUnitPendidikanPage() {
                     Master Data
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Pengelolaan klasifikasi jenis unit sekolah (TK, SD, SMP, SMA, Ponpes, Ma'had), jenjang pendidikan, urutan tampilan, dan preferensi visual secara terpadu.
                 </p>
               </div>

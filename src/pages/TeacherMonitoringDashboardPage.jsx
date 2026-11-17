@@ -50,7 +50,7 @@ import { resolveFoundationName } from '../utils/printHelper'
 // Standard App Components
 import { PageContainer, AppBreadcrumb } from '../components/app'
 
-// TailGrids Core UI Components
+// HeroUI Core UI Components
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
@@ -70,7 +70,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
 }
 
-// Modern TailGrids Card Color Schemes
+// Modern HeroUI Card Color Schemes
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/80 bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-white hover:border-emerald-400 dark:border-emerald-700/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-[#1B2433] shadow-xs shadow-emerald-500/10',
@@ -369,7 +369,7 @@ export default function TeacherMonitoringDashboardPage() {
   return (
     <PageContainer maxW="7xl">
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-12">
-        {/* Breadcrumb Navigation Complying with TailGrids Standard */}
+        {/* Breadcrumb Navigation Complying with HeroUI Standard */}
         <motion.div variants={itemVariants} className="print:hidden">
           <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Dashboard Pendidik & Pembelajaran' }]} />
         </motion.div>
@@ -386,7 +386,7 @@ export default function TeacherMonitoringDashboardPage() {
           </motion.div>
         )}
 
-        {/* 1. TAILGRIDS MODERN HERO CARD (GOLD BENCHMARK) */}
+        {/* 1. HEROUI MODERN HERO CARD (GOLD BENCHMARK) */}
         <motion.div
           variants={itemVariants}
           className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden"
@@ -450,7 +450,7 @@ export default function TeacherMonitoringDashboardPage() {
           </div>
         </motion.div>
 
-        {/* 2. SOFT PASTEL SQUIRCLE ACTION TOOLBAR HEADER (BENCHMARK TAILGRIDS) */}
+        {/* 2. SOFT PASTEL SQUIRCLE ACTION TOOLBAR HEADER (BENCHMARK HEROUI) */}
         <motion.div
           variants={itemVariants}
           className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-[20px] border-2 border-emerald-500/25 bg-white/95 dark:bg-[#1B2433] shadow-md shadow-emerald-500/5 print:hidden"
@@ -552,7 +552,7 @@ export default function TeacherMonitoringDashboardPage() {
           </div>
         </motion.div>
 
-        {/* 3. 5 MASTER KPI STATS GRID (TAILGRIDS CARD STANDARD) */}
+        {/* 3. 5 MASTER KPI STATS GRID (HEROUI CARD STANDARD) */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 items-stretch">
           <ModernTeacherKpiCard
             tag="KBM"

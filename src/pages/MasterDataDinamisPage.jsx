@@ -561,7 +561,7 @@ export default function MasterDataDinamisPage() {
                 Master Opsi Bisnis & Generator Kode
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium">
-                Pusat pengelolaan pilihan dropdown dinamis, kategori bisnis terkelola, dan engine penomoran resmi SIMSIT.
+                Pusat pengelolaan pilihan dropdown dinamis, kategori bisnis terkelola, dan engine penomoran resmi Dareliman Edu.
               </p>
             </div>
           </div>

@@ -104,9 +104,8 @@ export default function EmployeeCardHorizontal({
   return (
     <article
       id={isPrint ? undefined : 'printable-employee-card'}
-      className={`employee-id-card employee-id-card--horizontal employee-id-card--${template} employee-id-card--frame-${frameStyle} ${
-        isEditing ? 'is-drag-mode' : ''
-      } ${isPrint ? 'employee-card-print-canvas--horizontal' : ''}`}
+      className={`employee-id-card employee-id-card--horizontal employee-id-card--${template} employee-id-card--frame-${frameStyle} ${isEditing ? 'is-drag-mode' : ''
+        } ${isPrint ? 'employee-card-print-canvas--horizontal' : ''}`}
     >
       {showPattern && <div className="employee-id-card__pattern" aria-hidden="true" />}
       {showWave && <div className="employee-id-card__top-wave" aria-hidden="true" />}
@@ -165,9 +164,8 @@ export default function EmployeeCardHorizontal({
       </span>
 
       <div
-        className={`employee-id-card__photo employee-id-card__photo--${photoShape} ${isEditing ? 'employee-id-draggable' : ''} ${
-          activeDragKey === 'photo' ? 'is-dragging' : ''
-        }`}
+        className={`employee-id-card__photo employee-id-card__photo--${photoShape} ${isEditing ? 'employee-id-draggable' : ''} ${activeDragKey === 'photo' ? 'is-dragging' : ''
+          }`}
         style={getStyle('photo')}
         onMouseDown={(e) => {
           if (isEditing) {
@@ -265,13 +263,13 @@ export default function EmployeeCardHorizontal({
         }}
       >
         <QRCodeSVG
-          value={qrPayload || employee.niy || employee.email || 'SIMSIT'}
+          value={qrPayload || employee.niy || employee.email || 'DARELIMAN-EDU'}
           size={92}
           level="M"
           marginSize={4}
           bgColor="#ffffff"
           fgColor="#0f172a"
-          title={`QR akses SIMSIT ${namaLengkap}`}
+          title={`QR akses Dareliman Edu ${namaLengkap}`}
         />
       </div>
 

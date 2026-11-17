@@ -493,7 +493,7 @@ export default function MasterTahunAjaranPage({
                     Periode Akademik
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Pengelolaan periode akademik, rentang tanggal kalender, penetapan tahun ajaran aktif utama, dan siklus pembelajaran seluruh unit sekolah.
                 </p>
               </div>

@@ -83,7 +83,7 @@ export default function EmployeeChatPage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Pusat Pesan &amp; Diskusi Sekolah
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Layanan perpesanan internal antar pegawai, guru, staf, serta konsultasi wali kelas dan orang tua murid.
                 </p>
               </div>

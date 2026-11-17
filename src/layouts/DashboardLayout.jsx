@@ -59,7 +59,7 @@ import PersonAvatar from '../components/ui/PersonAvatar'
 import GlobalSearchModal from '../components/GlobalSearchModal'
 import NotificationCenter from '../components/app/NotificationCenter'
 import AppBottomNavigation from '../components/app/AppBottomNavigation'
-import { isMusyrifRole, isParentRole, isStudentRole, isTeacherRole, isTuOrKepsek, resolveDefaultPortal, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
+import { canSwitchEducationUnit, isMusyrifRole, isParentRole, isStudentRole, isTeacherRole, isTuOrKepsek, resolveDefaultPortal, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import AuthToast, { showAuthToast } from '../components/ui/AuthToast'
 import AuthPopup from '../components/ui/AuthPopup'
 import AcademicCalendarModal from '../components/calendar/AcademicCalendarModal'
@@ -85,17 +85,21 @@ export default function DashboardLayout() {
   const roles = Array.isArray(user?.roles) ? user.roles : []
   const permissions = Array.isArray(user?.permissions) ? user.permissions : []
   const userLevel = getUserRoleLevel(user)
+  const accessPolicy = user?.access_policy || null
+  const portalGroup = accessPolicy?.portal_group || null
   const hasRole = (...names) => names.some((name) => roles.some((role) => String(role).toLowerCase().replace(/[\s_-]+/g, '') === String(name).toLowerCase().replace(/[\s_-]+/g, '')))
-  const hasFullMenuAccess = userLevel === ROLE_LEVELS.ADMIN_SISTEM || hasRole('Super Admin', 'Admin') // Level 1
+  const hasFullMenuAccess = portalGroup === 'super_admin' || portalGroup === 'admin' || userLevel === ROLE_LEVELS.ADMIN_SISTEM || hasRole('Super Admin', 'Admin') // Level 1
   const can = (...names) => hasFullMenuAccess || names.some((name) => permissions.includes(name))
-  const isTataUsaha = userLevel === ROLE_LEVELS.OPERATOR || hasRole('Tata Usaha', 'TU', 'tu', 'tata_usaha') // Level 3
-  const isKepalaSekolah = userLevel === ROLE_LEVELS.KEPALA_SEKOLAH || hasRole('Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek') // Level 4
-  const isDivisiPendidikan = userLevel === ROLE_LEVELS.DIVISI_PENDIDIKAN || hasRole('Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'Pengawasan Akademik') // Level 4
-  const isPureMusyrif = (userLevel === ROLE_LEVELS.MUSYRIF || isMusyrifRole(roles)) && userLevel > ROLE_LEVELS.GURU
-  const isMusyrifUser = userLevel === ROLE_LEVELS.MUSYRIF || isMusyrifRole(roles) || isPureMusyrif || hasRole('Musyrif', 'Musyrifah', 'musyrif', 'musyrifah', 'Pengasuh', 'Wali Asrama', 'Pembimbing') // Level 6
+  const isTataUsaha = portalGroup ? (portalGroup === 'tu' || portalGroup === 'operator') : (userLevel === ROLE_LEVELS.OPERATOR || hasRole('Tata Usaha', 'TU', 'tu', 'tata_usaha')) // Level 3
+  const isKepalaSekolah = portalGroup ? portalGroup === 'principal' : (userLevel === ROLE_LEVELS.KEPALA_SEKOLAH || hasRole('Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek')) // Level 4
+  const isDivisiPendidikan = portalGroup ? portalGroup === 'education' : (userLevel === ROLE_LEVELS.DIVISI_PENDIDIKAN || hasRole('Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'Pengawasan Akademik')) // Level 4
+  const isPureMusyrif = portalGroup ? portalGroup === 'musyrif' : ((userLevel === ROLE_LEVELS.MUSYRIF || isMusyrifRole(roles)) && userLevel > ROLE_LEVELS.GURU)
+  const isMusyrifUser = portalGroup ? portalGroup === 'musyrif' : (userLevel === ROLE_LEVELS.MUSYRIF || isMusyrifRole(roles) || isPureMusyrif || hasRole('Musyrif', 'Musyrifah', 'musyrif', 'musyrifah', 'Pengasuh', 'Wali Asrama', 'Pembimbing')) // Level 6
   const isGuruTahfizhScope = hasRole('Guru Tahfizh', 'guru_tahfizh', 'Musyrif', 'musyrif', 'Musyrifah', 'musyrifah', 'Musyrif / Musyrifah')
-  const isStaffOrTeacherUser = userLevel <= ROLE_LEVELS.MUSYRIF || hasFullMenuAccess || isTeacherRole(roles) || isTuOrKepsek(roles) || isDivisiPendidikan || isMusyrifUser // Level 1 s/d 6 (Staf Internal)
-  const isTeacherOnly = userLevel === ROLE_LEVELS.GURU || (
+  const isStaffOrTeacherUser = portalGroup
+    ? !['parent', 'student', 'alumni'].includes(portalGroup)
+    : (userLevel <= ROLE_LEVELS.MUSYRIF || hasFullMenuAccess || isTeacherRole(roles) || isTuOrKepsek(roles) || isDivisiPendidikan || isMusyrifUser) // Level 1 s/d 6 (Staf Internal)
+  const isTeacherOnly = portalGroup ? portalGroup === 'teacher' : (userLevel === ROLE_LEVELS.GURU || (
     isTeacherRole(roles) &&
     !hasFullMenuAccess &&
     !hasRole(
@@ -104,8 +108,8 @@ export default function DashboardLayout() {
       'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan',
       'Tata Usaha', 'TU', 'tu', 'tata_usaha', 'Operator', 'operator'
     )
-  )
-  const isGuruUser = userLevel === ROLE_LEVELS.GURU || (
+  ))
+  const isGuruUser = portalGroup ? portalGroup === 'teacher' : (userLevel === ROLE_LEVELS.GURU || (
     !hasFullMenuAccess &&
     (isTeacherOnly || isTeacherRole(roles) || hasRole('Guru', 'guru', 'Guru Mata Pelajaran', 'Guru Tahfizh', 'Guru BK', 'Wali Kelas')) &&
     !hasRole(
@@ -114,10 +118,11 @@ export default function DashboardLayout() {
       'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan',
       'Tata Usaha', 'TU', 'tu', 'tata_usaha', 'Operator', 'operator'
     )
-  )
-  const isPureStudent = userLevel === ROLE_LEVELS.SISWA || (isStudentRole(roles) && !isStaffOrTeacherUser) // Level 8
-  const isPureParent = userLevel === ROLE_LEVELS.ORANG_TUA || (isParentRole(roles) && !isStaffOrTeacherUser) // Level 7
+  ))
+  const isPureStudent = portalGroup ? portalGroup === 'student' : (userLevel === ROLE_LEVELS.SISWA || (isStudentRole(roles) && !isStaffOrTeacherUser)) // Level 8
+  const isPureParent = portalGroup ? portalGroup === 'parent' : (userLevel === ROLE_LEVELS.ORANG_TUA || (isParentRole(roles) && !isStaffOrTeacherUser)) // Level 7
   const canViewEducationUnits = can('unit.view', 'unit.view_all', 'foundation.unit.view', 'sistem.master_data')
+  const canSwitchUnits = canSwitchEducationUnit(user) && canViewEducationUnits
   const canViewStudents = can('student.view', 'student.view_all', 'kesiswaan.data_lengkap_siswa')
   const canCreateStudent = can('student.create')
   const isPortalUser = isPureStudent || isPureParent
@@ -236,7 +241,7 @@ export default function DashboardLayout() {
   }, [muatPengaturanRef])
 
   useEffect(() => {
-    document.title = pengaturan.application_name || 'Sistem Manajemen Sekolah'
+    document.title = (pengaturan.application_name && !pengaturan.application_name.includes('Sistem Manajemen Sekolah')) ? pengaturan.application_name : 'Dareliman Edu - Yayasan Dar El-Iman'
     let favicon = document.querySelector("link[rel~='icon']")
     if (!favicon) {
       favicon = document.createElement('link')
@@ -1082,7 +1087,7 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
                         <h1 className="text-xs font-black tracking-wider text-slate-900 dark:text-white uppercase truncate font-sans">
                           {namaSekolah}
                         </h1>
-                        <p className="text-[10px] font-bold tracking-widest text-emerald-600 dark:text-emerald-400">{pengaturan.application_name || 'Sistem Manajemen Sekolah'}</p>
+                        <p className="text-[10px] font-bold tracking-widest text-emerald-600 dark:text-emerald-400">{(pengaturan.application_name && !pengaturan.application_name.includes('Sistem Manajemen Sekolah')) ? pengaturan.application_name : 'Dareliman Edu'}</p>
                       </div>
                     )}
                   </div>
@@ -1404,13 +1409,13 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
                 </div>
               </div>
 
-              {/* 1. Active Unit Indicator (Static Badge for Teacher / Dropdown Switcher for Admin) */}
-              {isGuruUser || isTeacherOnly || !canViewEducationUnits ? (
+              {/* 1. Active Unit Indicator (Static Badge for Unit-Scoped Staff/Teacher / Dropdown Switcher for Global Admin & Yayasan) */}
+              {!canSwitchUnits ? (
                 <div className="flex items-center gap-2 rounded-2xl border border-emerald-200/90 bg-emerald-50/80 px-3.5 py-2 text-xs font-bold text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-xs shrink-0 select-none">
                   <Layers className="h-4 w-4 text-emerald-600 dark:text-emerald-400 stroke-[2.2]" />
                   <span className="hidden sm:inline text-emerald-700/80 dark:text-emerald-400/80 font-medium">Unit:</span>
                   <span className="font-extrabold text-emerald-900 dark:text-emerald-200 max-w-[120px] xs:max-w-[160px] sm:max-w-none truncate inline-block">
-                    {user?.education_unit_name || user?.unit_name || user?.unit || currentUnitObj?.name || (activeUnit && activeUnit !== 'SEMUA' ? activeUnit : 'Unit Pengajaran')}
+                    {user?.education_unit_name || user?.unit_name || user?.unit?.name || (typeof user?.unit === 'string' ? user.unit : '') || currentUnitObj?.name || (activeUnit && activeUnit !== 'SEMUA' && activeUnit !== 'semua' ? activeUnit : 'Unit Sekolah')}
                   </span>
                 </div>
               ) : (

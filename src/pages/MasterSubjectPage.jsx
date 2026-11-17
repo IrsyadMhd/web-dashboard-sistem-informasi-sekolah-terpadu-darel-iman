@@ -253,7 +253,15 @@ export default function MasterSubjectPage({
 
   const userLevel = useMemo(() => getUserRoleLevel(user), [user])
   const isFoundation = useMemo(() => isFoundationUser(user), [user])
-  const canManage = useMemo(() => !isFoundation && hasRoleLevel(user, ROLE_LEVELS.OPERATOR), [isFoundation, user])
+  const canManage = useMemo(() => {
+    if (!user || isFoundation) return false
+    const normalizedRoles = userRoles.map((r) => String(r).toLowerCase().replace(/[\s_-]+/g, ''))
+    if (normalizedRoles.some((r) => ['superadmin', 'admin'].includes(r))) return true
+    const perms = Array.isArray(user.permissions) ? user.permissions : []
+    return perms.some((p) =>
+      ['academic.subject.create', 'academic.subject.update', 'academic.subject.delete', 'sistem.master_data'].includes(p)
+    )
+  }, [isFoundation, user, userRoles])
 
   const canViewAllUnits = useMemo(() => {
     if (!user || userRoles.length === 0) return false
@@ -486,12 +494,12 @@ export default function MasterSubjectPage({
     })
     const seen = new Set()
     const result = []
-    ;[...direct, ...byJenjang].forEach((item) => {
-      if (!seen.has(String(item.id))) {
-        seen.add(String(item.id))
-        result.push(item)
-      }
-    })
+      ;[...direct, ...byJenjang].forEach((item) => {
+        if (!seen.has(String(item.id))) {
+          seen.add(String(item.id))
+          result.push(item)
+        }
+      })
     return result.length > 0 ? result : kurikulumDropdown
   }
 
@@ -752,22 +760,24 @@ export default function MasterSubjectPage({
       )}
 
       {/* 3. Export / Download Button (Vivid Amber / Orange Squircle) */}
-      <div className="group relative inline-flex">
-        <Button
-          type="button"
-          iconOnly
-          title="Export Data Mata Pelajaran"
-          aria-label="Export Data Mata Pelajaran"
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-amber-500/20"
-          onClick={() => setIsExportModalOpen(true)}
-        >
-          <Download className="size-5 text-white" strokeWidth={2.2} />
-        </Button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Export Data
+      {(canManage || (Array.isArray(user?.permissions) && user.permissions.includes('subject.export'))) && (
+        <div className="group relative inline-flex">
+          <Button
+            type="button"
+            iconOnly
+            title="Export Data Mata Pelajaran"
+            aria-label="Export Data Mata Pelajaran"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-amber-500/20"
+            onClick={() => setIsExportModalOpen(true)}
+          >
+            <Download className="size-5 text-white" strokeWidth={2.2} />
+          </Button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Export Data
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 4. Tambah Mata Pelajaran Button (Vivid Emerald / Teal Squircle) */}
       {canManage && (
@@ -793,13 +803,13 @@ export default function MasterSubjectPage({
 
   const filtersAreActive = Boolean(
     search ||
-      (canViewAllUnits && selectedUnitFilter) ||
-      selectedKurikulumFilter ||
-      selectedKelompokFilter ||
-      selectedKategoriFilter ||
-      selectedJenjangFilter ||
-      selectedStatusFilter ||
-      denganSampahFilter
+    (canViewAllUnits && selectedUnitFilter) ||
+    selectedKurikulumFilter ||
+    selectedKelompokFilter ||
+    selectedKategoriFilter ||
+    selectedJenjangFilter ||
+    selectedStatusFilter ||
+    denganSampahFilter
   )
 
   return (
@@ -863,7 +873,7 @@ export default function MasterSubjectPage({
                     Kurikulum & Akademik
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Kelola referensi mata pelajaran, alokasi jam pelajaran, KKM, dan bobot penilaian rapor untuk seluruh kurikulum sekolah.
                 </p>
               </div>
@@ -938,7 +948,7 @@ export default function MasterSubjectPage({
             ) : (
               <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/80 bg-emerald-50/80 px-3.5 py-2 text-xs font-bold text-emerald-900 shadow-2xs dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200">
                 <Lock className="size-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Unit: {selectedUnitName || userUnitName || 'Unit Sekolah Anda'}</span>
+                <span>Unit: {selectedUnitName || userUnitName || user?.unit?.name || user?.unit_name || user?.employee?.unit?.name || user?.metadata?.unit_name || 'Unit Terkunci'}</span>
               </div>
             )}
 
@@ -988,345 +998,345 @@ export default function MasterSubjectPage({
       {/* ── CANONICAL APPDATATABLE EMERALD OUTER CONTAINER ───────────────────── */}
       <div id="tabel-mata-pelajaran" className="scroll-mt-6">
         <AppDataTable
-        title="Daftar Mata Pelajaran"
-        icon={BookOpen}
-        iconClassName="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 border border-emerald-300/40 shadow-emerald-600/30"
-        description="Data mata pelajaran sesuai filter dan kewenangan pengguna."
-        countLabel={`${Number(meta.total ?? stats.total ?? 0).toLocaleString('id-ID')} mapel`}
-        actions={pageActions}
-        search={search}
-        onSearchChange={(value) => {
-          setSearch(value)
-          setPage(1)
-        }}
-        searchPlaceholder="Cari nama atau kode mata pelajaran..."
-        filters={
-          <>
-            <HeroUiFilterSelect
-              value={selectedUnitFilter}
-              onChange={(unitId) => {
-                const matchingKurikulum = resolveKurikulumForUnit(unitId)
-                setSelectedUnitFilter(unitId)
-                if (!matchingKurikulum.some((item) => String(item.id) === String(selectedKurikulumFilter))) setSelectedKurikulumFilter('')
-                setPage(1)
-              }}
-              options={[
-                ...(canViewAllUnits ? [{ value: '', label: 'Semua Unit' }] : []),
-                ...availableUnitOptions.map((unit) => ({ value: String(unit.id), label: unit.name })),
-              ]}
-              disabled={!canViewAllUnits && availableUnitOptions.length <= 1}
-              placeholder="Semua Unit"
-              icon={Building2}
-              ariaLabel="Filter unit pendidikan"
-              size="sm"
-              searchable
-              className="w-full sm:w-auto min-w-[150px]"
-            />
+          title="Daftar Mata Pelajaran"
+          icon={BookOpen}
+          iconClassName="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 border border-emerald-300/40 shadow-emerald-600/30"
+          description="Data mata pelajaran sesuai filter dan kewenangan pengguna."
+          countLabel={`${Number(meta.total ?? stats.total ?? 0).toLocaleString('id-ID')} mapel`}
+          actions={pageActions}
+          search={search}
+          onSearchChange={(value) => {
+            setSearch(value)
+            setPage(1)
+          }}
+          searchPlaceholder="Cari nama atau kode mata pelajaran..."
+          filters={
+            <>
+              <HeroUiFilterSelect
+                value={selectedUnitFilter}
+                onChange={(unitId) => {
+                  const matchingKurikulum = resolveKurikulumForUnit(unitId)
+                  setSelectedUnitFilter(unitId)
+                  if (!matchingKurikulum.some((item) => String(item.id) === String(selectedKurikulumFilter))) setSelectedKurikulumFilter('')
+                  setPage(1)
+                }}
+                options={[
+                  ...(canViewAllUnits ? [{ value: '', label: 'Semua Unit' }] : []),
+                  ...availableUnitOptions.map((unit) => ({ value: String(unit.id), label: unit.name })),
+                ]}
+                disabled={!canViewAllUnits && availableUnitOptions.length <= 1}
+                placeholder="Semua Unit"
+                icon={Building2}
+                ariaLabel="Filter unit pendidikan"
+                size="sm"
+                searchable
+                className="w-full sm:w-auto min-w-[150px]"
+              />
 
-            <HeroUiFilterSelect
-              value={selectedKurikulumFilter}
-              onChange={(val) => { setSelectedKurikulumFilter(val); setPage(1) }}
-              options={[
-                { value: '', label: 'Semua Kurikulum' },
-                ...availableKurikulumForFilter.map((kurikulum) => ({ value: String(kurikulum.id), label: kurikulum.nama_kurikulum })),
-              ]}
-              placeholder="Semua Kurikulum"
-              icon={Layers}
-              ariaLabel="Filter kurikulum"
-              size="sm"
-              searchable
-              className="w-full sm:w-auto min-w-[160px]"
-            />
+              <HeroUiFilterSelect
+                value={selectedKurikulumFilter}
+                onChange={(val) => { setSelectedKurikulumFilter(val); setPage(1) }}
+                options={[
+                  { value: '', label: 'Semua Kurikulum' },
+                  ...availableKurikulumForFilter.map((kurikulum) => ({ value: String(kurikulum.id), label: kurikulum.nama_kurikulum })),
+                ]}
+                placeholder="Semua Kurikulum"
+                icon={Layers}
+                ariaLabel="Filter kurikulum"
+                size="sm"
+                searchable
+                className="w-full sm:w-auto min-w-[160px]"
+              />
 
-            <HeroUiFilterSelect
-              value={selectedKelompokFilter}
-              onChange={(val) => { setSelectedKelompokFilter(val); setPage(1) }}
-              options={[
-                { value: '', label: 'Semua Kelompok' },
-                ...KELOMPOK_LIST.map((kelompok) => ({ value: kelompok, label: kelompok })),
-              ]}
-              placeholder="Semua Kelompok"
-              icon={Tag}
-              ariaLabel="Filter kelompok mata pelajaran"
-              size="sm"
-              className="w-full sm:w-auto min-w-[140px]"
-            />
+              <HeroUiFilterSelect
+                value={selectedKelompokFilter}
+                onChange={(val) => { setSelectedKelompokFilter(val); setPage(1) }}
+                options={[
+                  { value: '', label: 'Semua Kelompok' },
+                  ...KELOMPOK_LIST.map((kelompok) => ({ value: kelompok, label: kelompok })),
+                ]}
+                placeholder="Semua Kelompok"
+                icon={Tag}
+                ariaLabel="Filter kelompok mata pelajaran"
+                size="sm"
+                className="w-full sm:w-auto min-w-[140px]"
+              />
 
-            <HeroUiFilterSelect
-              value={selectedKategoriFilter}
-              onChange={(val) => { setSelectedKategoriFilter(val); setPage(1) }}
-              options={[
-                { value: '', label: 'Semua Kategori' },
-                ...KATEGORI_LIST.map((kategori) => ({ value: kategori, label: kategori })),
-              ]}
-              placeholder="Semua Kategori"
-              icon={BookOpen}
-              ariaLabel="Filter kategori mata pelajaran"
-              size="sm"
-              className="w-full sm:w-auto min-w-[140px]"
-            />
+              <HeroUiFilterSelect
+                value={selectedKategoriFilter}
+                onChange={(val) => { setSelectedKategoriFilter(val); setPage(1) }}
+                options={[
+                  { value: '', label: 'Semua Kategori' },
+                  ...KATEGORI_LIST.map((kategori) => ({ value: kategori, label: kategori })),
+                ]}
+                placeholder="Semua Kategori"
+                icon={BookOpen}
+                ariaLabel="Filter kategori mata pelajaran"
+                size="sm"
+                className="w-full sm:w-auto min-w-[140px]"
+              />
 
-            <HeroUiFilterSelect
-              value={selectedJenjangFilter}
-              onChange={(val) => { setSelectedJenjangFilter(val); setPage(1) }}
-              options={[
-                { value: '', label: 'Semua Jenjang' },
-                ...['PAUD', 'TK', 'SD', 'SMP', 'SMA', 'SMK'].map((jenjang) => ({ value: jenjang, label: jenjang })),
-              ]}
-              placeholder="Semua Jenjang"
-              icon={GraduationCap}
-              ariaLabel="Filter jenjang mata pelajaran"
-              size="sm"
-              className="w-full sm:w-auto min-w-[130px]"
-            />
+              <HeroUiFilterSelect
+                value={selectedJenjangFilter}
+                onChange={(val) => { setSelectedJenjangFilter(val); setPage(1) }}
+                options={[
+                  { value: '', label: 'Semua Jenjang' },
+                  ...['PAUD', 'TK', 'SD', 'SMP', 'SMA', 'SMK'].map((jenjang) => ({ value: jenjang, label: jenjang })),
+                ]}
+                placeholder="Semua Jenjang"
+                icon={GraduationCap}
+                ariaLabel="Filter jenjang mata pelajaran"
+                size="sm"
+                className="w-full sm:w-auto min-w-[130px]"
+              />
 
-            <HeroUiFilterSelect
-              value={selectedStatusFilter}
-              onChange={(val) => { setSelectedStatusFilter(val); setPage(1) }}
-              options={[
-                { value: '', label: 'Semua Status' },
-                { value: 'aktif', label: 'Aktif' },
-                { value: 'tidak_aktif', label: 'Nonaktif' },
-              ]}
-              placeholder="Semua Status"
-              icon={CheckCircle2}
-              ariaLabel="Filter status mata pelajaran"
-              size="sm"
-              className="w-full sm:w-auto min-w-[130px]"
-            />
+              <HeroUiFilterSelect
+                value={selectedStatusFilter}
+                onChange={(val) => { setSelectedStatusFilter(val); setPage(1) }}
+                options={[
+                  { value: '', label: 'Semua Status' },
+                  { value: 'aktif', label: 'Aktif' },
+                  { value: 'tidak_aktif', label: 'Nonaktif' },
+                ]}
+                placeholder="Semua Status"
+                icon={CheckCircle2}
+                ariaLabel="Filter status mata pelajaran"
+                size="sm"
+                className="w-full sm:w-auto min-w-[130px]"
+              />
 
-            <HeroUiFilterSelect
-              value={denganSampahFilter}
-              onChange={(val) => { setDenganSampahFilter(val); setPage(1) }}
-              options={[
-                { value: '', label: 'Data Aktif' },
-                { value: '1', label: 'Termasuk Arsip' },
-              ]}
-              placeholder="Data Aktif"
-              icon={Archive}
-              ariaLabel="Filter cakupan data"
-              size="sm"
-              className="w-full sm:w-auto min-w-[140px]"
-            />
-          </>
-        }
-        onResetFilters={resetFilters}
-        hasActiveFilters={filtersAreActive}
-        isLoading={isLoading}
-        isError={isError}
-        errorTitle="Data mata pelajaran gagal dimuat"
-        errorMessage="Periksa koneksi jaringan atau coba muat ulang data kembali."
-        onRetry={refetch}
-        isEmpty={!isLoading && !isError && items.length === 0}
-        emptyTitle="Mata pelajaran tidak ditemukan"
-        emptyDescription="Ubah kata kunci pencarian atau sesuaikan opsi filter aktif Anda."
-        page={page}
-        totalPages={meta.last_page ?? 1}
-        totalItems={meta.total ?? stats.total ?? items.length}
-        itemsPerPage={perPage}
-        onPageChange={setPage}
-        meta={meta}
-        serverControlled
-        renderTable={() => (
-          <div className="overflow-x-auto">
-            {/* Bulk Action Strip when checkboxes selected */}
-            {canManage && selectedIds.length > 0 && (
-              <div className="flex items-center justify-between gap-3 bg-emerald-50 px-5 py-3 border-b border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800/60">
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="success"
-                    size="xs"
-                    onClick={() => bulkStatusMutation.mutate({ ids: selectedIds, status: true })}
-                    disabled={bulkStatusMutation.isPending}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition cursor-pointer shadow-xs"
-                  >
-                    <CheckCircle2 className="size-3.5" />
-                    <span>Aktifkan</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="warning"
-                    size="xs"
-                    onClick={() => bulkStatusMutation.mutate({ ids: selectedIds, status: false })}
-                    disabled={bulkStatusMutation.isPending}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700 transition cursor-pointer shadow-xs"
-                  >
-                    <Archive className="size-3.5" />
-                    <span>Nonaktifkan</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="danger"
-                    size="xs"
-                    onClick={() => setBulkDeleteConfirmOpen(true)}
-                    disabled={bulkDeleteMutation.isPending}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-700 transition cursor-pointer shadow-xs"
-                  >
-                    <Trash2 className="size-3.5" />
-                    <span>Hapus Massal</span>
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <TableRoot className="w-full table-fixed text-left text-sm text-slate-600" aria-label="Daftar mata pelajaran">
-              <TableHeader className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-950 dark:border-emerald-800/80 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200">
-                <TableRow>
-                  <TableHead className="w-[5%] px-3 py-3.5 text-center">
-                    {canManage ? (
-                      <div className="flex justify-center">
-                        <Checkbox
-                          size="sm"
-                          checked={isAllSelected}
-                          onChange={toggleSelectAll}
-                          aria-label={isAllSelected ? 'Batalkan pilih semua' : 'Pilih semua mata pelajaran'}
-                        />
-                      </div>
-                    ) : (
-                      <span className="font-extrabold text-[11px]">NO</span>
-                    )}
-                  </TableHead>
-                  <TableHead className="w-[28%] px-3 py-3.5 font-extrabold">Identitas Mapel</TableHead>
-                  <TableHead className="hidden w-[20%] px-3 py-3.5 font-extrabold md:table-cell">Kurikulum & Unit</TableHead>
-                  <TableHead className="hidden w-[16%] px-3 py-3.5 font-extrabold lg:table-cell">Klasifikasi</TableHead>
-                  <TableHead className="hidden w-[14%] px-3 py-3.5 text-center font-extrabold xl:table-cell">Parameter</TableHead>
-                  <TableHead className="hidden w-[9%] px-2 py-3.5 text-center font-extrabold sm:table-cell">Status</TableHead>
-                  <TableHead className="w-[10%] px-2 py-3.5 text-center font-extrabold">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="divide-y divide-emerald-100/80 font-medium text-slate-700 dark:divide-emerald-900/40 dark:text-slate-300">
-                {items.map((row, idx) => {
-                  const isSelected = selectedIds.includes(row.id)
-                  const subjectName = row.nama_mapel || row.name || 'Mata pelajaran'
-                  const subjectColor = row.warna || '#0E5C44'
-
-                  return (
-                    <TableRow
-                      key={row.id}
-                      onClick={() => handleOpenDetail(row)}
-                      title="Klik baris untuk melihat detail mata pelajaran"
-                      className={cn(
-                        'transition-colors hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 cursor-pointer',
-                        isSelected && 'bg-emerald-50/60 dark:bg-emerald-950/30'
-                      )}
+              <HeroUiFilterSelect
+                value={denganSampahFilter}
+                onChange={(val) => { setDenganSampahFilter(val); setPage(1) }}
+                options={[
+                  { value: '', label: 'Data Aktif' },
+                  { value: '1', label: 'Termasuk Arsip' },
+                ]}
+                placeholder="Data Aktif"
+                icon={Archive}
+                ariaLabel="Filter cakupan data"
+                size="sm"
+                className="w-full sm:w-auto min-w-[140px]"
+              />
+            </>
+          }
+          onResetFilters={resetFilters}
+          hasActiveFilters={filtersAreActive}
+          isLoading={isLoading}
+          isError={isError}
+          errorTitle="Data mata pelajaran gagal dimuat"
+          errorMessage="Periksa koneksi jaringan atau coba muat ulang data kembali."
+          onRetry={refetch}
+          isEmpty={!isLoading && !isError && items.length === 0}
+          emptyTitle="Mata pelajaran tidak ditemukan"
+          emptyDescription="Ubah kata kunci pencarian atau sesuaikan opsi filter aktif Anda."
+          page={page}
+          totalPages={meta.last_page ?? 1}
+          totalItems={meta.total ?? stats.total ?? items.length}
+          itemsPerPage={perPage}
+          onPageChange={setPage}
+          meta={meta}
+          serverControlled
+          renderTable={() => (
+            <div className="overflow-x-auto">
+              {/* Bulk Action Strip when checkboxes selected */}
+              {canManage && selectedIds.length > 0 && (
+                <div className="flex items-center justify-between gap-3 bg-emerald-50 px-5 py-3 border-b border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800/60">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="success"
+                      size="xs"
+                      onClick={() => bulkStatusMutation.mutate({ ids: selectedIds, status: true })}
+                      disabled={bulkStatusMutation.isPending}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition cursor-pointer shadow-xs"
                     >
-                      <TableCell className="px-3 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        {canManage ? (
-                          <div className="flex justify-center">
-                            <Checkbox
-                              size="sm"
-                              checked={isSelected}
-                              onChange={() => toggleSelectRow(row.id)}
-                              aria-label={`${isSelected ? 'Batalkan pilihan' : 'Pilih'} ${subjectName}`}
-                            />
-                          </div>
-                        ) : (
-                          <span className="font-bold text-slate-400 dark:text-slate-500 text-xs tabular-nums">
-                            {(page - 1) * perPage + idx + 1}
-                          </span>
+                      <CheckCircle2 className="size-3.5" />
+                      <span>Aktifkan</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="warning"
+                      size="xs"
+                      onClick={() => bulkStatusMutation.mutate({ ids: selectedIds, status: false })}
+                      disabled={bulkStatusMutation.isPending}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700 transition cursor-pointer shadow-xs"
+                    >
+                      <Archive className="size-3.5" />
+                      <span>Nonaktifkan</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="xs"
+                      onClick={() => setBulkDeleteConfirmOpen(true)}
+                      disabled={bulkDeleteMutation.isPending}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-700 transition cursor-pointer shadow-xs"
+                    >
+                      <Trash2 className="size-3.5" />
+                      <span>Hapus Massal</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <TableRoot className="w-full table-fixed text-left text-sm text-slate-600" aria-label="Daftar mata pelajaran">
+                <TableHeader className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-950 dark:border-emerald-800/80 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200">
+                  <TableRow>
+                    <TableHead className="w-[5%] px-3 py-3.5 text-center">
+                      {canManage ? (
+                        <div className="flex justify-center">
+                          <Checkbox
+                            size="sm"
+                            checked={isAllSelected}
+                            onChange={toggleSelectAll}
+                            aria-label={isAllSelected ? 'Batalkan pilih semua' : 'Pilih semua mata pelajaran'}
+                          />
+                        </div>
+                      ) : (
+                        <span className="font-extrabold text-[11px]">NO</span>
+                      )}
+                    </TableHead>
+                    <TableHead className="w-[28%] px-3 py-3.5 font-extrabold">Identitas Mapel</TableHead>
+                    <TableHead className="hidden w-[20%] px-3 py-3.5 font-extrabold md:table-cell">Kurikulum & Unit</TableHead>
+                    <TableHead className="hidden w-[16%] px-3 py-3.5 font-extrabold lg:table-cell">Klasifikasi</TableHead>
+                    <TableHead className="hidden w-[14%] px-3 py-3.5 text-center font-extrabold xl:table-cell">Parameter</TableHead>
+                    <TableHead className="hidden w-[9%] px-2 py-3.5 text-center font-extrabold sm:table-cell">Status</TableHead>
+                    <TableHead className="w-[10%] px-2 py-3.5 text-center font-extrabold">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-emerald-100/80 font-medium text-slate-700 dark:divide-emerald-900/40 dark:text-slate-300">
+                  {items.map((row, idx) => {
+                    const isSelected = selectedIds.includes(row.id)
+                    const subjectName = row.nama_mapel || row.name || 'Mata pelajaran'
+                    const subjectColor = row.warna || '#0E5C44'
+
+                    return (
+                      <TableRow
+                        key={row.id}
+                        onClick={() => handleOpenDetail(row)}
+                        title="Klik baris untuk melihat detail mata pelajaran"
+                        className={cn(
+                          'transition-colors hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 cursor-pointer',
+                          isSelected && 'bg-emerald-50/60 dark:bg-emerald-950/30'
                         )}
-                      </TableCell>
-                      <TableCell className="px-3 py-3.5">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <span
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-xs border text-white font-bold"
-                            style={{
-                              backgroundColor: subjectColor,
-                              borderColor: `${subjectColor}44`,
-                            }}
-                          >
-                            <BookOpen className="h-5 w-5 text-white" />
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate text-xs font-black leading-snug text-slate-900 dark:text-white" title={subjectName}>
-                              {subjectName}
-                            </p>
-                            <p className="truncate font-mono text-[10px] font-bold text-slate-400 mt-0.5">
-                              {row.kode_mapel || row.code} {row.nama_singkat ? `(${row.nama_singkat})` : ''}
-                            </p>
-                            {/* Mobile Compact Metadata Row */}
-                            <div className="md:hidden mt-1.5 flex flex-wrap items-center gap-1 pt-1 border-t border-emerald-100/80 dark:border-emerald-900/40">
-                              <span className="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 dark:text-slate-300">
-                                {row.unit_pendidikan?.name || 'Unit'}
-                              </span>
-                              <span className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 text-[9px] font-extrabold text-emerald-800 dark:text-emerald-300">
-                                {row.kelompok_mapel || 'Pelajaran Wajib'}
-                              </span>
+                      >
+                        <TableCell className="px-3 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          {canManage ? (
+                            <div className="flex justify-center">
+                              <Checkbox
+                                size="sm"
+                                checked={isSelected}
+                                onChange={() => toggleSelectRow(row.id)}
+                                aria-label={`${isSelected ? 'Batalkan pilihan' : 'Pilih'} ${subjectName}`}
+                              />
+                            </div>
+                          ) : (
+                            <span className="font-bold text-slate-400 dark:text-slate-500 text-xs tabular-nums">
+                              {(page - 1) * perPage + idx + 1}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="px-3 py-3.5">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span
+                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-xs border text-white font-bold"
+                              style={{
+                                backgroundColor: subjectColor,
+                                borderColor: `${subjectColor}44`,
+                              }}
+                            >
+                              <BookOpen className="h-5 w-5 text-white" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-black leading-snug text-slate-900 dark:text-white" title={subjectName}>
+                                {subjectName}
+                              </p>
+                              <p className="truncate font-mono text-[10px] font-bold text-slate-400 mt-0.5">
+                                {row.kode_mapel || row.code} {row.nama_singkat ? `(${row.nama_singkat})` : ''}
+                              </p>
+                              {/* Mobile Compact Metadata Row */}
+                              <div className="md:hidden mt-1.5 flex flex-wrap items-center gap-1 pt-1 border-t border-emerald-100/80 dark:border-emerald-900/40">
+                                <span className="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 dark:text-slate-300">
+                                  {row.unit_pendidikan?.name || 'Unit'}
+                                </span>
+                                <span className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 text-[9px] font-extrabold text-emerald-800 dark:text-emerald-300">
+                                  {row.kelompok_mapel || 'Pelajaran Wajib'}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden px-3 py-3.5 md:table-cell">
-                        <p className="truncate text-xs font-bold text-slate-800 dark:text-slate-100">
-                          {row.kurikulum?.nama_kurikulum || 'Kurikulum Terpadu'}
-                        </p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
-                          <Building className="size-3 text-slate-400 shrink-0" />
-                          <span className="truncate">{row.unit_pendidikan?.name || 'Semua Unit'}</span>
-                        </p>
-                      </TableCell>
-                      <TableCell className="hidden px-3 py-3.5 lg:table-cell">
-                        <div className="space-y-1">
-                          <span className="inline-block rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                            {row.kelompok_mapel || 'Pelajaran Wajib'}
+                        </TableCell>
+                        <TableCell className="hidden px-3 py-3.5 md:table-cell">
+                          <p className="truncate text-xs font-bold text-slate-800 dark:text-slate-100">
+                            {row.kurikulum?.nama_kurikulum || 'Kurikulum Terpadu'}
+                          </p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+                            <Building className="size-3 text-slate-400 shrink-0" />
+                            <span className="truncate">{row.unit_pendidikan?.name || 'Semua Unit'}</span>
+                          </p>
+                        </TableCell>
+                        <TableCell className="hidden px-3 py-3.5 lg:table-cell">
+                          <div className="space-y-1">
+                            <span className="inline-block rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              {row.kelompok_mapel || 'Pelajaran Wajib'}
+                            </span>
+                            <span className="block w-fit rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-[10px] font-extrabold text-[#0E5C44] dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
+                              {row.kategori || 'Wajib'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden px-3 py-3.5 text-center xl:table-cell">
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-100/90 dark:bg-emerald-950/80 border border-emerald-200/90 px-2 py-0.5 text-[10px] font-black text-emerald-900 dark:text-emerald-200">
+                            <Clock3 className="size-3 text-emerald-700 dark:text-emerald-400" />
+                            {row.jam_pelajaran || 2} JP · KKM {row.kkm || 75}
                           </span>
-                          <span className="block w-fit rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-[10px] font-extrabold text-[#0E5C44] dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
-                            {row.kategori || 'Wajib'}
+                          <p className="mt-1 text-[9px] font-semibold text-slate-400">
+                            P:{row.bobot_pengetahuan || 40} / K:{row.bobot_keterampilan || 40} / S:{row.bobot_sikap || 20}
+                          </p>
+                        </TableCell>
+                        <TableCell className="hidden px-2 py-3.5 text-center sm:table-cell">
+                          <span
+                            className={cn(
+                              'inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-black border',
+                              row.status
+                                ? 'bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80'
+                                : 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80'
+                            )}
+                          >
+                            <span className={cn('size-1.5 rounded-full shrink-0', row.status ? 'bg-emerald-500' : 'bg-rose-500')} />
+                            <span>{row.status ? 'Aktif' : 'Nonaktif'}</span>
                           </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden px-3 py-3.5 text-center xl:table-cell">
-                        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-100/90 dark:bg-emerald-950/80 border border-emerald-200/90 px-2 py-0.5 text-[10px] font-black text-emerald-900 dark:text-emerald-200">
-                          <Clock3 className="size-3 text-emerald-700 dark:text-emerald-400" />
-                          {row.jam_pelajaran || 2} JP · KKM {row.kkm || 75}
-                        </span>
-                        <p className="mt-1 text-[9px] font-semibold text-slate-400">
-                          P:{row.bobot_pengetahuan || 40} / K:{row.bobot_keterampilan || 40} / S:{row.bobot_sikap || 20}
-                        </p>
-                      </TableCell>
-                      <TableCell className="hidden px-2 py-3.5 text-center sm:table-cell">
-                        <span
-                          className={cn(
-                            'inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-black border',
-                            row.status
-                              ? 'bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80'
-                              : 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80'
-                          )}
-                        >
-                          <span className={cn('size-1.5 rounded-full shrink-0', row.status ? 'bg-emerald-500' : 'bg-rose-500')} />
-                          <span>{row.status ? 'Aktif' : 'Nonaktif'}</span>
-                        </span>
-                      </TableCell>
-                      <TableCell className="px-2 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <span className="inline-flex justify-center">
-                          <ActionDropdown
-                            onView={() => handleOpenDetail(row)}
-                            onEdit={canManage && !row.is_deleted ? () => handleOpenFormEdit(row) : undefined}
-                            extraItems={
-                              row.is_deleted && canManage
-                                ? [
+                        </TableCell>
+                        <TableCell className="px-2 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <span className="inline-flex justify-center">
+                            <ActionDropdown
+                              onView={() => handleOpenDetail(row)}
+                              onEdit={canManage && !row.is_deleted ? () => handleOpenFormEdit(row) : undefined}
+                              extraItems={
+                                row.is_deleted && canManage
+                                  ? [
                                     {
                                       label: 'Pulihkan Data',
                                       icon: <RotateCcw className="h-4 w-4 text-emerald-600" />,
                                       onClick: () => pulihkanMutation.mutate(row.id),
                                     },
                                   ]
-                                : []
-                            }
-                            onDelete={canManage && !row.is_deleted ? () => setDeleteTarget(row) : undefined}
-                          />
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </TableRoot>
-          </div>
-        )}
-      />
-    </div>
+                                  : []
+                              }
+                              onDelete={canManage && !row.is_deleted ? () => setDeleteTarget(row) : undefined}
+                            />
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </TableRoot>
+            </div>
+          )}
+        />
+      </div>
 
       {/* ── HARMONIZED FORM MODAL (TAMBAH / EDIT) ────────────────────────────── */}
       <AnimatePresence>

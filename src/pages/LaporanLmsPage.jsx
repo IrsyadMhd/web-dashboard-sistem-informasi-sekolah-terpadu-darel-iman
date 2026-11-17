@@ -197,7 +197,7 @@ export default function LaporanLmsPage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Laporan Rekap Aktivitas LMS & E-Learning
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Monitoring materi modul digital, penugasan guru, log pengumpulan tugas siswa, status verifikasi penilaian, dan penerbitan rapor.
                 </p>
               </div>
@@ -316,7 +316,7 @@ export default function LaporanLmsPage() {
         </div>
       </div>
 
-      {/* TAILGRIDS EMERALD DATATABLE CONTAINER */}
+      {/* HEROUI EMERALD DATATABLE CONTAINER */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
         {/* Toolbar Header Terstruktur 3-Baris */}
         <div className="p-4 sm:p-6 space-y-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20">

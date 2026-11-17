@@ -100,7 +100,7 @@ function initialFormState() {
     guru_id: '',
     kode_modul: '',
     nama_modul: '',
-    jenjang: 'SDIT',
+    jenjang: '',
     kurikulum: 'Kurikulum Merdeka',
     status: 'Aktif',
 
@@ -973,7 +973,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Data Modul Semester
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Kelola seluruh modul semester di lingkungan Yayasan sebagai acuan pembelajaran terpadu.
                 </p>
               </div>
@@ -1116,7 +1116,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                       className="hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 transition-colors"
                     >
                       {/* NO */}
-                      <td className="py-4 px-4 text-center font-bold text-gray-500 dark:text-slate-400 text-xs hidden sm:table-cell">
+                      <td className="py-4 px-4 text-center font-bold text-slate-500 dark:text-slate-400 text-xs hidden sm:table-cell">
                         {recordNo}
                       </td>
 
@@ -1131,11 +1131,11 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
 
                       {/* NAMA MODUL SEMESTER */}
                       <td className="py-4 px-4">
-                        <div className="font-bold text-gray-900 dark:text-white hover:text-emerald-700 transition">
+                        <div className="font-bold text-slate-900 dark:text-white hover:text-emerald-700 transition">
                           {item.nama_modul}
                         </div>
                         <div className="text-xs text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
-                          {item.kode_modul} &bull; <span className="text-gray-500 dark:text-slate-400">{item.kurikulum}</span>
+                          {item.kode_modul} &bull; <span className="text-slate-500 dark:text-slate-400">{item.kurikulum}</span>
                         </div>
                         {/* Compact Mobile Metadata Row */}
                         <div className="md:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
@@ -1162,10 +1162,10 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
 
                       {/* UNIT / KELAS */}
                       <td className="py-4 px-4 hidden lg:table-cell">
-                        <div className="font-semibold text-gray-800 dark:text-slate-200">
+                        <div className="font-semibold text-slate-800 dark:text-slate-200">
                           {item.unit_pendidikan?.name || item.jenjang || 'Semua Unit'}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-slate-400">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           Kelas {item.kelas?.nama_kelas || '-'} ({item.tahun_ajaran?.name || '-'})
                         </div>
                       </td>
@@ -1181,10 +1181,10 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
 
                       {/* PERTEMUAN / JP */}
                       <td className="py-4 px-4 text-center hidden xl:table-cell">
-                        <span className="font-bold text-gray-900 dark:text-white">
+                        <span className="font-bold text-slate-900 dark:text-white">
                           {item.jumlah_pertemuan || 0} Pertemuan
                         </span>
-                        <div className="text-xs text-gray-500 dark:text-slate-400">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           {item.alokasi_jam || 0} JP
                         </div>
                       </td>
@@ -1224,6 +1224,69 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
         title={isEditMode ? 'Edit Master Modul Semester' : 'Tambah Master Modul Semester'}
         description="Isi formulir lengkap sesuai standar kurikulum dan bobot penilaian semester."
         maxWidth="max-w-4xl"
+        footer={
+          <div className="flex items-center justify-between w-full">
+            <div>
+              {activeTab !== 'umum' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tabs = ['umum', 'pembelajaran', 'target', 'materi', 'bobot']
+                    const currIdx = tabs.indexOf(activeTab)
+                    if (currIdx > 0) setActiveTab(tabs[currIdx - 1])
+                  }}
+                  className="group inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  &larr; Kembali
+                </button>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer"
+              >
+                <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                  <X className="size-3.5" strokeWidth={2.5} />
+                </span>
+                <span>Batal</span>
+              </button>
+
+              {activeTab !== 'bobot' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tabs = ['umum', 'pembelajaran', 'target', 'materi', 'bobot']
+                    const currIdx = tabs.indexOf(activeTab)
+                    if (currIdx < tabs.length - 1) setActiveTab(tabs[currIdx + 1])
+                  }}
+                  className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-4.5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-950/20 hover:from-emerald-600 hover:to-teal-800 active:scale-95 transition-all cursor-pointer"
+                >
+                  <span>Lanjut</span>
+                  &rarr;
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  form="master-modul-semester-form"
+                  disabled={simpanMutation.isPending || totalBobotPenilaian !== 100}
+                  className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-950/20 hover:from-emerald-600 hover:to-teal-800 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                    {simpanMutation.isPending ? (
+                      <RefreshCw className="size-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
+                    )}
+                  </span>
+                  <span>{simpanMutation.isPending ? 'Memproses...' : 'Simpan Modul'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        }
       >
         <div className="-m-6">
             {/* Navigation Tabs */}
@@ -1244,7 +1307,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmitForm} className="p-6 overflow-y-auto flex-1 text-xs">
+            <form id="master-modul-semester-form" onSubmit={handleSubmitForm} className="p-6 overflow-y-auto flex-1 text-xs">
               {/* TAB 1: INFORMASI UMUM */}
               {activeTab === 'umum' && (
                 <div className="space-y-4">
@@ -1994,55 +2057,6 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                 </div>
               )}
 
-              {/* Modal Buttons */}
-              <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition"
-                >
-                  Batal
-                </button>
-
-                <div className="flex items-center gap-2">
-                  {activeTab !== 'umum' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const tabs = ['umum', 'pembelajaran', 'target', 'materi', 'bobot']
-                        const currIdx = tabs.indexOf(activeTab)
-                        if (currIdx > 0) setActiveTab(tabs[currIdx - 1])
-                      }}
-                      className="px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-800 rounded-xl hover:bg-slate-300 transition"
-                    >
-                      Kembali
-                    </button>
-                  )}
-
-                  {activeTab !== 'bobot' ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const tabs = ['umum', 'pembelajaran', 'target', 'materi', 'bobot']
-                        const currIdx = tabs.indexOf(activeTab)
-                        if (currIdx < tabs.length - 1) setActiveTab(tabs[currIdx + 1])
-                      }}
-                      className="px-4 py-2.5 text-xs font-bold text-white bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 rounded-xl transition"
-                    >
-                      Lanjut &rarr;
-                    </button>
-                  ) : (
-                    <button
-                      type="submit"
-                      disabled={simpanMutation.isPending || totalBobotPenilaian !== 100}
-                      className="px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-md transition flex items-center gap-2"
-                    >
-                      <Save className="w-4 h-4" />
-                      {simpanMutation.isPending ? 'Memproses...' : 'Simpan Modul'}
-                    </button>
-                  )}
-                </div>
-              </div>
             </form>
         </div>
       </AppModal>

@@ -693,7 +693,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
                     Modul LMS Terpadu
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Kelola submission tugas siswa, riwayat pengumpulan file &amp; link, serta proses koreksi dan penilaian hasil kerja secara terpadu.
                 </p>
               </div>
@@ -1213,9 +1213,40 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={editId ? 'Koreksi & Form Penilaian' : 'Input Submission Pengumpulan Tugas'}
+        description="Lengkapi catatan penilaian, status submission, dan berkas tugas siswa."
+        icon={editId ? Edit3 : UploadCloud}
         maxWidth="max-w-lg"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                <X className="size-3.5" strokeWidth={2.5} />
+              </span>
+              <span>Batal</span>
+            </button>
+            <button
+              type="submit"
+              form="lms-submission-form"
+              disabled={formLoading}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-950/20 hover:from-emerald-600 hover:to-teal-800 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                {formLoading ? (
+                  <RefreshCw className="size-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
+                )}
+              </span>
+              <span>{formLoading ? 'Menyimpan...' : (editId ? 'Simpan Koreksi' : 'Kumpulkan Tugas')}</span>
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleSubmitForm} className="space-y-4 text-sm">
+        <form id="lms-submission-form" onSubmit={handleSubmitForm} className="space-y-4 text-sm">
           <div>
             <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
               Penugasan <span className="text-rose-500">*</span>
@@ -1324,24 +1355,6 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
               onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44] dark:border-slate-800 dark:bg-slate-900 dark:text-white"
             ></textarea>
-          </div>
-
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2.5 border border-slate-200 text-slate-600 rounded-xl font-medium hover:bg-slate-50 transition-colors dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={formLoading}
-              className="px-5 py-2.5 bg-[#0E5C44] text-white rounded-xl font-semibold shadow-lg hover:bg-[#1E8E5A] transition-all flex items-center gap-2 disabled:opacity-50 dark:bg-[#3FBF75] dark:text-slate-900"
-            >
-              {formLoading && <RefreshCw className="w-4 h-4 animate-spin" />}
-              {editId ? 'Simpan Koreksi' : 'Kumpulkan Tugas'}
-            </button>
           </div>
         </form>
       </AppModal>

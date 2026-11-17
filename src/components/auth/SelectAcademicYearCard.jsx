@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 
 export default function SelectAcademicYearCard({ onNavigate, disabled = false }) {
   const [year, setYear] = useState('')
@@ -85,39 +86,44 @@ export default function SelectAcademicYearCard({ onNavigate, disabled = false })
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
             Tahun Ajaran
           </label>
-          <select
+          <HeroUiFilterSelect
             value={year}
             disabled={disabled || isLoading || academicYears.length === 0}
-            onChange={(e) => setYear(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
-          >
-            {isLoading ? (
-              <option value="">Memuat tahun ajaran...</option>
-            ) : academicYears.length === 0 ? (
-              <option value="">Tidak ada tahun ajaran tersedia</option>
-            ) : (
-              academicYears.map((ay) => (
-                <option key={ay.id || ay.nama} value={ay.nama || ay.tahun_ajaran}>
-                  {ay.nama || ay.tahun_ajaran}
-                </option>
-              ))
-            )}
-          </select>
+            onChange={(val) => setYear(val)}
+            options={
+              isLoading
+                ? [{ value: '', label: 'Memuat tahun ajaran...' }]
+                : academicYears.length === 0
+                  ? [{ value: '', label: 'Tidak ada tahun ajaran tersedia' }]
+                  : academicYears.map((ay) => ({
+                      value: String(ay.nama || ay.tahun_ajaran),
+                      label: String(ay.nama || ay.tahun_ajaran),
+                    }))
+            }
+            placeholder="Pilih Tahun Ajaran"
+            ariaLabel="Tahun Ajaran"
+            size="md"
+            className="w-full"
+          />
         </div>
 
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
             Semester
           </label>
-          <select
+          <HeroUiFilterSelect
             value={semester}
             disabled={disabled}
-            onChange={(e) => setSemester(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
-          >
-            <option value="Ganjil">Ganjil</option>
-            <option value="Genap">Genap</option>
-          </select>
+            onChange={(val) => setSemester(val)}
+            options={[
+              { value: 'Ganjil', label: 'Ganjil' },
+              { value: 'Genap', label: 'Genap' },
+            ]}
+            placeholder="Pilih Semester"
+            ariaLabel="Semester"
+            size="md"
+            className="w-full"
+          />
         </div>
       </div>
 

@@ -40,6 +40,7 @@ import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import { Skeleton } from '../../components/ui/skeleton'
 import { SmartScrollFab } from '../../components/common'
+import HeroUiFilterSelect from '../../components/ui/HeroUiFilterSelect'
 
 const containerVariants = {
   hidden: { opacity: 0, y: 15 },
@@ -700,16 +701,21 @@ export function FoundationProfilePage() {
               <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
                 <div>
                   <h4 className="font-bold text-slate-800 dark:text-white">Bahasa Antarmuka</h4>
-                  <p className="text-[11px] text-slate-500">Pilihan bahasa tampilan SIMSIT.</p>
+                  <p className="text-[11px] text-slate-500">Pilihan bahasa tampilan Dareliman Edu.</p>
                 </div>
-                <select
-                  value={preferences.language}
-                  onChange={(e) => handlePreferenceChange('language', e.target.value)}
-                  className="px-3 py-1.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold"
-                >
-                  <option value="id">Bahasa Indonesia</option>
-                  <option value="en">English</option>
-                </select>
+                <div className="w-48">
+                  <HeroUiFilterSelect
+                    size="sm"
+                    value={preferences.language}
+                    onChange={(val) => handlePreferenceChange('language', val)}
+                    options={[
+                      { value: 'id', label: 'Bahasa Indonesia' },
+                      { value: 'en', label: 'English' },
+                    ]}
+                    placeholder="Pilih Bahasa"
+                    aria-label="Bahasa Antarmuka"
+                  />
+                </div>
               </div>
             </div>
           </div>

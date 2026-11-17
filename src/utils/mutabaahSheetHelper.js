@@ -1,7 +1,7 @@
 import { api } from '../services/api'
 
 /**
- * SIMSIT Official Mutaba'ah Yaumiyyah Helper
+ * Dareliman Edu Official Mutaba'ah Yaumiyyah Helper
  * 100% Dynamic - Loaded from Database (Zero Hardcode)
  * Synchronizes with database table `mutabaah_agenda_items` & `mutabaah_categories`
  * Supports dynamic differentiation between Fullday School & Boarding / Pesantren.

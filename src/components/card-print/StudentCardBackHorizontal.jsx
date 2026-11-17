@@ -48,7 +48,7 @@ export default function StudentCardBackHorizontal({
 
   const defaultBackRules =
     pengaturan?.card_rules_student ||
-    `1. Kartu ini adalah kartu identitas resmi siswa ${schoolName}.\n2. Wajib dibawa & dikenakan selama jam KBM sekolah.\n3. Apabila menemukan kartu ini, harap mengembalikan ke piket sekolah.\n4. QR Code digunakan untuk absensi gerbang & verifikasi SIMSIT.`
+    `1. Kartu ini adalah kartu identitas resmi siswa ${schoolName}.\n2. Wajib dibawa & dikenakan selama jam KBM sekolah.\n3. Apabila menemukan kartu ini, harap mengembalikan ke piket sekolah.\n4. QR Code digunakan untuk absensi gerbang & verifikasi Dareliman Edu.`
   const resolvedRulesText = backRules
     ? backRules.replace(/Yayasan\s+Dar\s*el-?Iman/gi, schoolName)
     : defaultBackRules
@@ -125,7 +125,7 @@ export default function StudentCardBackHorizontal({
                 {brandTitle}
               </h3>
               <span className="text-[8.5px] font-bold text-emerald-100/90 tracking-wide leading-none">
-                Sistem Manajemen Sekolah Terpadu
+                Dareliman Edu
               </span>
             </div>
           </div>
@@ -170,7 +170,7 @@ export default function StudentCardBackHorizontal({
         {backShowQr && (
           <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-white shadow-md border border-slate-200 text-center w-[116px] shrink-0">
             <QRCodeSVG
-              value={qrToken || data.nis || data.nisn || 'SIMSIT-VERIFY'}
+              value={qrToken || data.nis || data.nisn || 'DARELIMAN-VERIFY'}
               size={84}
               level="M"
               marginSize={1}
@@ -178,7 +178,7 @@ export default function StudentCardBackHorizontal({
               fgColor="#0f172a"
             />
             <span className="mt-1 text-[7.5px] font-black text-slate-600 uppercase tracking-wider">
-              VERIFIKASI SIMSIT
+              VERIFIKASI DARELIMAN EDU
             </span>
           </div>
         )}

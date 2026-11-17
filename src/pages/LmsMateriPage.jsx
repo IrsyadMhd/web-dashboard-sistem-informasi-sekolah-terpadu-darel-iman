@@ -1839,7 +1839,7 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
                       Modul &amp; Bahan Ajar Digital
                     </span>
                   </div>
-                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                     Kelola dokumen PDF, video pembelajaran, ringkasan, dan teks bahan ajar interaktif terstruktur per Modul Ajar.
                   </p>
                 </div>

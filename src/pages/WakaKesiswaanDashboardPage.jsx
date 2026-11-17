@@ -201,7 +201,7 @@ export default function WakaKesiswaanDashboardPage() {
                     Bidang Kesiswaan & Kedisiplinan
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Pantau populasi kesiswaan aktif, capaian prestasi murid/santri, rekap kehadiran harian, keterlambatan gerbang, dan log pembinaan perilaku.
                 </p>
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">

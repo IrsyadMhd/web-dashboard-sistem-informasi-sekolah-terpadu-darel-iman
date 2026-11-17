@@ -203,7 +203,7 @@ function makeEmployeeQrPayload(employee) {
     employee.qr_code ||
     employee.niy ||
     employee.email ||
-    (employee.id ? `EMP-${employee.id}` : 'SIMSIT')
+    (employee.id ? `EMP-${employee.id}` : 'DARELIMAN-EDU')
   )
 }
 
@@ -409,7 +409,7 @@ function makePayload(form, assignmentOnly = false) {
   }
 }
 
-// ── DEFINISI TONE WARNA KARTU KPI MODERN (TAILGRIDS SPEC) ──
+// ── DEFINISI TONE WARNA KARTU KPI MODERN (HEROUI SPEC) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -554,7 +554,7 @@ export default function EmployeesPage() {
   const canDownloadTemplate = !isYayasan && (isGlobalPersonnelManager || isUnitPersonnelManager)
   const canUpdateEmployee = !isYayasan && (isGlobalPersonnelManager || isUnitPersonnelManager)
   const canDeleteEmployee = !isYayasan && isGlobalPersonnelManager
-  const canExportEmployee = true
+  const canExportEmployee = !isYayasan && (isGlobalPersonnelManager || isUnitPersonnelManager || (Array.isArray(user?.permissions) && user.permissions.includes('employee.export')))
   const canPrintEmployee = true
 
   const isPengurusYayasanEmployee = (emp) => {
@@ -1893,7 +1893,7 @@ export default function EmployeesPage() {
     return roles.length > 0 ? roles : ['Anggota Staf ERP']
   }, [])
 
-  // ── KOMPONEN TAILGRIDS HOVERCARD PREVIEW GURU & PEGAWAI ──
+  // ── KOMPONEN HEROUI HOVERCARD PREVIEW GURU & PEGAWAI ──
   const EmployeeHoverCard = useCallback(({ employee, children, onClick }) => {
     if (!employee) return children
 
@@ -2260,7 +2260,7 @@ export default function EmployeesPage() {
                     {isYayasan ? 'Pengurus Yayasan (Monitoring & Cetak)' : isDivisi ? 'Supervisi Divisi Pendidikan' : 'Manajemen SDM'}
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Pengelolaan direktori terpadu pendidik & tenaga kependidikan, status kepegawaian, cetak kartu NIY, dan analisis SDM unit.
                 </p>
               </div>
@@ -2342,7 +2342,7 @@ export default function EmployeesPage() {
             ) : (
               <div className="inline-flex items-center gap-2 rounded-xl border border-amber-300/80 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-900 shadow-2xs dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
                 <Lock className="size-4 text-amber-600" />
-                <span>Unit: {selectedUnitName || 'Unit Sekolah Anda'}</span>
+                <span>Unit: {selectedUnitName || user?.unit?.name || user?.unit_name || user?.employee?.unit?.name || user?.metadata?.unit_name || 'Unit Terkunci'}</span>
               </div>
             )}
 
@@ -2734,7 +2734,7 @@ export default function EmployeesPage() {
           </div>
         </div>
 
-        {/* 4. AppDataTable complying with TailGrids Benchmark */}
+        {/* 4. AppDataTable complying with HeroUI Benchmark */}
         <div id="tabel-direktori-pegawai" className="scroll-mt-6">
           <AppDataTable
           className={`main-page-app-data-table ${statCardModal.isOpen ? 'print:hidden' : ''}`}
@@ -3103,7 +3103,7 @@ export default function EmployeesPage() {
         )}
       </AnimatePresence>
 
-      {/* 5. MODAL WIZARD: TAMBAH / EDIT PEGAWAI (TailGrids + SSOT) */}
+      {/* 5. MODAL WIZARD: TAMBAH / EDIT PEGAWAI (HeroUI + SSOT) */}
       <EmployeeFormModal
         isOpen={isFormModalOpen && ((isEditMode && canUpdateEmployee) || (!isEditMode && canCreateEmployee))}
         onClose={closeFormModal}
@@ -4095,7 +4095,7 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* 8. MODAL KONFIRMASI HAPUS PEGAWAI — Harmonized TailGrids Modal */}
+      {/* 8. MODAL KONFIRMASI HAPUS PEGAWAI — Harmonized HeroUI Modal */}
       <AnimatePresence>
         {canDeleteEmployee && deleteTarget && (
           <div

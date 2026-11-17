@@ -177,17 +177,47 @@ export default function WorshipAttendancePage() {
     }
   })()
 
-  const userRole = authUser?.role || authUser?.roles?.[0] || 'Kepala Sekolah'
-  const userUnitName = authUser?.education_unit_name || authUser?.education_unit?.nama || authUser?.unit_name || 'SMA Terpadu'
-  const userUnitId = authUser?.education_unit_id || authUser?.unit_id || null
+  const userRole = authUser?.role || authUser?.roles?.[0]?.name || authUser?.roles?.[0] || ''
+  const userUnitName =
+    authUser?.unit?.name ||
+    authUser?.unit?.nama ||
+    authUser?.education_unit?.name ||
+    authUser?.education_unit?.nama ||
+    authUser?.employee?.unit?.name ||
+    authUser?.education_unit_name ||
+    authUser?.unit_name ||
+    authUser?.metadata?.unit_name ||
+    ''
+  const userUnitId =
+    authUser?.unit_id ||
+    authUser?.unit?.id ||
+    authUser?.education_unit_id ||
+    authUser?.employee?.unit_id ||
+    null
 
-  // Determine if logged in user manages a Pesantren Pondok unit or Regular School
+  const unitProgramType = String(
+    authUser?.unit?.program_type ||
+    authUser?.education_unit?.program_type ||
+    authUser?.employee?.unit?.program_type ||
+    ''
+  ).toLowerCase()
+  const unitNameLower = String(userUnitName || '').toLowerCase()
+  const roleLower = String(userRole || '').toLowerCase()
+
+  // Determine if logged in user manages a Pesantren Pondok / Boarding unit or Regular School
   const isPesantrenUnit = Boolean(
     authUser?.is_pesantren ||
-    userUnitName.toLowerCase().includes('pesantren') ||
-    userUnitName.toLowerCase().includes('pondok') ||
-    userRole === 'Superadmin' ||
-    userRole === 'Pengurus Yayasan'
+    unitProgramType === 'boarding' ||
+    unitNameLower.includes('pesantren') ||
+    unitNameLower.includes('pondok') ||
+    unitNameLower.includes('ponpes') ||
+    unitNameLower.includes('mahad') ||
+    unitNameLower.includes("ma'had") ||
+    roleLower.includes('musyrif') ||
+    roleLower.includes('super') ||
+    roleLower.includes('yayasan') ||
+    roleLower.includes('divisi') ||
+    roleLower.includes('kabid')
   )
 
   // ── State (preserved API logic) ──────────────────────────────────────────
@@ -570,7 +600,7 @@ export default function WorshipAttendancePage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Presensi & Absensi Ibadah Santri Pesantren
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Monitoring presensi shalat 5 waktu berjamaah di masjid pesantren, tahajud, dzikir, dan program asrama santri mukim.
                 </p>
               </div>
@@ -662,7 +692,7 @@ export default function WorshipAttendancePage() {
 
       {activeTab === 'sessions' && (
         <>
-          {/* ── KPI CARDS ROW (Exact match with TailGrids reference) ──────────── */}
+          {/* ── KPI CARDS ROW (Exact match with HeroUI reference) ──────────── */}
           <motion.section variants={itemVariants} className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             <KpiTintedCard
               icon={Users}

@@ -12,7 +12,7 @@ import { Sparkles, Layers } from 'lucide-react'
  *  - 3D Squircle badge with HeroUI Spinner
  *  - HeroUI Status Chip & descriptive feedback
  *  - HeroUI Skeleton lines to prevent jarring layout shifts
- *  - Strictly HeroUI & Tailwind (no TailGrids)
+ *  - Strictly HeroUI & Tailwind (no HeroUI)
  */
 export default function HeroUiPageFallback({
   title = 'Menyiapkan Halaman...',

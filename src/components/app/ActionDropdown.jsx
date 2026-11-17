@@ -18,7 +18,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS } from '../../auth/portalResolver'
 
 /**
- * ActionDropdown - Canonical action menu for table rows and card items based on TailGrids DropdownMenu.
+ * ActionDropdown - Canonical action menu for table rows and card items based on HeroUI DropdownMenu.
  */
 export default function ActionDropdown({
   onView,
