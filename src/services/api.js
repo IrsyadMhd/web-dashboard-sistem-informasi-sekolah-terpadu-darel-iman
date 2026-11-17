@@ -26,7 +26,13 @@ const dispatchServerStatus = (status, message) => {
 export const resolveApiBaseUrl = () => {
   const configured = import.meta.env.VITE_API_BASE_URL
   if (configured && typeof configured === 'string' && configured.trim()) {
-    return configured.trim()
+    let base = configured.trim().replace(/\/+$/, '')
+    if (base.endsWith('/api/v1')) {
+      base = base.replace(/\/api\/v1$/, '/api')
+    } else if (base.endsWith('/v1')) {
+      base = base.replace(/\/v1$/, '')
+    }
+    return base
   }
 
   if (typeof window !== 'undefined' && window.location) {
