@@ -184,7 +184,7 @@ git pull origin staging
 
 # 5. Pasang dependensi dan build dengan target API staging
 npm ci
-VITE_API_BASE_URL="https://demoapi.dareliman.sch.id/api/v1" npm run build
+VITE_API_BASE_URL="https://demoapi.dareliman.sch.id/api" npm run build
 ```
 
 ### 3. Konfigurasi Virtual Host Nginx (`demoedu.dareliman.sch.id`)
