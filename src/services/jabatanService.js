@@ -77,11 +77,15 @@ export const jabatanService = {
     return data
   },
 
-  /**
-   * Impor data jabatan batch.
-   */
-  prosesImport: async (dataRows) => {
-    const { data } = await api.post('/jabatan/import', { data: dataRows })
+  prosesImport: async (payload) => {
+    if (payload instanceof FormData) {
+      const { data } = await api.post('/jabatan/import', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return data
+    }
+    const body = Array.isArray(payload) ? { data: payload } : payload
+    const { data } = await api.post('/jabatan/import', body)
     return data
   },
 

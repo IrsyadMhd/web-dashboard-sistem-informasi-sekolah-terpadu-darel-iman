@@ -87,6 +87,7 @@ import {
 import { FieldLabel, FieldDescription } from '../components/ui/field'
 import { Input } from '../components/ui/input'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import {
   HoverCard,
@@ -99,7 +100,7 @@ import { studentService } from '../services/studentService'
 import api from '../services/api'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 
-// Sub-komponen KpiTintedCard Modern Style (Identik Spesifikasi TAILGRIDS_ALUMNI_MUTASI_CARDS)
+// Sub-komponen KpiTintedCard Modern Style (Identik Spesifikasi HEROUI_ALUMNI_MUTASI_CARDS)
 function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', tag, active, onClick }) {
   const tones = {
     emerald: {
@@ -231,157 +232,6 @@ function AlumniHoverCard({ row, children }) {
   )
 }
 
-// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
-function HeroUiFilterSelect({
-  value,
-  onChange,
-  options = [],
-  placeholder = 'Pilih...',
-  icon: IconComponent = null,
-  className = '',
-  popoverWidth = 'w-full',
-  searchable = false,
-  ariaLabel = '',
-  disabled = false,
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const containerRef = useRef(null)
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setIsOpen(false)
-      }
-    }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isOpen])
-
-  const selectedOption = useMemo(() => {
-    return options.find((opt) => String(opt.value) === String(value))
-  }, [options, value])
-
-  const filteredOptions = useMemo(() => {
-    if (!searchable || !search.trim()) return options
-    const q = search.toLowerCase()
-    return options.filter((opt) =>
-      (opt.label && String(opt.label).toLowerCase().includes(q)) ||
-      (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
-    )
-  }, [options, search, searchable])
-
-  const hasValue = value !== '' && value !== 'semua' && value !== 'all' && value !== undefined && value !== null
-
-  return (
-    <div className={`relative ${className}`} ref={containerRef}>
-      <button
-        type="button"
-        aria-label={ariaLabel}
-        disabled={disabled}
-        onClick={() => {
-          if (!disabled) {
-            setIsOpen((prev) => !prev)
-            setSearch('')
-          }
-        }}
-        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
-          isOpen
-            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
-            : hasValue
-            ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
-            : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
-        }`}
-      >
-        <div className="flex items-center gap-2 truncate">
-          {IconComponent && (
-            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          )}
-          <span className="truncate">
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
-        </div>
-        <ChevronDown
-          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
-        />
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: -4 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} min-w-[200px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40`}
-          >
-            {searchable && options.length > 5 && (
-              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
-                <div className="relative">
-                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Cari..."
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    autoFocus
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="max-h-56 overflow-y-auto space-y-0.5">
-              {filteredOptions.length === 0 ? (
-                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
-                  Tidak ada data
-                </div>
-              ) : (
-                filteredOptions.map((opt) => {
-                  const isSelected = String(opt.value) === String(value)
-                  return (
-                    <button
-                      key={String(opt.value)}
-                      type="button"
-                      onClick={() => {
-                        onChange(opt.value)
-                        setIsOpen(false)
-                        setSearch('')
-                      }}
-                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
-                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
-                      }`}
-                    >
-                      <div className="truncate pr-2">
-                        <div className="truncate">{opt.label}</div>
-                        {opt.subtext && (
-                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
-                            {opt.subtext}
-                          </div>
-                        )}
-                      </div>
-                      {isSelected && (
-                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      )}
-                    </button>
-                  )
-                })
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
 
 export default function KelolaAlumniPage() {
   const user = useAuthStore((state) => state.user)
@@ -1157,7 +1007,7 @@ export default function KelolaAlumniPage() {
     exportCsv(exportData, `Data_Pengolahan_Alumni_${new Date().toISOString().slice(0, 10)}.csv`)
   }
 
-  // Official Global SIMSIT Print Handler
+  // Official Global Dareliman Edu Print Handler
   const handlePrintMainTable = () => {
     const rows = filteredList.map((std) => {
       const meta = std.metadata || {}
@@ -1593,7 +1443,7 @@ export default function KelolaAlumniPage() {
                     Manajemen Kelulusan
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Pemantauan terpadu data lulusan alumni, riwayat tujuan studi/kerja, mutasi internal unit, dan pindah keluar sekolah.
                 </p>
               </div>
@@ -2424,7 +2274,7 @@ export default function KelolaAlumniPage() {
         </div>
       </MasterDataPage>
 
-      {/* ── 1. MODAL TAMBAH DATA ALUMNI BARU (TailGrids Dialog) ───────────────────── */}
+      {/* ── 1. MODAL TAMBAH DATA ALUMNI BARU (HeroUI Dialog) ───────────────────── */}
       {addModalOpen && (
         <OverlayWrapper>
           <Backdrop isOpen={addModalOpen} onOpenChange={setAddModalOpen} />
@@ -2795,7 +2645,7 @@ export default function KelolaAlumniPage() {
         </OverlayWrapper>
       )}
 
-      {/* ── 1.1. MODAL DATATABLE SISWA / SANTRI SELECTOR (TailGrids Dialog) ────────── */}
+      {/* ── 1.1. MODAL DATATABLE SISWA / SANTRI SELECTOR (HeroUI Dialog) ────────── */}
       {studentTableModalOpen && (
         <OverlayWrapper>
           <Backdrop isOpen={studentTableModalOpen} onOpenChange={setStudentTableModalOpen} />
@@ -2946,7 +2796,7 @@ export default function KelolaAlumniPage() {
         </OverlayWrapper>
       )}
 
-      {/* ── 2. MODAL EDIT DATA ALUMNI (TailGrids Dialog) ───────────────────────── */}
+      {/* ── 2. MODAL EDIT DATA ALUMNI (HeroUI Dialog) ───────────────────────── */}
       {editModalOpen && selectedAlumni && (
         <OverlayWrapper>
           <Backdrop isOpen={editModalOpen} onOpenChange={setEditModalOpen} />
@@ -3422,7 +3272,7 @@ export default function KelolaAlumniPage() {
         </OverlayWrapper>
       )}
 
-      {/* ── 5. CONFIRM DIALOG HAPUS DATA ALUMNI (TailGrids AlertDialog) ───────────── */}
+      {/* ── 5. CONFIRM DIALOG HAPUS DATA ALUMNI (HeroUI AlertDialog) ───────────── */}
       <ConfirmDialog
         isOpen={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
@@ -3434,7 +3284,7 @@ export default function KelolaAlumniPage() {
         isDanger
       />
 
-      {/* ── 6. MODAL POPUP DETAIL SISWA CARD (TailGrids Dialog) ───────────── */}
+      {/* ── 6. MODAL POPUP DETAIL SISWA CARD (HeroUI Dialog) ───────────── */}
       {cardModalOpen && (
         <OverlayWrapper>
           <Backdrop isOpen={cardModalOpen} onOpenChange={setCardModalOpen} />
@@ -3648,7 +3498,7 @@ export default function KelolaAlumniPage() {
         </OverlayWrapper>
       )}
 
-      {/* ── 7. MODAL DETAIL ALUMNI (TailGrids Dialog Interactive Popup) ───────────── */}
+      {/* ── 7. MODAL DETAIL ALUMNI (HeroUI Dialog Interactive Popup) ───────────── */}
       {detailModalOpen && selectedAlumniDetail && (
         <OverlayWrapper>
           <Backdrop isOpen={detailModalOpen} onOpenChange={setDetailModalOpen} />
@@ -3800,24 +3650,19 @@ export default function KelolaAlumniPage() {
               <DialogBody className="space-y-4 py-4 max-h-[70vh] overflow-y-auto text-slate-700 dark:text-slate-200">
                 <div className="space-y-1.5">
                   <FieldLabel className="text-xs font-bold">Status Kelanjutan Studi / Karir</FieldLabel>
-                  <select
+                  <HeroUiFilterSelect
                     value={tujuanForm.status_lanjutan}
-                    onChange={(e) => setTujuanForm({ ...tujuanForm, status_lanjutan: e.target.value })}
-                    className="w-full h-10 text-xs font-semibold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 px-3 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
-                  >
-                    <option value="">-- Pilih Status Lanjutan --</option>
-                    {alumniStatusOptions.length === 0 && (
-                      <option value="" disabled>
-                        (Belum ada data opsi — kelola di Pengaturan Opsi Bisnis)
-                      </option>
-                    )}
-                    {tujuanForm.status_lanjutan && !alumniStatusOptions.includes(tujuanForm.status_lanjutan) && (
-                      <option value={tujuanForm.status_lanjutan}>{tujuanForm.status_lanjutan} (Data Historis)</option>
-                    )}
-                    {alumniStatusOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setTujuanForm({ ...tujuanForm, status_lanjutan: val })}
+                    placeholder="-- Pilih Status Lanjutan --"
+                    ariaLabel="Status Kelanjutan Studi / Karir"
+                    options={[
+                      { value: '', label: '-- Pilih Status Lanjutan --' },
+                      ...(tujuanForm.status_lanjutan && !alumniStatusOptions.includes(tujuanForm.status_lanjutan)
+                        ? [{ value: tujuanForm.status_lanjutan, label: `${tujuanForm.status_lanjutan} (Data Historis)` }]
+                        : []),
+                      ...alumniStatusOptions.map((opt) => ({ value: opt, label: opt })),
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1.5">

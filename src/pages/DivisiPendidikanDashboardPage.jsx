@@ -58,6 +58,8 @@ import PembiasaanBahasaSection from '../components/divisi/PembiasaanBahasaSectio
 import PelatihanGuruSection from '../components/divisi/PelatihanGuruSection'
 import ReviewLaporanBulananSection from '../components/divisi/ReviewLaporanBulananSection'
 import RadarAkreditasiSection from '../components/divisi/RadarAkreditasiSection'
+import DisciplineSupervisionSection from '../components/divisi/DisciplineSupervisionSection'
+import { Scale } from 'lucide-react'
 
 import { managementDashboardService } from '../services/managementDashboardService'
 import { educationUnitService } from '../services/educationUnitService'
@@ -141,6 +143,15 @@ const WORKSPACE_MODULES = [
     icon: ShieldCheck,
     tone: 'cyan',
     subtext: 'Pemetaan kesiapan instrumen akreditasi 8 SNP di seluruh unit',
+  },
+  {
+    key: 'supervisi-disiplin',
+    label: 'Supervisi Disiplin',
+    fullTitle: 'Supervisi Kepatuhan Tata Tertib & Benchmarking Lintas Unit',
+    tag: 'DISIPLIN',
+    icon: Scale,
+    tone: 'emerald',
+    subtext: 'Benchmarking rasio kepatuhan adab santri, audit penanganan SP, dan 4 kluster tata tertib TU',
   },
 ]
 
@@ -498,7 +509,7 @@ export default function DivisiPendidikanDashboardPage() {
                     Pengawasan Akademik SIT
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Pusat analisis kinerja kurikulum, pemantauan unit pendidikan, rasio SDM/Siswa, dan pengawasan pelaporan akademik terpadu.
                 </p>
               </div>
@@ -815,6 +826,7 @@ export default function DivisiPendidikanDashboardPage() {
                 {activeWorkspaceTab === 'pelatihan-guru' && <PelatihanGuruSection onDataMutate={fetchDashboard} />}
                 {activeWorkspaceTab === 'revisi-laporan' && <ReviewLaporanBulananSection onDataMutate={fetchDashboard} />}
                 {activeWorkspaceTab === 'radar-akreditasi' && <RadarAkreditasiSection onDataMutate={fetchDashboard} />}
+                {activeWorkspaceTab === 'supervisi-disiplin' && <DisciplineSupervisionSection />}
               </div>
             </motion.section>
           )}

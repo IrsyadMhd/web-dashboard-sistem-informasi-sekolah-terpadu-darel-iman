@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { X, BookOpen, Save, RefreshCw, AlertCircle } from 'lucide-react'
+import { X, BookOpen, Save, RefreshCw, AlertCircle, Building2, Calendar, Layers, GraduationCap, CheckCircle2 } from 'lucide-react'
 import { api } from '../../services/api'
 import AppModal from '../app/AppModal'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
+import { Input } from '@/components/ui/input'
+import { TextArea } from '@/components/ui/text-area'
 import { codeGeneratorService } from '../../services/codeGeneratorService'
 
 const JENIS_OPTIONS = ['SIT', 'Merdeka', 'Nasional', 'Pesantren', 'Lokal', 'Lainnya']
@@ -190,23 +193,52 @@ export default function KurikulumFormModal({
       subtitle={initialData ? 'Perbarui informasi rincian kurikulum yang berlaku.' : 'Lengkapi formulir untuk menambahkan kurikulum unit pendidikan.'}
       icon={<BookOpen className="h-5 w-5" />}
       maxWidth="max-w-2xl"
+      footer={
+        <div className="flex items-center justify-end gap-3 w-full">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+          >
+            <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+              <X className="size-3.5" strokeWidth={2.5} />
+            </span>
+            <span>Batal</span>
+          </button>
+          <button
+            type="submit"
+            form="kurikulum-main-form"
+            disabled={isSubmitting}
+            className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-950/20 hover:from-emerald-600 hover:to-teal-800 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+          >
+            <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+              {isSubmitting ? (
+                <RefreshCw className="size-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
+              )}
+            </span>
+            <span>{isSubmitting ? 'Menyimpan...' : (initialData ? 'Simpan Perubahan' : 'Simpan Data')}</span>
+          </button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-5 text-xs text-slate-700">
+      <form id="kurikulum-main-form" onSubmit={handleSubmit} className="space-y-5 text-xs text-slate-700">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Kode Kurikulum */}
             <div>
               <label className="block font-bold text-slate-700 mb-1.5">
                 Kode Kurikulum <span className="text-rose-500">*</span>
               </label>
-              <input
+              <Input
                 type="text"
+                size="sm"
                 name="kode_kurikulum"
                 value={formData.kode_kurikulum}
                 onChange={handleChange}
                 placeholder="Misal: KUR-SD-SIT-2026"
-                className={`w-full px-3.5 py-2.5 rounded-xl border ${
-                  errors.kode_kurikulum ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 bg-slate-50/50'
-                } font-mono text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all`}
+                className={`font-mono ${errors.kode_kurikulum ? 'border-rose-400 bg-rose-50/30' : ''}`}
               />
               {errors.kode_kurikulum && (
                 <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
@@ -220,15 +252,14 @@ export default function KurikulumFormModal({
               <label className="block font-bold text-slate-700 mb-1.5">
                 Nama Kurikulum <span className="text-rose-500">*</span>
               </label>
-              <input
+              <Input
                 type="text"
+                size="sm"
                 name="nama_kurikulum"
                 value={formData.nama_kurikulum}
                 onChange={handleChange}
                 placeholder="Misal: Kurikulum Merdeka Terpadu SD"
-                className={`w-full px-3.5 py-2.5 rounded-xl border ${
-                  errors.nama_kurikulum ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 bg-slate-50/50'
-                } font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all`}
+                className={errors.nama_kurikulum ? 'border-rose-400 bg-rose-50/30' : ''}
               />
               {errors.nama_kurikulum && (
                 <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
@@ -244,18 +275,17 @@ export default function KurikulumFormModal({
               <label className="block font-bold text-slate-700 mb-1.5">
                 Jenis Kurikulum <span className="text-rose-500">*</span>
               </label>
-              <select
-                name="jenis_kurikulum"
+              <HeroUiFilterSelect
                 value={formData.jenis_kurikulum}
-                onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
-              >
-                {JENIS_OPTIONS.map((j) => (
-                  <option key={j} value={j}>
-                    {j}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => handleChange({ target: { name: 'jenis_kurikulum', value: val } })}
+                options={JENIS_OPTIONS.map((j) => ({ value: j, label: j }))}
+                placeholder="Pilih Jenis Kurikulum"
+                icon={Layers}
+                ariaLabel="Pilih jenis kurikulum"
+                size="md"
+                searchable
+                className="w-full"
+              />
             </div>
 
             {/* Jenjang */}
@@ -263,19 +293,18 @@ export default function KurikulumFormModal({
               <label className="block font-bold text-slate-700 mb-1.5">
                 Jenjang <span className="text-rose-500">*</span>
               </label>
-              <select
-                name="jenjang"
+              <HeroUiFilterSelect
                 value={formData.jenjang}
-                onChange={handleChange}
+                onChange={(val) => handleChange({ target: { name: 'jenjang', value: val } })}
+                options={availableJenjangModalOptions.map((j) => ({ value: j, label: j }))}
                 disabled={availableJenjangModalOptions.length <= 1}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all disabled:opacity-75 disabled:cursor-not-allowed"
-              >
-                {availableJenjangModalOptions.map((j) => (
-                  <option key={j} value={j}>
-                    {j}
-                  </option>
-                ))}
-              </select>
+                placeholder="Pilih Jenjang"
+                icon={GraduationCap}
+                ariaLabel="Pilih jenjang"
+                size="md"
+                searchable
+                className="w-full"
+              />
             </div>
 
             {/* Status */}
@@ -305,22 +334,24 @@ export default function KurikulumFormModal({
               <label className="block font-bold text-slate-700 mb-1.5">
                 Unit Pendidikan <span className="text-rose-500">*</span>
               </label>
-              <select
-                name="unit_pendidikan_id"
-                value={formData.unit_pendidikan_id}
-                onChange={handleChange}
+              <HeroUiFilterSelect
+                value={formData.unit_pendidikan_id ? String(formData.unit_pendidikan_id) : ''}
+                onChange={(val) => handleChange({ target: { name: 'unit_pendidikan_id', value: val } })}
+                options={[
+                  ...(canViewAllUnits ? [{ value: '', label: '-- Pilih Unit Pendidikan --' }] : []),
+                  ...displayUnits.map((u) => ({
+                    value: String(u.id),
+                    label: `${u.name || u.nama} (${u.code || u.kode})`,
+                  })),
+                ]}
                 disabled={!canViewAllUnits && displayUnits.length <= 1}
-                className={`w-full px-3.5 py-2.5 rounded-xl border ${
-                  errors.unit_pendidikan_id ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 bg-slate-50/50'
-                } font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all`}
-              >
-                {canViewAllUnits && <option value="">-- Pilih Unit Pendidikan --</option>}
-                {displayUnits.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name || u.nama} ({u.code || u.kode})
-                  </option>
-                ))}
-              </select>
+                placeholder="Pilih Unit Pendidikan"
+                icon={Building2}
+                ariaLabel="Pilih unit pendidikan"
+                size="md"
+                searchable
+                className="w-full"
+              />
               {errors.unit_pendidikan_id && (
                 <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" /> {errors.unit_pendidikan_id}
@@ -333,21 +364,23 @@ export default function KurikulumFormModal({
               <label className="block font-bold text-slate-700 mb-1.5">
                 Tahun Ajaran <span className="text-rose-500">*</span>
               </label>
-              <select
-                name="tahun_ajaran_id"
-                value={formData.tahun_ajaran_id}
-                onChange={handleChange}
-                className={`w-full px-3.5 py-2.5 rounded-xl border ${
-                  errors.tahun_ajaran_id ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 bg-slate-50/50'
-                } font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all`}
-              >
-                <option value="">-- Pilih Tahun Ajaran --</option>
-                {tahunAjarans.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nama || t.name} {t.is_active ? '(Aktif)' : ''}
-                  </option>
-                ))}
-              </select>
+              <HeroUiFilterSelect
+                value={formData.tahun_ajaran_id ? String(formData.tahun_ajaran_id) : ''}
+                onChange={(val) => handleChange({ target: { name: 'tahun_ajaran_id', value: val } })}
+                options={[
+                  { value: '', label: '-- Pilih Tahun Ajaran --' },
+                  ...tahunAjarans.map((t) => ({
+                    value: String(t.id),
+                    label: `${t.nama || t.name}${t.is_active ? ' (Aktif)' : ''}`,
+                  })),
+                ]}
+                placeholder="Pilih Tahun Ajaran"
+                icon={Calendar}
+                ariaLabel="Pilih tahun ajaran"
+                size="md"
+                searchable
+                className="w-full"
+              />
               {errors.tahun_ajaran_id && (
                 <p className="text-rose-500 text-[11px] font-semibold mt-1 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" /> {errors.tahun_ajaran_id}
@@ -394,43 +427,13 @@ export default function KurikulumFormModal({
           {/* Deskripsi */}
           <div>
             <label className="block font-bold text-slate-700 mb-1.5">Deskripsi / Catatan Kurikulum</label>
-            <textarea
+            <TextArea
               name="deskripsi"
               rows={3}
               value={formData.deskripsi}
               onChange={handleChange}
               placeholder="Catatan tambahan mengenai struktur kurikulum..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
-            ></textarea>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <Button
-              type="button"
-              variant="ghost"
-              appearance="outline"
-              size="sm"
-              onClick={onClose}
-            >
-              Batal
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" /> Menyimpan...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-1.5" /> Simpan Data
-                </>
-              )}
-            </Button>
+            />
           </div>
         </form>
     </AppModal>

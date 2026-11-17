@@ -22,6 +22,8 @@ export default function TahunAjaranImportModal({
 }) {
   const [previewRows, setPreviewRows] = useState([])
   const [fileName, setFileName] = useState('')
+  const [rawFile, setRawFile] = useState(null)
+  const [overwriteExisting, setOverwriteExisting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
   if (!isOpen) return null
@@ -30,6 +32,7 @@ export default function TahunAjaranImportModal({
     const file = e.target.files[0]
     if (!file) return
 
+    setRawFile(file)
     setFileName(file.name)
     setErrorMsg('')
 
@@ -105,13 +108,19 @@ export default function TahunAjaranImportModal({
 
   const handleSubmitImport = () => {
     if (previewRows.length === 0) return
-    onImport(previewRows)
+    onImport({
+      file: rawFile,
+      rows: previewRows,
+      overwrite: overwriteExisting,
+    })
   }
 
   const handleClose = () => {
     if (isSubmitting) return
     setPreviewRows([])
     setFileName('')
+    setRawFile(null)
+    setOverwriteExisting(false)
     setErrorMsg('')
     onClose()
   }
@@ -246,6 +255,40 @@ export default function TahunAjaranImportModal({
                   <span>{errorMsg}</span>
                 </div>
               )}
+
+              {/* Opsi Timpa Data Jika Ada yang Sama */}
+              <div className={cn(
+                "rounded-2xl border p-4 transition-all duration-200",
+                overwriteExisting
+                  ? "border-amber-300/80 bg-amber-50/70 dark:border-amber-700/60 dark:bg-amber-950/25"
+                  : "border-slate-200/80 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30"
+              )}>
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={overwriteExisting}
+                    onChange={(e) => setOverwriteExisting(e.target.checked)}
+                    className="mt-0.5 h-4.5 w-4.5 rounded-lg border-slate-300 text-amber-600 focus:ring-amber-500 dark:border-slate-700 dark:bg-slate-800 cursor-pointer"
+                  />
+                  <div className="flex-1 text-xs">
+                    <span className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                      <span>Timpa data jika nama tahun ajaran sudah terdaftar</span>
+                      {overwriteExisting ? (
+                        <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-[10px] font-extrabold text-amber-900 dark:bg-amber-900/80 dark:text-amber-200">
+                          Mode Timpa Aktif
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                          Lewati Duplikat
+                        </span>
+                      )}
+                    </span>
+                    <p className="mt-1 text-slate-500 dark:text-slate-400 leading-relaxed text-[11px]">
+                      Jika dicentang, tahun ajaran yang sudah ada akan diperbarui dengan tanggal dan status terbaru dari berkas. Jika tidak dicentang, baris duplikat akan dilewati dengan aman.
+                    </p>
+                  </div>
+                </label>
+              </div>
 
               {/* Data Preview Table */}
               {previewRows.length > 0 && (

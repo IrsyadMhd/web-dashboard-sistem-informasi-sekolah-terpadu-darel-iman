@@ -22,7 +22,10 @@ import {
   Plus,
   FileSpreadsheet,
   FileText,
+  Layers,
+  GraduationCap,
 } from 'lucide-react'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import { api } from '../services/api'
 import { masterKurikulumService } from '../services/masterKurikulumService'
 import { tahunAjaranService } from '../services/tahunAjaranService'
@@ -188,15 +191,49 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
     return userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
   }, [user, userRoles, userLevel])
 
+  const userPermissions = useMemo(
+    () => (Array.isArray(user?.permissions) ? user.permissions : []),
+    [user]
+  )
+
+  const canCreate = useMemo(() => {
+    if (!user) return false
+    return (
+      userLevel <= ROLE_LEVELS.ADMIN ||
+      userPermissions.includes('academic.curriculum.create') ||
+      userPermissions.includes('sistem.master_data')
+    )
+  }, [user, userLevel, userPermissions])
+
+  const canUpdate = useMemo(() => {
+    if (!user) return false
+    return (
+      userLevel <= ROLE_LEVELS.ADMIN ||
+      userPermissions.includes('academic.curriculum.update') ||
+      userPermissions.includes('sistem.master_data')
+    )
+  }, [user, userLevel, userPermissions])
+
   const canDelete = useMemo(() => {
     if (!user) return false
-    const perms = Array.isArray(user?.permissions) ? user.permissions : []
     return (
-      userLevel <= ROLE_LEVELS.YAYASAN || // Level 1-2: Global Access
-      perms.includes('academic.curriculum.delete') ||
-      perms.includes('sistem.master_data')
+      userLevel <= ROLE_LEVELS.ADMIN ||
+      userPermissions.includes('academic.curriculum.delete') ||
+      userPermissions.includes('sistem.master_data')
     )
-  }, [user, userRoles, userLevel])
+  }, [user, userLevel, userPermissions])
+
+  const canExport = useMemo(() => {
+    if (!user) return false
+    return (
+      userLevel <= ROLE_LEVELS.ADMIN ||
+      userPermissions.includes('academic.curriculum.view') ||
+      userPermissions.includes('report.export') ||
+      userPermissions.includes('sistem.master_data')
+    )
+  }, [user, userLevel, userPermissions])
+
+  const canImport = canCreate || canUpdate
 
   // Fetch Education Units
   const { data: unitsData = [] } = useQuery({
@@ -492,8 +529,21 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['master-kurikulum-list'] })
       queryClient.invalidateQueries({ queryKey: ['master-kurikulum-stats'] })
-      setIsImportModalOpen(false)
-      pushToast('Impor Selesai', res?.message || 'Data kurikulum berhasil diimpor ke sistem.', 'success')
+
+      const payload = res?.data || {}
+      const berhasil = payload.berhasil ?? 0
+      const gagal = payload.gagal ?? 0
+      const errors = payload.errors || []
+
+      if (gagal > 0 && berhasil === 0) {
+        pushToast('Impor Gagal', errors[0] || 'Semua baris data gagal diproses.', 'error')
+      } else if (gagal > 0 && berhasil > 0) {
+        setIsImportModalOpen(false)
+        pushToast('Impor Sebagian', `Berhasil: ${berhasil}, Gagal: ${gagal}. ${errors.slice(0, 2).join('; ')}`, 'warning')
+      } else {
+        setIsImportModalOpen(false)
+        pushToast('Impor Selesai', res?.message || `Semua data (${berhasil}) berhasil diimpor ke sistem.`, 'success')
+      }
     },
     onError: (err) => {
       const msg = err.response?.data?.message || 'Gagal memproses impor data.'
@@ -564,7 +614,11 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
       setShowExportModal(false)
       pushToast('Export Berhasil', `Data kurikulum berhasil diekspor (.${exportFormat}).`, 'success')
     } catch (err) {
-      pushToast('Gagal Export', 'Terjadi kesalahan saat mengekspor data.', 'error')
+      pushToast(
+        'Gagal Export',
+        err?.response?.data?.message || err?.message || 'Terjadi kesalahan saat mengekspor data.',
+        'error'
+      )
     } finally {
       setIsExporting(false)
     }
@@ -575,73 +629,80 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
 
   const pageActions = (
     <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
-      {/* 1. Tombol Cetak & Export (Vivid Indigo Squircle + Floating Tooltip) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Cetak & Download Data Kurikulum"
-          aria-label="Cetak & Download Data Kurikulum"
-          onClick={() => setIsPrintModalOpen(true)}
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-        >
-          <Printer className="size-5 text-white" strokeWidth={2.2} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Cetak & Export
-        </div>
-      </div>
+      {canExport && (
+        <>
+          {/* 1. Tombol Cetak & Export (Vivid Indigo Squircle + Floating Tooltip) */}
+          <div className="group relative inline-flex">
+            <button
+              type="button"
+              title="Cetak & Download Data Kurikulum"
+              aria-label="Cetak & Download Data Kurikulum"
+              onClick={() => setIsPrintModalOpen(true)}
+              className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            >
+              <Printer className="size-5 text-white" strokeWidth={2.2} />
+            </button>
+            <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+              <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+              Cetak & Export
+            </div>
+          </div>
+        </>
+      )}
 
-      {/* 2. Import Button (Vivid Sky Blue Squircle + Floating Tooltip) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Import Data Kurikulum"
-          aria-label="Import Data Kurikulum"
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-          onClick={() => setIsImportModalOpen(true)}
-        >
-          <Upload className="size-5 text-white" strokeWidth={2.2} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Import Data
+      {canImport && (
+        <div className="group relative inline-flex">
+          <button
+            type="button"
+            title="Import Data Kurikulum"
+            aria-label="Import Data Kurikulum"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            onClick={() => setIsImportModalOpen(true)}
+          >
+            <Upload className="size-5 text-white" strokeWidth={2.2} />
+          </button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Import Data
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* 3. Export Button (Vivid Amber Squircle + Floating Tooltip) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Export Data Kurikulum"
-          aria-label="Export Data Kurikulum"
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-          onClick={() => setShowExportModal(true)}
-        >
-          <Download className="size-5 text-white" strokeWidth={2.2} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Export Data
+      {canExport && (
+        <div className="group relative inline-flex">
+          <button
+            type="button"
+            title="Export Data Kurikulum"
+            aria-label="Export Data Kurikulum"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            onClick={() => setShowExportModal(true)}
+          >
+            <Download className="size-5 text-white" strokeWidth={2.2} />
+          </button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Export Data
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* 4. Tambah Kurikulum Button (Vivid Emerald Squircle + Floating Tooltip) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Tambah Kurikulum Baru"
-          aria-label="Tambah Kurikulum Baru"
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-          onClick={handleOpenFormTambah}
-        >
-          <Plus className="size-5 text-white" strokeWidth={2.5} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Tambah Kurikulum
+      {canCreate && (
+        <div className="group relative inline-flex">
+          <button
+            type="button"
+            title="Tambah Kurikulum Baru"
+            aria-label="Tambah Kurikulum Baru"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+            onClick={handleOpenFormTambah}
+          >
+            <Plus className="size-5 text-white" strokeWidth={2.5} />
+          </button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Tambah Kurikulum
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 
@@ -712,7 +773,7 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
           </motion.div>
         )}
 
-        {/* ── TailGrids Modern Hero Header Card ─────────────────────────── */}
+        {/* ── HeroUI Modern Hero Header Card ─────────────────────────── */}
         {!shouldHideHeader && (
           <motion.div
             variants={itemVariants}
@@ -736,7 +797,7 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
                       Manajemen Kurikulum
                     </span>
                   </div>
-                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                     Kelola seluruh kurikulum pendidikan, integrasi standar SIT & Nasional, serta pengaturan jenjang setiap unit pendidikan.
                   </p>
                 </div>
@@ -808,120 +869,124 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
             filters={
               <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
                 {/* Filter Unit Pendidikan */}
-                <div className="relative w-full sm:w-auto min-w-[140px]">
-                  <select
-                    aria-label="Filter unit pendidikan"
-                    value={selectedUnitFilter}
-                    onChange={(e) => {
-                      setSelectedUnitFilter(e.target.value)
-                      setPage(1)
-                    }}
-                    disabled={!canViewAllUnits && availableUnitOptions.length <= 1}
-                    className="w-full h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 disabled:opacity-60"
-                  >
-                    {canViewAllUnits && <option value="">Semua Unit Pendidikan</option>}
-                    {availableUnitOptions.map((unit) => (
-                      <option key={unit.id} value={unit.id}>
-                        {unit.name || unit.nama}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={selectedUnitFilter}
+                  onChange={(val) => {
+                    setSelectedUnitFilter(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    ...(canViewAllUnits ? [{ value: '', label: 'Semua Unit Pendidikan' }] : []),
+                    ...availableUnitOptions.map((unit) => ({
+                      value: String(unit.id),
+                      label: unit.name || unit.nama,
+                    })),
+                  ]}
+                  disabled={!canViewAllUnits && availableUnitOptions.length <= 1}
+                  placeholder="Semua Unit Pendidikan"
+                  icon={Building2}
+                  ariaLabel="Filter unit pendidikan"
+                  size="sm"
+                  searchable
+                  className="w-full sm:w-auto min-w-[150px]"
+                />
 
                 {/* Filter Tahun Ajaran */}
-                <div className="relative w-full sm:w-auto min-w-[140px]">
-                  <select
-                    aria-label="Filter tahun ajaran"
-                    value={selectedTahunFilter}
-                    onChange={(e) => {
-                      setSelectedTahunFilter(e.target.value)
-                      setPage(1)
-                    }}
-                    className="w-full h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Tahun Ajaran</option>
-                    {tahunAjaranOptions.map((tahun) => (
-                      <option key={tahun.id} value={tahun.id}>
-                        {tahun.name || tahun.nama} {tahun.is_active ? '(Aktif)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={selectedTahunFilter}
+                  onChange={(val) => {
+                    setSelectedTahunFilter(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    { value: '', label: 'Semua Tahun Ajaran' },
+                    ...tahunAjaranOptions.map((tahun) => ({
+                      value: String(tahun.id),
+                      label: `${tahun.name || tahun.nama}${tahun.is_active ? ' (Aktif)' : ''}`,
+                    })),
+                  ]}
+                  placeholder="Semua Tahun Ajaran"
+                  icon={Calendar}
+                  ariaLabel="Filter tahun ajaran"
+                  size="sm"
+                  searchable
+                  className="w-full sm:w-auto min-w-[150px]"
+                />
 
                 {/* Filter Jenjang Kurikulum */}
-                <div className="relative w-full sm:w-auto min-w-[140px]">
-                  <select
-                    aria-label="Filter jenjang kurikulum"
-                    value={selectedJenjangFilter}
-                    onChange={(e) => {
-                      setSelectedJenjangFilter(e.target.value)
-                      setPage(1)
-                    }}
-                    className="w-full h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Jenjang</option>
-                    {availableJenjangOptions.map((j) => (
-                      <option key={j} value={j}>{j}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={selectedJenjangFilter}
+                  onChange={(val) => {
+                    setSelectedJenjangFilter(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    { value: '', label: 'Semua Jenjang' },
+                    ...availableJenjangOptions.map((j) => ({ value: j, label: j })),
+                  ]}
+                  placeholder="Semua Jenjang"
+                  icon={GraduationCap}
+                  ariaLabel="Filter jenjang kurikulum"
+                  size="sm"
+                  searchable
+                  className="w-full sm:w-auto min-w-[140px]"
+                />
 
                 {/* Filter Jenis Kurikulum */}
-                <div className="relative w-full sm:w-auto min-w-[140px]">
-                  <select
-                    aria-label="Filter jenis kurikulum"
-                    value={selectedJenisFilter}
-                    onChange={(e) => {
-                      setSelectedJenisFilter(e.target.value)
-                      setPage(1)
-                    }}
-                    className="w-full h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Jenis</option>
-                    {availableJenisOptions.map((j) => (
-                      <option key={j} value={j}>{j}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={selectedJenisFilter}
+                  onChange={(val) => {
+                    setSelectedJenisFilter(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    { value: '', label: 'Semua Jenis' },
+                    ...availableJenisOptions.map((j) => ({ value: j, label: j })),
+                  ]}
+                  placeholder="Semua Jenis"
+                  icon={Layers}
+                  ariaLabel="Filter jenis kurikulum"
+                  size="sm"
+                  searchable
+                  className="w-full sm:w-auto min-w-[140px]"
+                />
 
                 {/* Filter Status */}
-                <div className="relative w-full sm:w-auto min-w-[140px]">
-                  <select
-                    aria-label="Filter status kurikulum"
-                    value={selectedStatusFilter}
-                    onChange={(e) => {
-                      setSelectedStatusFilter(e.target.value)
-                      setPage(1)
-                    }}
-                    className="w-full h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Semua Status</option>
-                    <option value="aktif">Aktif</option>
-                    <option value="tidak_aktif">Nonaktif</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={selectedStatusFilter}
+                  onChange={(val) => {
+                    setSelectedStatusFilter(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    { value: '', label: 'Semua Status' },
+                    { value: 'aktif', label: 'Aktif' },
+                    { value: 'tidak_aktif', label: 'Nonaktif' },
+                  ]}
+                  placeholder="Semua Status"
+                  icon={CheckCircle2}
+                  ariaLabel="Filter status kurikulum"
+                  size="sm"
+                  className="w-full sm:w-auto min-w-[130px]"
+                />
 
                 {/* Filter Data Terhapus */}
-                <div className="relative w-full sm:w-auto min-w-[140px]">
-                  <select
-                    aria-label="Filter data terhapus"
-                    value={denganSampahFilter}
-                    onChange={(e) => {
-                      setDenganSampahFilter(e.target.value)
-                      setPage(1)
-                    }}
-                    className="w-full h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
-                  >
-                    <option value="">Data Aktif</option>
-                    <option value="true">Termasuk Terhapus</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </div>
+                <HeroUiFilterSelect
+                  value={denganSampahFilter}
+                  onChange={(val) => {
+                    setDenganSampahFilter(val)
+                    setPage(1)
+                  }}
+                  options={[
+                    { value: '', label: 'Data Aktif' },
+                    { value: 'true', label: 'Termasuk Terhapus' },
+                  ]}
+                  placeholder="Status Data"
+                  icon={Trash2}
+                  ariaLabel="Filter data terhapus"
+                  size="sm"
+                  className="w-full sm:w-auto min-w-[140px]"
+                />
 
                 {/* Reset Filter Button */}
                 {hasActiveFilters && (
@@ -966,7 +1031,7 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
                 page={page}
                 perPage={perPage}
                 onDetail={handleOpenDetail}
-                onEdit={handleOpenFormEdit}
+                onEdit={canUpdate ? handleOpenFormEdit : undefined}
                 onDelete={canDelete ? handleConfirmDelete : undefined}
                 onRestore={canDelete ? handleConfirmRestore : undefined}
               />
@@ -999,6 +1064,8 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
         onClose={() => setIsImportModalOpen(false)}
         onImport={(rows) => importMutation.mutate(rows)}
         isSubmitting={importMutation.isPending}
+        defaultUnitId={selectedUnitFilter || (!canViewAllUnits ? effectiveUserUnitId : '')}
+        defaultTahunAjaranId={selectedTahunFilter || ''}
       />
 
       {/* ══════════════════════════════════════════════════════════════════

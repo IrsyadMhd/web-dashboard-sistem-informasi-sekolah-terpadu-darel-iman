@@ -48,7 +48,7 @@ import { managementDashboardService } from '../services/managementDashboardServi
 
 const COLORS = ['#0E5C44', '#EF4444']
 
-// ── MODERN CARD TONES (TailGrids Emerald Multi-Tone System) ──
+// ── MODERN CARD TONES (HeroUI Emerald Multi-Tone System) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -251,7 +251,7 @@ export default function GuruTahfizhDashboardPage() {
           <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Dashboard Guru Tahfizh' }]} />
         </div>
 
-        {/* MODERN HERO CARD HEADER (TailGrids Vivid Emerald Spec) */}
+        {/* MODERN HERO CARD HEADER (HeroUI Vivid Emerald Spec) */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="print:hidden">
           <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-4 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
             <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
@@ -275,7 +275,7 @@ export default function GuruTahfizhDashboardPage() {
                   <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Dashboard Guru Tahfizh / Musyrif
                   </h1>
-                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                     Monitor setoran hafalan Al-Qur'an, murajaah harian, dan capaian target santri/siswa binaan secara terpadu.
                   </p>
                 </div>

@@ -54,12 +54,24 @@ export const employeeService = {
   },
 
   importData: async (formData) => {
+    if (formData instanceof FormData) {
+      const { data } = await api.post('/employees/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return data
+    }
     const { data } = await api.post('/employees/import', formData)
     return data
   },
 
-  prosesImport: async (rows) => {
-    const { data } = await api.post('/employees/import', { data: rows })
+  prosesImport: async (payload) => {
+    if (payload instanceof FormData) {
+      const { data } = await api.post('/employees/import', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return data
+    }
+    const { data } = await api.post('/employees/import', { data: payload })
     return data
   },
 

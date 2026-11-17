@@ -25,20 +25,23 @@ export default function AppPageHeader({
     return (
       <header
         className={cn(
-          'relative overflow-hidden rounded-[16px] sm:rounded-[18px] border border-slate-200/80 bg-white p-3.5 sm:p-5 md:p-6 shadow-sm transition-all duration-200 dark:border-slate-800 dark:bg-[#1B2433]',
+          'relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-white p-4 sm:p-5 md:p-6 shadow-md shadow-emerald-500/10 transition-all duration-200 dark:border-emerald-700/40 dark:bg-gradient-to-r dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
           className
         )}
       >
-        <div className="flex flex-col justify-between gap-3.5 md:flex-row md:items-center">
-          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+        {/* Subtle Ambient Glow */}
+        <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-emerald-400/15 blur-2xl dark:bg-emerald-500/10" />
+
+        <div className="relative z-10 flex flex-col justify-between gap-3.5 md:flex-row md:items-center">
+          <div className="flex min-w-0 items-start gap-3.5 sm:gap-4">
             {Icon && (
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-[#0E5C44]/10 text-[#0E5C44] dark:bg-[#3FBF75]/20 dark:text-[#3FBF75]">
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40">
                 <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
             )}
             <div className="min-w-0 flex-1">
               {eyebrow && (
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#0E5C44] dark:text-[#3FBF75]">
+                <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300 mb-0.5">
                   {eyebrow}
                 </p>
               )}
@@ -46,7 +49,7 @@ export default function AppPageHeader({
                 {title}
               </h1>
               {description && (
-                <p className="mt-1 max-w-3xl text-xs text-slate-500 sm:text-sm leading-relaxed dark:text-slate-400">
+                <p className="mt-1 w-full text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
                   {description}
                 </p>
               )}
@@ -55,7 +58,7 @@ export default function AppPageHeader({
                   {chips.map((chip, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      className="inline-flex items-center gap-1 rounded-full border border-emerald-300/60 bg-emerald-50/80 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:border-emerald-700/60 dark:bg-emerald-950/60 dark:text-emerald-200"
                     >
                       {chip}
                     </span>
@@ -100,7 +103,7 @@ export default function AppPageHeader({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-[16px] sm:rounded-[18px] bg-gradient-to-r from-[#083A2A] via-[#0E5C44] to-[#1E8E5A] p-3.5 sm:p-5 md:p-6 text-white shadow-md shadow-[#0E5C44]/10 dark:shadow-none',
+        'relative overflow-hidden rounded-[22px] bg-gradient-to-r from-[#083A2A] via-[#0E5C44] to-[#1E8E5A] p-4 sm:p-5 md:p-6 text-white shadow-md shadow-[#0E5C44]/15 dark:shadow-none border border-emerald-400/30',
         className
       )}
     >
@@ -130,7 +133,7 @@ export default function AppPageHeader({
           )}
           <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold tracking-tight text-white leading-tight">{title}</h1>
           {description && (
-            <p className="max-w-3xl text-xs leading-relaxed text-emerald-100/95 sm:text-sm">{description}</p>
+            <p className="w-full text-xs leading-relaxed text-emerald-100/95 sm:text-sm">{description}</p>
           )}
           {chips.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 pt-1">

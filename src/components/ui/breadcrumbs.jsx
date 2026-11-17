@@ -9,7 +9,7 @@ import { usePengaturanStore, useLabel } from '../../stores/pengaturanStore'
 import { cn } from '../../lib/utils'
 
 /**
- * Canonical Breadcrumb Navigation Component for SIMSIT based on HeroUI Breadcrumbs.
+ * Canonical Breadcrumb Navigation Component for Dareliman Edu based on HeroUI Breadcrumbs.
  * Integrates global system settings (divider, show home icon, emerald styling).
  */
 export function Breadcrumbs({

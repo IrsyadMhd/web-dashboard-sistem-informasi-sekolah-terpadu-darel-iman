@@ -58,7 +58,9 @@ import {
   Save,
   Scan,
   ScanFace,
+  School,
   Search,
+  ShieldAlert,
   Sparkles,
   Trash2,
   TrendingUp,
@@ -144,10 +146,16 @@ function HeroUiWorkspaceSelect({
   searchable = false,
   disabled = false,
   badge = null,
+  align = 'left',
+  placement = 'bottom-start',
+  popoverProps = {},
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef(null)
+
+  const effectivePlacement = popoverProps?.placement || placement
+  const effectiveAlign = popoverProps?.align || align
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -195,7 +203,7 @@ function HeroUiWorkspaceSelect({
   const hasValue = value !== '' && value !== 'all' && value !== 'semua' && value !== undefined && value !== null
 
   return (
-    <div className={`relative ${className}`} ref={containerRef} id={id ? `${id}-container` : undefined}>
+    <div className={`relative ${isOpen ? 'z-50' : 'z-10'} ${className}`} ref={containerRef} id={id ? `${id}-container` : undefined}>
       <button
         type="button"
         id={id}
@@ -206,17 +214,16 @@ function HeroUiWorkspaceSelect({
             setSearch('')
           }
         }}
-        className={`h-9.5 flex items-center justify-between gap-2.5 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
-          isOpen
-            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
-            : hasValue
-            ? 'border-emerald-300 bg-emerald-50/90 text-emerald-950 dark:border-emerald-700/80 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold shadow-2xs'
-            : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-400 hover:bg-slate-50/80 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-emerald-500/60 shadow-2xs'
-        } ${buttonClassName}`}
+        className={`h-9.5 flex items-center justify-between gap-2.5 rounded-xl border px-3 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 shadow-2xs ${isOpen
+          ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/25 dark:border-emerald-400 dark:bg-slate-900 dark:ring-emerald-400/25 text-slate-900 dark:text-white shadow-xs'
+          : hasValue
+            ? 'border-emerald-500/80 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50 text-emerald-950 dark:border-emerald-600/80 dark:bg-gradient-to-r dark:from-emerald-950/60 dark:via-teal-950/40 dark:to-emerald-950/60 dark:text-emerald-200 font-extrabold shadow-emerald-500/10'
+            : 'border-slate-200 dark:border-slate-800 bg-white text-slate-700 hover:border-emerald-400 dark:bg-[#111827] dark:text-slate-200 dark:hover:border-emerald-600'
+          } ${buttonClassName}`}
       >
         <div className="flex items-center gap-2 min-w-0">
           {IconComponent && (
-            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <IconComponent className={`size-3.5 shrink-0 ${hasValue ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`} />
           )}
           {label && (
             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
@@ -227,47 +234,47 @@ function HeroUiWorkspaceSelect({
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           {badge && (
-            <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+            <span className="shrink-0 rounded-md bg-emerald-100/90 text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-700/60 px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider">
               {badge}
             </span>
           )}
         </div>
         <ChevronDown
-          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+            }`}
         />
       </button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: -4 }}
+            initial={{ opacity: 0, scale: 0.96, y: effectivePlacement.startsWith('top') ? 4 : -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: -4 }}
+            exit={{ opacity: 0, scale: 0.96, y: effectivePlacement.startsWith('top') ? 4 : -4 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute left-0 top-full mt-1.5 z-[100] ${popoverWidth} min-w-[220px] max-w-sm overflow-hidden rounded-2xl border border-slate-200/90 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-1.5 shadow-2xl shadow-slate-900/15 dark:shadow-black/50`}
+            className={`absolute ${effectiveAlign === 'right' ? 'right-0' : 'left-0'} ${effectivePlacement.startsWith('top') ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+              } z-[100] ${popoverWidth} min-w-[200px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-1.5 shadow-2xl shadow-emerald-950/20 dark:border-emerald-700/50 dark:shadow-black/60`}
           >
             {shouldSearch && (
-              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+              <div className="p-1.5 border-b border-slate-100 dark:border-slate-800 mb-1">
                 <div className="relative">
                   <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Cari..."
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    placeholder="Ketik untuk mencari..."
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/80 pl-8 pr-2.5 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-2xs"
                     autoFocus
                   />
                 </div>
               </div>
             )}
 
-            <div className="max-h-60 overflow-y-auto space-y-0.5">
+            <div className="max-h-60 overflow-y-auto space-y-0.5 pr-0.5">
               {filteredOptions.length === 0 ? (
-                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
-                  Tidak ada data
+                <div className="px-3 py-4 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+                  Tidak ada data yang cocok
                 </div>
               ) : (
                 filteredOptions.map((opt) => {
@@ -281,22 +288,30 @@ function HeroUiWorkspaceSelect({
                         setIsOpen(false)
                         setSearch('')
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
-                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
-                      }`}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-bold transition-all text-left cursor-pointer ${isSelected
+                        ? 'bg-gradient-to-r from-emerald-50 to-teal-50/70 text-emerald-950 dark:from-emerald-950/80 dark:to-teal-950/50 dark:text-emerald-200 font-black'
+                        : 'text-slate-700 hover:bg-emerald-50/60 hover:text-emerald-900 dark:text-slate-200 dark:hover:bg-slate-800/80 dark:hover:text-emerald-300'
+                        }`}
                     >
-                      <div className="truncate pr-2">
-                        <div className="truncate font-semibold">{opt.label}</div>
+                      <div className="truncate pr-2 flex-1">
+                        <div className="truncate flex items-center gap-1.5">
+                          <span className="truncate">{opt.label}</span>
+                          {opt.badge && (
+                            <span className="shrink-0 text-[9.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/40">
+                              {opt.badge}
+                            </span>
+                          )}
+                        </div>
                         {opt.subtext && (
-                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
+                          <div className="text-[10.5px] text-slate-400 dark:text-slate-500 font-medium truncate mt-0.5">
                             {opt.subtext}
                           </div>
                         )}
                       </div>
                       {isSelected && (
-                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <div className="size-5 rounded-md bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                          <Check className="size-3.5" strokeWidth={3} />
+                        </div>
                       )}
                     </button>
                   )
@@ -415,16 +430,15 @@ function ModernWorkspaceKpiCard({
       onKeyDown={
         onClick
           ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onClick()
-              }
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onClick()
             }
+          }
           : undefined
       }
-      className={`group relative flex flex-col justify-between overflow-hidden rounded-[20px] transition-all duration-300 shadow-xs hover:shadow-xl ${t.card} ${
-        active ? t.activeCard : ''
-      } ${onClick ? 'cursor-pointer' : ''}`}
+      className={`group relative flex flex-col justify-between overflow-hidden rounded-[20px] transition-all duration-300 shadow-xs hover:shadow-xl ${t.card} ${active ? t.activeCard : ''
+        } ${onClick ? 'cursor-pointer' : ''}`}
     >
       {/* Top Accent Gradient Line */}
       <div className={`h-1.5 w-full ${t.topBar} shrink-0`} />
@@ -734,7 +748,7 @@ const MateriModalForm = React.memo(function MateriModalForm({
   )
 })
 
-export const calculateScheduleStatus = (schedule, selectedDate = '') => {
+const calculateScheduleStatus = (schedule, selectedDate = '') => {
   if (!schedule) return { label: 'Selesai', isActive: false, className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
   const today = new Date()
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
@@ -794,6 +808,10 @@ export default function TeacherTeachingWorkspacePage() {
   // Auth Store & Role Evaluation
   const user = useAuthStore((state) => state.user)
   const userRoles = React.useMemo(() => user?.roles || [], [user])
+  const userPermissions = React.useMemo(
+    () => (Array.isArray(user?.permissions) ? user.permissions : []),
+    [user]
+  )
 
   // Site Settings Store (Database Logo Yayasan & Identitas Resmi)
   const sitePengaturan = usePengaturanStore((state) => state.pengaturan)
@@ -802,25 +820,60 @@ export default function TeacherTeachingWorkspacePage() {
     muatPengaturan()
   }, [muatPengaturan])
 
-  const isPengurusYayasan = React.useMemo(() => hasAnyRole(userRoles, [
-    'Yayasan', 'Ketua Yayasan', 'Pengurus Yayasan', 'Sekretaris Yayasan', 'Bendahara Yayasan',
-    'ketua_yayasan', 'pengurus_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'Super Admin', 'SuperAdmin', 'Admin'
-  ]), [userRoles])
+  // Akses Lingkup Tahfizh:
+  // 1. Global Scope: Superadmin, Admin, Pengurus Yayasan, dan Divisi Pendidikan
+  //    (Dapat melihat seluruh unit dan menyortir masing-masing rincian unit pendidikan)
+  const isGlobalTahfizhScope = React.useMemo(() => {
+    return hasAnyRole(userRoles, [
+      ...(ROLES.SUPER_ADMIN || []),
+      ...(ROLES.ADMIN || []),
+      ...(ROLES.YAYASAN || []),
+      ...(ROLES.DIVISI || []),
+      'Super Admin', 'SuperAdmin', 'super_admin',
+      'Admin', 'admin', 'administrator',
+      'Yayasan', 'Ketua Yayasan', 'Pengurus Yayasan', 'Sekretaris Yayasan', 'Bendahara Yayasan', 'Pembina Yayasan', 'Pengawas Yayasan',
+      'ketua_yayasan', 'pengurus_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan',
+      'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'kepala_bidang_pendidikan',
+      'Divisi Kurikulum', 'Divisi Kesiswaan', 'divisi-pendidikan',
+    ])
+  }, [userRoles])
 
-  const isKepalaSekolahOrDivisiPendidikan = React.useMemo(() => !isPengurusYayasan && hasAnyRole(userRoles, [
-    'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek',
-    'Divisi Pendidikan', 'divisi_pendidikan', 'Kepala Bidang Pendidikan', 'Divisi Kurikulum'
-  ]), [isPengurusYayasan, userRoles])
+  // Kompatibilitas mundur
+  const isPengurusYayasan = isGlobalTahfizhScope
 
-  const isGuru = !isPengurusYayasan && !isKepalaSekolahOrDivisiPendidikan
+  // 2. Unit-Locked Scope: Kepala Sekolah
+  const isKepalaSekolahOrDivisiPendidikan = React.useMemo(() => {
+    return !isGlobalTahfizhScope && hasAnyRole(userRoles, [
+      ...(ROLES.KEPALA_SEKOLAH || []),
+      'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek'
+    ])
+  }, [isGlobalTahfizhScope, userRoles])
+
+  // 3. Unit-Locked Scope: Guru, TU, Musyrif
+  const isGuru = !isGlobalTahfizhScope && !isKepalaSekolahOrDivisiPendidikan
+
+  // 4. Hak Akses Manajerial & Supervisi (Super Admin, Waka Kurikulum, Kepala Sekolah, Divisi, Yayasan)
+  const isManagerial = React.useMemo(() => {
+    return isGlobalTahfizhScope || isKepalaSekolahOrDivisiPendidikan || hasAnyRole(userRoles, [
+      'Super Admin', 'SuperAdmin', 'super_admin',
+      'Admin', 'admin', 'administrator',
+      'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek',
+      'Wakil Kepala Sekolah', 'Waka Kurikulum', 'waka_kurikulum', 'waka',
+      'Wakil Kesiswaan', 'Waka Kesiswaan', 'waka_kesiswaan',
+      'Divisi Pendidikan', 'divisi_pendidikan'
+    ])
+  }, [isGlobalTahfizhScope, isKepalaSekolahOrDivisiPendidikan, userRoles])
 
   // Multi-unit Tahfizh Leaderboard state
   const [educationUnits, setEducationUnits] = useState([])
   const [selectedTahfizhUnit, setSelectedTahfizhUnit] = useState('semua')
   const [tahfizhSearch, setTahfizhSearch] = useState('')
   const debouncedTahfizhSearch = useDebounce(tahfizhSearch, 350)
-  const [tahfizhPage, setTahfizhPage] = useState(1)
+  const [tahfizhFilterClass, setTahfizhFilterClass] = useState('all')
+  const [tahfizhSortOrder, setTahfizhSortOrder] = useState('highest')
   const TAHFIZH_PER_PAGE = 10
+  const [tahfizhPerPage, setTahfizhPerPage] = useState(10)
+  const [tahfizhPage, setTahfizhPage] = useState(1)
 
   // Primary data states
   const [classes, setClasses] = useState([])
@@ -941,6 +994,23 @@ export default function TeacherTeachingWorkspacePage() {
     isTataUsaha ||
     isWaliKelas
   ), [isPengurusYayasan, isAdminOrSuperAdmin, isKepalaSekolahOrDivisiPendidikan, isTataUsaha, isWaliKelas])
+
+  const canAccessTahfizh = React.useMemo(() => Boolean(
+    isGlobalTahfizhScope ||
+    isAdminOrSuperAdmin ||
+    isKepalaSekolahOrDivisiPendidikan ||
+    userPermissions.includes('teacher.tahfizh.view') ||
+    userPermissions.includes('tahfizh.view') ||
+    userPermissions.includes('tahfizh.report.view')
+  ), [isGlobalTahfizhScope, isAdminOrSuperAdmin, isKepalaSekolahOrDivisiPendidikan, userPermissions])
+
+  const canAccessMutabaah = React.useMemo(() => Boolean(
+    isGlobalTahfizhScope ||
+    isAdminOrSuperAdmin ||
+    isKepalaSekolahOrDivisiPendidikan ||
+    userPermissions.includes('mutabaah.daily.view') ||
+    userPermissions.includes('teacher.mutabaah.view')
+  ), [isGlobalTahfizhScope, isAdminOrSuperAdmin, isKepalaSekolahOrDivisiPendidikan, userPermissions])
 
   // Live Realtime Clock for Attendance & Schedule tracking
   const [currentLiveTime, setCurrentLiveTime] = useState(() => new Date())
@@ -1122,6 +1192,22 @@ export default function TeacherTeachingWorkspacePage() {
   const [editingSoalIdx, setEditingSoalIdx] = useState(null)
   const emptyCatatanForm = { student_id: '', date: new Date().toLocaleDateString('en-CA'), category: 'Akademik', title: '', content: '', priority: 'medium', follow_up: '', visible_to_parent: true, visible_to_student: true }
   const [catatanForm, setCatatanForm] = useState(emptyCatatanForm)
+  const emptyPelanggaranForm = {
+    student_id: '',
+    category_id: '',
+    points: 0,
+    custom_points: 0,
+    transaction_date: new Date().toLocaleDateString('en-CA'),
+    description: '',
+    status: 'tercatat',
+    follow_up: '',
+    refer_bk: false,
+  }
+  const [pelanggaranForm, setPelanggaranForm] = useState(emptyPelanggaranForm)
+  const [disciplineCategories, setDisciplineCategories] = useState([])
+  const [loadingDisciplineCategories, setLoadingDisciplineCategories] = useState(false)
+  const [savingPelanggaran, setSavingPelanggaran] = useState(false)
+  const [pelanggaranCategorySearch, setPelanggaranCategorySearch] = useState('')
   const [tahfizhForm, setTahfizhForm] = useState({ student_id: '', class_id: '', type: 'Ziyadah', juz: 30, surah_number: '', ayat_start: 1, ayat_end: 1, kelancaran: 'Sangat Lancar', tajwid: 'Baik', makhraj: 'Baik', notes_teacher: '' })
 
   // Weekly Schedule & Filters State
@@ -1214,12 +1300,28 @@ export default function TeacherTeachingWorkspacePage() {
     }
     if (activeTab === 'penilaian') { fetchStudentsForClass(); fetchGrades(); }
     if (activeTab === 'tahfizh' || activeTab === 'rekapan-tahfizh') {
+      if (!canAccessTahfizh) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev)
+          next.set('tab', 'jadwal')
+          return next
+        }, { replace: true })
+        return
+      }
       fetchEducationUnits()
       fetchStudentsForClass()
       fetchTahfizh()
       fetchQuranSurahs()
     }
     if (activeTab === 'mutabaah') {
+      if (!canAccessMutabaah) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev)
+          next.set('tab', 'jadwal')
+          return next
+        }, { replace: true })
+        return
+      }
       fetchStudentsForClass()
     }
     if (activeTab === 'catatan') {
@@ -1283,7 +1385,7 @@ export default function TeacherTeachingWorkspacePage() {
 
   useEffect(() => {
     setTahfizhPage(1)
-  }, [selectedClass, selectedTahfizhUnit, debouncedTahfizhSearch, activeTab])
+  }, [selectedClass, selectedTahfizhUnit, debouncedTahfizhSearch, tahfizhFilterClass, tahfizhSortOrder, tahfizhPerPage, activeTab])
 
   useEffect(() => {
     if (activeTab !== 'catatan') return undefined
@@ -1342,7 +1444,7 @@ export default function TeacherTeachingWorkspacePage() {
       }
 
       const [resClasses, resAllSch] = await Promise.all([
-        api.get('/teacher/classes'),
+        api.get('/teacher/classes').catch(() => null),
         api.get('/teacher/schedules').catch(() => null),
       ])
 
@@ -1352,9 +1454,22 @@ export default function TeacherTeachingWorkspacePage() {
         setSchedules(schList)
       }
 
+      let clsList = resClasses?.data?.data || []
+      if (isManagerial) {
+        // Hak akses manajerial (Super Admin / Waka Kurikulum / Kepala Sekolah / Divisi Pendidikan)
+        // Tetap dapat memilih seluruh rombel di unitnya saat meninjau ruang kerja guru
+        const resAllUnitClasses = await api.get('/kelas', { params: { per_page: 150 } }).catch(() => null)
+        const allCls = resAllUnitClasses?.data?.data || []
+        if (allCls.length > 0) {
+          const classMap = new Map()
+          clsList.forEach((c) => classMap.set(String(c.id), c))
+          allCls.forEach((c) => classMap.set(String(c.id), c))
+          clsList = Array.from(classMap.values()).sort((a, b) => (a.nama_kelas || a.name || '').localeCompare(b.nama_kelas || b.name || ''))
+        }
+      }
+
       let initialClassId = ''
-      if (resClasses?.data?.data) {
-        const clsList = resClasses.data.data
+      if (clsList.length > 0) {
         setClasses(clsList)
 
         // 1. Check URL query parameters (class_id or schedule_id)
@@ -1416,7 +1531,7 @@ export default function TeacherTeachingWorkspacePage() {
         fetchStudentsForClass(initialClassId || null),
         fetchMaterials(),
         fetchAssignments(),
-        fetchTahfizh(),
+        canAccessTahfizh ? fetchTahfizh() : Promise.resolve(),
         fetchStudentNotes(),
       ])
     } catch (e) {
@@ -1469,10 +1584,10 @@ export default function TeacherTeachingWorkspacePage() {
 
         const filteredRawStudents = (classIdToUse && classIdToUse !== 'all')
           ? deduplicatedRawStudents.filter((student) => {
-              const sClassId = student.kelas_id || student.class_id || student.kelas?.id
-              // Strict: hanya siswa dengan kelas_id yang cocok yang lolos
-              return !!sClassId && String(sClassId) === String(classIdToUse)
-            })
+            const sClassId = student.kelas_id || student.class_id || student.kelas?.id
+            // Strict: hanya siswa dengan kelas_id yang cocok yang lolos
+            return !!sClassId && String(sClassId) === String(classIdToUse)
+          })
           : deduplicatedRawStudents
 
         const stdList = (filteredRawStudents || []).map((student) => {
@@ -1532,6 +1647,7 @@ export default function TeacherTeachingWorkspacePage() {
               nilai_uts: item.nilai_uts ?? item.score_midterm ?? '',
               nilai_uas: item.nilai_uas ?? item.score_final ?? '',
               nilai_akhir: item.nilai_akhir ?? item.final_score ?? '',
+              catatan: item.notes ?? item.catatan ?? item.metadata?.notes ?? '',
             }
           }
         })
@@ -1574,11 +1690,11 @@ export default function TeacherTeachingWorkspacePage() {
 
       // Hitung rentang tanggal berdasarkan attendancePeriodFilter
       if (attendancePeriodFilter === 'harian') {
-        const targetDate = attendanceDateFilter || '2026-09-10'
+        const targetDate = attendanceDateFilter || getTodayDateString()
         params.date_from = targetDate
         params.date_to = targetDate
       } else if (attendancePeriodFilter === 'mingguan') {
-        let refDate = new Date(attendanceDateFilter || '2026-09-10')
+        let refDate = new Date(attendanceDateFilter || getTodayDateString())
         if (attendanceWeekFilter && attendanceWeekFilter.startsWith('pekan_') && attendanceWeekFilter !== 'pekan_ini') {
           const weekNum = parseInt(attendanceWeekFilter.replace('pekan_', ''), 10) || 1
           const baseMonday = new Date('2026-07-06T00:00:00')
@@ -1783,6 +1899,52 @@ export default function TeacherTeachingWorkspacePage() {
     } : { ...emptyCatatanForm, student_id: student?.id || '' })
     setModalType('catatan')
     setShowModal(true)
+  }
+
+  const loadDisciplineCategories = useCallback(async () => {
+    try {
+      setLoadingDisciplineCategories(true)
+      const res = await api.get('/teacher/discipline-categories?type=violation')
+      const items = res.data?.data || []
+      setDisciplineCategories(items)
+      return items
+    } catch (err) {
+      console.warn('Gagal memuat master pasal kedisiplinan TU:', err)
+      return []
+    } finally {
+      setLoadingDisciplineCategories(false)
+    }
+  }, [])
+
+  const openPelanggaranModal = async (student = null) => {
+    let cats = disciplineCategories
+    if (cats.length === 0) {
+      cats = await loadDisciplineCategories()
+    }
+    const defaultCat = cats.length > 0 ? cats[0] : null
+    const targetStudentId = student?.id || (students.length > 0 ? students[0].id : '')
+    setPelanggaranForm({
+      ...emptyPelanggaranForm,
+      student_id: targetStudentId,
+      category_id: defaultCat?.id || '',
+      points: Math.abs(defaultCat?.point_weight || 5),
+      custom_points: Math.abs(defaultCat?.point_weight || 5),
+      transaction_date: new Date().toLocaleDateString('en-CA'),
+    })
+    setPelanggaranCategorySearch('')
+    setModalType('pelanggaran')
+    setShowModal(true)
+  }
+
+  const handlePelanggaranCategoryChange = (catId) => {
+    const found = disciplineCategories.find((c) => String(c.id) === String(catId))
+    const pts = Math.abs(found?.point_weight || found?.default_points || 5)
+    setPelanggaranForm((prev) => ({
+      ...prev,
+      category_id: catId,
+      points: pts,
+      custom_points: pts,
+    }))
   }
 
   const openCatatanDetail = (note) => {
@@ -2063,7 +2225,7 @@ export default function TeacherTeachingWorkspacePage() {
   }
 
   // All 10 Horizontal Module Card Config Objects
-    const gradedStudentCount = students.filter((s) => {
+  const gradedStudentCount = students.filter((s) => {
     const g = gradesData[s.id]
     return g && (g.nilai_tugas !== '' || g.nilai_akhir !== '' || g.nilai_uts !== '' || g.nilai_uas !== '')
   }).length
@@ -2147,45 +2309,53 @@ export default function TeacherTeachingWorkspacePage() {
       progress: students.length > 0 ? Math.round((gradedStudentCount / students.length) * 100) : 0,
       quickText: 'Input Nilai',
     },
-    {
-      id: 'tahfizh',
-      title: 'Tahfizh Al-Qur\'an',
-      icon: GraduationCap,
-      iconBox: 'bg-gradient-to-br from-teal-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-teal-600/30 border border-teal-300/40',
-      cardClass: 'border-teal-200/90 bg-gradient-to-br from-teal-50/80 to-white dark:from-teal-950/40 dark:to-slate-900 dark:border-teal-800/60 hover:border-teal-400 hover:shadow-md',
-      count: tahfizhLogs.length,
-      badge: `${tahfizhLogs.length} Setoran`,
-      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/70',
-      sub: 'Progress Hafalan',
-      progress: tahfizhLogs.length > 0 ? 100 : 0,
-      quickText: 'Input Tahfizh',
-    },
-    {
-      id: 'rekapan-tahfizh',
-      title: 'Rekapan Tahfizh',
-      icon: FileSpreadsheet,
-      iconBox: 'bg-gradient-to-br from-emerald-600 via-teal-600 to-teal-800 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40',
-      cardClass: 'border-emerald-200/90 bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-950/40 dark:to-slate-900 dark:border-emerald-800/60 hover:border-emerald-400 hover:shadow-md',
-      count: 'Laporan',
-      badge: 'Rekap & Cetak',
-      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/70',
-      sub: 'Rekapitulasi Hafalan',
-      progress: 100,
-      quickText: 'Buka Rekapan',
-    },
-    {
-      id: 'mutabaah',
-      title: 'Mutabaah Yaumiyyah',
-      icon: Heart,
-      iconBox: 'bg-gradient-to-br from-pink-500 via-rose-500 to-rose-600 text-white shadow-md shadow-pink-600/30 border border-pink-300/40',
-      cardClass: 'border-pink-200/90 bg-gradient-to-br from-pink-50/80 to-white dark:from-pink-950/40 dark:to-slate-900 dark:border-pink-800/60 hover:border-pink-400 hover:shadow-md',
-      count: 'Dinamis',
-      badge: 'Sesuai Template',
-      badgeColor: 'bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300 border border-pink-200/70',
-      sub: 'Worship Checklist',
-      progress: 0,
-      quickText: 'Input Mutabaah',
-    },
+    ...(canAccessTahfizh
+      ? [
+        {
+          id: 'tahfizh',
+          title: 'Tahfizh Al-Qur\'an',
+          icon: GraduationCap,
+          iconBox: 'bg-gradient-to-br from-teal-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-teal-600/30 border border-teal-300/40',
+          cardClass: 'border-teal-200/90 bg-gradient-to-br from-teal-50/80 to-white dark:from-teal-950/40 dark:to-slate-900 dark:border-teal-800/60 hover:border-teal-400 hover:shadow-md',
+          count: tahfizhLogs.length,
+          badge: `${tahfizhLogs.length} Setoran`,
+          badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/70',
+          sub: 'Progress Hafalan',
+          progress: tahfizhLogs.length > 0 ? 100 : 0,
+          quickText: 'Input Tahfizh',
+        },
+        {
+          id: 'rekapan-tahfizh',
+          title: 'Rekapan Tahfizh',
+          icon: FileSpreadsheet,
+          iconBox: 'bg-gradient-to-br from-emerald-600 via-teal-600 to-teal-800 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40',
+          cardClass: 'border-emerald-200/90 bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-950/40 dark:to-slate-900 dark:border-emerald-800/60 hover:border-emerald-400 hover:shadow-md',
+          count: 'Laporan',
+          badge: 'Rekap & Cetak',
+          badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/70',
+          sub: 'Rekapitulasi Hafalan',
+          progress: 100,
+          quickText: 'Buka Rekapan',
+        },
+      ]
+      : []),
+    ...(canAccessMutabaah
+      ? [
+        {
+          id: 'mutabaah',
+          title: 'Mutabaah Yaumiyyah',
+          icon: Heart,
+          iconBox: 'bg-gradient-to-br from-pink-500 via-rose-500 to-rose-600 text-white shadow-md shadow-pink-600/30 border border-pink-300/40',
+          cardClass: 'border-pink-200/90 bg-gradient-to-br from-pink-50/80 to-white dark:from-pink-950/40 dark:to-slate-900 dark:border-pink-800/60 hover:border-pink-400 hover:shadow-md',
+          count: 'Dinamis',
+          badge: 'Sesuai Template',
+          badgeColor: 'bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300 border border-pink-200/70',
+          sub: 'Worship Checklist',
+          progress: 0,
+          quickText: 'Input Mutabaah',
+        },
+      ]
+      : []),
     {
       id: 'catatan',
       title: 'Catatan Siswa',
@@ -2487,8 +2657,8 @@ export default function TeacherTeachingWorkspacePage() {
       student.metadata?.qr_code,
       student.metadata?.rfid_uid,
       student.nama_lengkap,
-    ].some((value) => value != null && String(value).trim().toLowerCase() === cardCode)) || 
-    students.find((s) => cardCode.length > 2 && (String(s.nis || '').includes(cardCode) || String(s.nisn || '').includes(cardCode))) || null
+    ].some((value) => value != null && String(value).trim().toLowerCase() === cardCode)) ||
+      students.find((s) => cardCode.length > 2 && (String(s.nis || '').includes(cardCode) || String(s.nisn || '').includes(cardCode))) || null
   }
 
   const identifyStudentCard = async (rawIdentifier, method = selectedMethod) => {
@@ -3004,10 +3174,10 @@ export default function TeacherTeachingWorkspacePage() {
       const rawStatus = (item.status_hadir || item.status || 'Hadir').toLowerCase()
       const normalizedStatus = rawStatus === 'alpa' || rawStatus === 'alpha' ? 'Alpha'
         : rawStatus === 'izin' ? 'Izin'
-        : rawStatus === 'sakit' ? 'Sakit'
-        : rawStatus === 'terlambat' ? 'Terlambat'
-        : rawStatus === 'hadir' ? 'Hadir'
-        : 'Belum Dicatat'
+          : rawStatus === 'sakit' ? 'Sakit'
+            : rawStatus === 'terlambat' ? 'Terlambat'
+              : rawStatus === 'hadir' ? 'Hadir'
+                : 'Belum Dicatat'
       initialMap[sId] = {
         status: normalizedStatus,
         notes: item.keterangan || item.notes || '',
@@ -3295,10 +3465,10 @@ export default function TeacherTeachingWorkspacePage() {
       const rawStatus = (att?.status_hadir || att?.status || (sDateStr === todayStr ? curRecord.status : 'Belum Dicatat') || 'Belum Dicatat').toLowerCase()
       const titleStatus = rawStatus === 'hadir' ? 'Hadir'
         : rawStatus === 'terlambat' ? 'Terlambat'
-        : rawStatus === 'izin' ? 'Izin'
-        : rawStatus === 'sakit' ? 'Sakit'
-        : rawStatus === 'alpa' || rawStatus === 'alpha' ? 'Alpha'
-        : 'Belum Dicatat'
+          : rawStatus === 'izin' ? 'Izin'
+            : rawStatus === 'sakit' ? 'Sakit'
+              : rawStatus === 'alpa' || rawStatus === 'alpha' ? 'Alpha'
+                : 'Belum Dicatat'
 
       const timeStr = att?.waktu_presensi
         ? new Date(att.waktu_presensi).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
@@ -3477,7 +3647,7 @@ export default function TeacherTeachingWorkspacePage() {
       const res = await api.get(url)
       const raw = res?.data?.data
       const list = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : [])
-      
+
       const studentTugasMap = {}
       const studentKuisMap = {}
       list.forEach((sub) => {
@@ -3504,7 +3674,7 @@ export default function TeacherTeachingWorkspacePage() {
           const avgTugas = tScores && tScores.length > 0 ? Math.round(tScores.reduce((a, b) => a + b, 0) / tScores.length) : ''
           const avgKuis = kScores && kScores.length > 0 ? Math.round(kScores.reduce((a, b) => a + b, 0) / kScores.length) : ''
           const curr = newGradesData[st.id] || { nilai_tugas: '', nilai_kuis: '', nilai_uts: '', nilai_uas: '', nilai_akhir: '' }
-          
+
           const finalTugas = avgTugas !== '' ? avgTugas : curr.nilai_tugas
           const finalKuis = avgKuis !== '' ? avgKuis : curr.nilai_kuis
           const newAkhir = calcAkhir(finalTugas, finalKuis, curr.nilai_uts, curr.nilai_uas)
@@ -3556,6 +3726,8 @@ export default function TeacherTeachingWorkspacePage() {
             nilai_uts: g.nilai_uts !== '' && g.nilai_uts !== undefined && g.nilai_uts !== null ? Number(g.nilai_uts) : null,
             nilai_uas: g.nilai_uas !== '' && g.nilai_uas !== undefined && g.nilai_uas !== null ? Number(g.nilai_uas) : null,
             nilai_akhir: g.nilai_akhir !== '' && g.nilai_akhir !== undefined && g.nilai_akhir !== null ? Number(g.nilai_akhir) : null,
+            catatan: g.catatan || g.notes || '',
+            notes: g.catatan || g.notes || '',
           }
         }),
       }
@@ -3694,7 +3866,7 @@ export default function TeacherTeachingWorkspacePage() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-    const handleCreateTaskFromMaterial = (material) => {
+  const handleCreateTaskFromMaterial = (material) => {
     setEditingId(null)
     const activeClassId = material.class_id || material.kelas_id || material.modul_ajar?.kelas_id || (selectedClass !== 'all' ? selectedClass : '')
     const activeSubjectId = material.subject_id || material.mata_pelajaran_id || material.modul_ajar?.mata_pelajaran_id || getCurrentSubjectId()
@@ -3865,8 +4037,8 @@ export default function TeacherTeachingWorkspacePage() {
       formData.append('nilai_kkm', String(tugasForm.nilai_kkm || 75))
       const derivedJenis = soalList.length > 0
         ? (soalList.some((s) => s.tipe === 'pg') && soalList.some((s) => s.tipe === 'esai')
-            ? 'campuran'
-            : soalList.some((s) => s.tipe === 'pg')
+          ? 'campuran'
+          : soalList.some((s) => s.tipe === 'pg')
             ? 'objektif'
             : 'essay')
         : (tugasForm.jenis_soal || 'essay')
@@ -3879,11 +4051,11 @@ export default function TeacherTeachingWorkspacePage() {
 
       const res = editingId
         ? await api.post(`/teacher/assignments/${editingId}`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          })
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
         : await api.post('/teacher/assignments', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          })
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
 
       setShowModal(false)
       setEditingId(null)
@@ -3945,6 +4117,53 @@ export default function TeacherTeachingWorkspacePage() {
       addToast('error', 'Gagal Simpan', err?.response?.data?.message || 'Gagal menyimpan catatan siswa.')
     } finally {
       setSavingStudentNote(false)
+    }
+  }
+
+  const handleSavePelanggaran = async (e) => {
+    e?.preventDefault()
+    if (!pelanggaranForm.student_id) {
+      addToast('warning', 'Pilih Santri', 'Silakan pilih siswa/santri terlebih dahulu.')
+      return
+    }
+    if (!pelanggaranForm.category_id) {
+      addToast('warning', 'Pilih Pasal Tata Tertib', 'Silakan tentukan pasal penilaian perilaku yang diatur TU.')
+      return
+    }
+    if (!pelanggaranForm.description.trim()) {
+      addToast('warning', 'Isi Kronologi Perilaku', 'Silakan masukkan deskripsi atau kronologi penilaian perilaku santri.')
+      return
+    }
+
+    setSavingPelanggaran(true)
+    try {
+      const activeClassId = getCurrentClassId()
+      const payload = {
+        student_id: pelanggaranForm.student_id,
+        category_id: pelanggaranForm.category_id,
+        points: -Math.abs(pelanggaranForm.points || 5),
+        custom_points: Math.abs(pelanggaranForm.points || 5),
+        description: pelanggaranForm.description.trim(),
+        transaction_date: pelanggaranForm.transaction_date || new Date().toISOString().split('T')[0],
+        status: pelanggaranForm.refer_bk ? 'dirujuk_bk' : (pelanggaranForm.status || 'tercatat'),
+        follow_up: pelanggaranForm.refer_bk ? 'Dirujuk ke Guru BK / Wali Kelas' : (pelanggaranForm.follow_up || null),
+        class_id: activeClassId || null,
+        schedule_id: activeSchedule?.id || null,
+      }
+
+      await api.post('/teacher/discipline-violations', payload)
+      setShowModal(false)
+      setPelanggaranForm(emptyPelanggaranForm)
+      await fetchStudentNotes()
+      addToast(
+        'success',
+        'Penilaian Perilaku Tersimpan',
+        `Catatan perilaku santri berhasil dicatat (-${Math.abs(pelanggaranForm.points || 5)} poin) sesuai ketentuan TU dan disinkronkan ke Buku Poin & Orang Tua.`
+      )
+    } catch (err) {
+      addToast('error', 'Gagal Simpan', err?.response?.data?.message || 'Gagal menyimpan penilaian perilaku santri.')
+    } finally {
+      setSavingPelanggaran(false)
     }
   }
 
@@ -4471,11 +4690,10 @@ export default function TeacherTeachingWorkspacePage() {
                       key={item.id}
                       type="button"
                       onClick={() => setAttendancePeriodFilter(item.id)}
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                        isActive
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
-                          : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                      }`}
+                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${isActive
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                        }`}
                     >
                       <Icon className="h-3.5 w-3.5" />
                       {item.label}
@@ -4652,96 +4870,96 @@ export default function TeacherTeachingWorkspacePage() {
               {historySessions
                 .slice((historySessionsPage - 1) * historySessionsPerPage, historySessionsPage * historySessionsPerPage)
                 .map((session, sIdx) => {
-                const sessionDate = session.attendance_date ? new Date(session.attendance_date) : null
-                const dateFormatted = sessionDate
-                  ? sessionDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-                  : '-'
-                const timeRange = session.schedule?.time_start && session.schedule?.time_end
-                  ? `${session.schedule.time_start.slice(0, 5)} – ${session.schedule.time_end.slice(0, 5)} WIB`
-                  : '07:30 – 09:00 WIB'
+                  const sessionDate = session.attendance_date ? new Date(session.attendance_date) : null
+                  const dateFormatted = sessionDate
+                    ? sessionDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                    : '-'
+                  const timeRange = session.schedule?.time_start && session.schedule?.time_end
+                    ? `${session.schedule.time_start.slice(0, 5)} – ${session.schedule.time_end.slice(0, 5)} WIB`
+                    : '07:30 – 09:00 WIB'
 
-                const attList = session.attendances || []
-                const hadir = attList.filter((a) => (a.status_hadir || a.status || '').toLowerCase() === 'hadir').length
-                const terlambat = attList.filter((a) => (a.status_hadir || a.status || '').toLowerCase() === 'terlambat').length
-                const izin = attList.filter((a) => (a.status_hadir || a.status || '').toLowerCase() === 'izin').length
-                const sakit = attList.filter((a) => (a.status_hadir || a.status || '').toLowerCase() === 'sakit').length
-                const alpa = attList.filter((a) => ['alpa', 'alpha'].includes((a.status_hadir || a.status || '').toLowerCase())).length
-                const totalAtt = attList.length
-                const rate = totalAtt > 0 ? Math.round(((hadir + terlambat) / totalAtt) * 100) : 0
+                  const attList = session.attendances || []
+                  const hadir = attList.filter((a) => (a.status_hadir || a.status || '').toLowerCase() === 'hadir').length
+                  const terlambat = attList.filter((a) => (a.status_hadir || a.status || '').toLowerCase() === 'terlambat').length
+                  const izin = attList.filter((a) => (a.status_hadir || a.status || '').toLowerCase() === 'izin').length
+                  const sakit = attList.filter((a) => (a.status_hadir || a.status || '').toLowerCase() === 'sakit').length
+                  const alpa = attList.filter((a) => ['alpa', 'alpha'].includes((a.status_hadir || a.status || '').toLowerCase())).length
+                  const totalAtt = attList.length
+                  const rate = totalAtt > 0 ? Math.round(((hadir + terlambat) / totalAtt) * 100) : 0
 
-                return (
-                  <div
-                    key={session.id || sIdx}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-emerald-500/40 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/50"
-                  >
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                          Pertemuan ke-{session.meeting_number || sIdx + 1}
-                        </span>
-                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          {timeRange}
-                        </span>
-                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                          {dateFormatted}
-                        </span>
+                  return (
+                    <div
+                      key={session.id || sIdx}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-emerald-500/40 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/50"
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            Pertemuan ke-{session.meeting_number || sIdx + 1}
+                          </span>
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            {timeRange}
+                          </span>
+                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                            {dateFormatted}
+                          </span>
+                        </div>
+
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                          {session.schedule?.subject?.name || 'Mata Pelajaran'} • {session.schedule?.kelas?.name || selectedClassName}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                          Topik: {session.topic || session.learning_material || 'Materi KBM Reguler'}
+                        </p>
+
+                        {/* Status Badges Breakdown */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40">
+                            {hadir} Hadir
+                          </span>
+                          {terlambat > 0 && (
+                            <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40">
+                              {terlambat} Terlambat
+                            </span>
+                          )}
+                          {izin > 0 && (
+                            <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700 border border-sky-200/60 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/40">
+                              {izin} Izin
+                            </span>
+                          )}
+                          {sakit > 0 && (
+                            <span className="rounded-md bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700 border border-violet-200/60 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/40">
+                              {sakit} Sakit
+                            </span>
+                          )}
+                          {alpa > 0 && (
+                            <span className="rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40">
+                              {alpa} Alpa
+                            </span>
+                          )}
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            Tingkat: {rate}% ({totalAtt} Siswa)
+                          </span>
+                        </div>
                       </div>
 
-                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
-                        {session.schedule?.subject?.name || 'Mata Pelajaran'} • {session.schedule?.kelas?.name || selectedClassName}
-                      </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
-                        Topik: {session.topic || session.learning_material || 'Materi KBM Reguler'}
-                      </p>
-
-                      {/* Status Badges Breakdown */}
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                        <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40">
-                          {hadir} Hadir
-                        </span>
-                        {terlambat > 0 && (
-                          <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40">
-                            {terlambat} Terlambat
-                          </span>
-                        )}
-                        {izin > 0 && (
-                          <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700 border border-sky-200/60 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/40">
-                            {izin} Izin
-                          </span>
-                        )}
-                        {sakit > 0 && (
-                          <span className="rounded-md bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700 border border-violet-200/60 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/40">
-                            {sakit} Sakit
-                          </span>
-                        )}
-                        {alpa > 0 && (
-                          <span className="rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40">
-                            {alpa} Alpa
-                          </span>
-                        )}
-                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          Tingkat: {rate}% ({totalAtt} Siswa)
-                        </span>
+                      {/* Action Button */}
+                      <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedHistorySession(session)
+                            setHistorySessionStudentSearch('')
+                            setShowHistorySessionModal(true)
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 shadow-xs transition hover:bg-emerald-50 hover:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-slate-700 cursor-pointer"
+                        >
+                          <Eye className="h-3.5 w-3.5" /> Lihat Detail Siswa
+                        </button>
                       </div>
                     </div>
-
-                    {/* Action Button */}
-                    <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedHistorySession(session)
-                          setHistorySessionStudentSearch('')
-                          setShowHistorySessionModal(true)
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 shadow-xs transition hover:bg-emerald-50 hover:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-slate-700 cursor-pointer"
-                      >
-                        <Eye className="h-3.5 w-3.5" /> Lihat Detail Siswa
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
             </div>
           )}
 
@@ -4772,7 +4990,7 @@ export default function TeacherTeachingWorkspacePage() {
       </div>
     )
   }
-  const teacherName = teacherProfile?.name || 'Ustadz Ahmad Fauzi, S.Pd.I'
+  const teacherName = teacherProfile?.name || user?.name || 'Guru Pengampu'
   const scheduleDays = [
     { short: 'Sen', name: 'Senin' },
     { short: 'Sel', name: 'Selasa' },
@@ -4888,7 +5106,7 @@ export default function TeacherTeachingWorkspacePage() {
 
   // Daftar rombel unik yang disaring sesuai Mapel yang dipilih (jika memilih mapel tertentu)
   const filteredClassesOptions = useMemo(() => {
-    if (!materialMapelFilter || materialMapelFilter === 'all') {
+    if (isManagerial || !materialMapelFilter || materialMapelFilter === 'all') {
       return classes
     }
     const pool = (allTeacherSchedules && allTeacherSchedules.length > 0) ? allTeacherSchedules : schedules
@@ -4910,7 +5128,27 @@ export default function TeacherTeachingWorkspacePage() {
     })
     const matched = classes.filter((c) => matchingClassIds.has(String(c.id)))
     return matched.length > 0 ? matched : classes
-  }, [classes, materialMapelFilter, allTeacherSchedules, schedules, materials])
+  }, [classes, materialMapelFilter, allTeacherSchedules, schedules, materials, isManagerial])
+
+  const activeWorkspaceClassValue = useMemo(() => {
+    if (!selectedClass || selectedClass === 'all') return 'all'
+    const match = filteredClassesOptions.find((c) =>
+      String(c.id) === String(selectedClass) ||
+      c.nama_kelas === selectedClass ||
+      c.name === selectedClass ||
+      c.kode_kelas === selectedClass
+    )
+    return match ? String(match.id) : String(selectedClass)
+  }, [filteredClassesOptions, selectedClass])
+
+  const activeWorkspaceMapelValue = useMemo(() => {
+    if (!materialMapelFilter || materialMapelFilter === 'all') return 'all'
+    const match = uniqueMapelOptions.find((m) =>
+      String(m.id) === String(materialMapelFilter) ||
+      m.name === materialMapelFilter
+    )
+    return match ? String(match.id) : String(materialMapelFilter)
+  }, [uniqueMapelOptions, materialMapelFilter])
 
   // Daftar rombel unik yang spesifik diajar untuk Mapel pada sesi Presensi (presensiModalSchedule)
   const presensiModalClasses = useMemo(() => {
@@ -4927,7 +5165,7 @@ export default function TeacherTeachingWorkspacePage() {
       const sSubjName = getScheduleSubject(s)
       const isSameSubject = (activeSubjId && sSubjId && String(sSubjId) === String(activeSubjId)) ||
         (activeSubjName && sSubjName && sSubjName.trim().toLowerCase() === activeSubjName.trim().toLowerCase())
-      
+
       if (isSameSubject) {
         const cId = s.kelas_id || s.class_id || s.kelas?.id || s.class?.id
         if (cId) matchingClassIds.add(String(cId))
@@ -5057,8 +5295,9 @@ export default function TeacherTeachingWorkspacePage() {
 
   const openMaterialForm = (material = null) => {
     setEditingId(material?.id || null)
-    const rawDate = material?.tanggal_publish || material?.tanggal || material?.created_at || '2026-09-09'
-    const parsedDate = typeof rawDate === 'string' ? rawDate.split('T')[0].split(' ')[0] : '2026-09-09'
+    const todayStr = getTodayDateString()
+    const rawDate = material?.tanggal_publish || material?.tanggal || material?.created_at || todayStr
+    const parsedDate = typeof rawDate === 'string' ? rawDate.split('T')[0].split(' ')[0] : todayStr
     const calc = calculatePekanFromDate(parsedDate)
 
     setMateriForm({
@@ -5131,7 +5370,7 @@ export default function TeacherTeachingWorkspacePage() {
 
     printWindow.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(material.judul)} — Materi Belajar</title><style>
       @page{size:A4 portrait;margin:15mm}*{box-sizing:border-box}body{margin:0;color:#172033;font:10pt/1.5 Arial,sans-serif}.print-official-header{display:grid;grid-template-columns:80px 1fr 90px;align-items:center;gap:12px;min-height:50mm;padding-bottom:4px}.print-logo-left-box{width:76px;height:76px;display:flex;align-items:center;justify-content:center}.print-logo-left-img{max-width:76px;max-height:76px;width:auto;height:auto;object-fit:contain;display:block}.print-center-box{text-align:center;padding:0 4px}.print-org-name{font-size:11pt;font-weight:800;color:#0f172a;letter-spacing:0.5px;text-transform:uppercase;margin:0 0 2px 0;line-height:1.2}.print-school-unit{font-size:12.5pt;font-weight:900;color:#047857;letter-spacing:0.5px;text-transform:uppercase;margin:0 0 2px 0;line-height:1.2}.print-slogan{font-size:8.5pt;font-style:italic;font-weight:600;color:#475569;margin:1px 0}.print-address{font-size:7.8pt;color:#475569;margin:1px 0}.print-legality{font-size:7.8pt;font-weight:700;color:#0f172a;margin:1px 0 0 0}.print-logo-right-box{width:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.print-unit-logo-wrapper{width:74px;height:74px;display:flex;align-items:center;justify-content:center}.print-logo-right-img{max-width:74px;max-height:74px;width:auto;height:auto;object-fit:contain;display:block}.print-unit-type-badge{margin-top:3px;font-size:8pt;font-weight:900;color:#047857;letter-spacing:0.5px;text-transform:uppercase;text-align:center;line-height:1}.print-header-divider{border-bottom:2px solid #0f172a;margin-top:4px;margin-bottom:12px}.print-doc-title-container{text-align:center;margin-bottom:12px}.print-doc-title{font-size:13.5pt;font-weight:900;color:#047857;letter-spacing:0.5px;text-transform:uppercase;margin:0;line-height:1.25}.print-doc-period{font-size:9pt;font-weight:700;color:#334155;margin-top:3px}.print-doc-meta-row{display:flex;justify-content:space-between;align-items:center;font-size:8pt;color:#64748b;font-weight:600;margin-top:6px;padding-bottom:6px;border-bottom:1px dashed #cbd5e1}.summary{margin:18px 0;padding:14px 16px;border:1px solid #cce5da;border-radius:10px;background:#f0f9f5}.summary strong{display:block;margin-bottom:4px;color:#0e5c44}.content{white-space:normal;line-height:1.6}.footer{margin-top:32px;padding-top:10px;border-top:1px solid #dbe3ea;color:#64748b;font-size:8pt;display:flex;justify-content:space-between}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none}}@media screen{body{max-width:794px;margin:24px auto;padding:24px;box-shadow:0 8px 30px #0f172a20}.no-print{position:fixed;right:24px;top:24px;border:0;border-radius:10px;background:#0e5c44;color:white;padding:10px 16px;font-weight:700;cursor:pointer}}
-    </style></head><body><button class="no-print" onclick="window.print()">${saveAsPdf ? 'Simpan sebagai PDF' : 'Cetak Materi'}</button>${officialHeaderHtml}<section class="summary"><strong>Ringkasan Materi</strong>${summary}</section><main class="content">${content}</main><footer class="footer"><span>${escapeHtml(teacherName)}</span><span>Workspace Pengajaran Guru · Dokumen Sah SIMSIT</span></footer><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250))</script></body></html>`)
+    </style></head><body><button class="no-print" onclick="window.print()">${saveAsPdf ? 'Simpan sebagai PDF' : 'Cetak Materi'}</button>${officialHeaderHtml}<section class="summary"><strong>Ringkasan Materi</strong>${summary}</section><main class="content">${content}</main><footer class="footer"><span>${escapeHtml(teacherName)}</span><span>Workspace Pengajaran Guru · Dokumen Sah Dareliman Edu</span></footer><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250))</script></body></html>`)
     printWindow.document.close()
     if (saveAsPdf) addToast('info', 'Export PDF Dibuka', 'Pada dialog cetak, pilih “Save as PDF” atau “Simpan sebagai PDF”.')
   }
@@ -5328,23 +5567,23 @@ export default function TeacherTeachingWorkspacePage() {
     const nextSurah = quranSurahs.find((surah) => Number(surah.nomor) === Number(latestLog.hafalan_surah_number) + 1)
     return nextSurah
       ? {
-          surahNumber: Number(nextSurah.nomor),
-          surah_name: nextSurah.nama_latin,
-          ayatStart: 1,
-          ayat_start: 1,
-          ayatEnd: Math.min(previousRangeSize, Number(nextSurah.jumlah_ayat)),
-          ayat_end: Math.min(previousRangeSize, Number(nextSurah.jumlah_ayat)),
-          repeated: false,
-        }
+        surahNumber: Number(nextSurah.nomor),
+        surah_name: nextSurah.nama_latin,
+        ayatStart: 1,
+        ayat_start: 1,
+        ayatEnd: Math.min(previousRangeSize, Number(nextSurah.jumlah_ayat)),
+        ayat_end: Math.min(previousRangeSize, Number(nextSurah.jumlah_ayat)),
+        repeated: false,
+      }
       : {
-          surahNumber: Number(latestLog.hafalan_surah_number),
-          surah_name: surahName,
-          ayatStart: Number(latestLog.hafalan_ayah_start),
-          ayat_start: Number(latestLog.hafalan_ayah_start),
-          ayatEnd: Number(latestLog.hafalan_ayah_end),
-          ayat_end: Number(latestLog.hafalan_ayah_end),
-          repeated: true,
-        }
+        surahNumber: Number(latestLog.hafalan_surah_number),
+        surah_name: surahName,
+        ayatStart: Number(latestLog.hafalan_ayah_start),
+        ayat_start: Number(latestLog.hafalan_ayah_start),
+        ayatEnd: Number(latestLog.hafalan_ayah_end),
+        ayat_end: Number(latestLog.hafalan_ayah_end),
+        repeated: true,
+      }
   }
   const automaticTahfizhTarget = getAutomaticTahfizhTarget(previousTahfizhLog)
   const sortedTahfizhLeaderboard = React.useMemo(() => {
@@ -5429,11 +5668,12 @@ export default function TeacherTeachingWorkspacePage() {
       return { student, latest, totalAyat, completedSurahs, totalSetoran: studentLogs.length, unitName, className }
     })
 
-    // Filter by selectedClass if specific rombel chosen (strict: only students matching the selected rombel)
-    if (selectedClass && selectedClass !== 'all') {
+    // Filter by rombel (either via explicit tahfizhFilterClass or fallback to workspace selectedClass)
+    const activeClassFilter = tahfizhFilterClass !== 'all' ? tahfizhFilterClass : (selectedClass !== 'all' ? selectedClass : null)
+    if (activeClassFilter) {
       list = list.filter((item) => {
         const sClassId = item.student?.kelas_id || item.student?.class_id || item.student?.kelas?.id
-        return !!sClassId && String(sClassId) === String(selectedClass)
+        return !!sClassId && String(sClassId) === String(activeClassFilter)
       })
     }
 
@@ -5442,25 +5682,41 @@ export default function TeacherTeachingWorkspacePage() {
       list = list.filter((item) => item.totalSetoran > 0 || item.totalAyat > 0)
     }
 
-    // Role-Based Scope Filtering
-    if (isPengurusYayasan) {
+    // Role-Based Scope Filtering:
+    // 1. Global Scope: Superadmin, Admin, Pengurus Yayasan, Divisi Pendidikan
+    //    -> Melihat seluruh unit secara default ('semua'), atau dapat menyortir masing-masing unit pendidikan via selectedTahfizhUnit
+    if (isGlobalTahfizhScope) {
       if (selectedTahfizhUnit && selectedTahfizhUnit !== 'semua') {
-        list = list.filter((item) =>
-          item.unitName.toLowerCase().includes(selectedTahfizhUnit.toLowerCase()) ||
-          item.student.education_unit_id === selectedTahfizhUnit ||
-          item.student.unit_id === selectedTahfizhUnit
-        )
+        const target = selectedTahfizhUnit.toLowerCase().trim()
+        list = list.filter((item) => {
+          const itemUnitName = (item.unitName || '').toLowerCase().trim()
+          const itemUnitId = String(item.student?.education_unit_id || item.student?.unit_id || item.student?.education_unit?.id || item.student?.kelas?.unit_pendidikan_id || '')
+          return (
+            itemUnitName.includes(target) ||
+            target.includes(itemUnitName) ||
+            itemUnitId === selectedTahfizhUnit
+          )
+        })
       }
-    } else if (isKepalaSekolahOrDivisiPendidikan) {
-      const userUnit = teacherProfile?.education_unit || user?.education_unit?.name || user?.unit_name || ''
-      if (selectedTahfizhUnit && selectedTahfizhUnit !== 'semua') {
-        list = list.filter((item) =>
-          item.unitName.toLowerCase().includes(selectedTahfizhUnit.toLowerCase()) ||
-          item.student.education_unit_id === selectedTahfizhUnit ||
-          item.student.unit_id === selectedTahfizhUnit
-        )
-      } else if (userUnit) {
-        list = list.filter((item) => item.unitName.toLowerCase().includes(userUnit.toLowerCase()))
+    } else {
+      // 2. Unit-Locked Scope: Guru, Kepala Sekolah, TU, Musyrif
+      //    -> HARUS SESUAI dengan unit pendidikannya masing-masing
+      const userUnitName = (teacherProfile?.education_unit || user?.education_unit?.name || user?.unit_name || user?.unit?.nama || '').toLowerCase().trim()
+      const userUnitId = String(teacherProfile?.education_unit_data?.id || user?.education_unit_id || user?.education_unit?.id || user?.unit_id || '')
+
+      if (userUnitId || (userUnitName && userUnitName !== '-')) {
+        list = list.filter((item) => {
+          const itemUnitId = String(item.student?.education_unit_id || item.student?.unit_id || item.student?.education_unit?.id || item.student?.kelas?.unit_pendidikan_id || item.student?.kelas?.education_unit_id || '')
+          const itemUnitName = (item.unitName || item.student?.education_unit?.name || item.student?.unit?.name || item.student?.kelas?.unit_pendidikan?.name || '').toLowerCase().trim()
+
+          if (userUnitId && itemUnitId && itemUnitId === userUnitId) {
+            return true
+          }
+          if (userUnitName && itemUnitName && (itemUnitName.includes(userUnitName) || userUnitName.includes(itemUnitName))) {
+            return true
+          }
+          return false
+        })
       }
     }
 
@@ -5475,15 +5731,32 @@ export default function TeacherTeachingWorkspacePage() {
       )
     }
 
-    // Sort descending by highest Tahfizh hafalan with deterministic tie-breaking
+    // Dynamic Sorting based on tahfizhSortOrder (Default: highest / terbanyak hafalan)
     return list.sort((a, b) => {
+      if (tahfizhSortOrder === 'surah') {
+        if (b.completedSurahs !== a.completedSurahs) return b.completedSurahs - a.completedSurahs
+        return b.totalAyat - a.totalAyat
+      }
+      if (tahfizhSortOrder === 'name_asc') {
+        return (a.student.nama_lengkap || '').localeCompare(b.student.nama_lengkap || '')
+      }
+      if (tahfizhSortOrder === 'name_desc') {
+        return (b.student.nama_lengkap || '').localeCompare(a.student.nama_lengkap || '')
+      }
+      if (tahfizhSortOrder === 'recent') {
+        const dateA = a.latest?.record_date || ''
+        const dateB = b.latest?.record_date || ''
+        return dateB.localeCompare(dateA)
+      }
+      // Default: highest (pencapaian hafalan ayat terbanyak)
       if (b.totalAyat !== a.totalAyat) return b.totalAyat - a.totalAyat
       if (b.completedSurahs !== a.completedSurahs) return b.completedSurahs - a.completedSurahs
+      if (b.totalSetoran !== a.totalSetoran) return b.totalSetoran - a.totalSetoran
       const nameCompare = (a.student.nama_lengkap || '').localeCompare(b.student.nama_lengkap || '')
       if (nameCompare !== 0) return nameCompare
       return (a.student.id || '').localeCompare(b.student.id || '')
     })
-  }, [students, tahfizhLogs, selectedTahfizhUnit, debouncedTahfizhSearch, isPengurusYayasan, isKepalaSekolahOrDivisiPendidikan, teacherProfile, user, selectedClassName, quranSurahs])
+  }, [students, tahfizhLogs, selectedTahfizhUnit, debouncedTahfizhSearch, tahfizhFilterClass, tahfizhSortOrder, selectedClass, isGlobalTahfizhScope, isPengurusYayasan, isKepalaSekolahOrDivisiPendidikan, teacherProfile, user, selectedClassName, quranSurahs])
 
   const top5TahfizhStudents = React.useMemo(() => {
     return sortedTahfizhLeaderboard
@@ -5511,12 +5784,18 @@ export default function TeacherTeachingWorkspacePage() {
     })
   }, [sortedTahfizhLeaderboard])
 
-  const totalTahfizhPages = Math.max(1, Math.ceil(sortedTahfizhLeaderboard.length / TAHFIZH_PER_PAGE))
+  const totalTahfizhPages = React.useMemo(() => {
+    if (tahfizhPerPage === 'all') return 1
+    const perPage = Number(tahfizhPerPage) || 10
+    return Math.max(1, Math.ceil(sortedTahfizhLeaderboard.length / perPage))
+  }, [sortedTahfizhLeaderboard.length, tahfizhPerPage])
 
   const paginatedTahfizhLeaderboard = React.useMemo(() => {
-    const start = (tahfizhPage - 1) * TAHFIZH_PER_PAGE
-    return sortedTahfizhLeaderboard.slice(start, start + TAHFIZH_PER_PAGE)
-  }, [sortedTahfizhLeaderboard, tahfizhPage])
+    if (tahfizhPerPage === 'all') return sortedTahfizhLeaderboard
+    const perPage = Number(tahfizhPerPage) || 10
+    const start = (tahfizhPage - 1) * perPage
+    return sortedTahfizhLeaderboard.slice(start, start + perPage)
+  }, [sortedTahfizhLeaderboard, tahfizhPage, tahfizhPerPage])
 
   const tahfizhByStudent = paginatedTahfizhLeaderboard
 
@@ -5564,7 +5843,7 @@ export default function TeacherTeachingWorkspacePage() {
   const handlePrintTahfizhLeaderboard = () => {
     printCleanTable({
       title: 'Leaderboard & Rekapitulasi Tahfizh Al-Qur\'an',
-      subtitle: `Scope: ${isPengurusYayasan ? 'Seluruh Unit (Yayasan)' : isKepalaSekolahOrDivisiPendidikan ? `Unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'Pimpinan'}` : `Kelas ${selectedClassName}`} | Tahun Ajaran ${selectedAcademicYear || 'Aktif'}`,
+      subtitle: `Scope: ${isGlobalTahfizhScope ? (selectedTahfizhUnit !== 'semua' ? `Unit ${selectedTahfizhUnit}` : 'Seluruh Unit (Yayasan & Divisi Pendidikan)') : `Unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'Sekolah'}${selectedClassName ? ` — Kelas ${selectedClassName}` : ''}`} | Tahun Ajaran ${selectedAcademicYear || 'Aktif'}`,
       headers: ['Rank', 'Nama Siswa / Santri', 'NIS', 'Unit Sekolah', 'Kelas', 'Juz', 'Capaian Terakhir', 'Total Hafalan (Ayat)', 'Total Surah'],
       rows: sortedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, unitName, className }, idx) => [
         idx + 1,
@@ -5586,7 +5865,7 @@ export default function TeacherTeachingWorkspacePage() {
   const handleDownloadPdfTahfizhLeaderboard = () => {
     downloadPdfTable({
       title: 'Leaderboard & Rekapitulasi Tahfizh Al-Qur\'an',
-      subtitle: `Scope: ${isPengurusYayasan ? 'Seluruh Unit (Yayasan)' : isKepalaSekolahOrDivisiPendidikan ? `Unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'Pimpinan'}` : `Kelas ${selectedClassName}`} | Tahun Ajaran ${selectedAcademicYear || 'Aktif'}`,
+      subtitle: `Scope: ${isGlobalTahfizhScope ? (selectedTahfizhUnit !== 'semua' ? `Unit ${selectedTahfizhUnit}` : 'Seluruh Unit (Yayasan & Divisi Pendidikan)') : `Unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'Sekolah'}${selectedClassName ? ` — Kelas ${selectedClassName}` : ''}`} | Tahun Ajaran ${selectedAcademicYear || 'Aktif'}`,
       headers: ['Rank', 'Nama Siswa / Santri', 'NIS', 'Unit Sekolah', 'Kelas', 'Juz', 'Capaian Terakhir', 'Total Hafalan (Ayat)', 'Total Surah'],
       rows: sortedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, unitName, className }, idx) => [
         idx + 1,
@@ -5624,7 +5903,7 @@ export default function TeacherTeachingWorkspacePage() {
 
 
   return (
-    <PageContainer className="teacher-workspace-page space-y-6 pb-12">
+    <PageContainer className="teacher-workspace-page space-y-6 pb-20 xl:pb-8">
       {/* ── BREADCRUMB NAV ────────────────────────────────────────── */}
       <AppBreadcrumb
         items={[
@@ -5658,7 +5937,7 @@ export default function TeacherTeachingWorkspacePage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Workspace Pembelajaran Guru
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Pusat kendali aktivitas mengajar Ustadz/Ustadzah — Kelola jadwal, presensi, materi, tugas, nilai, &amp; jurnal tahfizh terpadu.
                 </p>
               </div>
@@ -5757,71 +6036,103 @@ export default function TeacherTeachingWorkspacePage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="relative rounded-[20px] border-2 border-emerald-500/25 bg-white p-4 sm:p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-700/60 dark:bg-[#1B2433] z-20"
+        className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-white p-4 sm:p-5 shadow-md shadow-emerald-500/10 dark:border-emerald-700/60 dark:bg-[#1B2433] z-20"
       >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-600/30">
-              <Layers className="size-5" />
+        {/* Ambient Glow Accent */}
+        <div className="pointer-events-none absolute -top-12 -right-12 h-36 w-36 rounded-full bg-gradient-to-br from-emerald-500/20 via-teal-400/15 to-transparent blur-2xl" />
+
+        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          {/* Sisi Kiri: Ikon Squircle, Judul, Pill Aktif, dan Penjelasan */}
+          <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+            <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40">
+              <Layers className="size-5 sm:size-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
-                  Filter Rombel & Mata Pelajaran
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white">
+                  Filter Rombel &amp; Mata Pelajaran
                 </h3>
-                <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 px-2.5 py-0.5 text-[10px] font-extrabold border border-emerald-300/60 dark:border-emerald-800">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Aktif
                 </span>
+                {selectedClass && selectedClass !== 'all' && (
+                  <span className="hidden md:inline-flex items-center rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 px-2.5 py-0.5 text-[10px] font-bold border border-teal-200 dark:border-teal-800">
+                    Rombel: {selectedClassName || selectedClass}
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Pilih rombel dan mata pelajaran untuk memfilter jadwal, presensi, materi, tugas, nilai, &amp; mutaba'ah siswa.
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                Pilih rombel dan mata pelajaran untuk memfilter jadwal, presensi, materi, tugas, nilai, &amp; mutaba'ah siswa secara terpadu.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Pemilihan Rombel / Kelas */}
-            <HeroUiWorkspaceSelect
-              id="workspace-rombel-select"
-              value={selectedClass}
-              onChange={(val) => handleWorkspaceClassChange(val)}
-              options={[
-                { value: 'all', label: 'Semua Rombel', subtext: 'Seluruh rombel yang diampu' },
-                ...filteredClassesOptions.map((c) => ({
-                  value: c.id,
-                  label: `${c.nama_kelas || c.name}${c.kode_kelas ? ` · ${c.kode_kelas}` : ''}`,
-                })),
-              ]}
-              icon={Users}
-              label="Rombel"
-              placeholder="Pilih Rombel"
-              popoverWidth="w-72"
-              searchable
-            />
+          {/* Sisi Kanan: Kontrol Filter Presisi & Rapi */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* Filter Rombel */}
+            <div className="w-full sm:w-[220px]">
+              <HeroUiFilterSelect
+                id="workspace-rombel-select"
+                size="md"
+                value={activeWorkspaceClassValue}
+                onChange={(val) => handleWorkspaceClassChange(val)}
+                options={[
+                  { value: 'all', label: 'Semua Rombel', subtext: 'Seluruh rombel yang diampu' },
+                  ...filteredClassesOptions.map((c) => ({
+                    value: String(c.id),
+                    label: c.nama_kelas || c.name || `Kelas ${c.id}`,
+                    subtext: c.kode_kelas ? `Kode: ${c.kode_kelas}` : undefined,
+                  })),
+                ]}
+                icon={Users}
+                placeholder="Pilih Rombel"
+                ariaLabel="Pilih Rombel"
+                searchable
+              />
+            </div>
 
-            {/* Pemilihan Mata Pelajaran */}
-            <HeroUiWorkspaceSelect
-              id="workspace-mapel-select"
-              value={materialMapelFilter}
-              onChange={(val) => handleWorkspaceMapelChange(val)}
-              options={[
-                { value: 'all', label: 'Semua Mata Pelajaran', subtext: 'Seluruh mapel yang diampu' },
-                ...uniqueMapelOptions.map((subj) => ({
-                  value: subj.id,
-                  label: subj.name,
-                })),
-              ]}
-              icon={BookOpen}
-              label="Mapel"
-              placeholder="Pilih Mata Pelajaran"
-              popoverWidth="w-72"
-              searchable
-            />
+            {/* Filter Mata Pelajaran */}
+            <div className="w-full sm:w-[220px]">
+              <HeroUiFilterSelect
+                id="workspace-mapel-select"
+                size="md"
+                value={activeWorkspaceMapelValue}
+                onChange={(val) => handleWorkspaceMapelChange(val)}
+                options={[
+                  { value: 'all', label: 'Semua Mata Pelajaran', subtext: 'Seluruh mapel yang diampu' },
+                  ...uniqueMapelOptions.map((subj) => ({
+                    value: String(subj.id),
+                    label: subj.name,
+                  })),
+                ]}
+                icon={BookOpen}
+                placeholder="Pilih Mata Pelajaran"
+                ariaLabel="Pilih Mata Pelajaran"
+                searchable
+              />
+            </div>
 
-            {/* Pill Jumlah Siswa */}
-            <div className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/60 px-3 py-2 text-xs font-bold text-emerald-800 dark:text-emerald-300">
-              <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>{students.length} Siswa Terdaftar</span>
+            {/* Tombol Reset Filter jika ada filter aktif */}
+            {(selectedClass !== 'all' || materialMapelFilter !== 'all') && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleWorkspaceClassChange('all')
+                  handleWorkspaceMapelChange('all')
+                }}
+                className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/80 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                title="Reset filter ke Semua Rombel & Semua Mapel"
+              >
+                <RefreshCw className="size-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
+
+            {/* Pill Siswa Terdaftar */}
+            <div className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-xs font-black text-emerald-900 dark:text-emerald-200 shadow-2xs">
+              <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>{students.length} Siswa</span>
             </div>
           </div>
         </div>
@@ -5835,15 +6146,14 @@ export default function TeacherTeachingWorkspacePage() {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-start gap-3 p-4 rounded-[18px] shadow-[var(--shadow-soft-xl)] border backdrop-blur-md transition-all animate-in slide-in-from-bottom duration-300 ${
-              toast.type === 'success'
-                ? 'bg-emerald-900/90 text-emerald-100 border-emerald-700/80'
-                : toast.type === 'error'
+            className={`pointer-events-auto flex items-start gap-3 p-4 rounded-[18px] shadow-[var(--shadow-soft-xl)] border backdrop-blur-md transition-all animate-in slide-in-from-bottom duration-300 ${toast.type === 'success'
+              ? 'bg-emerald-900/90 text-emerald-100 border-emerald-700/80'
+              : toast.type === 'error'
                 ? 'bg-rose-900/90 text-rose-100 border-rose-700/80'
                 : toast.type === 'warning'
-                ? 'bg-amber-900/90 text-amber-100 border-amber-700/80'
-                : 'bg-slate-900/90 text-slate-100 border-slate-700/80'
-            }`}
+                  ? 'bg-amber-900/90 text-amber-100 border-amber-700/80'
+                  : 'bg-slate-900/90 text-slate-100 border-slate-700/80'
+              }`}
           >
             {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />}
             {toast.type === 'error' && <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />}
@@ -5943,13 +6253,13 @@ export default function TeacherTeachingWorkspacePage() {
           },
           {
             key: 'catatan',
-            label: 'Catatan & Tahfizh',
-            value: tahfizhLogs.length + studentNotes.length,
+            label: canAccessTahfizh ? 'Catatan & Tahfizh' : 'Catatan Siswa',
+            value: canAccessTahfizh ? tahfizhLogs.length + studentNotes.length : studentNotes.length,
             description: 'Total pendampingan',
-            badge: `${tahfizhLogs.length + studentNotes.length} Log`,
+            badge: `${canAccessTahfizh ? tahfizhLogs.length + studentNotes.length : studentNotes.length} Log`,
             icon: GraduationCap,
-            isActive: activeTab === 'tahfizh' || activeTab === 'catatan' || activeTab === 'rekapan-tahfizh',
-            onClick: () => changeTab('tahfizh'),
+            isActive: (canAccessTahfizh && (activeTab === 'tahfizh' || activeTab === 'rekapan-tahfizh')) || activeTab === 'catatan',
+            onClick: () => changeTab(canAccessTahfizh ? 'tahfizh' : 'catatan'),
             card: 'border-2 border-rose-300/80 bg-gradient-to-br from-rose-50/95 via-pink-50/60 to-white hover:border-rose-500 shadow-sm shadow-rose-500/10 dark:border-rose-700/60 dark:from-rose-950/50 dark:via-pink-950/30 dark:to-slate-900',
             glow: 'bg-rose-400/20 group-hover:bg-rose-400/30',
             iconBox: 'bg-gradient-to-br from-rose-500 via-rose-600 to-pink-700 text-white shadow-md shadow-rose-600/30 border border-rose-300/40',
@@ -6055,18 +6365,16 @@ export default function TeacherTeachingWorkspacePage() {
                 onClick={() => handleCardClick(mod)}
                 role="tab"
                 aria-selected={isActive}
-                className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all text-center group cursor-pointer ${
-                  isActive
-                    ? 'border-emerald-600 dark:border-emerald-500 bg-gradient-to-b from-emerald-50/95 to-teal-50/70 dark:from-emerald-950/80 dark:to-teal-950/60 shadow-md ring-2 ring-emerald-600/30'
-                    : (mod.cardClass || 'border-emerald-100/80 dark:border-slate-800/90 bg-white dark:bg-slate-900/60 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/30 hover:border-emerald-300 dark:hover:border-emerald-700/80 hover:shadow-md')
-                }`}
+                className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all text-center group cursor-pointer ${isActive
+                  ? 'border-emerald-600 dark:border-emerald-500 bg-gradient-to-b from-emerald-50/95 to-teal-50/70 dark:from-emerald-950/80 dark:to-teal-950/60 shadow-md ring-2 ring-emerald-600/30'
+                  : (mod.cardClass || 'border-emerald-100/80 dark:border-slate-800/90 bg-white dark:bg-slate-900/60 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/30 hover:border-emerald-300 dark:hover:border-emerald-700/80 hover:shadow-md')
+                  }`}
               >
                 <div className={`p-2.5 rounded-2xl ${mod.iconBox || 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-600/20'} mb-2 shrink-0 group-hover:scale-110 transition ${isActive ? 'ring-2 ring-emerald-500/40 shadow-xs' : ''}`}>
                   <Icon className="w-5 h-5 text-white" />
                 </div>
-                <span className={`font-bold text-[11px] leading-tight transition-colors ${
-                  isActive ? 'text-emerald-900 dark:text-emerald-200 font-black' : 'text-slate-800 dark:text-slate-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400'
-                }`}>
+                <span className={`font-bold text-[11px] leading-tight transition-colors ${isActive ? 'text-emerald-900 dark:text-emerald-200 font-black' : 'text-slate-800 dark:text-slate-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400'
+                  }`}>
                   {mod.title}
                 </span>
                 {mod.badge && (
@@ -6087,7 +6395,7 @@ export default function TeacherTeachingWorkspacePage() {
           {/* TAB 1: JADWAL MENGAJAR */}
           {activeTab === 'jadwal' && (
             <div className="space-y-5">
-              {/* TailGrids Modern Hero Card Banner */}
+              {/* HeroUI Modern Hero Card Banner */}
               <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
                 {/* Ambient Glows */}
                 <div className="pointer-events-none absolute -left-12 -top-12 h-44 w-44 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
@@ -6147,8 +6455,8 @@ export default function TeacherTeachingWorkspacePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 xl:grid-cols-12 xl:items-start">
-                <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-7">
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-12 xl:items-stretch">
+                <section className="relative flex h-full flex-col overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-7">
                   {/* Header toolbar */}
                   <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -6205,22 +6513,20 @@ export default function TeacherTeachingWorkspacePage() {
                         <button
                           type="button"
                           onClick={() => setTimelineFilter('hari_ini')}
-                          className={`rounded-xl px-3 py-1.5 text-[11px] font-bold transition cursor-pointer ${
-                            timelineFilter === 'hari_ini'
-                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
-                              : 'border border-slate-200/80 bg-slate-100/80 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 hover:text-emerald-800 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                          }`}
+                          className={`rounded-xl px-3 py-1.5 text-[11px] font-bold transition cursor-pointer ${timelineFilter === 'hari_ini'
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
+                            : 'border border-slate-200/80 bg-slate-100/80 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 hover:text-emerald-800 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                            }`}
                         >
                           Hari Ini ({selectedDateDay}: {selectedDaySchedules.length})
                         </button>
                         <button
                           type="button"
                           onClick={() => setTimelineFilter('semua')}
-                          className={`rounded-xl px-3 py-1.5 text-[11px] font-bold transition cursor-pointer ${
-                            timelineFilter === 'semua' || (timelineFilter === 'auto' && selectedDaySchedules.length === 0)
-                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
-                              : 'border border-slate-200/80 bg-slate-100/80 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 hover:text-emerald-800 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                          }`}
+                          className={`rounded-xl px-3 py-1.5 text-[11px] font-bold transition cursor-pointer ${timelineFilter === 'semua' || (timelineFilter === 'auto' && selectedDaySchedules.length === 0)
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
+                            : 'border border-slate-200/80 bg-slate-100/80 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 hover:text-emerald-800 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                            }`}
                         >
                           Semua Hari ({sortedSchedules.length})
                         </button>
@@ -6235,11 +6541,10 @@ export default function TeacherTeachingWorkspacePage() {
                                 setTimelineFilter(d.name)
                                 setWeeklySelectedDay(d.short)
                               }}
-                              className={`rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition cursor-pointer ${
-                                timelineFilter === d.name
-                                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
-                                  : 'border border-emerald-200/80 bg-emerald-50/70 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-800/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60'
-                              }`}
+                              className={`rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition cursor-pointer ${timelineFilter === d.name
+                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
+                                : 'border border-emerald-200/80 bg-emerald-50/70 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-800/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60'
+                                }`}
                             >
                               {d.name} ({count})
                             </button>
@@ -6313,11 +6618,10 @@ export default function TeacherTeachingWorkspacePage() {
                           return (
                             <article
                               key={schedule.id || index}
-                              className={`group relative overflow-hidden rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
-                                status.isActive
-                                  ? 'border-2 border-emerald-500 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-white shadow-md shadow-emerald-500/10 dark:border-emerald-500/70 dark:bg-gradient-to-r dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900'
-                                  : 'border-slate-200/90 bg-white hover:border-emerald-300 hover:bg-emerald-50/30 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700 dark:hover:bg-slate-900'
-                              } p-4`}
+                              className={`group relative overflow-hidden rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${status.isActive
+                                ? 'border-2 border-emerald-500 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-white shadow-md shadow-emerald-500/10 dark:border-emerald-500/70 dark:bg-gradient-to-r dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900'
+                                : 'border-slate-200/90 bg-white hover:border-emerald-300 hover:bg-emerald-50/30 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700 dark:hover:bg-slate-900'
+                                } p-4`}
                             >
                               <div className={`absolute inset-y-0 left-0 ${status.isActive ? 'w-1.5 bg-gradient-to-b from-emerald-500 to-teal-600' : 'w-1 bg-emerald-600/70'}`} />
                               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -6348,11 +6652,10 @@ export default function TeacherTeachingWorkspacePage() {
                                     onClick={() => openPresensiModal(schedule)}
                                     disabled={!status.isActive}
                                     title={status.isActive ? 'Buka Presensi Sesi KBM' : `Presensi Tidak Aktif (${status.label})`}
-                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition sm:flex-none ${
-                                      status.isActive
-                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm shadow-emerald-600/25 cursor-pointer'
-                                        : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed opacity-60'
-                                    }`}
+                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition sm:flex-none ${status.isActive
+                                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm shadow-emerald-600/25 cursor-pointer'
+                                      : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed opacity-60'
+                                      }`}
                                   >
                                     <UserCheck className="h-3.5 w-3.5" />
                                     <span>{status.isActive ? 'Presensi' : `Presensi (${status.label})`}</span>
@@ -6375,7 +6678,7 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </section>
 
-                <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-5">
+                <section className="relative flex h-full flex-col overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-5">
                   {/* Header toolbar */}
                   <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5">
                     <div className="flex items-center gap-3">
@@ -6402,18 +6705,16 @@ export default function TeacherTeachingWorkspacePage() {
                             }}
                             role="tab"
                             aria-selected={weeklySelectedDay === day.short}
-                            className={`rounded-xl px-2 py-2 text-[11px] font-bold transition flex flex-col items-center justify-center cursor-pointer ${
-                              weeklySelectedDay === day.short
-                                ? 'bg-white text-emerald-800 shadow-xs border border-emerald-200/60 dark:bg-slate-900 dark:text-emerald-300 dark:border-emerald-700/60'
-                                : 'text-slate-600 hover:text-emerald-800 hover:bg-white/60 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
-                            }`}
+                            className={`rounded-xl px-2 py-2 text-[11px] font-bold transition flex flex-col items-center justify-center cursor-pointer ${weeklySelectedDay === day.short
+                              ? 'bg-white text-emerald-800 shadow-xs border border-emerald-200/60 dark:bg-slate-900 dark:text-emerald-300 dark:border-emerald-700/60'
+                              : 'text-slate-600 hover:text-emerald-800 hover:bg-white/60 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
+                              }`}
                           >
                             <span>{day.short}</span>
-                            <span className={`mt-0.5 text-[9px] font-extrabold px-1.5 py-0.2 rounded-full ${
-                              dayCount > 0
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                : 'text-slate-400 dark:text-slate-600'
-                            }`}>
+                            <span className={`mt-0.5 text-[9px] font-extrabold px-1.5 py-0.2 rounded-full ${dayCount > 0
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : 'text-slate-400 dark:text-slate-600'
+                              }`}>
                               {dayCount}
                             </span>
                           </button>
@@ -6628,11 +6929,10 @@ export default function TeacherTeachingWorkspacePage() {
                             key={item.id}
                             type="button"
                             onClick={() => setAttendancePeriodFilter(item.id)}
-                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                              isActive
-                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
-                                : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                            }`}
+                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${isActive
+                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
+                              : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                              }`}
                           >
                             <Icon className="h-3.5 w-3.5" />
                             {item.label}
@@ -6716,7 +7016,7 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </div>
 
-                {/* TailGrids KBM Session & Journal Input Card */}
+                {/* HeroUI KBM Session & Journal Input Card */}
                 <div className="mb-4 rounded-[22px] border-2 border-emerald-500/25 bg-gradient-to-r from-emerald-50/60 via-teal-50/30 to-emerald-50/60 p-4 shadow-sm dark:border-emerald-600/35 dark:bg-slate-900/60">
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/15 pb-2.5">
                     <div className="flex items-center gap-2">
@@ -6764,7 +7064,7 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </div>
 
-                {/* TailGrids Emerald Datatable Container */}
+                {/* HeroUI Emerald Datatable Container */}
                 <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
                   {/* Toolbar Header */}
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
@@ -6937,9 +7237,8 @@ export default function TeacherTeachingWorkspacePage() {
                               </div>
                             </div>
                             <span
-                              className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
-                                statusColorMap[status] || statusColorMap['Belum Dicatat']
-                              }`}
+                              className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${statusColorMap[status] || statusColorMap['Belum Dicatat']
+                                }`}
                             >
                               {status}
                             </span>
@@ -6965,11 +7264,10 @@ export default function TeacherTeachingWorkspacePage() {
                             <button
                               type="button"
                               onClick={() => toggleStudentChecklist(student, status !== 'Hadir')}
-                              className={`inline-flex h-8 items-center justify-center gap-1 rounded-xl px-3 text-[10px] font-bold transition shadow-xs ${
-                                status === 'Hadir'
-                                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                                  : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300'
-                              }`}
+                              className={`inline-flex h-8 items-center justify-center gap-1 rounded-xl px-3 text-[10px] font-bold transition shadow-xs ${status === 'Hadir'
+                                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                }`}
                             >
                               <Check className="h-3 w-3" />
                               {status === 'Hadir' ? 'Hadir' : 'Set Hadir'}
@@ -7114,11 +7412,10 @@ export default function TeacherTeachingWorkspacePage() {
                                     </p>
                                     {/* Badge izin ortu */}
                                     {perm && (isPending || isApproved) && (
-                                      <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${
-                                        isPending
-                                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
-                                          : 'bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300'
-                                      }`}>
+                                      <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${isPending
+                                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                                        : 'bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300'
+                                        }`}>
                                         {isPending ? '⏳' : '✅'}
                                         {isPending ? 'Izin Pending' : 'Izin Disetujui'} · {String(perm.type || '').toUpperCase()}
                                       </span>
@@ -7130,9 +7427,8 @@ export default function TeacherTeachingWorkspacePage() {
                                 <select
                                   value={status}
                                   onChange={(e) => markStudentAttendance(student, 'Roll Call Guru', e.target.value)}
-                                  className={`h-8 rounded-lg border px-2 text-[11px] font-bold outline-none transition focus:ring-1 focus:ring-emerald-500 ${
-                                    statusColorMap[status] || statusColorMap['Belum Dicatat']
-                                  }`}
+                                  className={`h-8 rounded-lg border px-2 text-[11px] font-bold outline-none transition focus:ring-1 focus:ring-emerald-500 ${statusColorMap[status] || statusColorMap['Belum Dicatat']
+                                    }`}
                                 >
                                   {['Belum Dicatat', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha'].map((st) => (
                                     <option key={st} value={st}>{st}</option>
@@ -7162,7 +7458,7 @@ export default function TeacherTeachingWorkspacePage() {
                                       title={`Setujui izin ${perm.type} orang tua untuk ${student.nama_lengkap || student.full_name}`}
                                     >
                                       {isApprovingThis
-                                        ? <svg className="h-3 w-3 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                        ? <svg className="h-3 w-3 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                                         : <Check className="h-3 w-3" />
                                       }
                                       Setujui
@@ -7171,11 +7467,10 @@ export default function TeacherTeachingWorkspacePage() {
                                   <button
                                     type="button"
                                     onClick={() => toggleStudentChecklist(student, status !== 'Hadir')}
-                                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
-                                      status === 'Hadir'
-                                        ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
-                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-                                    }`}
+                                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${status === 'Hadir'
+                                      ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
+                                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                                      }`}
                                     title={status === 'Hadir' ? 'Batalkan (Set Belum Dicatat)' : 'Tandai Hadir Cepat'}
                                   >
                                     <Check className="h-3 w-3" />
@@ -7412,9 +7707,9 @@ export default function TeacherTeachingWorkspacePage() {
                 />
               </div>
 
-              <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+              <div className="relative z-20 rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
                 {/* Toolbar Header */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-[20px] border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm">
                       <BookOpen className="h-5 w-5" />
@@ -7441,130 +7736,130 @@ export default function TeacherTeachingWorkspacePage() {
                 </div>
 
                 {/* Filter Bar */}
-                <div className="border-b border-emerald-500/15 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 p-4 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 sm:p-5">
+                <div className="rounded-b-[20px] bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 p-4 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 sm:p-5">
 
-                {/* Baris 1: Search + Filter Utama */}
-                <div className="mt-1 flex flex-col gap-3 lg:flex-row lg:items-center">
-                  <label className="relative flex-1">
-                    <span className="sr-only">Cari materi</span>
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="search"
-                      value={materialSearch}
-                      onChange={(event) => setMaterialSearch(event.target.value)}
-                      placeholder="Cari judul, ringkasan, mapel..."
-                      className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-xs font-semibold outline-none focus:border-emerald-700 focus:ring-3 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
-                    />
-                  </label>
+                  {/* Baris 1: Search + Filter Utama */}
+                  <div className="mt-1 flex flex-col gap-3 lg:flex-row lg:items-center">
+                    <label className="relative flex-1">
+                      <span className="sr-only">Cari materi</span>
+                      <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="search"
+                        value={materialSearch}
+                        onChange={(event) => setMaterialSearch(event.target.value)}
+                        placeholder="Cari judul, ringkasan, mapel..."
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-xs font-semibold outline-none focus:border-emerald-700 focus:ring-3 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
+                      />
+                    </label>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <HeroUiWorkspaceSelect
-                      id="material-rombel-select"
-                      value={selectedClass}
-                      onChange={(val) => {
-                        setSelectedClass(val)
-                        setMaterialMapelFilter('all')
-                        fetchStudentsForClass(val)
-                      }}
-                      options={[
-                        { value: 'all', label: 'Semua Rombel', subtext: 'Seluruh rombel yang diampu' },
-                        ...classes.map((c) => ({
-                          value: String(c.id),
-                          label: `Rombel ${c.nama_kelas || c.name}${c.kode_kelas ? ` · ${c.kode_kelas}` : ''}`,
-                        })),
-                      ]}
-                      icon={Users}
-                      label="Rombel"
-                      placeholder="Pilih Rombel"
-                      popoverWidth="w-64"
-                      searchable
-                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <HeroUiWorkspaceSelect
+                        id="material-rombel-select"
+                        value={selectedClass}
+                        onChange={(val) => {
+                          setSelectedClass(val)
+                          setMaterialMapelFilter('all')
+                          fetchStudentsForClass(val)
+                        }}
+                        options={[
+                          { value: 'all', label: 'Semua Rombel', subtext: 'Seluruh rombel yang diampu' },
+                          ...classes.map((c) => ({
+                            value: String(c.id),
+                            label: `Rombel ${c.nama_kelas || c.name}${c.kode_kelas ? ` · ${c.kode_kelas}` : ''}`,
+                          })),
+                        ]}
+                        icon={Users}
+                        label="Rombel"
+                        placeholder="Pilih Rombel"
+                        popoverWidth="w-64"
+                        searchable
+                      />
 
-                    <HeroUiWorkspaceSelect
-                      id="material-status-select"
-                      value={materialStatusFilter}
-                      onChange={(val) => setMaterialStatusFilter(val)}
-                      options={[
-                        { value: 'semua', label: 'Semua Status' },
-                        { value: 'published', label: 'Dipublikasikan' },
-                        { value: 'draft', label: 'Draft' },
-                      ]}
-                      icon={Filter}
-                      label="Status"
-                      placeholder="Pilih Status"
-                      popoverWidth="w-52"
-                    />
+                      <HeroUiWorkspaceSelect
+                        id="material-status-select"
+                        value={materialStatusFilter}
+                        onChange={(val) => setMaterialStatusFilter(val)}
+                        options={[
+                          { value: 'semua', label: 'Semua Status' },
+                          { value: 'published', label: 'Dipublikasikan' },
+                          { value: 'draft', label: 'Draft' },
+                        ]}
+                        icon={Filter}
+                        label="Status"
+                        placeholder="Pilih Status"
+                        popoverWidth="w-52"
+                      />
 
-                    <HeroUiWorkspaceSelect
-                      id="material-mapel-select"
-                      value={materialMapelFilter}
-                      onChange={(val) => setMaterialMapelFilter(val)}
-                      options={[
-                        { value: 'all', label: 'Semua Mapel', subtext: 'Seluruh mata pelajaran' },
-                        ...uniqueMapelOptions.map((subj) => ({
-                          value: String(subj.id),
-                          label: subj.name,
-                        })),
-                      ]}
-                      icon={BookOpen}
-                      label="Mapel"
-                      placeholder="Pilih Mapel"
-                      popoverWidth="w-64"
-                      searchable
-                    />
+                      <HeroUiWorkspaceSelect
+                        id="material-mapel-select"
+                        value={materialMapelFilter}
+                        onChange={(val) => setMaterialMapelFilter(val)}
+                        options={[
+                          { value: 'all', label: 'Semua Mapel', subtext: 'Seluruh mata pelajaran' },
+                          ...uniqueMapelOptions.map((subj) => ({
+                            value: String(subj.id),
+                            label: subj.name,
+                          })),
+                        ]}
+                        icon={BookOpen}
+                        label="Mapel"
+                        placeholder="Pilih Mapel"
+                        popoverWidth="w-64"
+                        searchable
+                      />
 
-                    <button
-                      type="button"
-                      onClick={fetchMaterials}
-                      aria-label="Muat ulang materi"
-                      title="Muat ulang materi"
-                      className="inline-flex h-9.5 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-50 focus-visible:ring-3 focus-visible:ring-emerald-700/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer active:scale-95"
-                    >
-                      <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Baris 2: Badge filter aktif & Ringkasan */}
-                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-emerald-500/10">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {materialSearch.trim() && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        <Search className="h-3 w-3" /> "{materialSearch.trim()}"
-                        <button type="button" onClick={() => setMaterialSearch('')} className="ml-0.5 rounded-full hover:text-rose-500">×</button>
-                      </span>
-                    )}
-                    {materialMapelFilter !== 'all' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                        <BookOpen className="h-3 w-3" />
-                        {uniqueMapelOptions.find((s) => String(s.id) === String(materialMapelFilter))?.name || 'Mapel'}
-                        <button type="button" onClick={() => setMaterialMapelFilter('all')} className="ml-0.5 rounded-full hover:text-rose-500">×</button>
-                      </span>
-                    )}
-                    {materialStatusFilter !== 'semua' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-1 text-[10px] font-bold text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
-                        {materialStatusFilter === 'published' ? '✅ Dipublikasikan' : '📝 Draft'}
-                        <button type="button" onClick={() => setMaterialStatusFilter('semua')} className="ml-0.5 rounded-full hover:text-rose-500">×</button>
-                      </span>
-                    )}
-                    {(materialSearch.trim() || materialMapelFilter !== 'all' || materialStatusFilter !== 'semua') && (
                       <button
                         type="button"
-                        onClick={() => { setMaterialSearch(''); setMaterialMapelFilter('all'); setMaterialStatusFilter('semua') }}
-                        className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-600 transition hover:bg-rose-100 dark:border-rose-800/60 dark:bg-rose-950/30 dark:text-rose-400 cursor-pointer"
+                        onClick={fetchMaterials}
+                        aria-label="Muat ulang materi"
+                        title="Muat ulang materi"
+                        className="inline-flex h-9.5 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-600 transition hover:bg-slate-50 focus-visible:ring-3 focus-visible:ring-emerald-700/20 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer active:scale-95"
                       >
-                        <X className="h-3 w-3" /> Reset Filter
+                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                       </button>
-                    )}
+                    </div>
                   </div>
 
-                  {/* Info jumlah hasil */}
-                  <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                    {loading ? 'Memuat materi…' : `Menampilkan ${filteredMaterials.length} dari ${materialMeta.total || materials.length} materi`}
-                  </span>
+                  {/* Baris 2: Badge filter aktif & Ringkasan */}
+                  <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-emerald-500/10">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {materialSearch.trim() && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          <Search className="h-3 w-3" /> "{materialSearch.trim()}"
+                          <button type="button" onClick={() => setMaterialSearch('')} className="ml-0.5 rounded-full hover:text-rose-500">×</button>
+                        </span>
+                      )}
+                      {materialMapelFilter !== 'all' && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                          <BookOpen className="h-3 w-3" />
+                          {uniqueMapelOptions.find((s) => String(s.id) === String(materialMapelFilter))?.name || 'Mapel'}
+                          <button type="button" onClick={() => setMaterialMapelFilter('all')} className="ml-0.5 rounded-full hover:text-rose-500">×</button>
+                        </span>
+                      )}
+                      {materialStatusFilter !== 'semua' && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-1 text-[10px] font-bold text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
+                          {materialStatusFilter === 'published' ? '✅ Dipublikasikan' : '📝 Draft'}
+                          <button type="button" onClick={() => setMaterialStatusFilter('semua')} className="ml-0.5 rounded-full hover:text-rose-500">×</button>
+                        </span>
+                      )}
+                      {(materialSearch.trim() || materialMapelFilter !== 'all' || materialStatusFilter !== 'semua') && (
+                        <button
+                          type="button"
+                          onClick={() => { setMaterialSearch(''); setMaterialMapelFilter('all'); setMaterialStatusFilter('semua') }}
+                          className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-bold text-rose-600 transition hover:bg-rose-100 dark:border-rose-800/60 dark:bg-rose-950/30 dark:text-rose-400 cursor-pointer"
+                        >
+                          <X className="h-3 w-3" /> Reset Filter
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Info jumlah hasil */}
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                      {loading ? 'Memuat materi…' : `Menampilkan ${filteredMaterials.length} dari ${materialMeta.total || materials.length} materi`}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
               {materialError ? (
                 <div className="rounded-[20px] border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900/60 dark:bg-rose-950/20">
@@ -7630,165 +7925,165 @@ export default function TeacherTeachingWorkspacePage() {
               ) : (
                 <>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {filteredMaterials.map((mat) => {
-                    const isPublished = String(mat.status).toLowerCase() === 'published'
-                    return (
-                      <article
-                        key={mat.id}
-                        className="group relative flex min-h-52 flex-col justify-between overflow-hidden rounded-[20px] border-2 border-emerald-500/20 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/60 hover:shadow-xl dark:border-emerald-600/30 dark:bg-[#1B2433]"
-                      >
-                        {/* Top Accent Gradient Stripe */}
-                        <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
-                        
-                        {/* Ambient Glow */}
-                        <div className="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full bg-emerald-500/15 blur-2xl transition-all duration-500 group-hover:bg-emerald-500/25" />
+                    {filteredMaterials.map((mat) => {
+                      const isPublished = String(mat.status).toLowerCase() === 'published'
+                      return (
+                        <article
+                          key={mat.id}
+                          className="group relative flex min-h-52 flex-col justify-between overflow-hidden rounded-[20px] border-2 border-emerald-500/20 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/60 hover:shadow-xl dark:border-emerald-600/30 dark:bg-[#1B2433]"
+                        >
+                          {/* Top Accent Gradient Stripe */}
+                          <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
 
-                        <div className="flex flex-1 flex-col p-5">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40">
-                              <BookOpen className="h-5 w-5" />
-                            </div>
-                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${isPublished ? 'border-emerald-200/90 bg-emerald-50 text-emerald-800 dark:border-emerald-800/80 dark:bg-emerald-950/60 dark:text-emerald-300' : 'border-sky-200/90 bg-sky-50 text-sky-800 dark:border-sky-800/80 dark:bg-sky-950/60 dark:text-sky-300'}`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${isPublished ? 'bg-emerald-500 animate-pulse' : 'bg-sky-500'}`} />
-                              {isPublished ? 'Dipublikasikan' : 'Draft'}
-                            </span>
-                          </div>
+                          {/* Ambient Glow */}
+                          <div className="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full bg-emerald-500/15 blur-2xl transition-all duration-500 group-hover:bg-emerald-500/25" />
 
-                          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                              {mat.subject?.name || mat.subject?.nama_mapel || 'Materi Pembelajaran'}
-                            </p>
-                            <div className="flex items-center gap-1.5">
-                              {(mat.tanggal_publish || mat.tanggal || mat.created_at) && (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                                  <Calendar className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                                  {new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(mat.tanggal_publish || mat.tanggal || mat.created_at))}
-                                </span>
-                              )}
-                              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                                Pekan {String(mat.urutan || calculatePekanFromDate(mat.tanggal_publish || mat.tanggal || mat.created_at).pekan).padStart(2, '0')}
+                          <div className="flex flex-1 flex-col p-5">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40">
+                                <BookOpen className="h-5 w-5" />
+                              </div>
+                              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${isPublished ? 'border-emerald-200/90 bg-emerald-50 text-emerald-800 dark:border-emerald-800/80 dark:bg-emerald-950/60 dark:text-emerald-300' : 'border-sky-200/90 bg-sky-50 text-sky-800 dark:border-sky-800/80 dark:bg-sky-950/60 dark:text-sky-300'}`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${isPublished ? 'bg-emerald-500 animate-pulse' : 'bg-sky-500'}`} />
+                                {isPublished ? 'Dipublikasikan' : 'Draft'}
                               </span>
                             </div>
+
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                {mat.subject?.name || mat.subject?.nama_mapel || 'Materi Pembelajaran'}
+                              </p>
+                              <div className="flex items-center gap-1.5">
+                                {(mat.tanggal_publish || mat.tanggal || mat.created_at) && (
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                    <Calendar className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                    {new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(mat.tanggal_publish || mat.tanggal || mat.created_at))}
+                                  </span>
+                                )}
+                                <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                  Pekan {String(mat.urutan || calculatePekanFromDate(mat.tanggal_publish || mat.tanggal || mat.created_at).pekan).padStart(2, '0')}
+                                </span>
+                              </div>
+                            </div>
+
+                            <h4 className="mt-1.5 line-clamp-2 text-sm font-black text-slate-900 dark:text-white">{mat.judul}</h4>
+                            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{mat.ringkasan || 'Belum ada ringkasan untuk materi ini.'}</p>
+
+                            {(mat.file || mat.video || mat.link) && (
+                              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                {mat.file && (
+                                  <span className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300">
+                                    <FileText className="h-3 w-3" /> PDF Modul
+                                  </span>
+                                )}
+                                {mat.video && (
+                                  <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+                                    <Video className="h-3 w-3" /> Video
+                                  </span>
+                                )}
+                                {mat.link && (
+                                  <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+                                    <ExternalLink className="h-3 w-3" /> Link
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800/80">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => openMaterialDetail(mat)}
+                                  title="Lihat Data Materi"
+                                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 cursor-pointer"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  <span>Lihat Data</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openMaterialForm(mat)}
+                                  title="Edit Data Materi"
+                                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50 cursor-pointer"
+                                >
+                                  <Edit3 className="h-3.5 w-3.5" />
+                                  <span>Edit Data</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCreateTaskFromMaterial(mat)}
+                                  title="Buat Tugas Berdasarkan Materi Ini"
+                                  className="inline-flex items-center gap-1.5 rounded-xl bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700 transition hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50 cursor-pointer"
+                                >
+                                  <FileText className="h-3.5 w-3.5" />
+                                  <span>+ Buat Tugas</span>
+                                </button>
+                              </div>
+
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => printMaterial(mat)}
+                                  title="Cetak Materi"
+                                  aria-label="Cetak Materi"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer"
+                                >
+                                  <Printer className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => printMaterial(mat, true)}
+                                  title="Export PDF"
+                                  aria-label="Export PDF"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 text-sky-600 transition hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/50 cursor-pointer"
+                                >
+                                  <FileText className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => confirmDeleteModal('materi', mat.id, mat.judul)}
+                                  title="Hapus Data Materi"
+                                  aria-label="Hapus Data Materi"
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/50 cursor-pointer"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
                           </div>
-
-                          <h4 className="mt-1.5 line-clamp-2 text-sm font-black text-slate-900 dark:text-white">{mat.judul}</h4>
-                          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{mat.ringkasan || 'Belum ada ringkasan untuk materi ini.'}</p>
-
-                          {(mat.file || mat.video || mat.link) && (
-                            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                              {mat.file && (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300">
-                                  <FileText className="h-3 w-3" /> PDF Modul
-                                </span>
-                              )}
-                              {mat.video && (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
-                                  <Video className="h-3 w-3" /> Video
-                                </span>
-                              )}
-                              {mat.link && (
-                                <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
-                                  <ExternalLink className="h-3 w-3" /> Link
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-800/80">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => openMaterialDetail(mat)}
-                                title="Lihat Data Materi"
-                                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 cursor-pointer"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                                <span>Lihat Data</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => openMaterialForm(mat)}
-                                title="Edit Data Materi"
-                                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50 cursor-pointer"
-                              >
-                                <Edit3 className="h-3.5 w-3.5" />
-                                <span>Edit Data</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleCreateTaskFromMaterial(mat)}
-                                title="Buat Tugas Berdasarkan Materi Ini"
-                                className="inline-flex items-center gap-1.5 rounded-xl bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700 transition hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50 cursor-pointer"
-                              >
-                                <FileText className="h-3.5 w-3.5" />
-                                <span>+ Buat Tugas</span>
-                              </button>
-                            </div>
-
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => printMaterial(mat)}
-                                title="Cetak Materi"
-                                aria-label="Cetak Materi"
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer"
-                              >
-                                <Printer className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => printMaterial(mat, true)}
-                                title="Export PDF"
-                                aria-label="Export PDF"
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 text-sky-600 transition hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/50 cursor-pointer"
-                              >
-                                <FileText className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => confirmDeleteModal('materi', mat.id, mat.judul)}
-                                title="Hapus Data Materi"
-                                aria-label="Hapus Data Materi"
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/50 cursor-pointer"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </article>
-                    )
-                  })}
+                        </article>
+                      )
+                    })}
                   </div>
                   {materialMeta.last_page > 1 && (
-                  <div className="flex flex-col items-center justify-between gap-3 rounded-[18px] border border-slate-200 bg-white px-4 py-3 sm:flex-row dark:border-slate-700 dark:bg-[#1B2433]">
-                    <p className="text-xs text-slate-500">Menampilkan {materialMeta.from || 0}–{materialMeta.to || 0} dari {materialMeta.total} materi.</p>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        disabled={materialPage <= 1 || loading}
-                        onClick={() => setMaterialPage((page) => Math.max(1, page - 1))}
-                        title="Halaman Sebelumnya"
-                        aria-label="Halaman Sebelumnya"
-                        className="flex size-8.5 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
-                      >
-                        <ChevronLeft className="size-4 shrink-0 text-white" />
-                      </button>
-                      <span className="px-2.5 py-1 text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Halaman {materialMeta.current_page} / {materialMeta.last_page}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={materialPage >= materialMeta.last_page || loading}
-                        onClick={() => setMaterialPage((page) => Math.min(materialMeta.last_page, page + 1))}
-                        title="Halaman Berikutnya"
-                        aria-label="Halaman Berikutnya"
-                        className="flex size-8.5 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
-                      >
-                        <ChevronRight className="size-4 shrink-0 text-white" />
-                      </button>
+                    <div className="flex flex-col items-center justify-between gap-3 rounded-[18px] border border-slate-200 bg-white px-4 py-3 sm:flex-row dark:border-slate-700 dark:bg-[#1B2433]">
+                      <p className="text-xs text-slate-500">Menampilkan {materialMeta.from || 0}–{materialMeta.to || 0} dari {materialMeta.total} materi.</p>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={materialPage <= 1 || loading}
+                          onClick={() => setMaterialPage((page) => Math.max(1, page - 1))}
+                          title="Halaman Sebelumnya"
+                          aria-label="Halaman Sebelumnya"
+                          className="flex size-8.5 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
+                        >
+                          <ChevronLeft className="size-4 shrink-0 text-white" />
+                        </button>
+                        <span className="px-2.5 py-1 text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Halaman {materialMeta.current_page} / {materialMeta.last_page}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={materialPage >= materialMeta.last_page || loading}
+                          onClick={() => setMaterialPage((page) => Math.min(materialMeta.last_page, page + 1))}
+                          title="Halaman Berikutnya"
+                          aria-label="Halaman Berikutnya"
+                          className="flex size-8.5 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
+                        >
+                          <ChevronRight className="size-4 shrink-0 text-white" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
                   )}
                 </>
               )}
@@ -8007,7 +8302,7 @@ export default function TeacherTeachingWorkspacePage() {
                               const jenis = asg.jenis_tugas || asg.jenis_soal || 'essay'
                               const map = {
                                 objektif: { label: '🔘 Objektif', cls: 'bg-blue-100 text-blue-800' },
-                                essay:    { label: '📝 Essay',    cls: 'bg-violet-100 text-violet-800' },
+                                essay: { label: '📝 Essay', cls: 'bg-violet-100 text-violet-800' },
                                 campuran: { label: '🔀 Campuran', cls: 'bg-orange-100 text-orange-800' },
                               }
                               const { label, cls } = map[jenis] ?? map.essay
@@ -8021,8 +8316,8 @@ export default function TeacherTeachingWorkspacePage() {
                               const asgMaterials = Array.isArray(asg.materials) && asg.materials.length > 0
                                 ? asg.materials
                                 : (Array.isArray(asg.materi_ids) && asg.materi_ids.length > 0
-                                    ? asg.materi_ids.map((id) => materials.find((m) => String(m.id) === String(id))).filter(Boolean)
-                                    : (asg.materi ? [asg.materi] : (asg.materi_id ? [materials.find((m) => String(m.id) === String(asg.materi_id))].filter(Boolean) : [])))
+                                  ? asg.materi_ids.map((id) => materials.find((m) => String(m.id) === String(id))).filter(Boolean)
+                                  : (asg.materi ? [asg.materi] : (asg.materi_id ? [materials.find((m) => String(m.id) === String(asg.materi_id))].filter(Boolean) : [])))
 
                               if (!asgMaterials || asgMaterials.length === 0) return null
 
@@ -8079,7 +8374,7 @@ export default function TeacherTeachingWorkspacePage() {
                                 )
                               }
                             }
-                          } catch {}
+                          } catch { }
                           return asg.deskripsi ? (
                             <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-mono text-slate-700 dark:text-slate-300 line-clamp-2">
                               {asg.deskripsi}
@@ -8189,7 +8484,7 @@ export default function TeacherTeachingWorkspacePage() {
                       printCleanTable({
                         title: 'Buku Nilai Harian & Rapor Siswa',
                         subtitle: `Rombel: ${selectedClassName} | Semester Ganjil 2026/2027`,
-                        headers: ['No', 'NIS', 'Nama Siswa', 'Nilai Tugas (20%)', 'Nilai Kuis (20%)', 'Nilai UTS (30%)', 'Nilai UAS (30%)', 'Nilai Akhir'],
+                        headers: ['No', 'NIS', 'Nama Siswa', 'Nilai Tugas (20%)', 'Nilai Kuis (20%)', 'Nilai UTS (30%)', 'Nilai UAS (30%)', 'Nilai Akhir', 'Catatan Guru'],
                         rows: students.map((st, idx) => {
                           const row = gradesData[st.id] || {}
                           const tugas = row.nilai_tugas ?? '-'
@@ -8199,7 +8494,8 @@ export default function TeacherTeachingWorkspacePage() {
                           const akhir = (row.nilai_tugas != null || row.nilai_kuis != null || row.nilai_uts != null || row.nilai_uas != null)
                             ? Math.round(Number(row.nilai_tugas || 0) * 0.2 + Number(row.nilai_kuis || 0) * 0.2 + Number(row.nilai_uts || 0) * 0.3 + Number(row.nilai_uas || 0) * 0.3)
                             : '-'
-                          return [idx + 1, st.nis || st.student_id || '-', st.name || st.full_name || '-', tugas, kuis, uts, uas, akhir]
+                          const catatan = row.catatan || row.notes || '-'
+                          return [idx + 1, st.nis || st.student_id || '-', st.name || st.full_name || '-', tugas, kuis, uts, uas, akhir, catatan]
                         }),
                         user,
                         unit: teacherProfile?.unit || user?.employee?.unit || user?.unit,
@@ -8374,79 +8670,103 @@ export default function TeacherTeachingWorkspacePage() {
                           )}
                         </div>
                       </th>
+                      <th
+                        className="px-3 py-3 font-bold text-left min-w-[220px]"
+                        title="Catatan evaluasi guru / feedback rapor siswa"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Catatan Penilaian Guru</span>
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {sortedGradeStudents
                       .slice((penilaianPage - 1) * penilaianPerPage, penilaianPage * penilaianPerPage)
                       .map((st, idx) => {
-                      const absoluteIndex = (penilaianPage - 1) * penilaianPerPage + idx + 1
-                      const grade = gradesData[st.id] || { nilai_tugas: '', nilai_kuis: '', nilai_uts: '', nilai_uas: '', nilai_akhir: '' }
-                      return (
-                        <tr key={st.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                          <td className="p-3 text-slate-400 font-mono text-[11px]">{absoluteIndex}</td>
-                          <td className="p-3 font-bold text-slate-900 dark:text-white">
-                            {st.nama_lengkap}
-                            <span className="block text-[10px] font-normal text-slate-400">NIS: {st.nis || '-'}</span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <input
-                              type="number"
-                              value={grade.nilai_tugas ?? ''}
-                              onChange={(e) => {
-                                const val = e.target.value === '' ? '' : Number(e.target.value)
-                                const newAkhir = calcAkhir(val, grade.nilai_kuis, grade.nilai_uts, grade.nilai_uas)
-                                setGradesData({ ...gradesData, [st.id]: { ...grade, nilai_tugas: val, nilai_akhir: newAkhir } })
-                              }}
-                              className="w-16 p-1 text-center border rounded-lg dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold"
-                              placeholder="-"
-                            />
-                          </td>
-                          <td className="p-3 text-center bg-violet-50/30 dark:bg-violet-950/10">
-                            <input
-                              type="number"
-                              value={grade.nilai_kuis ?? ''}
-                              onChange={(e) => {
-                                const val = e.target.value === '' ? '' : Number(e.target.value)
-                                const newAkhir = calcAkhir(grade.nilai_tugas, val, grade.nilai_uts, grade.nilai_uas)
-                                setGradesData({ ...gradesData, [st.id]: { ...grade, nilai_kuis: val, nilai_akhir: newAkhir } })
-                              }}
-                              className="w-16 p-1 text-center border rounded-lg bg-violet-50/50 dark:bg-slate-800 border-violet-300 dark:border-violet-700 font-extrabold text-violet-900 dark:text-violet-200"
-                              placeholder="-"
-                            />
-                          </td>
-                          <td className="p-3 text-center">
-                            <input
-                              type="number"
-                              value={grade.nilai_uts ?? ''}
-                              onChange={(e) => {
-                                const val = e.target.value === '' ? '' : Number(e.target.value)
-                                const newAkhir = calcAkhir(grade.nilai_tugas, grade.nilai_kuis, val, grade.nilai_uas)
-                                setGradesData({ ...gradesData, [st.id]: { ...grade, nilai_uts: val, nilai_akhir: newAkhir } })
-                              }}
-                              className="w-16 p-1 text-center border rounded-lg dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold"
-                              placeholder="-"
-                            />
-                          </td>
-                          <td className="p-3 text-center">
-                            <input
-                              type="number"
-                              value={grade.nilai_uas ?? ''}
-                              onChange={(e) => {
-                                const val = e.target.value === '' ? '' : Number(e.target.value)
-                                const newAkhir = calcAkhir(grade.nilai_tugas, grade.nilai_kuis, grade.nilai_uts, val)
-                                setGradesData({ ...gradesData, [st.id]: { ...grade, nilai_uas: val, nilai_akhir: newAkhir } })
-                              }}
-                              className="w-16 p-1 text-center border rounded-lg dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold"
-                              placeholder="-"
-                            />
-                          </td>
-                          <td className="p-3 text-center font-extrabold text-emerald-700 dark:text-emerald-400 text-sm">
-                            {grade.nilai_akhir !== '' && grade.nilai_akhir !== undefined && grade.nilai_akhir !== null ? grade.nilai_akhir : '-'}
-                          </td>
-                        </tr>
-                      )
-                    })}
+                        const absoluteIndex = (penilaianPage - 1) * penilaianPerPage + idx + 1
+                        const grade = gradesData[st.id] || { nilai_tugas: '', nilai_kuis: '', nilai_uts: '', nilai_uas: '', nilai_akhir: '', catatan: '' }
+                        return (
+                          <tr key={st.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                            <td className="p-3 text-slate-400 font-mono text-[11px]">{absoluteIndex}</td>
+                            <td className="p-3 font-bold text-slate-900 dark:text-white">
+                              {st.nama_lengkap}
+                              <span className="block text-[10px] font-normal text-slate-400">NIS: {st.nis || '-'}</span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <input
+                                type="number"
+                                value={grade.nilai_tugas ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value === '' ? '' : Number(e.target.value)
+                                  const newAkhir = calcAkhir(val, grade.nilai_kuis, grade.nilai_uts, grade.nilai_uas)
+                                  setGradesData({ ...gradesData, [st.id]: { ...grade, nilai_tugas: val, nilai_akhir: newAkhir } })
+                                }}
+                                className="w-16 p-1 text-center border rounded-lg dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold"
+                                placeholder="-"
+                              />
+                            </td>
+                            <td className="p-3 text-center bg-violet-50/30 dark:bg-violet-950/10">
+                              <input
+                                type="number"
+                                value={grade.nilai_kuis ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value === '' ? '' : Number(e.target.value)
+                                  const newAkhir = calcAkhir(grade.nilai_tugas, val, grade.nilai_uts, grade.nilai_uas)
+                                  setGradesData({ ...gradesData, [st.id]: { ...grade, nilai_kuis: val, nilai_akhir: newAkhir } })
+                                }}
+                                className="w-16 p-1 text-center border rounded-lg bg-violet-50/50 dark:bg-slate-800 border-violet-300 dark:border-violet-700 font-extrabold text-violet-900 dark:text-violet-200"
+                                placeholder="-"
+                              />
+                            </td>
+                            <td className="p-3 text-center">
+                              <input
+                                type="number"
+                                value={grade.nilai_uts ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value === '' ? '' : Number(e.target.value)
+                                  const newAkhir = calcAkhir(grade.nilai_tugas, grade.nilai_kuis, val, grade.nilai_uas)
+                                  setGradesData({ ...gradesData, [st.id]: { ...grade, nilai_uts: val, nilai_akhir: newAkhir } })
+                                }}
+                                className="w-16 p-1 text-center border rounded-lg dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold"
+                                placeholder="-"
+                              />
+                            </td>
+                            <td className="p-3 text-center">
+                              <input
+                                type="number"
+                                value={grade.nilai_uas ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value === '' ? '' : Number(e.target.value)
+                                  const newAkhir = calcAkhir(grade.nilai_tugas, grade.nilai_kuis, grade.nilai_uts, val)
+                                  setGradesData({ ...gradesData, [st.id]: { ...grade, nilai_uas: val, nilai_akhir: newAkhir } })
+                                }}
+                                className="w-16 p-1 text-center border rounded-lg dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold"
+                                placeholder="-"
+                              />
+                            </td>
+                            <td className="p-3 text-center font-extrabold text-emerald-700 dark:text-emerald-400 text-sm">
+                              {grade.nilai_akhir !== '' && grade.nilai_akhir !== undefined && grade.nilai_akhir !== null ? grade.nilai_akhir : '-'}
+                            </td>
+                            <td className="p-3">
+                              <input
+                                type="text"
+                                value={grade.catatan ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  setGradesData({
+                                    ...gradesData,
+                                    [st.id]: { ...grade, catatan: val, notes: val },
+                                  })
+                                }}
+                                className="w-full min-w-[200px] px-2.5 py-1 text-xs border rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-400"
+                                placeholder="Catatan capaian / evaluasi siswa..."
+                              />
+                            </td>
+                          </tr>
+                        )
+                      })}
                   </tbody>
                 </table>
               </div>
@@ -8478,9 +8798,9 @@ export default function TeacherTeachingWorkspacePage() {
           )}
 
           {/* TAB 6: TAHFIZH */}
-          {activeTab === 'tahfizh' && (
+          {activeTab === 'tahfizh' && canAccessTahfizh && (
             <section className="space-y-6" aria-labelledby="tahfizh-heading">
-              {/* 1. TAILGRIDS MODERN HERO CARD BANNER */}
+              {/* 1. HEROUI MODERN HERO CARD BANNER */}
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -8502,35 +8822,32 @@ export default function TeacherTeachingWorkspacePage() {
                           <Sparkles className="size-3 sm:size-3.5 text-amber-300 animate-pulse" />
                           Jurnal &amp; Monitoring Tahfizh
                         </span>
-                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-bold border ${
-                          isPengurusYayasan
-                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border-purple-300/70'
-                            : isKepalaSekolahOrDivisiPendidikan
-                            ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border-sky-300/70'
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300/70'
-                        }`}>
-                          {isPengurusYayasan ? (
-                            <>• Scope: Seluruh Unit (Yayasan)</>
-                          ) : isKepalaSekolahOrDivisiPendidikan ? (
-                            <>• Scope: Unit Pimpinan ({teacherProfile?.education_unit || user?.education_unit?.name || 'Kepala Sekolah / Divisi'})</>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-bold border ${isGlobalTahfizhScope
+                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border-purple-300/70'
+                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300/70'
+                          }`}>
+                          {isGlobalTahfizhScope ? (
+                            selectedTahfizhUnit && selectedTahfizhUnit !== 'semua' ? (
+                              <>• Scope: Seluruh Unit (Filter: {selectedTahfizhUnit})</>
+                            ) : (
+                              <>• Scope: Seluruh Unit Pendidikan (Yayasan &amp; Divisi Pendidikan)</>
+                            )
                           ) : (
-                            <>• Scope: Kelas {selectedClassName}</>
+                            <>• Scope: Unit {teacherProfile?.education_unit || user?.education_unit?.name || user?.unit_name || 'Sekolah'} {selectedClassName && selectedClass !== 'all' ? `— Kelas ${selectedClassName}` : ''}</>
                           )}
                         </span>
                       </div>
                       <h2 id="tahfizh-heading" className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                        {isPengurusYayasan
-                          ? 'Leaderboard Pencapaian Hafalan Tahfizh Seluruh Unit'
-                          : isKepalaSekolahOrDivisiPendidikan
-                          ? `Leaderboard Hafalan Tahfizh Terbanyak — ${teacherProfile?.education_unit || user?.education_unit?.name || 'Unit Pimpinan'}`
-                          : `Jurnal & Ranking Setoran Tahfizh Al-Qur'an — Kelas ${selectedClassName}`}
+                        {isGlobalTahfizhScope
+                          ? (selectedTahfizhUnit && selectedTahfizhUnit !== 'semua'
+                            ? `Leaderboard Hafalan Tahfizh Terbanyak — Unit ${selectedTahfizhUnit}`
+                            : 'Leaderboard Pencapaian Hafalan Tahfizh Seluruh Unit')
+                          : `Jurnal & Ranking Setoran Tahfizh Al-Qur'an — ${teacherProfile?.education_unit || user?.education_unit?.name || 'Unit Sekolah'}${selectedClassName && selectedClass !== 'all' ? ` (Kelas ${selectedClassName})` : ''}`}
                       </h2>
-                      <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-                        {isPengurusYayasan
-                          ? 'Menampilkan konsolidasi pencapaian hafalan tahfizh terbanyak dari seluruh unit pendidikan di bawah naungan yayasan.'
-                          : isKepalaSekolahOrDivisiPendidikan
-                          ? 'Menampilkan peringkat pencapaian hafalan tahfizh terbanyak siswa dari masing-masing unit yang Anda pimpin.'
-                          : `Daftar siswa yang diajar pada rombel ${selectedClassName} diurutkan berdasarkan pencapaian hafalan terbanyak.`}
+                      <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
+                        {isGlobalTahfizhScope
+                          ? 'Menampilkan konsolidasi pencapaian hafalan tahfizh terbanyak dari seluruh unit pendidikan dengan kemampuan menyortir rincian teratas masing-masing unit.'
+                          : `Menampilkan daftar peringkat hafalan tahfizh santri khusus untuk unit ${teacherProfile?.education_unit || user?.education_unit?.name || 'pendidikan Anda'} diurutkan berdasarkan pencapaian hafalan terbanyak.`}
                       </p>
                     </div>
                   </div>
@@ -8586,26 +8903,26 @@ export default function TeacherTeachingWorkspacePage() {
                       }
                       const avatarUrl = student.foto_url || student.avatar || student.foto || student.user?.avatar_url || null
                       const rankLabel = index === 0 ? '🥇 Rank #1' : index === 1 ? '🥈 Rank #2' : index === 2 ? '🥉 Rank #3' : `🏅 Rank #${index + 1}`
-                      
-                      const rankStyle = index === 0 
+
+                      const rankStyle = index === 0
                         ? {
-                            card: 'border-2 border-amber-400 bg-gradient-to-b from-amber-50/80 via-orange-50/30 to-white dark:border-amber-600/80 dark:from-amber-950/40 dark:via-orange-950/15 dark:to-[#1B2433] shadow-md shadow-amber-500/10',
-                            badge: 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-sm shadow-amber-600/30',
-                          }
+                          card: 'border-2 border-amber-400 bg-gradient-to-b from-amber-50/80 via-orange-50/30 to-white dark:border-amber-600/80 dark:from-amber-950/40 dark:via-orange-950/15 dark:to-[#1B2433] shadow-md shadow-amber-500/10',
+                          badge: 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-sm shadow-amber-600/30',
+                        }
                         : index === 1
-                        ? {
+                          ? {
                             card: 'border-2 border-slate-300 bg-gradient-to-b from-slate-50/80 via-slate-100/30 to-white dark:border-slate-600/80 dark:from-slate-900/50 dark:via-slate-900/20 dark:to-[#1B2433] shadow-md shadow-slate-500/10',
                             badge: 'bg-gradient-to-r from-slate-500 to-slate-700 text-white shadow-sm shadow-slate-600/30',
                           }
-                        : index === 2
-                        ? {
-                            card: 'border-2 border-orange-300 bg-gradient-to-b from-orange-50/80 via-amber-50/30 to-white dark:border-orange-600/80 dark:from-orange-950/40 dark:via-amber-950/15 dark:to-[#1B2433] shadow-md shadow-orange-500/10',
-                            badge: 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-sm shadow-orange-600/30',
-                          }
-                        : {
-                            card: 'border-2 border-emerald-300/80 bg-gradient-to-b from-emerald-50/60 via-teal-50/20 to-white dark:border-emerald-700/80 dark:from-emerald-950/30 dark:via-teal-950/10 dark:to-[#1B2433] shadow-md shadow-emerald-500/10',
-                            badge: 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-sm shadow-emerald-700/30',
-                          }
+                          : index === 2
+                            ? {
+                              card: 'border-2 border-orange-300 bg-gradient-to-b from-orange-50/80 via-amber-50/30 to-white dark:border-orange-600/80 dark:from-orange-950/40 dark:via-amber-950/15 dark:to-[#1B2433] shadow-md shadow-orange-500/10',
+                              badge: 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-sm shadow-orange-600/30',
+                            }
+                            : {
+                              card: 'border-2 border-emerald-300/80 bg-gradient-to-b from-emerald-50/60 via-teal-50/20 to-white dark:border-emerald-700/80 dark:from-emerald-950/30 dark:via-teal-950/10 dark:to-[#1B2433] shadow-md shadow-emerald-500/10',
+                              badge: 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-sm shadow-emerald-700/30',
+                            }
 
                       const surahName = latest?.hafalan_surah_name || 'Belum setoran'
                       const ayahRange = latest ? `Ayat ${latest.hafalan_ayah_start}–${latest.hafalan_ayah_end}` : '—'
@@ -8728,8 +9045,8 @@ export default function TeacherTeachingWorkspacePage() {
                 </div>
               )}
 
-              {/* 3. MULTI-UNIT SUMMARY CARDS (For Pengurus Yayasan & Kepala Sekolah) */}
-              {(isPengurusYayasan || isKepalaSekolahOrDivisiPendidikan) && unitStatsSummary.length > 0 && (
+              {/* 3. MULTI-UNIT SUMMARY CARDS (For Super Admin, Admin, Pengurus Yayasan & Divisi Pendidikan) */}
+              {isGlobalTahfizhScope && unitStatsSummary.length > 0 && (
                 <div className="grid gap-3.5 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {unitStatsSummary.map((unitStat) => (
                     <div
@@ -8766,7 +9083,7 @@ export default function TeacherTeachingWorkspacePage() {
                 </div>
               )}
 
-              {/* 4. TAILGRIDS EMERALD DATATABLE CONTAINER (Leaderboard Table) */}
+              {/* 4. HEROUI EMERALD DATATABLE CONTAINER (Leaderboard Table) */}
               <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
                 {/* Toolbar Header */}
                 <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
@@ -8811,67 +9128,189 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </div>
 
-                {/* Filter & Search Bar */}
-                <div className="bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 border-b border-emerald-200/80 dark:border-emerald-800/60 p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="relative flex-1 w-full max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                {/* ── TOOLBAR BARIS 2: Full-Width Search Input ── */}
+                <div className="bg-gradient-to-r from-emerald-50/40 via-teal-50/20 to-emerald-50/40 dark:from-emerald-950/20 dark:via-teal-950/10 dark:to-emerald-950/20 border-b border-emerald-200/80 dark:border-emerald-800/60 p-3 sm:px-5 sm:py-3.5">
+                  <div className="relative w-full">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600/70 dark:text-emerald-400/70" />
                     <input
                       type="text"
                       value={tahfizhSearch}
                       onChange={(e) => setTahfizhSearch(e.target.value)}
-                      placeholder="Cari nama santri, NIS, unit, atau kelas..."
-                      className="w-full pl-9 pr-8 py-2 rounded-xl text-xs bg-white dark:bg-[#151D2A] border border-emerald-300/80 dark:border-emerald-700/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-slate-900 dark:text-white placeholder:text-slate-400"
+                      placeholder="Cari nama santri binaan, NIS, NISN, unit, atau kelas rombel..."
+                      className="w-full h-10 pl-10 pr-9 rounded-xl text-xs bg-white dark:bg-[#151D2A] border border-emerald-300/80 dark:border-emerald-700/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-slate-900 dark:text-white placeholder:text-slate-400 shadow-2xs font-medium"
                     />
                     {tahfizhSearch && (
                       <button
                         type="button"
                         onClick={() => setTahfizhSearch('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        title="Hapus pencarian"
                       >
                         <X className="size-3.5" />
                       </button>
                     )}
                   </div>
+                </div>
 
-                  {(isPengurusYayasan || isKepalaSekolahOrDivisiPendidikan) && (
-                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                      <label htmlFor="filter-unit-tahfizh" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                        Filter Unit:
-                      </label>
-                      <select
-                        id="filter-unit-tahfizh"
-                        value={selectedTahfizhUnit}
-                        onChange={(e) => setSelectedTahfizhUnit(e.target.value)}
-                        className="h-9 rounded-xl border border-emerald-300/80 bg-white px-3 text-xs font-semibold text-slate-800 dark:border-emerald-700/80 dark:bg-[#151D2A] dark:text-white outline-none cursor-pointer"
-                      >
-                        <option value="semua">✨ Semua Unit Pendidikan</option>
-                        {educationUnits.map((u) => (
-                          <option key={u.id || u.nama || u.name} value={u.nama || u.name || u.id}>
-                            {u.nama || u.name}
-                          </option>
-                        ))}
-                      </select>
+                {/* ── TOOLBAR BARIS 3: Filter Bar Terstruktur & Rapi (Unit, Rombel, Urutkan, Tampilkan, Reset) ── */}
+                <div className="bg-gradient-to-r from-emerald-50/60 via-teal-50/30 to-emerald-50/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 border-b border-emerald-200/80 dark:border-emerald-800/60 p-3 sm:px-5 sm:py-3">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    {/* Left: Filter Controls Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap items-center gap-2.5 flex-1 min-w-0">
+                      {/* Unit Dropdown / Locked Unit Badge */}
+                      {isGlobalTahfizhScope ? (
+                        <div className="w-full lg:w-auto lg:min-w-[220px]">
+                          <HeroUiFilterSelect
+                            id="filter-unit-tahfizh"
+                            value={selectedTahfizhUnit}
+                            onChange={(val) => {
+                              setSelectedTahfizhUnit(val)
+                              setTahfizhPage(1)
+                            }}
+                            options={[
+                              { value: 'semua', label: '✨ Semua Unit Pendidikan' },
+                              ...educationUnits.map((u) => ({
+                                value: String(u.nama || u.name || u.id),
+                                label: u.nama || u.name,
+                              })),
+                            ]}
+                            placeholder="✨ Semua Unit Pendidikan"
+                            icon={School}
+                            ariaLabel="Filter Unit Pendidikan Tahfizh"
+                            popoverWidth="min-w-[240px]"
+                            searchable
+                            align="left"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          title="Unit Terkunci: Menampilkan data khusus unit wewenang Anda"
+                          className="inline-flex h-10 items-center justify-between gap-2 rounded-xl border border-emerald-300/80 bg-white/90 dark:bg-emerald-950/60 dark:border-emerald-700/80 px-3.5 text-xs font-bold text-emerald-800 dark:text-emerald-200 shadow-2xs w-full lg:w-auto shrink-0"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <School className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span className="truncate max-w-[210px] font-extrabold">
+                              {teacherProfile?.education_unit || user?.education_unit?.name || user?.unit_name || 'Unit Terikat'}
+                            </span>
+                          </div>
+                          <Lock className="size-3 text-emerald-500/80 shrink-0 ml-1" />
+                        </div>
+                      )}
+
+                      {/* Rombel Dropdown */}
+                      <div className="w-full lg:w-auto lg:min-w-[190px]">
+                        <HeroUiFilterSelect
+                          id="filter-rombel-tahfizh"
+                          value={tahfizhFilterClass}
+                          onChange={(val) => {
+                            setTahfizhFilterClass(val)
+                            setTahfizhPage(1)
+                          }}
+                          options={[
+                            { value: 'all', label: '✨ Semua Rombel' },
+                            ...classes.map((cls) => ({
+                              value: String(cls.id),
+                              label: `${cls.nama_kelas || cls.name}${cls.kode_kelas ? ` · ${cls.kode_kelas}` : ''}`,
+                            })),
+                          ]}
+                          placeholder="✨ Semua Rombel"
+                          icon={Layers}
+                          ariaLabel="Filter Rombel Tahfizh"
+                          popoverWidth="min-w-[210px]"
+                          searchable
+                          align="left"
+                        />
+                      </div>
+
+                      {/* Urutkan Dropdown */}
+                      <div className="w-full lg:w-auto lg:min-w-[230px]">
+                        <HeroUiFilterSelect
+                          id="filter-sort-tahfizh"
+                          value={tahfizhSortOrder}
+                          onChange={(val) => {
+                            setTahfizhSortOrder(val)
+                            setTahfizhPage(1)
+                          }}
+                          options={[
+                            { value: 'highest', label: '🏆 Hafalan Terbanyak (Rank #1)' },
+                            { value: 'surah', label: '📖 Total Surah Terbanyak' },
+                            { value: 'name_asc', label: '🔤 Nama Santri (A-Z)' },
+                            { value: 'name_desc', label: '🔤 Nama Santri (Z-A)' },
+                            { value: 'recent', label: '🕒 Setoran Terbaru' },
+                          ]}
+                          placeholder="🏆 Hafalan Terbanyak"
+                          icon={Trophy}
+                          ariaLabel="Urutkan Leaderboard Tahfizh"
+                          popoverWidth="min-w-[240px]"
+                          align="left"
+                        />
+                      </div>
+
+                      {/* Limit Per Halaman Dropdown */}
+                      <div className="w-full lg:w-auto lg:min-w-[190px]">
+                        <HeroUiFilterSelect
+                          id="filter-limit-tahfizh"
+                          value={String(tahfizhPerPage)}
+                          onChange={(val) => {
+                            setTahfizhPerPage(val === 'all' ? 'all' : Number(val))
+                            setTahfizhPage(1)
+                          }}
+                          options={[
+                            { value: '10', label: '10 data per halaman' },
+                            { value: '25', label: '25 data per halaman' },
+                            { value: '50', label: '50 data per halaman' },
+                            { value: 'all', label: 'Semua Data' },
+                          ]}
+                          placeholder="10 data per halaman"
+                          icon={Eye}
+                          ariaLabel="Tampilkan per halaman"
+                          popoverWidth="min-w-[200px]"
+                          align="left"
+                        />
+                      </div>
                     </div>
-                  )}
+
+                    {/* Right: Reset Filter Button */}
+                    {(tahfizhSearch || (isGlobalTahfizhScope && selectedTahfizhUnit !== 'semua') || tahfizhFilterClass !== 'all' || tahfizhSortOrder !== 'highest' || tahfizhPerPage !== 10) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTahfizhSearch('')
+                          if (isGlobalTahfizhScope) setSelectedTahfizhUnit('semua')
+                          setTahfizhFilterClass('all')
+                          setTahfizhSortOrder('highest')
+                          setTahfizhPerPage(10)
+                          setTahfizhPage(1)
+                        }}
+                        className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50/90 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/60 dark:hover:bg-rose-900/80 px-3.5 text-xs font-bold text-rose-700 dark:text-rose-300 transition-all cursor-pointer shrink-0 shadow-2xs hover:scale-102 active:scale-98 self-end md:self-center"
+                        title="Reset Semua Filter"
+                      >
+                        <RefreshCw className="size-3.5 text-rose-600 dark:text-rose-400" />
+                        <span>Reset Filter</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Mobile Card View */}
                 <div className="divide-y divide-emerald-100/80 md:hidden dark:divide-emerald-900/40">
                   {paginatedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, totalSetoran, unitName, className }, index) => {
-                    const absoluteIndex = (tahfizhPage - 1) * TAHFIZH_PER_PAGE + index
-                    const isTop1 = absoluteIndex === 0
-                    const isTop2 = absoluteIndex === 1
-                    const isTop3 = absoluteIndex === 2
+                    const currentPerPage = tahfizhPerPage === 'all' ? sortedTahfizhLeaderboard.length : (Number(tahfizhPerPage) || TAHFIZH_PER_PAGE)
+                    const absoluteIndex = (tahfizhPage - 1) * currentPerPage + index
+                    // Syarat medali Gold, Perak, Tembaga: Harus yang terbanyak hafalan dan memiliki hafalan (> 0 ayat / setoran)
+                    const hasHafalan = (totalAyat > 0 || totalSetoran > 0)
+                    const isTop1 = absoluteIndex === 0 && hasHafalan
+                    const isTop2 = absoluteIndex === 1 && hasHafalan
+                    const isTop3 = absoluteIndex === 2 && hasHafalan
                     return (
                       <article key={student.id} className="p-4 space-y-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <span className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${
-                              isTop1 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                            <span className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${isTop1 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                               isTop2 ? 'bg-slate-200 text-slate-800 border border-slate-300' :
-                              isTop3 ? 'bg-orange-100 text-orange-800 border border-orange-300' :
-                              'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                            }`}>
+                                isTop3 ? 'bg-orange-100 text-orange-800 border border-orange-300' :
+                                  'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                              }`}>
                               {isTop1 ? '🥇' : isTop2 ? '🥈' : isTop3 ? '🥉' : `#${absoluteIndex + 1}`}
                             </span>
                             <div className="min-w-0">
@@ -8940,19 +9379,21 @@ export default function TeacherTeachingWorkspacePage() {
                   </thead>
                   <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                     {paginatedTahfizhLeaderboard.map(({ student, latest, totalAyat, completedSurahs, totalSetoran, unitName, className }, index) => {
-                      const absoluteIndex = (tahfizhPage - 1) * TAHFIZH_PER_PAGE + index
-                      const isTop1 = absoluteIndex === 0
-                      const isTop2 = absoluteIndex === 1
-                      const isTop3 = absoluteIndex === 2
+                      const currentPerPage = tahfizhPerPage === 'all' ? sortedTahfizhLeaderboard.length : (Number(tahfizhPerPage) || TAHFIZH_PER_PAGE)
+                      const absoluteIndex = (tahfizhPage - 1) * currentPerPage + index
+                      // Syarat medali Gold, Perak, Tembaga: Harus yang terbanyak hafalan dan memiliki hafalan (> 0 ayat / setoran)
+                      const hasHafalan = (totalAyat > 0 || totalSetoran > 0)
+                      const isTop1 = absoluteIndex === 0 && hasHafalan
+                      const isTop2 = absoluteIndex === 1 && hasHafalan
+                      const isTop3 = absoluteIndex === 2 && hasHafalan
                       return (
                         <tr key={student.id} className="hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-colors">
                           <td className="p-3.5 text-center">
-                            <span className={`inline-flex size-7 items-center justify-center rounded-full text-xs font-black ${
-                              isTop1 ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-xs' :
+                            <span className={`inline-flex size-7 items-center justify-center rounded-full text-xs font-black ${isTop1 ? 'bg-amber-100 text-amber-800 border border-amber-300 shadow-xs' :
                               isTop2 ? 'bg-slate-200 text-slate-800 border border-slate-300 shadow-xs' :
-                              isTop3 ? 'bg-orange-100 text-orange-800 border border-orange-300 shadow-xs' :
-                              'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                            }`}>
+                                isTop3 ? 'bg-orange-100 text-orange-800 border border-orange-300 shadow-xs' :
+                                  'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                              }`}>
                               {isTop1 ? '🥇' : isTop2 ? '🥈' : isTop3 ? '🥉' : `#${absoluteIndex + 1}`}
                             </span>
                           </td>
@@ -8961,12 +9402,11 @@ export default function TeacherTeachingWorkspacePage() {
                             <p className="mt-0.5 text-[10px] text-slate-500 font-medium">NIS: {student.nis || student.nisn || 'N/A'}</p>
                           </td>
                           <td className="p-3.5">
-                            <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border ${
-                              unitName.includes('SMA') ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800' :
+                            <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border ${unitName.includes('SMA') ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800' :
                               unitName.includes('SMP') ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800' :
-                              unitName.includes('SD') ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' :
-                              'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
-                            }`}>
+                                unitName.includes('SD') ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' :
+                                  'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                              }`}>
                               {unitName}
                             </span>
                           </td>
@@ -9043,7 +9483,7 @@ export default function TeacherTeachingWorkspacePage() {
                 {/* Footer Pagination Controls */}
                 <div className="w-full border-t border-emerald-200/80 dark:border-emerald-800/60 px-4 py-3.5 sm:px-6 bg-gradient-to-r from-emerald-50/30 via-teal-50/20 to-transparent flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                    Menampilkan <span className="font-bold text-slate-800 dark:text-slate-200">{sortedTahfizhLeaderboard.length > 0 ? (tahfizhPage - 1) * TAHFIZH_PER_PAGE + 1 : 0}</span> s.d. <span className="font-bold text-slate-800 dark:text-slate-200">{Math.min(tahfizhPage * TAHFIZH_PER_PAGE, sortedTahfizhLeaderboard.length)}</span> dari <span className="font-bold text-slate-800 dark:text-slate-200">{sortedTahfizhLeaderboard.length}</span> santri binaan
+                    Menampilkan <span className="font-bold text-slate-800 dark:text-slate-200">{sortedTahfizhLeaderboard.length > 0 ? (tahfizhPage - 1) * (tahfizhPerPage === 'all' ? sortedTahfizhLeaderboard.length : Number(tahfizhPerPage)) + 1 : 0}</span> s.d. <span className="font-bold text-slate-800 dark:text-slate-200">{tahfizhPerPage === 'all' ? sortedTahfizhLeaderboard.length : Math.min(tahfizhPage * Number(tahfizhPerPage), sortedTahfizhLeaderboard.length)}</span> dari <span className="font-bold text-slate-800 dark:text-slate-200">{sortedTahfizhLeaderboard.length}</span> santri binaan
                   </div>
                   {totalTahfizhPages > 1 && (
                     <div className="w-full sm:w-auto">
@@ -9062,7 +9502,7 @@ export default function TeacherTeachingWorkspacePage() {
           )}
 
           {/* TAB 6B: REKAPAN TAHFIZH LENGKAP */}
-          {activeTab === 'rekapan-tahfizh' && (
+          {activeTab === 'rekapan-tahfizh' && canAccessTahfizh && (
             <section className="space-y-4" aria-labelledby="rekapan-tahfizh-heading">
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 dark:border-emerald-800/80 dark:bg-slate-900">
                 <div className="flex items-center gap-3">
@@ -9092,7 +9532,7 @@ export default function TeacherTeachingWorkspacePage() {
           )}
 
           {/* TAB 7: MUTABAAH */}
-          {activeTab === 'mutabaah' && (
+          {activeTab === 'mutabaah' && canAccessMutabaah && (
             <TeacherMutabaahWeekly
               selectedClassId={selectedClass}
               user={user}
@@ -9145,6 +9585,22 @@ export default function TeacherTeachingWorkspacePage() {
                     title="Cetak rekapitulasi catatan perkembangan siswa"
                   >
                     <Printer className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Cetak Catatan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/dashboard/tata-tertib')}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50/80 px-3 py-1.5 text-xs font-bold text-rose-700 transition hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300 cursor-pointer shadow-xs active:scale-95"
+                    title="Buku Tata Tertib & Poin Kedisiplinan Siswa"
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Tata Tertib & Poin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openPelanggaranModal(null)}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 via-rose-700 to-red-800 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:brightness-110 cursor-pointer active:scale-95"
+                    title="Input Catatan Penilaian Perilaku Santri (Standar Master TU)"
+                  >
+                    <ShieldAlert className="h-3.5 w-3.5 text-white" /> + Penilaian Perilaku TU
                   </button>
                   <span className="inline-flex items-center rounded-lg bg-emerald-50 border border-emerald-300 px-2.5 py-1 text-xs font-black text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-700 dark:text-emerald-300">
                     {students.length} siswa
@@ -9289,6 +9745,14 @@ export default function TeacherTeachingWorkspacePage() {
                           >
                             <Plus className="h-3.5 w-3.5" /> Catatan
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => openPelanggaranModal(student)}
+                            title="Catat Penilaian Perilaku / Pelanggaran Tata Tertib TU"
+                            className="inline-flex h-8 items-center justify-center gap-1 rounded-xl border border-rose-300 bg-rose-50 px-2.5 text-[10px] font-bold text-rose-700 hover:bg-rose-100 transition dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                          >
+                            <ShieldAlert className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Perilaku
+                          </button>
                           {latest?.teacher_id === teacherProfile?.id && (
                             <>
                               <button
@@ -9427,6 +9891,14 @@ export default function TeacherTeachingWorkspacePage() {
                               >
                                 <Plus className="h-3.5 w-3.5 shrink-0" /> Catatan
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => openPelanggaranModal(student)}
+                                title="Catat Penilaian Perilaku / Pelanggaran Tata Tertib TU"
+                                className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-2.5 text-[10px] font-bold text-rose-700 hover:bg-rose-100 transition dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                              >
+                                <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-rose-600 dark:text-rose-400" /> Perilaku
+                              </button>
                               {latest?.teacher_id === teacherProfile?.id && (
                                 <>
                                   <button
@@ -9498,7 +9970,7 @@ export default function TeacherTeachingWorkspacePage() {
                         <h2 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                           Buku Log &amp; Riwayat Presensi Guru
                         </h2>
-                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                           Rekam jejak kehadiran kedinasan guru resmi — Pemantauan jam check-in, check-out, akumulasi jam kerja, verifikasi perangkat biometrik/QR, dan sertifikasi disiplin kerja terpadu.
                         </p>
                       </div>
@@ -9539,11 +10011,10 @@ export default function TeacherTeachingWorkspacePage() {
                   {/* Card 1: Total Presensi (Emerald) */}
                   <div
                     onClick={() => setTeacherLogStatus('semua')}
-                    className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${
-                      teacherLogStatus === 'semua'
-                        ? 'bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-teal-500/20 border-2 border-emerald-500 ring-2 ring-emerald-500/30 shadow-lg shadow-emerald-500/20'
-                        : 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-teal-500/10 border-2 border-emerald-500/25 hover:border-emerald-500/60 shadow-sm shadow-emerald-500/5 hover:shadow-md hover:shadow-emerald-500/15 hover:-translate-y-0.5'
-                    }`}
+                    className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${teacherLogStatus === 'semua'
+                      ? 'bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-teal-500/20 border-2 border-emerald-500 ring-2 ring-emerald-500/30 shadow-lg shadow-emerald-500/20'
+                      : 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-teal-500/10 border-2 border-emerald-500/25 hover:border-emerald-500/60 shadow-sm shadow-emerald-500/5 hover:shadow-md hover:shadow-emerald-500/15 hover:-translate-y-0.5'
+                      }`}
                   >
                     <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-emerald-400/20 blur-2xl group-hover:scale-125 transition-transform" />
                     <div className="flex items-center justify-between">
@@ -9566,11 +10037,10 @@ export default function TeacherTeachingWorkspacePage() {
                   {/* Card 2: Hadir Tepat Waktu (Teal) */}
                   <div
                     onClick={() => setTeacherLogStatus('Hadir')}
-                    className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${
-                      teacherLogStatus === 'Hadir'
-                        ? 'bg-gradient-to-br from-teal-500/20 via-teal-500/10 to-cyan-500/20 border-2 border-teal-500 ring-2 ring-teal-500/30 shadow-lg shadow-teal-500/20'
-                        : 'bg-gradient-to-br from-teal-500/10 via-teal-500/5 to-cyan-500/10 border-2 border-teal-500/25 hover:border-teal-500/60 shadow-sm shadow-teal-500/5 hover:shadow-md hover:shadow-teal-500/15 hover:-translate-y-0.5'
-                    }`}
+                    className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${teacherLogStatus === 'Hadir'
+                      ? 'bg-gradient-to-br from-teal-500/20 via-teal-500/10 to-cyan-500/20 border-2 border-teal-500 ring-2 ring-teal-500/30 shadow-lg shadow-teal-500/20'
+                      : 'bg-gradient-to-br from-teal-500/10 via-teal-500/5 to-cyan-500/10 border-2 border-teal-500/25 hover:border-teal-500/60 shadow-sm shadow-teal-500/5 hover:shadow-md hover:shadow-teal-500/15 hover:-translate-y-0.5'
+                      }`}
                   >
                     <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-teal-400/20 blur-2xl group-hover:scale-125 transition-transform" />
                     <div className="flex items-center justify-between">
@@ -9593,11 +10063,10 @@ export default function TeacherTeachingWorkspacePage() {
                   {/* Card 3: Terlambat (Amber) */}
                   <div
                     onClick={() => setTeacherLogStatus('Terlambat')}
-                    className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${
-                      teacherLogStatus === 'Terlambat'
-                        ? 'bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-orange-500/20 border-2 border-amber-500 ring-2 ring-amber-500/30 shadow-lg shadow-amber-500/20'
-                        : 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 border-2 border-amber-500/25 hover:border-amber-500/60 shadow-sm shadow-amber-500/5 hover:shadow-md hover:shadow-amber-500/15 hover:-translate-y-0.5'
-                    }`}
+                    className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${teacherLogStatus === 'Terlambat'
+                      ? 'bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-orange-500/20 border-2 border-amber-500 ring-2 ring-amber-500/30 shadow-lg shadow-amber-500/20'
+                      : 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 border-2 border-amber-500/25 hover:border-amber-500/60 shadow-sm shadow-amber-500/5 hover:shadow-md hover:shadow-amber-500/15 hover:-translate-y-0.5'
+                      }`}
                   >
                     <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-amber-400/20 blur-2xl group-hover:scale-125 transition-transform" />
                     <div className="flex items-center justify-between">
@@ -9620,11 +10089,10 @@ export default function TeacherTeachingWorkspacePage() {
                   {/* Card 4: Izin & Sakit (Sky) */}
                   <div
                     onClick={() => setTeacherLogStatus(teacherLogStatus === 'Izin' ? 'Sakit' : 'Izin')}
-                    className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${
-                      teacherLogStatus === 'Izin' || teacherLogStatus === 'Sakit'
-                        ? 'bg-gradient-to-br from-sky-500/20 via-sky-500/10 to-indigo-500/20 border-2 border-sky-500 ring-2 ring-sky-500/30 shadow-lg shadow-sky-500/20'
-                        : 'bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-indigo-500/10 border-2 border-sky-500/25 hover:border-sky-500/60 shadow-sm shadow-sky-500/5 hover:shadow-md hover:shadow-sky-500/15 hover:-translate-y-0.5'
-                    }`}
+                    className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${teacherLogStatus === 'Izin' || teacherLogStatus === 'Sakit'
+                      ? 'bg-gradient-to-br from-sky-500/20 via-sky-500/10 to-indigo-500/20 border-2 border-sky-500 ring-2 ring-sky-500/30 shadow-lg shadow-sky-500/20'
+                      : 'bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-indigo-500/10 border-2 border-sky-500/25 hover:border-sky-500/60 shadow-sm shadow-sky-500/5 hover:shadow-md hover:shadow-sky-500/15 hover:-translate-y-0.5'
+                      }`}
                   >
                     <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-sky-400/20 blur-2xl group-hover:scale-125 transition-transform" />
                     <div className="flex items-center justify-between">
@@ -9645,7 +10113,7 @@ export default function TeacherTeachingWorkspacePage() {
                   </div>
                 </div>
 
-                {/* ── TAILGRIDS EMERALD DATATABLE CONTAINER ──────────────────── */}
+                {/* ── HEROUI EMERALD DATATABLE CONTAINER ──────────────────── */}
                 <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
                   {/* Toolbar Header */}
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
@@ -9701,11 +10169,10 @@ export default function TeacherTeachingWorkspacePage() {
                             key={st}
                             type="button"
                             onClick={() => setTeacherLogStatus(st)}
-                            className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
-                              teacherLogStatus === st
-                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
-                                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                            }`}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${teacherLogStatus === st
+                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                              }`}
                           >
                             {st === 'semua' ? 'Semua' : st}
                           </button>
@@ -9748,13 +10215,12 @@ export default function TeacherTeachingWorkspacePage() {
                               {log.duration || '-'}
                             </td>
                             <td className="p-3.5">
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 font-extrabold text-[10px] rounded-full border ${
-                                log.status === 'Hadir' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' :
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 font-extrabold text-[10px] rounded-full border ${log.status === 'Hadir' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' :
                                 log.status === 'Terlambat' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
-                                log.status === 'Izin' ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' :
-                                log.status === 'Sakit' ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
-                                'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                              }`}>
+                                  log.status === 'Izin' ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' :
+                                    log.status === 'Sakit' ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
+                                      'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                }`}>
                                 {log.status === 'Hadir' && <CheckCircle2 className="size-3" />}
                                 {log.status === 'Terlambat' && <Clock className="size-3" />}
                                 {log.status === 'Izin' && <Info className="size-3" />}
@@ -9827,9 +10293,9 @@ export default function TeacherTeachingWorkspacePage() {
 
             const classFilteredPool = (selectedClass && selectedClass !== 'all')
               ? rawPool.filter((s) => {
-                  const cId = s.kelas_id || s.class_id || s.kelas?.id || s.class?.id
-                  return String(cId) === String(selectedClass)
-                })
+                const cId = s.kelas_id || s.class_id || s.kelas?.id || s.class?.id
+                return String(cId) === String(selectedClass)
+              })
               : rawPool
 
             // Strict: jika rombel spesifik dipilih, gunakan classFilteredPool saja (meski kosong)
@@ -9886,7 +10352,7 @@ export default function TeacherTeachingWorkspacePage() {
                         <h2 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                           Jadwal Pelajaran Lengkap Sekolah
                         </h2>
-                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                           Tinjauan komprehensif seluruh persebaran jam KBM guru — Tampilan fleksibel filter harian, matriks mingguan, estimasi beban bulanan, dan tabel semesteran terintegrasi.
                         </p>
                       </div>
@@ -9935,11 +10401,10 @@ export default function TeacherTeachingWorkspacePage() {
                         <button
                           key={subt}
                           onClick={() => setJadwalLengkapTab(subt)}
-                          className={`rounded-xl px-3.5 py-1.5 text-xs font-extrabold transition-all duration-150 cursor-pointer ${
-                            jadwalLengkapTab === subt
-                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 ring-1 ring-emerald-300/40'
-                              : 'text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-400'
-                          }`}
+                          className={`rounded-xl px-3.5 py-1.5 text-xs font-extrabold transition-all duration-150 cursor-pointer ${jadwalLengkapTab === subt
+                            ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 ring-1 ring-emerald-300/40'
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-400'
+                            }`}
                         >
                           {subt}
                         </button>
@@ -9960,11 +10425,10 @@ export default function TeacherTeachingWorkspacePage() {
                                 key={d}
                                 type="button"
                                 onClick={() => setSelectedHariFilter(d)}
-                                className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all duration-150 cursor-pointer ${
-                                  selectedHariFilter === d
-                                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm ring-1 ring-emerald-300/40'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-300'
-                                }`}
+                                className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all duration-150 cursor-pointer ${selectedHariFilter === d
+                                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm ring-1 ring-emerald-300/40'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-300'
+                                  }`}
                               >
                                 {d}
                               </button>
@@ -10013,11 +10477,10 @@ export default function TeacherTeachingWorkspacePage() {
                                         onClick={() => openPresensiModal(s)}
                                         disabled={!sStatus.isActive}
                                         title={sStatus.isActive ? 'Presensi Sesi KBM' : `Presensi Tidak Aktif (${sStatus.label})`}
-                                        className={`px-3 py-1.5 rounded-xl font-bold text-[11px] border transition ${
-                                          sStatus.isActive
-                                            ? 'bg-emerald-50 hover:bg-emerald-100 text-[#0E5C44] dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/80 border-emerald-200 dark:border-emerald-800 cursor-pointer'
-                                            : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
-                                        }`}
+                                        className={`px-3 py-1.5 rounded-xl font-bold text-[11px] border transition ${sStatus.isActive
+                                          ? 'bg-emerald-50 hover:bg-emerald-100 text-[#0E5C44] dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/80 border-emerald-200 dark:border-emerald-800 cursor-pointer'
+                                          : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
+                                          }`}
                                       >
                                         {sStatus.isActive ? 'Presensi Sesi' : `Presensi (${sStatus.label})`}
                                       </button>
@@ -10059,11 +10522,10 @@ export default function TeacherTeachingWorkspacePage() {
                                     <CalendarDays className="w-4 h-4 text-emerald-600" />
                                     <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider">{day}</h4>
                                   </div>
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                    daySchedules.length > 0
-                                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                      : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                                  }`}>
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${daySchedules.length > 0
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                    : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                                    }`}>
                                     {daySchedules.length} Sesi
                                   </span>
                                 </div>
@@ -10353,7 +10815,7 @@ export default function TeacherTeachingWorkspacePage() {
               <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-inner dark:border-slate-800">
                 <video ref={qrVideoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
                 {!qrCameraActive && !qrCameraError && <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900/80 text-white"><RefreshCw className="h-8 w-8 animate-spin text-emerald-400" /><p className="text-xs font-semibold">Menghubungkan ke kamera...</p></div>}
-                
+
                 {/* Target Viewfinder Overlay Tailored to Student ID Card QR Code Size */}
                 {qrCameraActive && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -10371,17 +10833,15 @@ export default function TeacherTeachingWorkspacePage() {
               </div>
 
               {qrCameraErrorInfo ? (
-                <div className={`rounded-2xl border p-4 text-xs ${
-                  qrCameraErrorInfo.actionType === 'notice'
-                    ? 'border-amber-200 bg-amber-50/80 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200'
-                    : 'border-rose-200 bg-rose-50/80 text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200'
-                }`}>
+                <div className={`rounded-2xl border p-4 text-xs ${qrCameraErrorInfo.actionType === 'notice'
+                  ? 'border-amber-200 bg-amber-50/80 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200'
+                  : 'border-rose-200 bg-rose-50/80 text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200'
+                  }`}>
                   <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl font-bold ${
-                      qrCameraErrorInfo.actionType === 'notice'
-                        ? 'bg-amber-200/80 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
-                        : 'bg-rose-200/80 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300'
-                    }`}>
+                    <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl font-bold ${qrCameraErrorInfo.actionType === 'notice'
+                      ? 'bg-amber-200/80 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                      : 'bg-rose-200/80 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300'
+                      }`}>
                       !
                     </div>
                     <div className="min-w-0 flex-1 space-y-1.5">
@@ -10575,7 +11035,7 @@ export default function TeacherTeachingWorkspacePage() {
         return (
           <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/65 p-3 backdrop-blur-sm sm:p-5" role="dialog" aria-modal="true" aria-labelledby="attendance-detail-title">
             <div className="flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#1B2433]">
-              
+
               {/* Header Style Tahfizh */}
               <header className="flex shrink-0 flex-col gap-4 border-b border-slate-200 p-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700">
                 <div className="flex min-w-0 items-center gap-3">
@@ -10613,11 +11073,10 @@ export default function TeacherTeachingWorkspacePage() {
                             setStudentDetailPeriodFilter(t.id)
                             setStudentDetailPage(1)
                           }}
-                          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                            isActive
-                              ? 'bg-emerald-700 text-white shadow-sm'
-                              : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                          }`}
+                          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${isActive
+                            ? 'bg-emerald-700 text-white shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                            }`}
                         >
                           <span>{t.label}</span>
                           <span className={`rounded-full px-1.5 py-0.2 text-[9px] font-extrabold ${isActive ? 'bg-emerald-800 text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
@@ -10744,33 +11203,33 @@ export default function TeacherTeachingWorkspacePage() {
                   {displayHistory
                     .slice((studentDetailPage - 1) * studentDetailPerPage, studentDetailPage * studentDetailPerPage)
                     .map((item, index) => (
-                    <article key={item.meeting} className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
-                      <header className="flex items-center justify-between bg-emerald-50 px-4 py-3 dark:bg-emerald-950/30">
-                        <div>
-                          <p className="text-sm font-black text-slate-900 dark:text-white">
-                            Pertemuan #{item.meeting} · {item.date}
-                          </p>
-                          <p className="text-[10px] text-slate-500">{item.topic}</p>
-                        </div>
-                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold border ${statusBadgeMap[item.status] || statusBadgeMap['Belum Dicatat']}`}>
-                          {item.status}
-                        </span>
-                      </header>
-                      <div className="grid grid-cols-2 gap-px bg-slate-200 text-xs dark:bg-slate-700">
-                        {[
-                          ['Waktu Absen', item.time || '—'],
-                          ['Metode Absensi', item.method || '—'],
-                          ['Catatan Guru', item.notes || '—'],
-                          ['Validasi', item.status !== 'Belum Terlaksana' && item.status !== 'Belum Dicatat' ? 'Terverifikasi' : '—'],
-                        ].map(([label, value]) => (
-                          <div key={label} className="min-w-0 bg-white p-3 dark:bg-[#1B2433]">
-                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
-                            <p className="mt-1 break-words font-semibold text-slate-800 dark:text-slate-100">{value}</p>
+                      <article key={item.meeting} className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+                        <header className="flex items-center justify-between bg-emerald-50 px-4 py-3 dark:bg-emerald-950/30">
+                          <div>
+                            <p className="text-sm font-black text-slate-900 dark:text-white">
+                              Pertemuan #{item.meeting} · {item.date}
+                            </p>
+                            <p className="text-[10px] text-slate-500">{item.topic}</p>
                           </div>
-                        ))}
-                      </div>
-                    </article>
-                  ))}
+                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold border ${statusBadgeMap[item.status] || statusBadgeMap['Belum Dicatat']}`}>
+                            {item.status}
+                          </span>
+                        </header>
+                        <div className="grid grid-cols-2 gap-px bg-slate-200 text-xs dark:bg-slate-700">
+                          {[
+                            ['Waktu Absen', item.time || '—'],
+                            ['Metode Absensi', item.method || '—'],
+                            ['Catatan Guru', item.notes || '—'],
+                            ['Validasi', item.status !== 'Belum Terlaksana' && item.status !== 'Belum Dicatat' ? 'Terverifikasi' : '—'],
+                          ].map(([label, value]) => (
+                            <div key={label} className="min-w-0 bg-white p-3 dark:bg-[#1B2433]">
+                              <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+                              <p className="mt-1 break-words font-semibold text-slate-800 dark:text-slate-100">{value}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </article>
+                    ))}
                   {displayHistory.length === 0 && (
                     <div className="rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-400">
                       Tidak ada data sesi presensi pada periode ini.
@@ -10806,55 +11265,55 @@ export default function TeacherTeachingWorkspacePage() {
                     {displayHistory
                       .slice((studentDetailPage - 1) * studentDetailPerPage, studentDetailPage * studentDetailPerPage)
                       .map((item, index) => {
-                      const d = new Date(item.date)
-                      const dayName = !isNaN(d.getTime()) ? new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(d) : 'Hari KBM'
-                      const dateFormatted = !isNaN(d.getTime()) ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(d) : item.date
+                        const d = new Date(item.date)
+                        const dayName = !isNaN(d.getTime()) ? new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(d) : 'Hari KBM'
+                        const dateFormatted = !isNaN(d.getTime()) ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(d) : item.date
 
-                      return (
-                        <tr key={item.meeting} className="h-16 align-middle hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                          <td className="border border-slate-300 p-3 text-center font-bold dark:border-slate-600">
-                            {item.isCurrent ? (
-                              <span className="inline-flex rounded-full bg-emerald-700 px-2 py-0.5 text-[10px] font-black text-white">
-                                #{item.meeting}
+                        return (
+                          <tr key={item.meeting} className="h-16 align-middle hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                            <td className="border border-slate-300 p-3 text-center font-bold dark:border-slate-600">
+                              {item.isCurrent ? (
+                                <span className="inline-flex rounded-full bg-emerald-700 px-2 py-0.5 text-[10px] font-black text-white">
+                                  #{item.meeting}
+                                </span>
+                              ) : (
+                                `#${item.meeting}`
+                              )}
+                            </td>
+                            <td className="border border-slate-300 p-3 dark:border-slate-600">
+                              <p className="font-bold text-slate-900 dark:text-white">{dayName}</p>
+                              <p className="mt-0.5 text-[10px] text-slate-500">{dateFormatted}</p>
+                            </td>
+                            <td className="border border-slate-300 p-3 dark:border-slate-600">
+                              <p className="font-bold text-slate-900 dark:text-white">{item.topic}</p>
+                              <p className="mt-0.5 text-[10px] text-slate-500">Pertemuan ke-{item.meeting} · Rombel {selectedClassName}</p>
+                            </td>
+                            <td className="border border-slate-300 p-3 text-center dark:border-slate-600">
+                              <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-extrabold border ${statusBadgeMap[item.status] || statusBadgeMap['Belum Dicatat']}`}>
+                                {item.status}
                               </span>
-                            ) : (
-                              `#${item.meeting}`
-                            )}
-                          </td>
-                          <td className="border border-slate-300 p-3 dark:border-slate-600">
-                            <p className="font-bold text-slate-900 dark:text-white">{dayName}</p>
-                            <p className="mt-0.5 text-[10px] text-slate-500">{dateFormatted}</p>
-                          </td>
-                          <td className="border border-slate-300 p-3 dark:border-slate-600">
-                            <p className="font-bold text-slate-900 dark:text-white">{item.topic}</p>
-                            <p className="mt-0.5 text-[10px] text-slate-500">Pertemuan ke-{item.meeting} · Rombel {selectedClassName}</p>
-                          </td>
-                          <td className="border border-slate-300 p-3 text-center dark:border-slate-600">
-                            <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-extrabold border ${statusBadgeMap[item.status] || statusBadgeMap['Belum Dicatat']}`}>
-                              {item.status}
-                            </span>
-                          </td>
-                          <td className="border border-slate-300 p-3 text-center dark:border-slate-600">
-                            <p className="font-semibold text-slate-800 dark:text-slate-200">{item.time}</p>
-                          </td>
-                          <td className="border border-slate-300 p-3 text-center dark:border-slate-600">
-                            <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                              {item.method}
-                            </span>
-                          </td>
-                          <td className="border border-slate-300 p-3 dark:border-slate-600 text-slate-600 dark:text-slate-300">
-                            {item.notes}
-                          </td>
-                          <td className="border border-slate-300 p-3 text-center dark:border-slate-600">
-                            {item.status !== 'Belum Terlaksana' && item.status !== 'Belum Dicatat' ? (
-                              <CheckCircle2 className="mx-auto h-5 w-5 text-emerald-600" aria-label="Terverifikasi" />
-                            ) : (
-                              <span className="text-slate-300 dark:text-slate-600">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
+                            </td>
+                            <td className="border border-slate-300 p-3 text-center dark:border-slate-600">
+                              <p className="font-semibold text-slate-800 dark:text-slate-200">{item.time}</p>
+                            </td>
+                            <td className="border border-slate-300 p-3 text-center dark:border-slate-600">
+                              <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                {item.method}
+                              </span>
+                            </td>
+                            <td className="border border-slate-300 p-3 dark:border-slate-600 text-slate-600 dark:text-slate-300">
+                              {item.notes}
+                            </td>
+                            <td className="border border-slate-300 p-3 text-center dark:border-slate-600">
+                              {item.status !== 'Belum Terlaksana' && item.status !== 'Belum Dicatat' ? (
+                                <CheckCircle2 className="mx-auto h-5 w-5 text-emerald-600" aria-label="Terverifikasi" />
+                              ) : (
+                                <span className="text-slate-300 dark:text-slate-600">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     {displayHistory.length === 0 && (
                       <tr>
                         <td colSpan={8} className="border border-slate-300 p-8 text-center text-xs text-slate-400 dark:border-slate-600">
@@ -10871,8 +11330,8 @@ export default function TeacherTeachingWorkspacePage() {
                           {persentase >= 85
                             ? 'Alhamdulillah, kedisiplinan dan kehadiran siswa sangat memuaskan, konsisten mengikuti pembelajaran aktif.'
                             : persentase >= 75
-                            ? 'Kehadiran siswa cukup baik, pertahankan kedisiplinan dan ketepatan waktu masuk kelas.'
-                            : 'Perlu peningkatan kedisiplinan kehadiran KBM dan koordinasi aktif bersama wali kelas/orang tua murid.'}
+                              ? 'Kehadiran siswa cukup baik, pertahankan kedisiplinan dan ketepatan waktu masuk kelas.'
+                              : 'Perlu peningkatan kedisiplinan kehadiran KBM dan koordinasi aktif bersama wali kelas/orang tua murid.'}
                         </p>
                       </td>
                       <td colSpan="2" className="border border-slate-300 p-3 dark:border-slate-600">
@@ -11003,11 +11462,10 @@ export default function TeacherTeachingWorkspacePage() {
                         handleStartEditHistorySession()
                       }
                     }}
-                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold shadow-xs transition cursor-pointer ${
-                      isEditingHistorySession
-                        ? 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600'
-                        : 'border-amber-500/40 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300'
-                    }`}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold shadow-xs transition cursor-pointer ${isEditingHistorySession
+                      ? 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600'
+                      : 'border-amber-500/40 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300'
+                      }`}
                     title={isEditingHistorySession ? 'Batalkan mode koreksi' : 'Koreksi kesalahan data presensi sesi ini'}
                   >
                     <Edit3 className="h-3.5 w-3.5" />
@@ -11288,6 +11746,30 @@ export default function TeacherTeachingWorkspacePage() {
         description={`Pusat kendali sesi belajar-mengajar hari ini • ${formattedLiveDate} • Jam: ${formattedLiveTime}`}
         icon={Play}
         maxWidth="max-w-2xl"
+        footer={
+          <div className="flex justify-between items-center w-full">
+            <button
+              type="button"
+              onClick={() => {
+                setShowMulaiMengajarModal(false)
+                changeTab('jadwal')
+              }}
+              className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Calendar className="h-4 w-4" /> Lihat Jadwal Lengkap
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMulaiMengajarModal(false)}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                <X className="size-3.5" strokeWidth={2.5} />
+              </span>
+              <span>Tutup</span>
+            </button>
+          </div>
+        }
       >
         <div className="space-y-4">
           {/* BANNER REALTIME: GURU PENGAMPU & WAKTU */}
@@ -11355,11 +11837,10 @@ export default function TeacherTeachingWorkspacePage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase ${
-                            isToday
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
-                          }`}>
+                          <span className={`rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase ${isToday
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+                            }`}>
                             {getScheduleDay(sch)}
                           </span>
                           <span className="font-extrabold text-sm text-slate-900 dark:text-white">
@@ -11390,57 +11871,35 @@ export default function TeacherTeachingWorkspacePage() {
                                 setShowMulaiMengajarModal(false)
                                 openPresensiModal(sch)
                               }}
-                              className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold shadow-sm transition ${
-                                schStatus.isActive
-                                  ? 'bg-[#0E5C44] hover:bg-emerald-800 text-white cursor-pointer'
-                                  : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400 cursor-not-allowed opacity-60'
-                              }`}
+                              className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold shadow-sm transition ${schStatus.isActive
+                                ? 'bg-[#0E5C44] hover:bg-emerald-800 text-white cursor-pointer'
+                                : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400 cursor-not-allowed opacity-60'
+                                }`}
                             >
                               <UserCheck className="h-4 w-4" />
                               <span>{schStatus.isActive ? 'Buka Presensi Kelas' : `Presensi (${schStatus.label})`}</span>
                             </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowMulaiMengajarModal(false)
-                            const cid = sch.class_id || sch.kelas_id || sch.kelas?.id || sch.class?.id
-                            if (cid) setSelectedClass(String(cid))
-                            changeTab('materi')
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition cursor-pointer"
-                        >
-                          <BookOpen className="h-4 w-4 text-emerald-600" /> Materi
-                        </button>
-                      </div>
-                    )
-                  })()}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowMulaiMengajarModal(false)
+                                const cid = sch.class_id || sch.kelas_id || sch.kelas?.id || sch.class?.id
+                                if (cid) setSelectedClass(String(cid))
+                                changeTab('materi')
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition cursor-pointer"
+                            >
+                              <BookOpen className="h-4 w-4 text-emerald-600" /> Materi
+                            </button>
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
                 )
               })}
             </div>
           )}
-
-          {/* FOOTER MODAL */}
-          <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => {
-                setShowMulaiMengajarModal(false)
-                changeTab('jadwal')
-              }}
-              className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline font-semibold flex items-center gap-1"
-            >
-              <Calendar className="h-3.5 w-3.5" /> Lihat Jadwal Lengkap
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowMulaiMengajarModal(false)}
-              className="px-4 py-2 border rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
-            >
-              Tutup
-            </button>
-          </div>
         </div>
       </AppModal>
 
@@ -11453,6 +11912,53 @@ export default function TeacherTeachingWorkspacePage() {
         description={`Rombel: ${modalActiveClassName} • Mapel: ${presensiModalSchedule?.subject?.name || presensiModalSchedule?.subject?.nama_mapel || getScheduleSubject(presensiModalSchedule || {}) || 'Mata Pelajaran'} • Jam Pelajaran: ${getScheduleLessonHours(presensiModalSchedule)} • Waktu Sekarang: ${formattedLiveTime}`}
         icon={UserCheck}
         maxWidth="max-w-4xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <button
+              type="button"
+              onClick={() => setShowPresensiModal(false)}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                <X className="size-3.5" strokeWidth={2.5} />
+              </span>
+              <span>Batal</span>
+            </button>
+            {(() => {
+              const modalSchStatus = presensiModalSchedule ? getScheduleStatus(presensiModalSchedule) : null
+              const isModalInactive = modalSchStatus && !modalSchStatus.isActive
+              return (
+                <button
+                  type="button"
+                  disabled={isSavingAttendance || isModalInactive}
+                  onClick={handleSaveAttendance}
+                  title={isModalInactive ? `Presensi tidak aktif (${modalSchStatus.label})` : 'Simpan Presensi Pembelajaran'}
+                  className={`group inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-md transition-all active:scale-95 ${isModalInactive
+                    ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
+                    : 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-950/20 hover:from-emerald-600 hover:to-teal-800 cursor-pointer disabled:opacity-50'
+                    }`}
+                >
+                  <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                    {isSavingAttendance ? (
+                      <RefreshCw className="size-3.5 animate-spin" />
+                    ) : isModalInactive ? (
+                      <Clock className="size-3.5" />
+                    ) : (
+                      <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
+                    )}
+                  </span>
+                  <span>
+                    {isSavingAttendance
+                      ? 'Menyimpan Presensi...'
+                      : isModalInactive
+                        ? `Presensi Tidak Aktif (${modalSchStatus.label})`
+                        : 'Simpan Presensi Pembelajaran'}
+                  </span>
+                </button>
+              )
+            })()}
+          </div>
+        }
       >
         <div className="space-y-4">
           {/* BANNER REALTIME: WAKTU SEKARANG, JAM PELAJARAN & FILTER ROMBEL */}
@@ -11545,13 +12051,12 @@ export default function TeacherTeachingWorkspacePage() {
                 </span>
 
                 {/* Indikator Status Auto-Save Real-Time */}
-                <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold shadow-2xs border transition-all ${
-                  autoSaveStatus === 'saving'
-                    ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700'
-                    : autoSaveStatus === 'error'
+                <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold shadow-2xs border transition-all ${autoSaveStatus === 'saving'
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700'
+                  : autoSaveStatus === 'error'
                     ? 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-700'
                     : 'bg-emerald-100/90 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700'
-                }`}>
+                  }`}>
                   <span className="relative flex h-2 w-2">
                     <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${autoSaveStatus === 'saving' ? 'bg-amber-400' : autoSaveStatus === 'error' ? 'bg-rose-400' : 'bg-emerald-400'} opacity-75`}></span>
                     <span className={`relative inline-flex rounded-full h-2 w-2 ${autoSaveStatus === 'saving' ? 'bg-amber-500' : autoSaveStatus === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
@@ -11560,8 +12065,8 @@ export default function TeacherTeachingWorkspacePage() {
                     {autoSaveStatus === 'saving'
                       ? 'Menyimpan Otomatis...'
                       : autoSaveStatus === 'error'
-                      ? 'Gagal Menyimpan'
-                      : 'Auto-Save Aktif: Tersimpan ke Server'}
+                        ? 'Gagal Menyimpan'
+                        : 'Auto-Save Aktif: Tersimpan ke Server'}
                   </span>
                 </div>
               </div>
@@ -11580,11 +12085,10 @@ export default function TeacherTeachingWorkspacePage() {
                 key={id}
                 type="button"
                 onClick={() => setAttendanceCenterTab(id)}
-                className={`shrink-0 border-b-2 px-4 pb-2.5 font-extrabold transition ${
-                  attendanceCenterTab === id
-                    ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400'
-                    : 'border-transparent text-slate-400 hover:text-slate-600'
-                }`}
+                className={`shrink-0 border-b-2 px-4 pb-2.5 font-extrabold transition ${attendanceCenterTab === id
+                  ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
+                  }`}
               >
                 {label}
               </button>
@@ -11616,15 +12120,13 @@ export default function TeacherTeachingWorkspacePage() {
                           setLastScannedResult(null)
                           if (method.id !== 'rollcall') setTimeout(() => scanInputRef.current?.focus(), 50)
                         }}
-                        className={`flex items-start gap-3 rounded-2xl border p-3 text-left transition ${
-                          active
-                            ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
-                            : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900/60'
-                        }`}
+                        className={`flex items-start gap-3 rounded-2xl border p-3 text-left transition ${active
+                          ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
+                          : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900/60'
+                          }`}
                       >
-                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                          active ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
-                        }`}>
+                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${active ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+                          }`}>
                           <Icon className="h-5 w-5" />
                         </span>
                         <div>
@@ -11637,9 +12139,8 @@ export default function TeacherTeachingWorkspacePage() {
                 </div>
 
                 {selectedMethod !== 'rollcall' && (
-                  <div className={`mt-3 space-y-2.5 rounded-2xl border p-3.5 ${
-                    selectedMethod === 'qr' ? 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/60 dark:bg-emerald-950/30' : 'border-sky-200 bg-sky-50/60 dark:border-sky-900/60 dark:bg-sky-950/30'
-                  }`}>
+                  <div className={`mt-3 space-y-2.5 rounded-2xl border p-3.5 ${selectedMethod === 'qr' ? 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/60 dark:bg-emerald-950/30' : 'border-sky-200 bg-sky-50/60 dark:border-sky-900/60 dark:bg-sky-950/30'
+                    }`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         {selectedMethod === 'qr' ? <QrCode className="h-4 w-4 text-emerald-600" /> : <Wifi className="h-4 w-4 animate-pulse text-sky-600" />}
@@ -11709,9 +12210,9 @@ export default function TeacherTeachingWorkspacePage() {
                   {(() => {
                     const classScopedStudents = (selectedClass && selectedClass !== 'all')
                       ? students.filter((st) => {
-                          const sCid = st.kelas_id || st.class_id || st.kelas?.id
-                          return !!sCid && String(sCid) === String(selectedClass)
-                        })
+                        const sCid = st.kelas_id || st.class_id || st.kelas?.id
+                        return !!sCid && String(sCid) === String(selectedClass)
+                      })
                       : students
                     const presentCount = classScopedStudents.filter((st) => (attendanceData[st.id]?.status || 'Belum Dicatat') === 'Hadir').length
                     return (
@@ -11828,11 +12329,10 @@ export default function TeacherTeachingWorkspacePage() {
                                       key={option.id}
                                       type="button"
                                       onClick={() => markStudentAttendance(st, selectedMethod === 'qr' ? 'QR Code Kartu Siswa' : selectedMethod === 'rfid' ? 'RFID Kartu Siswa' : 'Roll Call Guru', option.id)}
-                                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
-                                        currentStatus === option.id
-                                          ? `${option.tone} shadow-sm ring-2 ring-emerald-500/40`
-                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                                      }`}
+                                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${currentStatus === option.id
+                                        ? `${option.tone} shadow-sm ring-2 ring-emerald-500/40`
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                                        }`}
                                     >
                                       {option.id}
                                     </button>
@@ -11848,7 +12348,7 @@ export default function TeacherTeachingWorkspacePage() {
                                     className="mb-1 inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60 dark:border-amber-700 dark:bg-amber-900/60 dark:text-amber-300"
                                   >
                                     {isApprovingThis
-                                      ? <svg className="h-3 w-3 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                      ? <svg className="h-3 w-3 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                                       : <>✓</>}
                                     Setujui
                                   </button>
@@ -11900,47 +12400,6 @@ export default function TeacherTeachingWorkspacePage() {
               />
             </div>
           )}
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => setShowPresensiModal(false)}
-              className="px-4 py-2.5 border rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              Batal
-            </button>
-            {(() => {
-              const modalSchStatus = presensiModalSchedule ? getScheduleStatus(presensiModalSchedule) : null
-              const isModalInactive = modalSchStatus && !modalSchStatus.isActive
-              return (
-                <button
-                  type="button"
-                  disabled={isSavingAttendance || isModalInactive}
-                  onClick={handleSaveAttendance}
-                  title={isModalInactive ? `Presensi tidak aktif (${modalSchStatus.label})` : 'Simpan Presensi Pembelajaran'}
-                  className={`px-5 py-2.5 text-xs font-bold rounded-xl shadow-md flex items-center gap-2 transition ${
-                    isModalInactive
-                      ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed shadow-none'
-                      : 'bg-[#0E5C44] hover:bg-emerald-800 disabled:opacity-50 text-white cursor-pointer'
-                  }`}
-                >
-                  {isSavingAttendance ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" /> Menyimpan Presensi...
-                    </>
-                  ) : isModalInactive ? (
-                    <>
-                      <Clock className="w-4 h-4" /> Presensi Tidak Aktif ({modalSchStatus.label})
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" /> Simpan Presensi Pembelajaran
-                    </>
-                  )}
-                </button>
-              )
-            })()}
-          </div>
         </div>
       </AppModal>
 
@@ -11982,10 +12441,10 @@ export default function TeacherTeachingWorkspacePage() {
             modalType === 'materi'
               ? 'bg-white dark:bg-[#1B2433] w-full max-w-2xl rounded-[24px] shadow-2xl border border-slate-200/90 dark:border-slate-800 relative my-auto max-h-[92vh] overflow-hidden p-0 flex flex-col'
               : modalType === 'tahfizh'
-              ? 'bg-white dark:bg-[#1B2433] w-full max-w-3xl rounded-[26px] p-5 sm:p-7 shadow-2xl border border-emerald-500/30 dark:border-emerald-600/30 relative my-auto max-h-[92vh] overflow-y-auto space-y-4'
-              : [
+                ? 'bg-white dark:bg-[#1B2433] w-full max-w-3xl rounded-[26px] p-5 sm:p-7 shadow-2xl border border-emerald-500/30 dark:border-emerald-600/30 relative my-auto max-h-[92vh] overflow-y-auto space-y-4'
+                : [
                   'bg-white dark:bg-[#1B2433] w-full rounded-[22px] p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 relative my-auto max-h-[92vh] overflow-y-auto space-y-4',
-                  modalType === 'tugas' ? 'max-w-3xl' : 'max-w-lg',
+                  modalType === 'tugas' || modalType === 'pelanggaran' ? 'max-w-2xl' : 'max-w-lg',
                 ].join(' ')
           }>
             {modalType !== 'materi' && (
@@ -12006,12 +12465,12 @@ export default function TeacherTeachingWorkspacePage() {
             )}
 
             {modalType === 'delete-confirm' ? (
-              <div className="space-y-4 text-center py-2">
+              <div role="alertdialog" aria-modal="true" aria-labelledby="delete-confirm-title" className="space-y-4 text-center py-2">
                 <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
                   <AlertTriangle className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Konfirmasi Hapus Data</h3>
+                  <h3 id="delete-confirm-title" className="text-base font-bold text-slate-900 dark:text-white">Konfirmasi Hapus Data</h3>
                   <p className="text-xs text-slate-500 mt-1">
                     Apakah Anda yakin ingin menghapus data <strong>{deleteTarget?.title}</strong>? Tindakan ini tidak dapat dibatalkan.
                   </p>
@@ -12073,11 +12532,10 @@ export default function TeacherTeachingWorkspacePage() {
                       <button
                         type="button"
                         onClick={() => setTugasForm({ ...tugasForm, jenis_tugas: 'tugas' })}
-                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                          tugasForm.jenis_tugas !== 'quiz'
-                            ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-200 dark:border-emerald-800'
-                            : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
-                        }`}
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${tugasForm.jenis_tugas !== 'quiz'
+                          ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-200 dark:border-emerald-800'
+                          : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                          }`}
                       >
                         <FileText className="w-3.5 h-3.5" />
                         Penugasan / PR Harian
@@ -12085,11 +12543,10 @@ export default function TeacherTeachingWorkspacePage() {
                       <button
                         type="button"
                         onClick={() => setTugasForm({ ...tugasForm, jenis_tugas: 'quiz', tipe_tugas: 'online' })}
-                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                          tugasForm.jenis_tugas === 'quiz'
-                            ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm font-black'
-                            : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
-                        }`}
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${tugasForm.jenis_tugas === 'quiz'
+                          ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm font-black'
+                          : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                          }`}
                       >
                         <Zap className="w-3.5 h-3.5" />
                         Kuis Interaktif (Style CBT)
@@ -12247,10 +12704,10 @@ export default function TeacherTeachingWorkspacePage() {
                                     : prev.judul,
                                   instruksi: !prev.instruksi || prev.instruksi.includes('Silakan pelajari materi') || prev.instruksi.trim() === ''
                                     ? (chosen
-                                        ? (chosen.ringkasan
-                                            ? `Silakan pelajari materi "${chosen.judul}" (${chosen.ringkasan}) lalu kerjakan penugasan ini.`
-                                            : `Pelajari materi "${chosen.judul}" lalu selesaikan evaluasi pemahaman berikut.`)
-                                        : prev.instruksi)
+                                      ? (chosen.ringkasan
+                                        ? `Silakan pelajari materi "${chosen.judul}" (${chosen.ringkasan}) lalu kerjakan penugasan ini.`
+                                        : `Pelajari materi "${chosen.judul}" lalu selesaikan evaluasi pemahaman berikut.`)
+                                      : prev.instruksi)
                                     : prev.instruksi,
                                 }
                               })
@@ -12506,7 +12963,7 @@ export default function TeacherTeachingWorkspacePage() {
                             <h5 className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider">Kunci Jawaban Benar / Salah</h5>
                             <div className="flex gap-3">
                               {['Benar', 'Salah'].map((val) => (
-                                <label key={val} className={['flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer font-bold text-xs transition-all', soalForm.kunci_jawaban === val ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'].join(' ')}>
+                                <label key={val} className={['flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer font-bold text-xs transition-all', soalForm.kunci_jawaban === val ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'].join(' ')}>
                                   <input
                                     type="radio"
                                     name="kunci_bs"
@@ -12623,8 +13080,8 @@ export default function TeacherTeachingWorkspacePage() {
                               const btnColor = autoTipe === 'pg'
                                 ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                                 : autoTipe === 'esai'
-                                ? 'bg-violet-600 hover:bg-violet-700 text-white'
-                                : 'bg-[#0E5C44] hover:bg-emerald-800 text-white'
+                                  ? 'bg-violet-600 hover:bg-violet-700 text-white'
+                                  : 'bg-[#0E5C44] hover:bg-emerald-800 text-white'
                               const tipeShort = { pg: 'PG', esai: 'Essay', benar_salah: 'B/S', menjodohkan: 'Jodoh' }[autoTipe] || autoTipe
                               return (
                                 <button
@@ -12649,7 +13106,7 @@ export default function TeacherTeachingWorkspacePage() {
                                 ➕ Tambah Soal #1
                               </button>
                               <span className="text-slate-300 dark:text-slate-600">atau</span>
-                              <span className="text-[10px] text-slate-400">isi form di atas → klik <strong className="text-slate-600 dark:text-slate-300">"+ Tambahkan Soal Ini"</strong></span>
+                              <span className="text-[10px] text-slate-400">isi form di atas → klik <strong className="text-slate-600 dark:text-slate-300">"✅ Simpan Soal"</strong></span>
                             </div>
                           </div>
                         ) : (
@@ -12791,52 +13248,54 @@ export default function TeacherTeachingWorkspacePage() {
                         {classes.length > 1 && (
                           <div className="flex items-center gap-2 self-start sm:self-auto">
                             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Rombel:</span>
-                            <select
+                            <HeroUiFilterSelect
                               value={tahfizhModalClass}
-                              onChange={(e) => {
-                                const newClass = e.target.value
+                              onChange={(newClass) => {
                                 setTahfizhModalClass(newClass)
                                 setTahfizhForm((prev) => ({ ...prev, class_id: newClass, student_id: '' }))
                                 if (newClass && newClass !== 'all') {
                                   fetchStudentsForClass(newClass)
                                 }
                               }}
-                              className="h-8 rounded-xl border border-emerald-300/80 bg-white px-2.5 text-[11px] font-bold text-emerald-800 shadow-sm outline-none focus:border-emerald-500 dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300"
-                            >
-                              <option value="all">Semua Rombel ({classes.length})</option>
-                              {classes.map((cls) => (
-                                <option key={cls.id} value={cls.id}>
-                                  {cls.nama_kelas || cls.name}
-                                </option>
-                              ))}
-                            </select>
+                              options={[
+                                { value: 'all', label: `Semua Rombel (${classes.length})` },
+                                ...classes.map((cls) => ({
+                                  value: String(cls.id),
+                                  label: cls.nama_kelas || cls.name,
+                                })),
+                              ]}
+                              size="sm"
+                              placeholder="Pilih Rombel"
+                              popoverWidth="min-w-[190px]"
+                            />
                           </div>
                         )}
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <select
-                          id="tahfizh-siswa"
-                          required
-                          value={tahfizhForm.student_id}
-                          onChange={(e) => {
-                            const sid = e.target.value
-                            const stu = students.find((s) => String(s.id) === String(sid))
-                            setTahfizhForm({
-                              ...tahfizhForm,
-                              student_id: sid,
-                              class_id: stu?.kelas_id || stu?.class_id || stu?.kelas?.id || tahfizhForm.class_id,
-                            })
-                          }}
-                          className="h-11 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-800 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                        >
-                          <option value="">-- Pilih Siswa / Santri ({filteredTahfizhStudents.length} santri) --</option>
-                          {filteredTahfizhStudents.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.nama_lengkap} (NIS: {s.nis || s.nisn || '-'}) {s.kelas?.nama_kelas ? `• ${s.kelas.nama_kelas}` : ''}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex-1">
+                          <HeroUiFilterSelect
+                            id="tahfizh-siswa"
+                            value={tahfizhForm.student_id}
+                            onChange={(sid) => {
+                              const stu = students.find((s) => String(s.id) === String(sid))
+                              setTahfizhForm({
+                                ...tahfizhForm,
+                                student_id: sid,
+                                class_id: stu?.kelas_id || stu?.class_id || stu?.kelas?.id || tahfizhForm.class_id,
+                              })
+                            }}
+                            options={filteredTahfizhStudents.map((s) => ({
+                              value: String(s.id),
+                              label: `${s.nama_lengkap} (NIS: ${s.nis || s.nisn || '-'})`,
+                              subtext: s.kelas?.nama_kelas ? `Kelas: ${s.kelas.nama_kelas}` : undefined,
+                            }))}
+                            placeholder={`-- Pilih Siswa / Santri (${filteredTahfizhStudents.length} santri) --`}
+                            ariaLabel="Pilih Siswa / Santri Tahfizh"
+                            searchable
+                            popoverWidth="w-full min-w-[280px]"
+                          />
+                        </div>
 
                         <div className="relative group">
                           <button
@@ -12845,7 +13304,7 @@ export default function TeacherTeachingWorkspacePage() {
                               setStudentModalSearch('')
                               setShowStudentSearchModal(true)
                             }}
-                            className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-sky-400 via-sky-500 to-sky-600 text-white shadow-md shadow-sky-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
+                            className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 via-sky-500 to-sky-600 text-white shadow-md shadow-sky-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
                             aria-label="Pencarian Nama Siswa Rombel"
                           >
                             <UserCheck className="w-5 h-5" />
@@ -12958,26 +13417,30 @@ export default function TeacherTeachingWorkspacePage() {
                           Jenis Setoran <span className="text-rose-500">*</span>
                         </label>
                         <div className="flex items-center gap-2">
-                          <select
-                            id="tahfizh-jenis"
-                            value={tahfizhForm.type}
-                            onChange={(e) => setTahfizhForm({ ...tahfizhForm, type: e.target.value })}
-                            className="h-11 flex-1 border rounded-xl bg-white px-3 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500"
-                          >
-                            {['Ziyadah', 'Murajaah', 'Tasmi', 'Ujian'].map((type) => (
-                              <option key={type} value={type}>
-                                {type === 'Ziyadah' ? 'Ziyadah (Hafalan Baru)' : type === 'Murajaah' ? 'Murajaah (Pengulangan)' : type === 'Tasmi' ? 'Tasmi\' (Uji Simakan)' : 'Ujian Tahfizh'}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex-1">
+                            <HeroUiFilterSelect
+                              id="tahfizh-jenis"
+                              value={tahfizhForm.type}
+                              onChange={(val) => setTahfizhForm({ ...tahfizhForm, type: val })}
+                              options={[
+                                { value: 'Ziyadah', label: 'Ziyadah (Hafalan Baru)' },
+                                { value: 'Murajaah', label: 'Murajaah (Pengulangan)' },
+                                { value: 'Tasmi', label: 'Tasmi\' (Uji Simakan)' },
+                                { value: 'Ujian', label: 'Ujian Tahfizh' },
+                              ]}
+                              placeholder="Pilih Jenis Setoran"
+                              ariaLabel="Jenis Setoran Tahfizh"
+                              popoverWidth="w-full min-w-[220px]"
+                            />
+                          </div>
                           <div className="relative group">
                             <button
                               type="button"
                               onClick={() => setShowSetoranTypeModal(true)}
-                              className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
+                              className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
                               aria-label="Pilih Cepat Jenis Setoran"
                             >
-                              <Zap className="w-5 h-5" />
+                              <Zap className="w-4.5 h-4.5" />
                             </button>
                             <div className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-lg z-20">
                               Pilih Cepat Jenis Setoran
@@ -12991,16 +13454,18 @@ export default function TeacherTeachingWorkspacePage() {
                         <label htmlFor="tahfizh-juz" className="font-bold block mb-1 text-slate-700 dark:text-slate-200">
                           Juz Capaian <span className="text-rose-500">*</span>
                         </label>
-                        <select
+                        <HeroUiFilterSelect
                           id="tahfizh-juz"
-                          value={tahfizhForm.juz}
-                          onChange={(e) => setTahfizhForm({ ...tahfizhForm, juz: Number(e.target.value) })}
-                          className="h-11 w-full border rounded-xl bg-white px-3 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500"
-                        >
-                          {Array.from({ length: 30 }, (_, index) => index + 1).map((juz) => (
-                            <option key={juz} value={juz}>Juz {juz}</option>
-                          ))}
-                        </select>
+                          value={String(tahfizhForm.juz)}
+                          onChange={(val) => setTahfizhForm({ ...tahfizhForm, juz: Number(val) })}
+                          options={Array.from({ length: 30 }, (_, index) => ({
+                            value: String(index + 1),
+                            label: `Juz ${index + 1}`,
+                          }))}
+                          placeholder="Pilih Juz"
+                          ariaLabel="Juz Capaian Tahfizh"
+                          popoverWidth="w-full min-w-[180px]"
+                        />
                       </div>
                     </div>
 
@@ -13017,24 +13482,26 @@ export default function TeacherTeachingWorkspacePage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <select
-                          id="tahfizh-surah"
-                          required
-                          disabled={loadingSurahs}
-                          value={tahfizhForm.surah_number}
-                          onChange={(e) => {
-                            const surahNumber = Number(e.target.value)
-                            setTahfizhForm({ ...tahfizhForm, surah_number: surahNumber, ayat_start: 1, ayat_end: 1, juz: getQuranJuz(surahNumber, 1) })
-                          }}
-                          className="h-11 flex-1 border rounded-xl bg-white px-3 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-100"
-                        >
-                          <option value="">{loadingSurahs ? 'Memuat Master Al-Qur’an...' : '-- Pilih Surah Master --'}</option>
-                          {quranSurahs.map((surah) => (
-                            <option key={surah.nomor} value={surah.nomor}>
-                              {surah.nomor}. {surah.nama_latin} ({surah.jumlah_ayat} ayat) - {surah.arti}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex-1">
+                          <HeroUiFilterSelect
+                            id="tahfizh-surah"
+                            value={String(tahfizhForm.surah_number)}
+                            disabled={loadingSurahs}
+                            onChange={(val) => {
+                              const surahNumber = Number(val)
+                              setTahfizhForm({ ...tahfizhForm, surah_number: surahNumber, ayat_start: 1, ayat_end: 1, juz: getQuranJuz(surahNumber, 1) })
+                            }}
+                            options={quranSurahs.map((surah) => ({
+                              value: String(surah.nomor),
+                              label: `${surah.nomor}. ${surah.nama_latin}`,
+                              subtext: `${surah.jumlah_ayat} ayat • ${surah.arti}`,
+                            }))}
+                            placeholder={loadingSurahs ? 'Memuat Master Al-Qur’an...' : '-- Pilih Surah Master --'}
+                            ariaLabel="Surah Al-Qur'an"
+                            searchable
+                            popoverWidth="w-full min-w-[280px]"
+                          />
+                        </div>
                         <div className="relative group">
                           <button
                             type="button"
@@ -13042,10 +13509,10 @@ export default function TeacherTeachingWorkspacePage() {
                               setSurahModalSearch('')
                               setShowSurahSearchModal(true)
                             }}
-                            className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
+                            className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
                             aria-label="Master Surah Al-Qur'an"
                           >
-                            <BookMarked className="w-5 h-5" />
+                            <BookMarked className="w-4.5 h-4.5" />
                           </button>
                           <div className="absolute -top-9 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-lg z-20">
                             Master Surah Al-Qur'an
@@ -13060,20 +13527,23 @@ export default function TeacherTeachingWorkspacePage() {
                         <label htmlFor="tahfizh-ayat-awal" className="font-bold block mb-1 text-slate-700 dark:text-slate-200">
                           Ayat Awal <span className="text-rose-500">*</span>
                         </label>
-                        <select
+                        <HeroUiFilterSelect
                           id="tahfizh-ayat-awal"
                           disabled={!selectedTahfizhSurah}
-                          value={tahfizhForm.ayat_start}
-                          onChange={(e) => {
-                            const value = Number(e.target.value)
+                          value={String(tahfizhForm.ayat_start)}
+                          onChange={(val) => {
+                            const value = Number(val)
                             setTahfizhForm({ ...tahfizhForm, ayat_start: value, ayat_end: Math.max(value, Number(tahfizhForm.ayat_end)), juz: getQuranJuz(tahfizhForm.surah_number, value) })
                           }}
-                          className="h-11 w-full border rounded-xl bg-white px-3 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-                        >
-                          {Array.from({ length: selectedTahfizhSurah?.jumlah_ayat || 1 }, (_, index) => index + 1).map((ayat) => (
-                            <option key={ayat} value={ayat}>Ayat {ayat}</option>
-                          ))}
-                        </select>
+                          options={Array.from({ length: selectedTahfizhSurah?.jumlah_ayat || 1 }, (_, index) => ({
+                            value: String(index + 1),
+                            label: `Ayat ${index + 1}`,
+                          }))}
+                          placeholder="Ayat Awal"
+                          ariaLabel="Ayat Awal"
+                          searchable={(selectedTahfizhSurah?.jumlah_ayat || 1) > 10}
+                          popoverWidth="w-full min-w-[150px]"
+                        />
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
@@ -13086,19 +13556,22 @@ export default function TeacherTeachingWorkspacePage() {
                             </span>
                           )}
                         </div>
-                        <select
+                        <HeroUiFilterSelect
                           id="tahfizh-ayat-akhir"
                           disabled={!selectedTahfizhSurah}
-                          value={tahfizhForm.ayat_end}
-                          onChange={(e) => setTahfizhForm({ ...tahfizhForm, ayat_end: Number(e.target.value) })}
-                          className="h-11 w-full border rounded-xl bg-white px-3 font-extrabold text-emerald-800 dark:text-emerald-300 dark:bg-slate-800 border-emerald-400 dark:border-emerald-600 shadow-sm focus:ring-2 focus:ring-emerald-500/30"
-                        >
-                          {Array.from({ length: selectedTahfizhSurah?.jumlah_ayat || 1 }, (_, index) => index + 1)
+                          value={String(tahfizhForm.ayat_end)}
+                          onChange={(val) => setTahfizhForm({ ...tahfizhForm, ayat_end: Number(val) })}
+                          options={Array.from({ length: selectedTahfizhSurah?.jumlah_ayat || 1 }, (_, index) => index + 1)
                             .filter((ayat) => ayat >= Number(tahfizhForm.ayat_start))
-                            .map((ayat) => (
-                              <option key={ayat} value={ayat}>Ayat {ayat}</option>
-                            ))}
-                        </select>
+                            .map((ayat) => ({
+                              value: String(ayat),
+                              label: `Ayat ${ayat}`,
+                            }))}
+                          placeholder="Ayat Terakhir"
+                          ariaLabel="Ayat Terakhir"
+                          searchable={(selectedTahfizhSurah?.jumlah_ayat || 1) > 10}
+                          popoverWidth="w-full min-w-[150px]"
+                        />
                       </div>
                     </div>
 
@@ -13110,16 +13583,16 @@ export default function TeacherTeachingWorkspacePage() {
                         ['makhraj', 'Makhraj', ['Sangat Baik', 'Baik', 'Perlu Bimbingan']],
                       ].map(([key, label, options]) => (
                         <div key={key}>
-                          <label className="font-bold block mb-1 text-slate-700 dark:text-slate-200">{label}</label>
-                          <select
+                          <label htmlFor={`tahfizh-${key}`} className="font-bold block mb-1 text-slate-700 dark:text-slate-200">{label}</label>
+                          <HeroUiFilterSelect
+                            id={`tahfizh-${key}`}
                             value={tahfizhForm[key]}
-                            onChange={(e) => setTahfizhForm({ ...tahfizhForm, [key]: e.target.value })}
-                            className="h-11 w-full border rounded-xl bg-white px-2.5 font-bold dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm focus:border-emerald-500"
-                          >
-                            {options.map((option) => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
+                            onChange={(val) => setTahfizhForm({ ...tahfizhForm, [key]: val })}
+                            options={options.map((opt) => ({ value: opt, label: opt }))}
+                            placeholder={`Pilih ${label}`}
+                            ariaLabel={label}
+                            popoverWidth="w-full min-w-[160px]"
+                          />
                         </div>
                       ))}
                     </div>
@@ -13227,11 +13700,10 @@ export default function TeacherTeachingWorkspacePage() {
                               }))
                               setShowStudentSearchModal(false)
                             }}
-                            className={`flex items-center gap-3 w-full p-3 rounded-2xl border text-left transition ${
-                              isSelected
-                                ? 'border-emerald-500 bg-emerald-50/90 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
-                                : 'border-slate-200/80 hover:border-emerald-400 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900/60'
-                            }`}
+                            className={`flex items-center gap-3 w-full p-3 rounded-2xl border text-left transition ${isSelected
+                              ? 'border-emerald-500 bg-emerald-50/90 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
+                              : 'border-slate-200/80 hover:border-emerald-400 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900/60'
+                              }`}
                           >
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-extrabold flex items-center justify-center text-xs shadow-sm shrink-0 overflow-hidden">
                               {s.avatar ? (
@@ -13300,11 +13772,10 @@ export default function TeacherTeachingWorkspacePage() {
                             setTahfizhForm({ ...tahfizhForm, type: item.id })
                             setShowSetoranTypeModal(false)
                           }}
-                          className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between ${
-                            isSelected
-                              ? 'ring-2 ring-emerald-500 border-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/50'
-                              : 'border-slate-200/80 hover:border-emerald-300 bg-white dark:bg-slate-900'
-                          }`}
+                          className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between ${isSelected
+                            ? 'ring-2 ring-emerald-500 border-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/50'
+                            : 'border-slate-200/80 hover:border-emerald-300 bg-white dark:bg-slate-900'
+                            }`}
                         >
                           <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${item.color}`}>
                             <Icon className="w-4 h-4" />
@@ -13360,11 +13831,10 @@ export default function TeacherTeachingWorkspacePage() {
                                 })
                                 setShowSurahSearchModal(false)
                               }}
-                              className={`flex items-center justify-between w-full p-3 rounded-2xl border text-left transition ${
-                                isSelected
-                                  ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
-                                  : 'border-slate-200/80 hover:border-emerald-300 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900'
-                              }`}
+                              className={`flex items-center justify-between w-full p-3 rounded-2xl border text-left transition ${isSelected
+                                ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/30 dark:bg-emerald-950/40 dark:border-emerald-700'
+                                : 'border-slate-200/80 hover:border-emerald-300 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900'
+                                }`}
                             >
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 font-extrabold text-xs flex items-center justify-center border border-purple-200 shrink-0">
@@ -13403,22 +13873,35 @@ export default function TeacherTeachingWorkspacePage() {
                       <div><label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Tanggal</label><DatePicker required value={catatanForm.date} onChange={(e) => setCatatanForm({ ...catatanForm, date: e.target.value })} /></div>
                       <div>
                         <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Kategori</label>
-                        <div className="relative flex items-center">
-                          <select
-                            value={catatanForm.category}
-                            onChange={(e) => setCatatanForm({ ...catatanForm, category: e.target.value })}
-                            className="h-10 w-full appearance-none rounded-xl border border-slate-200 pl-3 pr-9 text-xs font-semibold text-slate-800 transition hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
-                          >
-                            {['Akademik', 'Perilaku', 'Kedisiplinan', 'Prestasi', 'Konseling', 'Tahfizh', 'Ibadah', 'Kesehatan'].map((category) => (
-                              <option key={category}>{category}</option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute right-3 flex items-center text-slate-400">
-                            <ChevronDown className="size-4" />
-                          </div>
-                        </div>
+                        <HeroUiFilterSelect
+                          size="md"
+                          value={catatanForm.category}
+                          onChange={(val) => setCatatanForm({ ...catatanForm, category: val })}
+                          ariaLabel="Kategori"
+                          options={['Akademik', 'Perilaku', 'Kedisiplinan', 'Prestasi', 'Konseling', 'Tahfizh', 'Ibadah', 'Kesehatan']}
+                        />
                       </div>
                     </div>
+                    {(catatanForm.category === 'Perilaku' || catatanForm.category === 'Kedisiplinan') && (
+                      <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/90 p-2.5 dark:border-amber-900/50 dark:bg-amber-950/40">
+                        <div className="flex items-center gap-2">
+                          <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <p className="text-[11px] text-amber-800 dark:text-amber-200">
+                            Gunakan standar resmi <b>122 Pasal Tata Tertib & Poin Kedisiplinan TU</b>?
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const curStudent = students.find((s) => s.id === catatanForm.student_id)
+                            openPelanggaranModal(curStudent)
+                          }}
+                          className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1 text-[10px] font-bold text-white shadow-xs hover:bg-amber-700 cursor-pointer"
+                        >
+                          Pilih Pasal TU
+                        </button>
+                      </div>
+                    )}
                     <div>
                       <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-200">Judul Catatan</label>
                       <input
@@ -13445,21 +13928,18 @@ export default function TeacherTeachingWorkspacePage() {
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
                         <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-200">Prioritas</label>
-                        <div className="relative flex items-center">
-                          <select
-                            value={catatanForm.priority}
-                            onChange={(e) => setCatatanForm({ ...catatanForm, priority: e.target.value })}
-                            className="h-10 w-full appearance-none rounded-xl border border-slate-200 pl-3 pr-9 text-xs font-semibold text-slate-800 transition hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
-                          >
-                            <option value="low">Rendah</option>
-                            <option value="medium">Sedang</option>
-                            <option value="high">Tinggi</option>
-                            <option value="urgent">Mendesak</option>
-                          </select>
-                          <div className="pointer-events-none absolute right-3 flex items-center text-slate-400">
-                            <ChevronDown className="size-4" />
-                          </div>
-                        </div>
+                        <HeroUiFilterSelect
+                          size="md"
+                          value={catatanForm.priority}
+                          onChange={(val) => setCatatanForm({ ...catatanForm, priority: val })}
+                          ariaLabel="Prioritas"
+                          options={[
+                            { value: 'low', label: 'Rendah' },
+                            { value: 'medium', label: 'Sedang' },
+                            { value: 'high', label: 'Tinggi' },
+                            { value: 'urgent', label: 'Mendesak' },
+                          ]}
+                        />
                       </div>
                       <div className="flex items-end gap-4 pb-2"><label className="flex items-center gap-2"><input type="checkbox" checked={catatanForm.visible_to_parent} onChange={(e) => setCatatanForm({ ...catatanForm, visible_to_parent: e.target.checked })} /> Orang tua</label><label className="flex items-center gap-2"><input type="checkbox" checked={catatanForm.visible_to_student} onChange={(e) => setCatatanForm({ ...catatanForm, visible_to_student: e.target.checked })} /> Siswa</label></div>
                     </div>
@@ -13469,6 +13949,224 @@ export default function TeacherTeachingWorkspacePage() {
                       </button>
                       <button type="submit" disabled={savingStudentNote} className="inline-flex min-w-36 items-center justify-center gap-2 rounded-xl bg-[#0E5C44] px-4 py-2 font-bold text-white shadow-md disabled:opacity-60">
                         {savingStudentNote && <RefreshCw className="h-4 w-4 animate-spin" />}{savingStudentNote ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan Catatan'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {modalType === 'pelanggaran' && (
+                  <form onSubmit={handleSavePelanggaran} className="space-y-4 text-xs">
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-rose-100 pb-3 dark:border-slate-800">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/20">
+                          <ShieldAlert className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                            Catat Penilaian Perilaku Siswa
+                          </h3>
+                          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                            Standar 122 Pasal Tata Tertib & Buku Poin Kedisiplinan TU
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Siswa Selector / Info */}
+                    <div>
+                      <label className="mb-1 block font-bold text-slate-700 dark:text-slate-200">
+                        Target Siswa / Santri
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={pelanggaranForm.student_id}
+                          onChange={(e) => setPelanggaranForm({ ...pelanggaranForm, student_id: e.target.value })}
+                          className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-9 text-xs font-bold text-slate-800 transition hover:border-slate-300 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                          <option value="" disabled>-- Pilih Siswa dari Rombel {selectedClassName} --</option>
+                          {students.map((st) => (
+                            <option key={st.id} value={st.id}>
+                              {st.nama_lengkap || st.full_name || st.name} ({st.nis || 'Tanpa NIS'})
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                          <ChevronDown className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tanggal & Poin */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1 block font-bold text-slate-700 dark:text-slate-200">Tanggal Kejadian</label>
+                        <DatePicker
+                          required
+                          value={pelanggaranForm.transaction_date}
+                          onChange={(e) => setPelanggaranForm({ ...pelanggaranForm, transaction_date: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block font-bold text-slate-700 dark:text-slate-200">Bobot Pengurangan Poin</label>
+                        <div className="flex h-10 items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-3.5 dark:border-rose-900/60 dark:bg-rose-950/40">
+                          <span className="font-semibold text-rose-700 dark:text-rose-300">Poin Pelanggaran:</span>
+                          <span className="rounded-lg bg-rose-600 px-2 py-0.5 text-xs font-black text-white shadow-xs">
+                            -{Math.abs(pelanggaranForm.points || 0)} Poin
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Master Pasal Tata Tertib TU (122 Pasal Dinamis) */}
+                    <div>
+                      <div className="mb-1 flex items-center justify-between">
+                        <label className="font-bold text-slate-700 dark:text-slate-200">
+                          Pasal Tata Tertib & Perilaku (Master TU)
+                        </label>
+                        {loadingDisciplineCategories && (
+                          <span className="text-[10px] text-emerald-600 flex items-center gap-1 font-semibold">
+                            <RefreshCw className="h-3 w-3 animate-spin" /> Memuat master TU...
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Filter / Search Pasal jika banyak */}
+                      <div className="relative mb-2">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={pelanggaranCategorySearch}
+                          onChange={(e) => setPelanggaranCategorySearch(e.target.value)}
+                          placeholder="Cari pasal / nama pelanggaran TU (contoh: seragam, terlambat, adab)..."
+                          className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8.5 pr-3 text-[11px] outline-none transition focus:border-rose-500 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div className="relative">
+                        <select
+                          value={pelanggaranForm.category_id}
+                          onChange={(e) => handlePelanggaranCategoryChange(e.target.value)}
+                          className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-9 text-xs font-bold text-slate-800 transition hover:border-slate-300 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                          <option value="" disabled>-- Pilih Pasal Tata Tertib Resmi TU --</option>
+                          {disciplineCategories
+                            .filter((cat) => {
+                              if (!pelanggaranCategorySearch.trim()) return true
+                              const q = pelanggaranCategorySearch.toLowerCase()
+                              return (
+                                cat.name?.toLowerCase().includes(q) ||
+                                cat.code?.toLowerCase().includes(q) ||
+                                cat.cluster?.toLowerCase().includes(q) ||
+                                cat.description?.toLowerCase().includes(q)
+                              )
+                            })
+                            .map((cat) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.code ? `[${cat.code}] ` : ''}{cat.name} ({cat.point_weight ? `-${Math.abs(cat.point_weight)} Poin` : '0 Poin'}) {cat.cluster ? `• ${cat.cluster}` : ''}
+                              </option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                          <ChevronDown className="h-4 w-4" />
+                        </div>
+                      </div>
+
+                      {/* Selected Category Detail Card */}
+                      {(() => {
+                        const selCat = disciplineCategories.find((c) => String(c.id) === String(pelanggaranForm.category_id))
+                        if (!selCat) return null
+                        return (
+                          <div className="mt-2 rounded-xl border border-amber-200/80 bg-amber-50/70 p-2.5 dark:border-amber-900/40 dark:bg-amber-950/30">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                                Klaster: {selCat.cluster || selCat.category_type || 'Tata Tertib Santri'}
+                              </span>
+                              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                                Resmi TU: -{Math.abs(selCat.point_weight || 5)} Poin
+                              </span>
+                            </div>
+                            {selCat.consequence && (
+                              <p className="mt-1 text-[11px] text-amber-900 dark:text-amber-200">
+                                <b>Konsekuensi TU:</b> {selCat.consequence}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </div>
+
+                    {/* Kronologi / Catatan Kejadian Guru */}
+                    <div>
+                      <label className="mb-1 block font-bold text-slate-700 dark:text-slate-200">
+                        Catatan Kronologi Kejadian / Perilaku <span className="text-rose-500">*</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        required
+                        value={pelanggaranForm.description}
+                        onChange={(e) => setPelanggaranForm({ ...pelanggaranForm, description: e.target.value })}
+                        placeholder="Tuliskan catatan kejadian perilaku santri di kelas atau lingkungan madrasah..."
+                        className="w-full rounded-xl border border-slate-200 p-2.5 text-xs outline-none transition focus:border-rose-500 focus:ring-1 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+
+                    {/* Rujukan BK & Tindak Lanjut */}
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900/50 space-y-2.5">
+                      <label className="flex items-center gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={pelanggaranForm.refer_bk}
+                          onChange={(e) => setPelanggaranForm({ ...pelanggaranForm, refer_bk: e.target.checked })}
+                          className="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                        />
+                        <div>
+                          <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                            Rujuk ke Guru BK (Bimbingan Konseling) & Wali Kelas
+                          </span>
+                          <p className="text-[10px] text-slate-500">
+                            Aktifkan bila perilaku memerlukan pembinaan lanjutan atau pemanggilan orang tua oleh BK.
+                          </p>
+                        </div>
+                      </label>
+
+                      <div>
+                        <label className="mb-1 block font-semibold text-slate-700 dark:text-slate-300 text-[11px]">
+                          Tindakan Langsung Guru (Opsional)
+                        </label>
+                        <input
+                          type="text"
+                          value={pelanggaranForm.follow_up}
+                          onChange={(e) => setPelanggaranForm({ ...pelanggaranForm, follow_up: e.target.value })}
+                          placeholder="Contoh: Diberikan nasihat adab, penugasan istighfar 50x..."
+                          className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs outline-none focus:border-rose-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Footer Buttons */}
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setShowModal(false)}
+                        className="rounded-xl border border-slate-200 px-4 py-2 font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={savingPelanggaran}
+                        className="inline-flex min-w-36 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 via-rose-700 to-red-800 px-4 py-2 font-bold text-white shadow-md transition hover:brightness-110 disabled:opacity-60 cursor-pointer"
+                      >
+                        {savingPelanggaran && <RefreshCw className="h-4 w-4 animate-spin" />}
+                        {savingPelanggaran ? 'Menyimpan...' : 'Simpan Penilaian Perilaku'}
                       </button>
                     </div>
                   </form>
@@ -13634,11 +14332,10 @@ export default function TeacherTeachingWorkspacePage() {
                     key={fmt.id}
                     type="button"
                     onClick={() => setExportFormat(fmt.id)}
-                    className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition ${
-                      isSel
-                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-[#0E5C44] text-[#0E5C44] dark:text-emerald-400 font-bold'
-                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50'
-                    }`}
+                    className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition ${isSel
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-[#0E5C44] text-[#0E5C44] dark:text-emerald-400 font-bold'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50'
+                      }`}
                   >
                     <Icon className="w-6 h-6" />
                     <span className="text-xs">{fmt.label}</span>
@@ -13909,11 +14606,10 @@ export default function TeacherTeachingWorkspacePage() {
                           <span>Terlambat: {terlambatCount}</span>
                         </span>
                       )}
-                      <span className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-black ${
-                        tidakHadirCount > 0
-                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300'
-                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                      }`}>
+                      <span className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-black ${tidakHadirCount > 0
+                        ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300'
+                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                        }`}>
                         <XCircle className="h-3.5 w-3.5 text-rose-600" />
                         <span>Tidak Hadir: {tidakHadirCount}</span>
                         {tidakHadirCount > 0 && (
@@ -13979,14 +14675,14 @@ export default function TeacherTeachingWorkspacePage() {
                               rawStatus === 'hadir'
                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300'
                                 : rawStatus === 'terlambat'
-                                ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300'
-                                : rawStatus === 'izin'
-                                ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950 dark:text-sky-300'
-                                : rawStatus === 'sakit'
-                                ? 'bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-950 dark:text-violet-300'
-                                : rawStatus === 'alpa' || rawStatus === 'alpha'
-                                ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300'
-                                : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300'
+                                  : rawStatus === 'izin'
+                                    ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950 dark:text-sky-300'
+                                    : rawStatus === 'sakit'
+                                      ? 'bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-950 dark:text-violet-300'
+                                      : rawStatus === 'alpa' || rawStatus === 'alpha'
+                                        ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300'
+                                        : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300'
 
                             const gender = st.gender || st.jenis_kelamin || '-'
                             const genderLabel = gender.toLowerCase().startsWith('l') ? 'L' : gender.toLowerCase().startsWith('p') ? 'P' : '-'
@@ -14150,13 +14846,12 @@ export default function TeacherTeachingWorkspacePage() {
                               <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/70 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                 {note.category || 'Akademik'}
                               </span>
-                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold capitalize ${
-                                note.priority === 'urgent'
-                                  ? 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950 dark:text-rose-300'
-                                  : note.priority === 'high'
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold capitalize ${note.priority === 'urgent'
+                                ? 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950 dark:text-rose-300'
+                                : note.priority === 'high'
                                   ? 'bg-orange-100 text-orange-800 border border-orange-200 dark:bg-orange-950 dark:text-orange-300'
                                   : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-700 dark:text-slate-300'
-                              }`}>
+                                }`}>
                                 {note.priority || 'medium'}
                               </span>
                               <span className="text-[11px] text-slate-400 font-medium">
@@ -14438,7 +15133,7 @@ export default function TeacherTeachingWorkspacePage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center gap-2"
                 >
                   <CheckCircle2 className="w-4 h-4" /> Simpan Presensi Wajah
                 </button>
@@ -14463,10 +15158,44 @@ export default function TeacherTeachingWorkspacePage() {
             ? `${selectedPendingSession.schedule?.subject?.name || 'Mata Pelajaran'} • ${selectedPendingSession.schedule?.kelas?.nama_kelas || 'Kelas'} • Pertemuan #${selectedPendingSession.meeting_number || 1} (${selectedPendingSession.attendance_date})`
             : 'Isi ringkasan materi dan evaluasi KBM'
         }
-        size="lg"
+        icon={BookOpen}
+        maxWidth="max-w-xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <button
+              type="button"
+              disabled={savingJournalNotes}
+              onClick={() => {
+                setShowPendingJournalModal(false)
+                setSelectedPendingSession(null)
+              }}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                <X className="size-3.5" strokeWidth={2.5} />
+              </span>
+              <span>Batal</span>
+            </button>
+            <button
+              type="submit"
+              form="pending-journal-form"
+              disabled={savingJournalNotes}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-950/20 hover:from-emerald-600 hover:to-teal-800 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                {savingJournalNotes ? (
+                  <RefreshCw className="size-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
+                )}
+              </span>
+              <span>{savingJournalNotes ? 'Menyimpan...' : 'Simpan Rangkuman & Selesaikan'}</span>
+            </button>
+          </div>
+        }
       >
         {selectedPendingSession && (
-          <form onSubmit={handleSavePendingJournal} className="space-y-4 pt-1">
+          <form id="pending-journal-form" onSubmit={handleSavePendingJournal} className="space-y-4 pt-1">
             <div className="rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/10 via-amber-50/50 to-transparent p-3.5 dark:border-amber-700/60 dark:bg-amber-950/20">
               <div className="flex items-center gap-2">
                 <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white shadow-xs">
@@ -14492,7 +15221,7 @@ export default function TeacherTeachingWorkspacePage() {
                 value={journalTopicInput}
                 onChange={(e) => setJournalTopicInput(e.target.value)}
                 placeholder="Contoh: Bab 4 - Persamaan Linier & Soal Cerita"
-                className="h-10 w-full rounded-xl border border-emerald-500/30 bg-white px-3.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="h-10 w-full rounded-xl border border-slate-200/90 bg-white px-3.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                 required
               />
             </div>
@@ -14506,43 +15235,12 @@ export default function TeacherTeachingWorkspacePage() {
                 value={journalNotesInput}
                 onChange={(e) => setJournalNotesInput(e.target.value)}
                 placeholder="Tuliskan rangkuman materi yang telah diajarkan, pemahaman siswa, evaluasi singkat, atau tugas yang diberikan..."
-                className="w-full rounded-xl border border-emerald-500/30 bg-white p-3.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="w-full rounded-xl border border-slate-200/90 bg-white p-3.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 required
               />
               <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
                 Minimal 3 karakter. Catatan ini juga dapat dibaca oleh orang tua di modul portal santri.
               </p>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                disabled={savingJournalNotes}
-                onClick={() => {
-                  setShowPendingJournalModal(false)
-                  setSelectedPendingSession(null)
-                }}
-                className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={savingJournalNotes}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 px-5 py-2.5 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-600 transition-all cursor-pointer disabled:opacity-50"
-              >
-                {savingJournalNotes ? (
-                  <>
-                    <RefreshCw className="size-3.5 animate-spin text-white" />
-                    <span>Menyimpan...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="size-3.5 text-white" />
-                    <span>Simpan Rangkuman & Selesaikan</span>
-                  </>
-                )}
-              </button>
             </div>
           </form>
         )}
@@ -14687,11 +15385,10 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
 
           <div className="flex items-center gap-3">
             {/* TIMER BADGE */}
-            <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border backdrop-blur-md transition-all shadow-inner ${
-              timeLeft < 300
-                ? 'bg-rose-500/30 border-rose-400 text-rose-100 animate-pulse'
-                : 'bg-white/15 border-white/25 text-white'
-            }`}>
+            <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border backdrop-blur-md transition-all shadow-inner ${timeLeft < 300
+              ? 'bg-rose-500/30 border-rose-400 text-rose-100 animate-pulse'
+              : 'bg-white/15 border-white/25 text-white'
+              }`}>
               <Clock className="w-4 h-4" />
               <span className="text-xs sm:text-sm font-black font-mono tracking-wide">
                 {formatTimer(timeLeft)}
@@ -14744,9 +15441,8 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                       key={idx}
                       type="button"
                       onClick={() => setCurrentIdx(idx)}
-                      className={`h-9 rounded-xl font-bold text-xs border transition-all relative flex items-center justify-center cursor-pointer ${btnColor} ${
-                        isCurr ? 'ring-2 ring-purple-600 ring-offset-2 dark:ring-offset-slate-900 scale-105 z-10' : ''
-                      }`}
+                      className={`h-9 rounded-xl font-bold text-xs border transition-all relative flex items-center justify-center cursor-pointer ${btnColor} ${isCurr ? 'ring-2 ring-purple-600 ring-offset-2 dark:ring-offset-slate-900 scale-105 z-10' : ''
+                        }`}
                     >
                       {idx + 1}
                       {isDoubt && (
@@ -14839,11 +15535,10 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                                 key={opt.val}
                                 type="button"
                                 onClick={() => handleSelectAnswer(opt.val)}
-                                className={`p-4 rounded-2xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                                  isSelected
-                                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 shadow-md ring-2 ring-purple-600/30'
-                                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200'
-                                }`}
+                                className={`p-4 rounded-2xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${isSelected
+                                  ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 shadow-md ring-2 ring-purple-600/30'
+                                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200'
+                                  }`}
                               >
                                 {opt.label}
                               </button>
@@ -14873,24 +15568,21 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                               key={letter}
                               type="button"
                               onClick={() => handleSelectAnswer(upperLetter)}
-                              className={`w-full p-3.5 sm:p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-3.5 cursor-pointer ${
-                                isSelected
-                                  ? 'border-purple-600 bg-purple-50/80 dark:bg-purple-950/40 shadow-sm ring-2 ring-purple-600/30'
-                                  : 'border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
-                              }`}
+                              className={`w-full p-3.5 sm:p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-3.5 cursor-pointer ${isSelected
+                                ? 'border-purple-600 bg-purple-50/80 dark:bg-purple-950/40 shadow-sm ring-2 ring-purple-600/30'
+                                : 'border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
+                                }`}
                             >
-                              <span className={`w-8 h-8 rounded-xl font-black text-xs flex items-center justify-center shrink-0 transition-all ${
-                                isSelected
-                                  ? 'bg-purple-600 text-white shadow-md scale-105'
-                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                              }`}>
+                              <span className={`w-8 h-8 rounded-xl font-black text-xs flex items-center justify-center shrink-0 transition-all ${isSelected
+                                ? 'bg-emerald-600 text-white shadow-md scale-105'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                }`}>
                                 {upperLetter}
                               </span>
-                              <span className={`text-xs sm:text-sm font-medium flex-1 ${
-                                isSelected
-                                  ? 'text-purple-950 dark:text-purple-200 font-bold'
-                                  : 'text-slate-800 dark:text-slate-200'
-                              }`}>
+                              <span className={`text-xs sm:text-sm font-medium flex-1 ${isSelected
+                                ? 'text-purple-950 dark:text-purple-200 font-bold'
+                                : 'text-slate-800 dark:text-slate-200'
+                                }`}>
                                 {optionText}
                               </span>
                             </button>
@@ -14915,11 +15607,10 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                     <button
                       type="button"
                       onClick={toggleDoubtful}
-                      className={`px-4 py-2.5 rounded-xl border font-bold text-xs flex items-center gap-1.5 transition cursor-pointer ${
-                        doubtful[currentIdx]
-                          ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
-                          : 'border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 hover:bg-amber-100/60'
-                      }`}
+                      className={`px-4 py-2.5 rounded-xl border font-bold text-xs flex items-center gap-1.5 transition cursor-pointer ${doubtful[currentIdx]
+                        ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                        : 'border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 hover:bg-amber-100/60'
+                        }`}
                     >
                       <AlertTriangle className="w-4 h-4" />
                       {doubtful[currentIdx] ? 'Batalkan Ragu' : 'Tandai Ragu-Ragu'}
@@ -14929,7 +15620,7 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                       <button
                         type="button"
                         onClick={() => setCurrentIdx((prev) => Math.min(totalQuestions - 1, prev + 1))}
-                        className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer"
+                        className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer"
                       >
                         Selanjutnya
                         <ChevronRight className="w-4 h-4" />
@@ -14953,19 +15644,17 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
           /* CBT SCORE RESULT SUMMARY VIEW */
           <div className="flex-1 p-6 sm:p-8 overflow-y-auto space-y-6">
             <div className="text-center max-w-lg mx-auto space-y-3">
-              <div className={`w-16 h-16 mx-auto rounded-3xl flex items-center justify-center shadow-lg ${
-                resultData?.passed
-                  ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white ring-4 ring-emerald-500/20'
-                  : 'bg-gradient-to-br from-rose-500 to-amber-600 text-white ring-4 ring-rose-500/20'
-              }`}>
+              <div className={`w-16 h-16 mx-auto rounded-3xl flex items-center justify-center shadow-lg ${resultData?.passed
+                ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white ring-4 ring-emerald-500/20'
+                : 'bg-gradient-to-br from-rose-500 to-amber-600 text-white ring-4 ring-rose-500/20'
+                }`}>
                 {resultData?.passed ? <Trophy className="w-8 h-8" /> : <AlertTriangle className="w-8 h-8" />}
               </div>
 
-              <span className={`inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
-                resultData?.passed
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                  : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
-              }`}>
+              <span className={`inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${resultData?.passed
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                }`}>
                 {resultData?.passed ? 'Tuntas / Memenuhi KKM' : 'Belum Memenuhi KKM'}
               </span>
 
@@ -15018,11 +15707,10 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
                         <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                           {idx + 1}. {s.pertanyaan || s.soal}
                         </p>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
-                          isCorrect
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                            : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${isCorrect
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                          }`}>
                           {isCorrect ? 'Benar (+poin)' : 'Salah'}
                         </span>
                       </div>
@@ -15053,7 +15741,7 @@ function CbtQuizRunnerModal({ quiz, onClose }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition cursor-pointer"
               >
                 <Check className="w-4 h-4" /> Tutup Pratinjau Runner
               </button>

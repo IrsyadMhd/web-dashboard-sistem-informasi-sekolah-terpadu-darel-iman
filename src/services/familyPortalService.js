@@ -19,6 +19,7 @@ export const familyPortalService = {
   list: async (resource, childId) => (await api.get(`/portal/${resource}`, childParams(childId))).data,
   submitPermission: async (payload) => (await api.post('/portal/permissions', payload)).data,
   submitMurajaah: async (payload) => (await api.post('/portal/tahfizh/murajaah', payload)).data,
+  disciplineSummary: async (childId) => (await api.get('/portal/discipline-summary', childParams(childId))).data,
 
   // Parent Chat
   chatContacts: async (childId) => (await api.get('/portal/chat/contacts', childParams(childId))).data,

@@ -13,7 +13,7 @@ import { Spinner as HeroSpinner, Chip as HeroChip } from '@heroui/react'
  *  - TanStack React Query background network activity (isFetching / isMutating)
  *  - High-visibility top-of-viewport emerald gradient progress bar
  *  - Floating HeroUI sync status pill with spinner
- *  - Zero layout shift, strictly HeroUI & Tailwind (no TailGrids)
+ *  - Zero layout shift, strictly HeroUI & Tailwind (no HeroUI)
  */
 export default function HeroUiTopProgressBar() {
   const location = useLocation()
@@ -114,7 +114,7 @@ export default function HeroUiTopProgressBar() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.92 }}
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            className="fixed top-3.5 right-4 sm:right-8 z-[999998] pointer-events-none"
+            className="fixed top-[68px] right-3 sm:right-6 z-[45] pointer-events-none"
           >
             <HeroChip
               color="success"

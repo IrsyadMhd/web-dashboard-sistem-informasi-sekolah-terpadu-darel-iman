@@ -5,7 +5,7 @@ import { ArrowDown, ArrowUp } from 'lucide-react'
 /**
  * SmartScrollFab (Option A - Smart Floating Scroll Navigator)
  * ─────────────────────────────────────────────────────────────────────────────
- * Tombol melayang cerdas TailGrids Emerald Squircle yang mendeteksi posisi scroll:
+ * Tombol melayang cerdas HeroUI Emerald Squircle yang mendeteksi posisi scroll:
  * - Posisi atas (scrollY <= threshold): Ikon panah bawah (scroll ke tabel data target).
  * - Posisi bawah (scrollY > threshold): Otomatis bertransformasi menjadi panah atas (scroll ke puncak).
  * ─────────────────────────────────────────────────────────────────────────────

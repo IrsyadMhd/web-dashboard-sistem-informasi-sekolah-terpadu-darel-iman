@@ -1020,7 +1020,7 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
     if (format === 'print') {
       printCleanTable({
         title: 'Laporan Rekap Buku Nilai Akademik',
-        subtitle: `Dicetak ${targetList.length} Siswa | Sistem Manajemen Sekolah Terpadu`,
+        subtitle: `Dicetak ${targetList.length} Siswa | Dareliman Edu`,
         columns,
         data: targetList,
       })
@@ -1028,7 +1028,7 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
       downloadPdfTable({
         filename: 'rekap-buku-nilai-terpilih.pdf',
         title: 'Laporan Rekap Buku Nilai Akademik',
-        subtitle: `Dicetak ${targetList.length} Siswa | Sistem Manajemen Sekolah Terpadu`,
+        subtitle: `Dicetak ${targetList.length} Siswa | Dareliman Edu`,
         columns,
         data: targetList,
       })
@@ -1549,7 +1549,7 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
                       LMS &amp; Nilai Rapor
                     </span>
                   </div>
-                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                     Kalkulasi nilai akhir terpadu dari Penugasan dan Ujian CBT dengan bobot formula adaptif, cetak transkrip, dan analisis KKM.
                   </p>
                 </div>

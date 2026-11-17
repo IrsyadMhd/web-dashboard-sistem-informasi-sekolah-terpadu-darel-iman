@@ -1,5 +1,5 @@
 /**
- * SIMSIT Official Global Print & PDF Utility
+ * Dareliman Edu Official Global Print & PDF Utility
  * Standardized across all modules: Student, Attendance, Tahfizh, Academic, LMS, Alumni.
  * Supports A4 Portrait (default, 210mm x 297mm) and A4 Landscape with 15mm margins.
  * 
@@ -108,7 +108,7 @@ export function getResolvedYayasanConfig() {
 // DYNAMIC EDUCATION UNITS REGISTRY (LOADED FROM DATABASE)
 // Zero hardcoding. All units are dynamically fetched from database via /education-units
 // ============================================================================
-export const UNITS_DB_CACHE_KEY = 'simsit_education_units_db_cache'
+export const UNITS_DB_CACHE_KEY = 'dareliman_education_units_db_cache'
 
 /**
  * In-memory list of database unit records
@@ -206,6 +206,27 @@ export function updateUnitsConfigFromList(unitsList) {
  */
 export async function loadUnitsConfigFromDatabase() {
   try {
+    if (typeof localStorage !== 'undefined') {
+      const token = localStorage.getItem('school_erp_token')
+      if (!token) {
+        return DEFAULT_UNITS_CONFIG
+      }
+      const rawUser = localStorage.getItem('school_erp_user')
+      if (rawUser) {
+        const parsedUser = JSON.parse(rawUser)
+        const rawRoles = [
+          ...(Array.isArray(parsedUser?.roles) ? parsedUser.roles.map((r) => (typeof r === 'string' ? r : r?.name)) : []),
+          parsedUser?.role,
+          parsedUser?.primary_role,
+        ]
+          .filter(Boolean)
+          .map((r) => String(r).trim().toLowerCase())
+        const portalOnlyRoles = new Set(['orang tua', 'orang_tua', 'orang-tua', 'orangtua', 'wali murid', 'parent', 'siswa', 'student', 'santri', 'alumni'])
+        if (rawRoles.length > 0 && rawRoles.every((r) => portalOnlyRoles.has(r))) {
+          return DEFAULT_UNITS_CONFIG
+        }
+      }
+    }
     const res = await api.get('/education-units', { params: { per_page: 100 } })
     const units = res.data?.data || (Array.isArray(res.data) ? res.data : [])
     if (Array.isArray(units) && units.length > 0) {
@@ -707,7 +728,7 @@ export function printCleanTable({
   })
 
   // Remove existing print iframe if present
-  let iframe = document.getElementById('simsit-print-iframe')
+  let iframe = document.getElementById('dareliman-print-iframe')
   if (iframe) {
     try {
       document.body.removeChild(iframe)
@@ -716,7 +737,7 @@ export function printCleanTable({
 
   // Create hidden iframe in current document to avoid opening a new tab/window
   iframe = document.createElement('iframe')
-  iframe.id = 'simsit-print-iframe'
+  iframe.id = 'dareliman-print-iframe'
   iframe.style.position = 'fixed'
   iframe.style.left = '0'
   iframe.style.top = '0'
@@ -944,9 +965,9 @@ export function printCleanTable({
     try {
       if (iframe.contentWindow) {
         iframe.contentWindow.focus()
-        if (typeof window !== 'undefined' && window.__SIMSIT_PREVENT_MODAL_BLOCK__) {
+        if (typeof window !== 'undefined' && (window.__DARELIMAN_PREVENT_MODAL_BLOCK__ || window.__DARELIMAN_PREVENT_MODAL_BLOCK__)) {
           window.__LAST_PRINT_IFRAME_DOC__ = doc.documentElement.outerHTML
-          console.log('SIMSIT Print ready in iframe (automated test mode)')
+          console.log('Dareliman Edu Print ready in iframe (automated test mode)')
           return
         }
         iframe.contentWindow.print()
@@ -1149,7 +1170,7 @@ export function printOfficialMutabaahSheet({
   const periodText = period.title || period.name || `Pekan Berjalan (${weekDays[0]?.dateShort || ''} s.d. ${weekDays[6]?.dateShort || ''})`
 
   // Remove existing print iframe
-  let iframe = document.getElementById('simsit-print-iframe')
+  let iframe = document.getElementById('dareliman-print-iframe')
   if (iframe) {
     try {
       document.body.removeChild(iframe)
@@ -1157,7 +1178,7 @@ export function printOfficialMutabaahSheet({
   }
 
   iframe = document.createElement('iframe')
-  iframe.id = 'simsit-print-iframe'
+  iframe.id = 'dareliman-print-iframe'
   iframe.style.position = 'fixed'
   iframe.style.left = '0'
   iframe.style.top = '0'
@@ -1567,7 +1588,7 @@ export function printWeeklyStudentEvaluation({
   }
 
   // Remove existing print iframe
-  let iframe = document.getElementById('simsit-print-iframe')
+  let iframe = document.getElementById('dareliman-print-iframe')
   if (iframe) {
     try {
       document.body.removeChild(iframe)
@@ -1575,7 +1596,7 @@ export function printWeeklyStudentEvaluation({
   }
 
   iframe = document.createElement('iframe')
-  iframe.id = 'simsit-print-iframe'
+  iframe.id = 'dareliman-print-iframe'
   iframe.style.position = 'fixed'
   iframe.style.left = '0'
   iframe.style.top = '0'
@@ -1991,9 +2012,9 @@ export function printWeeklyStudentEvaluation({
     try {
       if (iframe.contentWindow) {
         iframe.contentWindow.focus()
-        if (typeof window !== 'undefined' && window.__SIMSIT_PREVENT_MODAL_BLOCK__) {
+        if (typeof window !== 'undefined' && (window.__DARELIMAN_PREVENT_MODAL_BLOCK__ || window.__DARELIMAN_PREVENT_MODAL_BLOCK__)) {
           window.__LAST_PRINT_IFRAME_DOC__ = doc.documentElement.outerHTML
-          console.log('SIMSIT Print ready in iframe (automated test mode)')
+          console.log('Dareliman Edu Print ready in iframe (automated test mode)')
           return
         }
         iframe.contentWindow.print()
@@ -2026,7 +2047,7 @@ export function printWeeklyStudentEvaluation({
 }
 
 /**
- * SIMSIT Official Mutaba'ah Yaumiyyah Weekly Student Evaluation Print Utility
+ * Dareliman Edu Official Mutaba'ah Yaumiyyah Weekly Student Evaluation Print Utility
  * Standardized with official 3-column Kop Surat:
  * | Logo Situs/Yayasan | Nama Yayasan | Logo Unit |
  *                        Nama Unit Lengkap
@@ -2604,7 +2625,7 @@ export function printWeeklyMutabaahSheet(params = {}) {
     try {
       if (iframe.contentWindow) {
         iframe.contentWindow.focus()
-        if (typeof window !== 'undefined' && window.__SIMSIT_PREVENT_MODAL_BLOCK__) {
+        if (typeof window !== 'undefined' && (window.__DARELIMAN_PREVENT_MODAL_BLOCK__ || window.__DARELIMAN_PREVENT_MODAL_BLOCK__)) {
           window.__LAST_PRINT_IFRAME_DOC__ = doc.documentElement.outerHTML
           return
         }
@@ -2638,7 +2659,7 @@ export function printWeeklyMutabaahSheet(params = {}) {
 }
 
 /**
- * SIMSIT Official Matrix Schedule Print (A4 Landscape)
+ * Dareliman Edu Official Matrix Schedule Print (A4 Landscape)
  * Mendukung format Matriks Mingguan Resmi (Senin - Sabtu) sesuai standar Sekolah Islam Terpadu,
  * pembedaan Full Day School vs Boarding School, serta Kop Surat Lembaga resmi.
  * ATURAN: ZERO HARDCODE. Murni bersumber dari database nyata.

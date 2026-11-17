@@ -21,6 +21,7 @@ import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import {
   Dialog,
   DialogHeader,
@@ -37,7 +38,7 @@ import {
   COLOR_PALETTE,
   MODULE_LINK_OPTIONS,
   AUDIENCE_OPTIONS,
-} from '../components/calendar/AcademicCalendarModal'
+} from '../components/calendar/calendarConstants'
 import { useDebounce } from '../hooks/useDebounce'
 import { useToast } from '../components/app/ToastProvider'
 
@@ -422,7 +423,7 @@ export default function AcademicCalendarPage() {
           ]}
         />
 
-        {/* TailGrids Modern Hero Header dengan Tahun Ajaran Dinamis */}
+        {/* HeroUI Modern Hero Header dengan Tahun Ajaran Dinamis */}
         <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -505,40 +506,39 @@ export default function AcademicCalendarPage() {
           {/* Filters: Satuan Pendidikan, Kategori, & Search Ter-debounce */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-wrap">
             {/* Filter Satuan Pendidikan */}
-            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
-              <Building className="h-3.5 w-3.5 text-slate-400" />
-              <select
-                value={selectedUnit}
-                onChange={(e) => setSelectedUnit(e.target.value)}
-                className="bg-transparent text-xs text-slate-800 dark:text-white font-semibold focus:outline-none cursor-pointer"
-                title="Pilih Satuan Pendidikan"
-              >
-                <option value="ALL">Semua Satuan Unit</option>
-                {units.map((u) => (
-                  <option key={u.value} value={u.value}>
-                    {u.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <HeroUiFilterSelect
+              value={selectedUnit}
+              onChange={(val) => setSelectedUnit(val)}
+              options={[
+                { value: 'ALL', label: 'Semua Satuan Unit' },
+                ...units.map((u) => ({ value: u.value, label: u.label })),
+              ]}
+              placeholder="Pilih Satuan Unit"
+              icon={Building}
+              ariaLabel="Pilih Satuan Pendidikan"
+              size="sm"
+              searchable
+              className="w-full sm:w-auto min-w-[170px]"
+            />
 
             {/* Filter Kategori */}
-            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
-              <Filter className="h-3.5 w-3.5 text-slate-400" />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-transparent text-xs text-slate-800 dark:text-white font-semibold focus:outline-none cursor-pointer"
-                title="Pilih Kategori Agenda"
-              >
-                <option value="ALL">Semua Kategori</option>
-                {Object.entries(PRESET_CATEGORIES).map(([catKey, catVal]) => (
-                  <option key={catKey} value={catKey}>
-                    {catVal.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <HeroUiFilterSelect
+              value={selectedCategory}
+              onChange={(val) => setSelectedCategory(val)}
+              options={[
+                { value: 'ALL', label: 'Semua Kategori' },
+                ...Object.entries(PRESET_CATEGORIES).map(([catKey, catVal]) => ({
+                  value: catKey,
+                  label: catVal.label,
+                })),
+              ]}
+              placeholder="Pilih Kategori Agenda"
+              icon={Filter}
+              ariaLabel="Pilih Kategori Agenda"
+              size="sm"
+              searchable
+              className="w-full sm:w-auto min-w-[160px]"
+            />
 
             {/* Search Input Ter-debounce */}
             <div className="relative w-full sm:w-52">
@@ -563,9 +563,8 @@ export default function AcademicCalendarPage() {
               {['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, i) => (
                 <div
                   key={d}
-                  className={`text-xs font-black uppercase tracking-wider ${
-                    i === 0 || i === 5 ? 'text-rose-500' : 'text-slate-600 dark:text-slate-400'
-                  }`}
+                  className={`text-xs font-black uppercase tracking-wider ${i === 0 || i === 5 ? 'text-rose-500' : 'text-slate-600 dark:text-slate-400'
+                    }`}
                 >
                   {d}
                 </div>
@@ -591,21 +590,19 @@ export default function AcademicCalendarPage() {
                   <div
                     key={cell.dateStr}
                     onClick={() => setSelectedDateEvents(cell)}
-                    className={`min-h-[92px] p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
-                      isSelected
-                        ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/40 shadow-sm'
-                        : isToday
+                    className={`min-h-[92px] p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${isSelected
+                      ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/40 shadow-sm'
+                      : isToday
                         ? 'border-emerald-400 bg-emerald-50/20 dark:border-emerald-700'
                         : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:border-emerald-300'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <span
-                        className={`text-xs font-extrabold ${
-                          isToday
-                            ? 'px-1.5 py-0.5 rounded-md bg-emerald-600 text-white'
-                            : 'text-slate-700 dark:text-slate-300'
-                        }`}
+                        className={`text-xs font-extrabold ${isToday
+                          ? 'px-1.5 py-0.5 rounded-md bg-emerald-600 text-white'
+                          : 'text-slate-700 dark:text-slate-300'
+                          }`}
                       >
                         {cell.day}
                       </span>
@@ -696,23 +693,29 @@ export default function AcademicCalendarPage() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <span className="text-xs font-black leading-snug">{ev.title}</span>
-                          {canManage && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                onClick={() => handleOpenEdit(ev)}
-                                className="p-1 rounded text-slate-500 hover:text-emerald-700 hover:bg-white/60 dark:hover:bg-slate-800"
-                                title="Edit Agenda"
-                              >
-                                <Edit2 className="h-3 w-3" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteEvent(ev)}
-                                className="p-1 rounded text-slate-500 hover:text-rose-600 hover:bg-white/60 dark:hover:bg-slate-800"
-                                title="Hapus Agenda"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
+                          {!String(ev.id).startsWith('evt-') ? (
+                            <span className="shrink-0 rounded-md bg-white/70 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
+                              Sistem
+                            </span>
+                          ) : (
+                            canManage && (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => handleOpenEdit(ev)}
+                                  className="p-1 rounded text-slate-500 hover:text-emerald-700 hover:bg-white/60 dark:hover:bg-slate-800"
+                                  title="Edit Agenda"
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteEvent(ev)}
+                                  className="p-1 rounded text-slate-500 hover:text-rose-600 hover:bg-white/60 dark:hover:bg-slate-800"
+                                  title="Hapus Agenda"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                            )
                           )}
                         </div>
 
@@ -819,34 +822,37 @@ export default function AcademicCalendarPage() {
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Kategori Agenda *
                   </label>
-                  <select
+                  <HeroUiFilterSelect
                     value={formData.category}
-                    onChange={(e) => handleCategoryChange(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
-                  >
-                    {Object.entries(PRESET_CATEGORIES).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => handleCategoryChange(val)}
+                    options={Object.entries(PRESET_CATEGORIES).map(([k, v]) => ({
+                      value: k,
+                      label: v.label,
+                    }))}
+                    placeholder="Pilih Kategori"
+                    icon={Tag}
+                    ariaLabel="Kategori Agenda"
+                    size="md"
+                    searchable
+                    className="w-full"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Satuan Pendidikan *
                   </label>
-                  <select
+                  <HeroUiFilterSelect
                     value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
-                  >
-                    {units.map((u) => (
-                      <option key={u.value} value={u.value}>
-                        {u.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData((prev) => ({ ...prev, unit: val }))}
+                    options={units.map((u) => ({ value: u.value, label: u.label }))}
+                    placeholder="Pilih Satuan Pendidikan"
+                    icon={Building}
+                    ariaLabel="Satuan Pendidikan"
+                    size="md"
+                    searchable
+                    className="w-full"
+                  />
                 </div>
               </div>
 
@@ -875,34 +881,35 @@ export default function AcademicCalendarPage() {
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Warna Tema Kalender
                   </label>
-                  <select
+                  <HeroUiFilterSelect
                     value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
-                  >
-                    {Object.entries(COLOR_PALETTE).map(([cKey, cVal]) => (
-                      <option key={cKey} value={cKey}>
-                        {cVal.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData((prev) => ({ ...prev, color: val }))}
+                    options={Object.entries(COLOR_PALETTE).map(([cKey, cVal]) => ({
+                      value: cKey,
+                      label: cVal.label,
+                    }))}
+                    placeholder="Pilih Warna Tema"
+                    icon={Palette}
+                    ariaLabel="Warna Tema Kalender"
+                    size="md"
+                    className="w-full"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Sasaran Audiens
                   </label>
-                  <select
+                  <HeroUiFilterSelect
                     value={formData.audience}
-                    onChange={(e) => setFormData({ ...formData, audience: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
-                  >
-                    {AUDIENCE_OPTIONS.map((aud) => (
-                      <option key={aud.value} value={aud.value}>
-                        {aud.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData((prev) => ({ ...prev, audience: val }))}
+                    options={AUDIENCE_OPTIONS.map((aud) => ({ value: aud.value, label: aud.label }))}
+                    placeholder="Pilih Sasaran Audiens"
+                    icon={Users}
+                    ariaLabel="Sasaran Audiens"
+                    size="md"
+                    className="w-full"
+                  />
                 </div>
               </div>
 
@@ -911,17 +918,17 @@ export default function AcademicCalendarPage() {
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Tautan Modul Aplikasi (Opsional)
                 </label>
-                <select
-                  value={formData.targetModule}
-                  onChange={(e) => setFormData({ ...formData, targetModule: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
-                >
-                  {MODULE_LINK_OPTIONS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
+                <HeroUiFilterSelect
+                  value={formData.targetModule || ''}
+                  onChange={(val) => setFormData((prev) => ({ ...prev, targetModule: val }))}
+                  options={MODULE_LINK_OPTIONS.map((m) => ({ value: m.value, label: m.label }))}
+                  placeholder="Pilih Tautan Modul"
+                  icon={ExternalLink}
+                  ariaLabel="Tautan Modul Aplikasi"
+                  size="md"
+                  searchable
+                  className="w-full"
+                />
               </div>
 
               {/* Keterangan / Catatan Tambahan */}
@@ -956,7 +963,7 @@ export default function AcademicCalendarPage() {
           </form>
         </Dialog>
 
-        {/* TailGrids Harmonized Delete Confirmation Modal */}
+        {/* HeroUI Harmonized Delete Confirmation Modal */}
         {deleteEventItem && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
             <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]">
@@ -989,7 +996,7 @@ export default function AcademicCalendarPage() {
                     Kategori:{' '}
                     {deleteEventItem?.category
                       ? PRESET_CATEGORIES[deleteEventItem.category]?.label ||
-                        deleteEventItem.category
+                      deleteEventItem.category
                       : '-'}{' '}
                     • Tanggal: {deleteEventItem?.startDate || '-'} • Unit:{' '}
                     {deleteEventItem?.unit || 'Semua Unit'}

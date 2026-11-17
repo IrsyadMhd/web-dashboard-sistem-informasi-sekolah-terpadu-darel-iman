@@ -94,7 +94,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 
 
 
-// ── MODERN CARD TONES (§C Tailgrids_Pengaturan_Halaman) ──
+// ── MODERN CARD TONES (§C HeroUI_Pengaturan_Halaman) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -657,7 +657,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                   <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Monitoring Tahfizh & Mutaba'ah Siswa Non-Pesantren
                   </h1>
-                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                     Pusat pemantauan terpadu setoran tahfizh, amalan ibadah yaumiyyah, kedisiplinan shalat 5 waktu, dan verifikasi guru unit sekolah non-ponpes.
                   </p>
                 </div>
@@ -1785,7 +1785,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
           </Dialog>
         )}
 
-        {/* Modal Verifikasi / Catatan Guru Sesuai TailGrids Dialog */}
+        {/* Modal Verifikasi / Catatan Guru Sesuai HeroUI Dialog */}
         {selectedStudent && (
           <Dialog
             isOpen={isVerifyModalOpen}
@@ -1837,7 +1837,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
           </Dialog>
         )}
 
-        {/* Modal Detail Master KPI (Dialog TailGrids Sesuai /docs/read/PROMPT/TAILGRIDS_DIALOG_COMPONENT.md - 100% Dynamic Data) */}
+        {/* Modal Detail Master KPI (Dialog HeroUI Sesuai /docs/read/PROMPT/HEROUI_DIALOG_COMPONENT.md - 100% Dynamic Data) */}
         {activeKpiModal && (
           <Dialog
             isOpen={Boolean(activeKpiModal)}

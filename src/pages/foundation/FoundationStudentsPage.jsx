@@ -1,24 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Button, Card, Chip } from '@heroui/react'
+import { Input as HeroInput } from '../../components/ui/input'
 import ActionDropdown from '../../components/app/ActionDropdown'
-import { Award, FileSpreadsheet, FileText, GraduationCap, Printer, RefreshCcw, ShieldAlert, ShieldCheck, Sparkles, UserCheck, UserMinus, UserRound, UsersRound } from 'lucide-react'
+import { Award, FileSpreadsheet, FileText, GraduationCap, Printer, RefreshCcw, RotateCcw, Search, ShieldAlert, ShieldCheck, Sparkles, UserCheck, UserMinus, UserRound, UsersRound } from 'lucide-react'
 import { ArrowRightLeft as ArrowBothDirectionHorizontal2 } from 'lucide-react'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
+import HeroUiFilterSelect from '../../components/ui/HeroUiFilterSelect'
+import { Pagination } from '../../components/ui/pagination'
 import api from '../../services/api'
 import useDebounce from '../../hooks/useDebounce'
 import { printWeeklyStudentEvaluation } from '../../utils/printHelper'
 import {
   MasterDataPage,
-  MasterDataTable,
   MasterEmptyState,
   MasterErrorState,
-  MasterFilterBar,
-  MasterFilterSelect,
-  MasterPageHeader,
-  MasterPagination,
-  MasterSearchInput,
-  MasterStatCard,
-  MasterStatsGrid,
   MasterStatusBadge,
   SquircleActionButton,
 } from '../../components/master-data'
@@ -246,7 +242,7 @@ export function FoundationStudentsPage() {
                     Siswa Yayasan
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Pemantauan dan rekapitulasi data induk seluruh santri dan peserta didik aktif di seluruh unit sekolah yayasan.
                 </p>
               </div>
@@ -261,151 +257,301 @@ export function FoundationStudentsPage() {
           </div>
         </motion.div>
 
-        {/* Stat Cards Ringkasan Siswa */}
+        {/* Stat Cards Ringkasan Siswa (HeroUI Card dengan Warna Semantik) */}
         <motion.div variants={itemVariants}>
-          <MasterStatsGrid>
-            <MasterStatCard icon={GraduationCap} label="Total Siswa" value={totalStudents} description="Terdata di sistem" variant="success" delay={40} />
-            <MasterStatCard icon={UserRound} label="Laki-Laki" value={maleCount} description="Siswa laki-laki" variant="info" delay={80} />
-            <MasterStatCard icon={UserCheck} label="Perempuan" value={femaleCount} description="Siswi perempuan" variant="warning" delay={120} />
-            <MasterStatCard icon={UsersRound} label="Siswa Aktif" value={activeCount} description="Status aktif" variant="success" delay={160} />
-          </MasterStatsGrid>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              {
+                label: 'Total Siswa',
+                value: totalStudents,
+                description: 'Terdata di sistem',
+                icon: GraduationCap,
+                cardClass: 'border-emerald-300/80 bg-gradient-to-br from-emerald-50/90 via-teal-50/40 to-white hover:border-emerald-400 hover:shadow-emerald-500/15 dark:border-emerald-700/60 dark:from-emerald-950/50 dark:via-teal-950/25 dark:to-[#1B2433]',
+                iconClass: 'from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-500/30',
+                glowClass: 'bg-emerald-500/20',
+                labelClass: 'text-emerald-800 dark:text-emerald-300',
+                valueClass: 'text-emerald-950 dark:text-emerald-100',
+                descClass: 'text-emerald-700/80 dark:text-emerald-400/80',
+              },
+              {
+                label: 'Laki-Laki',
+                value: maleCount,
+                description: 'Siswa laki-laki',
+                icon: UserRound,
+                cardClass: 'border-sky-300/80 bg-gradient-to-br from-sky-50/90 via-blue-50/40 to-white hover:border-sky-400 hover:shadow-sky-500/15 dark:border-sky-700/60 dark:from-sky-950/50 dark:via-blue-950/25 dark:to-[#1B2433]',
+                iconClass: 'from-sky-400 via-sky-500 to-blue-600 shadow-sky-500/30',
+                glowClass: 'bg-sky-500/20',
+                labelClass: 'text-sky-800 dark:text-sky-300',
+                valueClass: 'text-sky-950 dark:text-sky-100',
+                descClass: 'text-sky-700/80 dark:text-sky-400/80',
+              },
+              {
+                label: 'Perempuan',
+                value: femaleCount,
+                description: 'Siswi perempuan',
+                icon: UserCheck,
+                cardClass: 'border-rose-300/80 bg-gradient-to-br from-rose-50/90 via-pink-50/40 to-white hover:border-rose-400 hover:shadow-rose-500/15 dark:border-rose-700/60 dark:from-rose-950/50 dark:via-pink-950/25 dark:to-[#1B2433]',
+                iconClass: 'from-rose-500 via-pink-500 to-rose-600 shadow-rose-500/30',
+                glowClass: 'bg-rose-500/20',
+                labelClass: 'text-rose-800 dark:text-rose-300',
+                valueClass: 'text-rose-950 dark:text-rose-100',
+                descClass: 'text-rose-700/80 dark:text-rose-400/80',
+              },
+              {
+                label: 'Siswa Aktif',
+                value: activeCount,
+                description: 'Status aktif',
+                icon: UsersRound,
+                cardClass: 'border-indigo-300/80 bg-gradient-to-br from-indigo-50/90 via-violet-50/40 to-white hover:border-indigo-400 hover:shadow-indigo-500/15 dark:border-indigo-700/60 dark:from-indigo-950/50 dark:via-violet-950/25 dark:to-[#1B2433]',
+                iconClass: 'from-indigo-500 via-indigo-600 to-violet-700 shadow-indigo-500/30',
+                glowClass: 'bg-indigo-500/20',
+                labelClass: 'text-indigo-800 dark:text-indigo-300',
+                valueClass: 'text-indigo-950 dark:text-indigo-100',
+                descClass: 'text-indigo-700/80 dark:text-indigo-400/80',
+              },
+            ].map((stat) => {
+              const StatIcon = stat.icon
+              return (
+                <Card
+                  key={stat.label}
+                  className={`group relative overflow-hidden rounded-[20px] border-2 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${stat.cardClass}`}
+                >
+                  <div className={`pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl transition-opacity ${stat.glowClass}`} />
+                  <Card.Content className="relative z-10 flex flex-row items-center gap-3.5 p-4">
+                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-md border border-white/30 transition-transform duration-200 group-hover:scale-105 ${stat.iconClass}`}>
+                      <StatIcon className="h-5 w-5" strokeWidth={2.2} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-[11px] font-black uppercase tracking-wider truncate ${stat.labelClass}`}>{stat.label}</p>
+                      <p className={`text-2xl font-black tracking-tight leading-tight mt-0.5 ${stat.valueClass}`}>
+                        {loading ? '—' : Number(stat.value ?? 0).toLocaleString('id-ID')}
+                      </p>
+                      <p className={`text-[11px] font-semibold truncate mt-0.5 ${stat.descClass}`}>{stat.description}</p>
+                    </div>
+                  </Card.Content>
+                </Card>
+              )
+            })}
+          </div>
         </motion.div>
 
-        {/* Soft Pastel Squircle KPI & Quick Action Navigation Buttons */}
+        {/* Quick Action KPI Cards (HeroUI Card dengan Warna Semantik Penuh) */}
         <motion.section variants={itemVariants} className="mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* 1. Siswa Aktif (Tahun Ajaran) */}
-          <div
-            onClick={() => setActiveKpiModal('peningkatan')}
-            className="group flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-50/60 p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-emerald-800/60 dark:bg-emerald-950/40 text-left cursor-pointer"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-emerald-100 text-emerald-700 border-emerald-200 transition-transform duration-200 group-hover:scale-110 dark:bg-emerald-900/60 dark:text-emerald-300 dark:border-emerald-700">
-                <GraduationCap className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Siswa Aktif (Tahun Ajaran)</p>
-                <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">{activeCount} Siswa Terdaftar</p>
-              </div>
-            </div>
-            <span className="shrink-0 rounded-lg bg-emerald-200/80 px-2 py-1 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">Aktif</span>
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {/* 1. Siswa Aktif (Tahun Ajaran) */}
+            <Card
+              onClick={() => setActiveKpiModal('peningkatan')}
+              className="group relative overflow-hidden rounded-[18px] border-2 border-emerald-300/80 bg-gradient-to-br from-emerald-50/90 via-teal-50/40 to-white shadow-xs transition-all duration-200 hover:scale-[1.02] hover:border-emerald-400 hover:shadow-md hover:shadow-emerald-500/15 dark:border-emerald-700/60 dark:from-emerald-950/50 dark:via-teal-950/25 dark:to-[#1B2433] cursor-pointer"
+            >
+              <Card.Content className="flex flex-row items-center justify-between gap-3 p-3.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[15px] bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm shadow-emerald-500/25 border border-emerald-300/40 transition-transform duration-200 group-hover:scale-110">
+                    <GraduationCap className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <p className="text-xs font-extrabold text-emerald-950 dark:text-white truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Siswa Aktif (Tahun Ajaran)</p>
+                    <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 font-semibold truncate mt-0.5">{activeCount} Siswa Terdaftar</p>
+                  </div>
+                </div>
+                <Chip size="sm" color="success" variant="soft" className="font-extrabold text-[10px] shrink-0">Aktif</Chip>
+              </Card.Content>
+            </Card>
 
-          {/* 2. Siswa Masuk (Baru) */}
-          <div
-            onClick={() => setActiveKpiModal('siswa_mobility')}
-            className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-sky-50 text-sky-600 border-sky-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-sky-950/60 dark:text-sky-400 dark:border-sky-800/60">
-                <UserCheck className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-sky-700 dark:group-hover:text-sky-300">Siswa Masuk (Baru)</p>
-                <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">Pendaftaran Siswa Baru</p>
-              </div>
-            </div>
-            <span className="shrink-0 rounded-lg bg-sky-100 px-2 py-1 text-[10px] font-extrabold text-sky-700 dark:bg-sky-900/60 dark:text-sky-300">Baru</span>
-          </div>
+            {/* 2. Siswa Masuk (Baru) */}
+            <Card
+              onClick={() => setActiveKpiModal('siswa_mobility')}
+              className="group relative overflow-hidden rounded-[18px] border-2 border-sky-300/80 bg-gradient-to-br from-sky-50/90 via-blue-50/40 to-white shadow-xs transition-all duration-200 hover:scale-[1.02] hover:border-sky-400 hover:shadow-md hover:shadow-sky-500/15 dark:border-sky-700/60 dark:from-sky-950/50 dark:via-blue-950/25 dark:to-[#1B2433] cursor-pointer"
+            >
+              <Card.Content className="flex flex-row items-center justify-between gap-3 p-3.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[15px] bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white shadow-sm shadow-sky-500/25 border border-sky-300/40 transition-transform duration-200 group-hover:scale-110">
+                    <UserCheck className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <p className="text-xs font-extrabold text-sky-950 dark:text-white truncate group-hover:text-sky-700 dark:group-hover:text-sky-300">Siswa Masuk (Baru)</p>
+                    <p className="text-[11px] text-sky-700/80 dark:text-sky-400/80 font-semibold truncate mt-0.5">Pendaftaran Siswa Baru</p>
+                  </div>
+                </div>
+                <Chip size="sm" color="accent" variant="soft" className="font-extrabold text-[10px] shrink-0">Baru</Chip>
+              </Card.Content>
+            </Card>
 
-          {/* 3. Siswa Keluar (Mutasi) */}
-          <div
-            onClick={() => setActiveKpiModal('siswa_mobility')}
-            className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-amber-50 text-amber-600 border-amber-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60">
-                <UserMinus className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-amber-700 dark:group-hover:text-amber-300">Siswa Keluar (Mutasi)</p>
-                <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">Riwayat Mutasi Siswa</p>
-              </div>
-            </div>
-            <span className="shrink-0 rounded-lg bg-amber-100 px-2 py-1 text-[10px] font-extrabold text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">Mutasi</span>
-          </div>
+            {/* 3. Siswa Keluar (Mutasi) */}
+            <Card
+              onClick={() => setActiveKpiModal('siswa_mobility')}
+              className="group relative overflow-hidden rounded-[18px] border-2 border-amber-300/80 bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-white shadow-xs transition-all duration-200 hover:scale-[1.02] hover:border-amber-400 hover:shadow-md hover:shadow-amber-500/15 dark:border-amber-700/60 dark:from-amber-950/50 dark:via-orange-950/25 dark:to-[#1B2433] cursor-pointer"
+            >
+              <Card.Content className="flex flex-row items-center justify-between gap-3 p-3.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[15px] bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white shadow-sm shadow-amber-500/25 border border-amber-300/40 transition-transform duration-200 group-hover:scale-110">
+                    <UserMinus className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <p className="text-xs font-extrabold text-amber-950 dark:text-white truncate group-hover:text-amber-700 dark:group-hover:text-amber-300">Siswa Keluar (Mutasi)</p>
+                    <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 font-semibold truncate mt-0.5">Riwayat Mutasi Siswa</p>
+                  </div>
+                </div>
+                <Chip size="sm" color="warning" variant="soft" className="font-extrabold text-[10px] shrink-0">Mutasi</Chip>
+              </Card.Content>
+            </Card>
 
-          {/* 4. Kelulusan & Alumni */}
-          <div
-            onClick={() => setActiveKpiModal('alumni')}
-            className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-purple-50 text-purple-600 border-purple-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-purple-950/60 dark:text-purple-400 dark:border-purple-800/60">
-                <Award className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-purple-700 dark:group-hover:text-purple-300">Kelulusan & Alumni</p>
-                <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">Data Lulusan & Alumni</p>
-              </div>
-            </div>
-            <span className="shrink-0 rounded-lg bg-purple-100 px-2 py-1 text-[10px] font-extrabold text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">Alumni</span>
+            {/* 4. Kelulusan & Alumni */}
+            <Card
+              onClick={() => setActiveKpiModal('alumni')}
+              className="group relative overflow-hidden rounded-[18px] border-2 border-purple-300/80 bg-gradient-to-br from-purple-50/90 via-violet-50/40 to-white shadow-xs transition-all duration-200 hover:scale-[1.02] hover:border-purple-400 hover:shadow-md hover:shadow-purple-500/15 dark:border-purple-700/60 dark:from-purple-950/50 dark:via-violet-950/25 dark:to-[#1B2433] cursor-pointer"
+            >
+              <Card.Content className="flex flex-row items-center justify-between gap-3 p-3.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[15px] bg-gradient-to-br from-purple-500 via-violet-600 to-indigo-700 text-white shadow-sm shadow-purple-500/25 border border-purple-300/40 transition-transform duration-200 group-hover:scale-110">
+                    <Award className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <p className="text-xs font-extrabold text-purple-950 dark:text-white truncate group-hover:text-purple-700 dark:group-hover:text-purple-300">Kelulusan & Alumni</p>
+                    <p className="text-[11px] text-purple-700/80 dark:text-purple-400/80 font-semibold truncate mt-0.5">Data Lulusan & Alumni</p>
+                  </div>
+                </div>
+                <Chip size="sm" color="default" variant="soft" className="font-extrabold text-[10px] shrink-0 bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">Alumni</Chip>
+              </Card.Content>
+            </Card>
           </div>
-        </div>
-      </motion.section>
+        </motion.section>
 
       <motion.div variants={itemVariants}>
-        <MasterFilterBar
-        search={<MasterSearchInput placeholder="Cari NIS, NISN, atau nama siswa..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />}
-        filters={
-          <>
-            <MasterFilterSelect value={selectedUnit} onChange={(e) => { setSelectedUnit(e.target.value); setPage(1) }} aria-label="Filter unit pendidikan">
-              <option value="all">Semua Unit Pendidikan</option>
-              {units.map((u) => <option key={u.id} value={u.id}>{u.name || u.code}</option>)}
-            </MasterFilterSelect>
-            <MasterFilterSelect value={selectedYear} onChange={(e) => { setSelectedYear(e.target.value); setPage(1) }} aria-label="Filter tahun ajaran">
-              <option value="all">Semua Tahun Ajaran</option>
-              {academicYears.map((ay) => <option key={ay.id} value={ay.id}>{ay.nama || ay.name}</option>)}
-            </MasterFilterSelect>
-            <MasterFilterSelect value={selectedGender} onChange={(e) => { setSelectedGender(e.target.value); setPage(1) }} aria-label="Filter gender">
-              <option value="all">Semua Gender</option>
-              <option value="L">Laki-Laki</option>
-              <option value="P">Perempuan</option>
-            </MasterFilterSelect>
-            <MasterFilterSelect
-              value={perPage}
-              onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1) }}
-              aria-label="Tampilkan per halaman"
-            >
-              <option value={5}>5 per Halaman</option>
-              <option value={10}>10 per Halaman</option>
-              <option value={15}>15 per Halaman</option>
-              <option value={25}>25 per Halaman</option>
-              <option value={50}>50 per Halaman</option>
-              <option value={100}>100 per Halaman</option>
-            </MasterFilterSelect>
-            <button
-              type="button"
-              onClick={handleRefresh}
-              aria-label="Muat ulang data"
-              title="Muat ulang"
-              className="inline-flex h-12 w-12 items-center justify-center rounded-[var(--master-control-radius,14px)] border border-slate-200 text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-emerald-950/40"
-            >
-              <RefreshCcw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-            </button>
-          </>
-        }
-      />
+        {/* Emerald Datatable Container (3-Row Structured Toolbar + HeroUI Controls) */}
+        <div
+          id="tabel-yayasan-siswa"
+          className="foundation-table scroll-mt-6 relative rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]"
+        >
+          {/* Baris 1: Toolbar Header */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-t-[20px] border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 dark:border-emerald-800/60">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">Daftar Siswa Aktif</h2>
+                  <Chip size="sm" color="success" variant="flat" className="font-extrabold">
+                    {totalItems} siswa
+                  </Chip>
+                </div>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Data siswa sesuai filter dan kewenangan pengguna.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <SquircleActionButton
+                variant="export"
+                icon={FileSpreadsheet}
+                label="Export Data Siswa"
+                onClick={() => setShowExport(true)}
+              />
+              <Button
+                isIconOnly
+                variant="bordered"
+                radius="lg"
+                onPress={handleRefresh}
+                aria-label="Muat ulang data"
+                title="Muat ulang"
+                className="h-10 w-10 border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-900 dark:text-emerald-300"
+              >
+                <RefreshCcw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
 
-      <MasterDataTable id="tabel-yayasan-siswa" className="foundation-table scroll-mt-6">
-        <div className="flex items-center justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-700">
-          <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Siswa Aktif</h2>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Data siswa sesuai filter dan kewenangan pengguna.</p>
+          {/* Baris 2: Full-width HeroUI Search Input */}
+          <div className="border-b border-emerald-200/70 bg-white/80 px-5 py-3 dark:border-emerald-800/50 dark:bg-[#1B2433]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600 dark:text-emerald-400 z-10" />
+              <HeroInput
+                type="text"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                placeholder="Cari NIS, NISN, atau nama siswa..."
+                aria-label="Cari NIS, NISN, atau nama siswa"
+                className="h-11 pl-10 pr-4 bg-slate-50/70 dark:bg-slate-900/70 border-emerald-200/80 dark:border-emerald-800/70 text-xs sm:text-sm font-medium"
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">{totalItems} siswa</span>
-            <button
-              type="button"
-              onClick={() => setShowExport(true)}
-              className="inline-flex items-center gap-1.5 rounded-2xl border border-sky-200/60 bg-sky-50 px-3.5 py-1.5 text-xs font-bold text-sky-700 shadow-xs transition-all duration-200 hover:scale-105 hover:bg-sky-100 hover:shadow-md dark:border-sky-800/60 dark:bg-sky-950/60 dark:text-sky-300 cursor-pointer"
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5 text-sky-600" />
-              <span>Export Data</span>
-            </button>
+
+          {/* Baris 3: Horizontal Filter Bar (HeroUiFilterSelect + Reset) */}
+          <div className="flex flex-wrap items-center gap-2.5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 px-5 py-3 dark:border-emerald-800/60 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-emerald-950/30">
+            <div className="w-full sm:w-56">
+              <HeroUiFilterSelect
+                size="sm"
+                searchable
+                value={String(selectedUnit)}
+                onChange={(val) => { setSelectedUnit(val); setPage(1) }}
+                ariaLabel="Filter unit pendidikan"
+                placeholder="Semua Unit Pendidikan"
+                options={[
+                  { value: 'all', label: 'Semua Unit Pendidikan' },
+                  ...units.map((u) => ({ value: String(u.id), label: u.name || u.code })),
+                ]}
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <HeroUiFilterSelect
+                size="sm"
+                value={String(selectedYear)}
+                onChange={(val) => { setSelectedYear(val); setPage(1) }}
+                ariaLabel="Filter tahun ajaran"
+                placeholder="Semua Tahun Ajaran"
+                options={[
+                  { value: 'all', label: 'Semua Tahun Ajaran' },
+                  ...academicYears.map((ay) => ({ value: String(ay.id), label: ay.nama || ay.name })),
+                ]}
+              />
+            </div>
+            <div className="w-full sm:w-40">
+              <HeroUiFilterSelect
+                size="sm"
+                value={String(selectedGender)}
+                onChange={(val) => { setSelectedGender(val); setPage(1) }}
+                ariaLabel="Filter gender"
+                placeholder="Semua Gender"
+                options={[
+                  { value: 'all', label: 'Semua Gender' },
+                  { value: 'L', label: 'Laki-Laki' },
+                  { value: 'P', label: 'Perempuan' },
+                ]}
+              />
+            </div>
+            <div className="w-full sm:w-40">
+              <HeroUiFilterSelect
+                size="sm"
+                value={String(perPage)}
+                onChange={(val) => { setPerPage(Number(val)); setPage(1) }}
+                ariaLabel="Tampilkan per halaman"
+                options={[
+                  { value: '5', label: '5 per Halaman' },
+                  { value: '10', label: '10 per Halaman' },
+                  { value: '15', label: '15 per Halaman' },
+                  { value: '25', label: '25 per Halaman' },
+                  { value: '50', label: '50 per Halaman' },
+                  { value: '100', label: '100 per Halaman' },
+                ]}
+              />
+            </div>
+            {(selectedUnit !== 'all' || selectedYear !== 'all' || selectedGender !== 'all' || search !== '') && (
+              <Button
+                size="sm"
+                variant="flat"
+                color="danger"
+                radius="lg"
+                startContent={<RotateCcw className="h-3.5 w-3.5" />}
+                onPress={() => {
+                  setSelectedUnit('all')
+                  setSelectedYear('all')
+                  setSelectedGender('all')
+                  setSearch('')
+                  setPage(1)
+                }}
+                className="font-bold text-xs"
+              >
+                Reset
+              </Button>
+            )}
           </div>
-        </div>
-        <div className="overflow-x-auto">
+
+          <div className="overflow-x-auto rounded-b-[20px]">
           {error ? (
             <div className="p-5"><MasterErrorState title="Data siswa gagal dimuat" description="Periksa koneksi kemudian coba muat ulang." onRetry={handleRefresh} /></div>
           ) : (
@@ -535,17 +681,19 @@ export function FoundationStudentsPage() {
               </tbody>
             </table>
           )}
-        </div>
-      </MasterDataTable>
+          </div>
 
-      {totalItems > 0 && (
-        <MasterPagination
-          meta={{ total: totalItems, from: totalItems ? (page - 1) * perPage + 1 : 0, to: Math.min(page * perPage, totalItems), last_page: lastPage, current_page: page }}
-          page={page}
-          onPageChange={setPage}
-          label="siswa"
-        />
-      )}
+          {!loading && !error && totalItems > 0 && (
+            <div className="w-full border-t border-emerald-200/90 px-4 py-3.5 sm:px-6 md:px-8 dark:border-emerald-800/70 print:hidden">
+              <Pagination
+                currentPage={page}
+                totalPages={lastPage}
+                sideLayout="full"
+                onPageChange={setPage}
+              />
+            </div>
+          )}
+        </div>
 
       <KpiDetailDrawer
         type="siswa"

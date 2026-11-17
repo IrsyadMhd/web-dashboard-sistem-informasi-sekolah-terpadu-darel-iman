@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 
 /**
- * CrudConfirmDialog - Harmonized TailGrids UI Standard Confirmation Modal (z-[70])
+ * CrudConfirmDialog - Harmonized HeroUI UI Standard Confirmation Modal (z-[70])
  *
  * @param {Object} props
  * @param {boolean} props.isOpen - Is dialog open

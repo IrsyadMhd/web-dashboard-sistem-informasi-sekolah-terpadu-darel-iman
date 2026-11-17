@@ -34,6 +34,7 @@ import ActionDropdown from '../../components/app/ActionDropdown'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../../components/ui/hover-card'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import api from '../../services/api'
+import HeroUiFilterSelect from '../../components/ui/HeroUiFilterSelect'
 import {
   MasterActionButton,
   MasterActionIconButton,
@@ -335,7 +336,7 @@ export function FoundationEmployeesPage() {
                     SDM Yayasan
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Rekapitulasi dan pemantauan terpadu data pegawai, guru pendidik, dan tenaga kependidikan (Tendik) di seluruh unit sekolah yayasan.
                 </p>
               </div>
@@ -442,28 +443,28 @@ export function FoundationEmployeesPage() {
 
           {/* Filter Tahun Ajaran & Status Badges */}
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Filter Tahun Ajaran Button Dropdown */}
-            <div className="flex items-center gap-2 rounded-2xl border border-sky-200/80 bg-sky-50/70 px-3.5 py-1.5 shadow-xs transition-all duration-200 hover:scale-105 dark:border-sky-800/60 dark:bg-sky-950/40">
-              <Calendar className="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0" />
-              <span className="text-[11px] font-bold text-sky-800 dark:text-sky-300 shrink-0">Tahun Ajaran:</span>
-              <select
-                value={selectedAcademicYear}
-                onChange={(e) => setSelectedAcademicYear(e.target.value)}
-                className="bg-transparent text-xs font-extrabold text-sky-900 focus:outline-none dark:text-sky-100 cursor-pointer"
+            {/* Filter Tahun Ajaran Button Dropdown HeroUI */}
+            <div className="w-56">
+              <HeroUiFilterSelect
+                size="sm"
+                searchable
+                value={String(selectedAcademicYear)}
+                onChange={(val) => setSelectedAcademicYear(val)}
+                options={[
+                  { value: 'all', label: 'Semua Tahun Ajaran' },
+                  ...academicYears.map((ay) => ({
+                    value: String(ay.id),
+                    label: `${ay.name || ay.nama_tahun_ajaran || ay.tahun_ajaran}${ay.is_active ? ' (Aktif)' : ''}`,
+                  })),
+                ]}
+                placeholder="Pilih Tahun Ajaran"
                 aria-label="Filter Grafik SDM Tahun Ajaran"
-              >
-                <option value="all" className="text-slate-800 bg-white dark:bg-slate-900 dark:text-white">Semua Tahun Ajaran</option>
-                {academicYears.map((ay) => (
-                  <option key={ay.id} value={ay.id} className="text-slate-800 bg-white dark:bg-slate-900 dark:text-white">
-                    {ay.name || ay.nama_tahun_ajaran || ay.tahun_ajaran} {ay.is_active ? '(Aktif)' : ''}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             {/* Badges */}
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-800 dark:bg-blue-950/50 dark:text-blue-300">
-              <span className="h-2 w-2 rounded-full bg-blue-600" /> Guru ({totalGuru})
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+              <span className="h-2 w-2 rounded-full bg-emerald-600" /> Guru ({totalGuru})
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
               <span className="h-2 w-2 rounded-full bg-amber-500" /> Tendik ({totalTendik})
@@ -476,8 +477,8 @@ export function FoundationEmployeesPage() {
             <AreaChart data={sdmChartData} margin={{ top: 10, right: 20, left: 0, bottom: 25 }}>
               <defs>
                 <linearGradient id="sdmGuruGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563EB" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#2563EB" stopOpacity={0.02} />
+                  <stop offset="5%" stopColor="#059669" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#059669" stopOpacity={0.02} />
                 </linearGradient>
                 <linearGradient id="sdmPegawaiGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.4} />
@@ -512,7 +513,7 @@ export function FoundationEmployeesPage() {
                 }}
               />
               <Legend wrapperStyle={{ paddingTop: 10 }} />
-              <Area type="monotone" dataKey="Guru" stroke="#2563EB" strokeWidth={3} fillOpacity={1} fill="url(#sdmGuruGrad)" dot={{ r: 5, fill: '#2563EB', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
+              <Area type="monotone" dataKey="Guru" stroke="#059669" strokeWidth={3} fillOpacity={1} fill="url(#sdmGuruGrad)" dot={{ r: 5, fill: '#059669', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
               <Area type="monotone" dataKey="Tendik" stroke="#F59E0B" strokeWidth={3} fillOpacity={1} fill="url(#sdmPegawaiGrad)" dot={{ r: 5, fill: '#F59E0B', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
             </AreaChart>
           </ResponsiveContainer>

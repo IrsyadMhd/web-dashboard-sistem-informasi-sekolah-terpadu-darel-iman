@@ -29,6 +29,7 @@ import {
 import PersonAvatar from '../ui/PersonAvatar'
 import { Spinner } from '@/components/ui/spinner'
 import { DatePicker } from '@/components/ui/date-picker'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 
 export const DEFAULT_RELIGION_OPTIONS = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu']
 export const DEFAULT_MARITAL_OPTIONS = ['Menikah', 'Belum Menikah', 'Cerai Hidup', 'Cerai Mati']
@@ -399,19 +400,19 @@ export default function EmployeeFormModal({
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                       Jenis Kelamin <span className="text-rose-500">*</span>
                     </label>
-                    <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                        <Users className="size-4" />
-                      </div>
-                      <select
-                        value={formData.jenis_kelamin || 'L'}
-                        onChange={(e) => setFormData((p) => ({ ...p, jenis_kelamin: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                      >
-                        <option value="L">Laki-laki (L)</option>
-                        <option value="P">Perempuan (P)</option>
-                      </select>
-                    </div>
+                    <HeroUiFilterSelect
+                      value={formData.jenis_kelamin || 'L'}
+                      onChange={(val) => setFormData((p) => ({ ...p, jenis_kelamin: val }))}
+                      options={[
+                        { value: 'L', label: 'Laki-laki (L)' },
+                        { value: 'P', label: 'Perempuan (P)' },
+                      ]}
+                      placeholder="Pilih Jenis Kelamin"
+                      icon={Users}
+                      ariaLabel="Pilih jenis kelamin"
+                      size="md"
+                      className="w-full"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tempat Lahir</label>
@@ -443,56 +444,48 @@ export default function EmployeeFormModal({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Agama</label>
-                    <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                        <Heart className="size-4" />
-                      </div>
-                      <select
-                        value={formData.agama || 'Islam'}
-                        onChange={(e) => setFormData((p) => ({ ...p, agama: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                      >
-                        {availableReligions.map((rel) => (
-                          <option key={rel} value={rel}>{rel}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <HeroUiFilterSelect
+                      value={formData.agama || 'Islam'}
+                      onChange={(val) => setFormData((p) => ({ ...p, agama: val }))}
+                      options={availableReligions.map((rel) => ({ value: rel, label: rel }))}
+                      placeholder="Pilih Agama"
+                      icon={Heart}
+                      ariaLabel="Pilih agama"
+                      size="md"
+                      className="w-full"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Status Perkawinan</label>
-                    <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                        <Heart className="size-4 text-emerald-600" />
-                      </div>
-                      <select
-                        value={formData.status_perkawinan || ''}
-                        onChange={(e) => setFormData((p) => ({ ...p, status_perkawinan: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                      >
-                        <option value="">Pilih Status Perkawinan</option>
-                        {availableMaritalStatus.map((ms) => (
-                          <option key={ms} value={ms}>{ms}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <HeroUiFilterSelect
+                      value={formData.status_perkawinan || ''}
+                      onChange={(val) => setFormData((p) => ({ ...p, status_perkawinan: val }))}
+                      options={[
+                        { value: '', label: 'Pilih Status Perkawinan' },
+                        ...availableMaritalStatus.map((ms) => ({ value: ms, label: ms })),
+                      ]}
+                      placeholder="Pilih Status Perkawinan"
+                      icon={Heart}
+                      ariaLabel="Pilih status perkawinan"
+                      size="md"
+                      className="w-full"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Pendidikan Terakhir</label>
-                    <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                        <GraduationCap className="size-4 text-emerald-600" />
-                      </div>
-                      <select
-                        value={formData.pendidikan_terakhir || ''}
-                        onChange={(e) => setFormData((p) => ({ ...p, pendidikan_terakhir: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                      >
-                        <option value="">Pilih Pendidikan Terakhir</option>
-                        {availableLastEducation.map((edu) => (
-                          <option key={edu} value={edu}>{edu}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <HeroUiFilterSelect
+                      value={formData.pendidikan_terakhir || ''}
+                      onChange={(val) => setFormData((p) => ({ ...p, pendidikan_terakhir: val }))}
+                      options={[
+                        { value: '', label: 'Pilih Pendidikan Terakhir' },
+                        ...availableLastEducation.map((edu) => ({ value: edu, label: edu })),
+                      ]}
+                      placeholder="Pilih Pendidikan Terakhir"
+                      icon={GraduationCap}
+                      ariaLabel="Pilih pendidikan terakhir"
+                      size="md"
+                      className="w-full"
+                    />
                   </div>
                 </div>
               </div>
@@ -515,77 +508,67 @@ export default function EmployeeFormModal({
                         </span>
                       )}
                     </label>
-                    <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                        <Building2 className="size-4" />
-                      </div>
-                      <select
-                        value={formData.unit_id || ''}
-                        onChange={(e) => setFormData((p) => ({ ...p, unit_id: e.target.value }))}
-                        disabled={isUnitLocked || isUnitPersonnelManager}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 disabled:bg-slate-100/80 disabled:text-slate-500 disabled:cursor-not-allowed cursor-pointer"
-                      >
-                        <option value="">Pilih Unit Pendidikan</option>
-                        {filteredUnitsList.map((u) => (
-                          <option key={u.id} value={u.id}>{u.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <HeroUiFilterSelect
+                      value={formData.unit_id || ''}
+                      onChange={(val) => setFormData((p) => ({ ...p, unit_id: val }))}
+                      options={[
+                        { value: '', label: 'Pilih Unit Pendidikan' },
+                        ...filteredUnitsList.map((u) => ({ value: String(u.id), label: u.name })),
+                      ]}
+                      disabled={isUnitLocked || isUnitPersonnelManager}
+                      placeholder="Pilih Unit Pendidikan"
+                      icon={Building2}
+                      ariaLabel="Pilih unit pendidikan"
+                      size="md"
+                      searchable
+                      className="w-full"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Jabatan Master</label>
-                    <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                        <BriefcaseBusiness className="size-4" />
-                      </div>
-                      <select
-                        value={formData.jabatan_id || ''}
-                        onChange={(e) => setFormData((p) => ({ ...p, jabatan_id: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                      >
-                        <option value="">Pilih Jabatan</option>
-                        {positionsList.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <HeroUiFilterSelect
+                      value={formData.jabatan_id || ''}
+                      onChange={(val) => setFormData((p) => ({ ...p, jabatan_id: val }))}
+                      options={[
+                        { value: '', label: 'Pilih Jabatan' },
+                        ...positionsList.map((p) => ({ value: String(p.id), label: p.name })),
+                      ]}
+                      placeholder="Pilih Jabatan"
+                      icon={BriefcaseBusiness}
+                      ariaLabel="Pilih jabatan"
+                      size="md"
+                      searchable
+                      className="w-full"
+                    />
                   </div>
                 </div>
 
                 <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isUnitPersonnelManager ? 'hidden' : ''}`}>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Status Pegawai</label>
-                    <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                        <BadgeCheck className="size-4" />
-                      </div>
-                      <select
-                        value={formData.status_pegawai || 'Tetap'}
-                        onChange={(e) => setFormData((p) => ({ ...p, status_pegawai: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                      >
-                        {availableStatusPegawai.map((st) => (
-                          <option key={st} value={st}>{st}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <HeroUiFilterSelect
+                      value={formData.status_pegawai || 'Tetap'}
+                      onChange={(val) => setFormData((p) => ({ ...p, status_pegawai: val }))}
+                      options={availableStatusPegawai.map((st) => ({ value: st, label: st }))}
+                      placeholder="Status Pegawai"
+                      icon={BadgeCheck}
+                      ariaLabel="Pilih status pegawai"
+                      size="md"
+                      className="w-full"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Status Keaktifan</label>
-                    <div className="relative flex items-center">
-                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                        <Activity className="size-4" />
-                      </div>
-                      <select
-                        value={formData.status || 'Aktif'}
-                        onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                      >
-                        {DEFAULT_STATUS_OPTIONS.map((st) => (
-                          <option key={st} value={st}>{st}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <HeroUiFilterSelect
+                      value={formData.status || 'Aktif'}
+                      onChange={(val) => setFormData((p) => ({ ...p, status: val }))}
+                      options={DEFAULT_STATUS_OPTIONS.map((st) => ({ value: st, label: st }))}
+                      placeholder="Status Keaktifan"
+                      icon={Activity}
+                      ariaLabel="Pilih status keaktifan"
+                      size="md"
+                      className="w-full"
+                    />
                   </div>
                 </div>
 

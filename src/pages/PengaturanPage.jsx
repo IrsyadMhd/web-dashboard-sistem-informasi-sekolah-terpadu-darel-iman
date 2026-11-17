@@ -71,6 +71,7 @@ import {
 import { Checkbox } from '../components/ui/checkbox'
 import { Label } from '../components/ui/label'
 import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
 
 const colorFields = [
   ['sidebar_color', 'Warna Latar Sidebar'],
@@ -182,7 +183,7 @@ function HarmonizedActionModal({ isOpen, onClose, onConfirm, title, desc, confir
                 <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
               )}
               <p className={`text-[11px] ${isDanger ? 'text-rose-800 dark:text-rose-300' : 'text-emerald-800 dark:text-emerald-300'}`}>
-                {isDanger ? 'Data yang dihapus tidak dapat dipulihkan kembali dari daftar ini.' : 'Data konfigurasi akan dikembalikan sesuai pengaturan awal SIMSIT.'}
+                {isDanger ? 'Data yang dihapus tidak dapat dipulihkan kembali dari daftar ini.' : 'Data konfigurasi akan dikembalikan sesuai pengaturan awal Dareliman Edu.'}
               </p>
             </div>
           </div>
@@ -278,7 +279,7 @@ function SaveConfirmModal({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2.5 border-b border-slate-200/70 dark:border-slate-800/70">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Nama Sekolah & Aplikasi</span>
               <span className="text-xs font-extrabold text-slate-900 dark:text-white sm:text-right truncate max-w-xs">
-                {form.school_name || form.application_name || 'SIMSIT Terpadu'}
+                {form.school_name || form.application_name || 'Dareliman Edu'}
               </span>
             </div>
 
@@ -387,24 +388,26 @@ function SaveConfirmModal({
               <Sparkles className="size-3.5" />
             </div>
             <div className="flex-1 leading-relaxed text-[11px]">
-              Perubahan identitas sekolah, berkas foto/logo resmi, dan tata warna akan disimpan ke server storage dan diterapkan secara instan ke seluruh antarmuka SIMSIT.
+              Perubahan identitas sekolah, berkas foto/logo resmi, dan tata warna akan disimpan ke server storage dan diterapkan secara instan ke seluruh antarmuka Dareliman Edu.
             </div>
           </div>
 
           <div className="flex items-center justify-end gap-2.5 pt-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
               disabled={isSaving}
-              className="h-10 px-4 rounded-xl border border-rose-300/80 bg-rose-50/60 hover:bg-rose-100 text-xs font-bold text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/50 transition cursor-pointer active:scale-95 disabled:opacity-50"
+              className="h-10 px-4 rounded-xl border border-rose-300/80 bg-rose-50/60 hover:bg-rose-100 text-xs font-bold text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/50"
             >
               Batal
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="primary"
               onClick={onConfirm}
               disabled={isSaving}
-              className="h-10 px-5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-xs font-black text-white shadow-md shadow-emerald-600/30 border border-emerald-400/40 transition active:scale-95 disabled:opacity-60 inline-flex items-center gap-2 cursor-pointer"
+              className="h-10 px-5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-xs font-black text-white shadow-md shadow-emerald-600/30 border border-emerald-400/40"
             >
               {isSaving ? (
                 <>
@@ -417,7 +420,7 @@ function SaveConfirmModal({
                   <span>Ya, Simpan Pengaturan</span>
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </motion.div>
@@ -836,7 +839,7 @@ export default function PengaturanPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `simsit-labels-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `dareliman-labels-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -1105,7 +1108,7 @@ export default function PengaturanPage() {
       action: 'reset_faq',
       id: null,
       title: 'Reset Semua FAQ?',
-      desc: 'Seluruh daftar FAQ akan dikembalikan ke data standar bawaan SIMSIT.',
+      desc: 'Seluruh daftar FAQ akan dikembalikan ke data standar bawaan Dareliman Edu.',
       confirmLabel: 'Ya, Reset FAQ',
       variant: 'emerald',
     })
@@ -1242,7 +1245,7 @@ export default function PengaturanPage() {
       {/* 1. App Breadcrumb Navigation */}
       <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Pengaturan Tampilan & Identitas' }]} />
 
-      {/* 2. TailGrids Modern Hero Card Header */}
+      {/* 2. HeroUI Modern Hero Card Header */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
         <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
         <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
@@ -1262,8 +1265,8 @@ export default function PengaturanPage() {
                   Akses Khusus Super Admin & Admin
                 </span>
               </div>
-              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
-                Konfigurasi terpusat identitas sekolah, style & tema website, konten Bantuan & FAQ, serta preferensi operasional SIMSIT.
+              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
+                Konfigurasi terpusat identitas sekolah, style & tema website, konten Bantuan & FAQ, serta preferensi operasional Dareliman Edu.
               </p>
             </div>
           </div>
@@ -1692,7 +1695,7 @@ export default function PengaturanPage() {
                       <SelectValue placeholder="Pilih kerapatan template..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem id="modern">Modern (Standar TailGrids)</SelectItem>
+                      <SelectItem id="modern">Modern (Standar HeroUI)</SelectItem>
                       <SelectItem id="compact">Ringkas (High Data Density)</SelectItem>
                       <SelectItem id="comfortable">Lapang (Spacious Padding)</SelectItem>
                     </SelectContent>
@@ -1728,7 +1731,7 @@ export default function PengaturanPage() {
                     </div>
                   </div>
 
-                  {/* PENGATURAN BREADCRUMB STANDAR TAILGRIDS */}
+                  {/* PENGATURAN BREADCRUMB STANDAR HEROUI */}
                   <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800 md:col-span-2">
                     <div className="flex items-center justify-between">
                       <div>
@@ -1752,7 +1755,7 @@ export default function PengaturanPage() {
                           <SelectValue placeholder="Pilih pemisah..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem id="chevron">Chevron (›) — Rekomendasi TailGrids</SelectItem>
+                          <SelectItem id="chevron">Chevron (›) — Rekomendasi HeroUI</SelectItem>
                           <SelectItem id="slash">Garis Miring (/) — Slash</SelectItem>
                           <SelectItem id="dot">Titik Bulat (•) — Dot</SelectItem>
                         </SelectContent>
@@ -2377,7 +2380,7 @@ export default function PengaturanPage() {
                         <h3 className="mt-1 text-base sm:text-lg font-black text-slate-900 dark:text-white">
                           Konfigurasi API SIPDEI & Virtual Account (Nagari & BSI)
                         </h3>
-                        <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
+                        <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed w-full">
                           Kredensial disimpan langsung di database (<code className="font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/60 px-1 rounded">site_settings</code>) dan digunakan oleh server untuk memanggil <b>API Riwayat Tagihan Siswa</b> serta <b>API Pembuatan Virtual Account</b>. Super Admin dan Admin dapat memperbarui token sewaktu-waktu di form bawah ini.
                         </p>
                       </div>
@@ -2623,7 +2626,7 @@ export default function PengaturanPage() {
                         {form.logo_text || 'YDE'}
                       </span>
                     )}
-                    <span className="truncate text-[7px] font-bold">{form.school_name || 'SIMSIT'}</span>
+                    <span className="truncate text-[7px] font-bold">{form.school_name || 'Dareliman Edu'}</span>
                   </div>
                   {[1, 2, 3, 4, 5].map((item) => (
                     <div
@@ -2664,9 +2667,35 @@ export default function PengaturanPage() {
         isOpen={isFaqModalOpen}
         onClose={() => setIsFaqModalOpen(false)}
         title={editingFaq ? 'Ubah Topik FAQ Bantuan' : 'Tambah Topik FAQ Bantuan Baru'}
-        size="md"
+        description="Kelola pertanyaan umum dan solusi resmi untuk membantu pengguna sistem."
+        icon={HelpCircle}
+        maxWidth="max-w-xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <button
+              type="button"
+              onClick={() => setIsFaqModalOpen(false)}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                <X className="size-3.5" strokeWidth={2.5} />
+              </span>
+              <span>Batal</span>
+            </button>
+            <button
+              type="submit"
+              form="faq-form"
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-950/20 hover:from-emerald-600 hover:to-teal-800 active:scale-95 transition-all cursor-pointer"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
+              </span>
+              <span>Simpan Topik FAQ</span>
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleSaveFaq} className="space-y-4 pt-1">
+        <form id="faq-form" onSubmit={handleSaveFaq} className="space-y-4 pt-1">
           <div>
             <Select
               value={faqForm.category || 'Akademik & LMS'}
@@ -2697,7 +2726,7 @@ export default function PengaturanPage() {
               placeholder="Contoh: Bagaimana cara mengunduh modul ajar LMS?"
               value={faqForm.question}
               onChange={(e) => setFaqForm({ ...faqForm, question: e.target.value })}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
           </div>
 
@@ -2711,7 +2740,7 @@ export default function PengaturanPage() {
               placeholder="Tuliskan langkah-langkah penyelesaian secara jelas..."
               value={faqForm.answer}
               onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
           </div>
 
@@ -2725,7 +2754,7 @@ export default function PengaturanPage() {
                 placeholder="Contoh: /dashboard/profil-akun"
                 value={faqForm.actionUrl}
                 onChange={(e) => setFaqForm({ ...faqForm, actionUrl: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
 
@@ -2738,7 +2767,7 @@ export default function PengaturanPage() {
                 placeholder="Contoh: Buka Halaman Profil"
                 value={faqForm.actionLabel}
                 onChange={(e) => setFaqForm({ ...faqForm, actionLabel: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
           </div>
@@ -2752,24 +2781,8 @@ export default function PengaturanPage() {
               placeholder="Contoh: password, ganti, lupa, profil"
               value={faqForm.tags}
               onChange={(e) => setFaqForm({ ...faqForm, tags: e.target.value })}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
-          </div>
-
-          <div className="pt-2 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setIsFaqModalOpen(false)}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition cursor-pointer"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition cursor-pointer"
-            >
-              Simpan Topik FAQ
-            </button>
           </div>
         </form>
       </AppModal>
@@ -2779,9 +2792,35 @@ export default function PengaturanPage() {
         isOpen={isManualModalOpen}
         onClose={() => setIsManualModalOpen(false)}
         title={editingManual ? 'Ubah Buku Panduan PDF' : 'Tambah Buku Panduan PDF Baru'}
-        size="md"
+        description="Daftarkan tautan dan meta dokumen petunjuk operasional resmi sekolah."
+        icon={BookOpen}
+        maxWidth="max-w-xl"
+        footer={
+          <div className="flex items-center justify-end gap-3 w-full">
+            <button
+              type="button"
+              onClick={() => setIsManualModalOpen(false)}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-4 py-2.5 text-xs font-black text-white shadow-md shadow-rose-950/20 hover:from-rose-600 hover:to-red-800 active:scale-95 transition-all cursor-pointer"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                <X className="size-3.5" strokeWidth={2.5} />
+              </span>
+              <span>Batal</span>
+            </button>
+            <button
+              type="submit"
+              form="manual-form"
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-950/20 hover:from-emerald-600 hover:to-teal-800 active:scale-95 transition-all cursor-pointer"
+            >
+              <span className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
+              </span>
+              <span>Simpan Buku Panduan</span>
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleSaveManual} className="space-y-4 pt-1">
+        <form id="manual-form" onSubmit={handleSaveManual} className="space-y-4 pt-1">
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
               Judul Buku Panduan *
@@ -2792,7 +2831,7 @@ export default function PengaturanPage() {
               placeholder="Contoh: Buku Panduan Guru & Wali Kelas 2026"
               value={manualForm.title}
               onChange={(e) => setManualForm({ ...manualForm, title: e.target.value })}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
           </div>
 
@@ -2806,7 +2845,7 @@ export default function PengaturanPage() {
                 placeholder="v2.4 (2026)"
                 value={manualForm.version}
                 onChange={(e) => setManualForm({ ...manualForm, version: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
 
@@ -2819,7 +2858,7 @@ export default function PengaturanPage() {
                 placeholder="3.5 MB • PDF"
                 value={manualForm.size}
                 onChange={(e) => setManualForm({ ...manualForm, size: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
           </div>
@@ -2833,7 +2872,7 @@ export default function PengaturanPage() {
               placeholder="Contoh: Guru Mata Pelajaran, Wali Kelas, Kepsek"
               value={manualForm.target}
               onChange={(e) => setManualForm({ ...manualForm, target: e.target.value })}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
           </div>
 
@@ -2847,24 +2886,8 @@ export default function PengaturanPage() {
               placeholder="Jelaskan secara singkat isi cakupan panduan ini..."
               value={manualForm.desc}
               onChange={(e) => setManualForm({ ...manualForm, desc: e.target.value })}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
-          </div>
-
-          <div className="pt-2 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setIsManualModalOpen(false)}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition cursor-pointer"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="rounded-xl bg-teal-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition cursor-pointer"
-            >
-              Simpan Buku Panduan
-            </button>
           </div>
         </form>
       </AppModal>
@@ -2889,7 +2912,7 @@ export default function PengaturanPage() {
         title={previewPhotoModal.title}
       />
 
-      {/* Harmonized Status & Feedback Modal (TailGrids Standard) */}
+      {/* Harmonized Status & Feedback Modal (HeroUI Standard) */}
       <HarmonizedStatusModal
         isOpen={statusModal.isOpen}
         onClose={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
@@ -2898,7 +2921,7 @@ export default function PengaturanPage() {
         message={statusModal.message}
       />
 
-      {/* TailGrids Harmonized Action & Delete Confirmation Modal */}
+      {/* HeroUI Harmonized Action & Delete Confirmation Modal */}
       <HarmonizedActionModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
@@ -2930,11 +2953,11 @@ function Field({ label, value = '', onChange, icon: Icon, isTextarea = false, ..
           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-medium outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 leading-relaxed"
         />
       ) : (
-        <input
+        <Input
           {...props}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 disabled:opacity-60 shadow-2xs"
+          className="h-10 text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700"
         />
       )}
     </div>

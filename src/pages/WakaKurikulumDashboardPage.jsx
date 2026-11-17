@@ -192,7 +192,7 @@ export default function WakaKurikulumDashboardPage() {
                     Manajemen Kurikulum & Akademik
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Kelola dan pantau kesiapan kurikulum, jadwal pelajaran, perangkat ajar CP/TP, kisi-kisi, modul ajar, dan evaluasi CBT terpadu.
                 </p>
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">

@@ -2,12 +2,12 @@ import React from 'react'
 import { Breadcrumbs } from '../ui/breadcrumbs'
 
 /**
- * AppBreadcrumb - Canonical Breadcrumb Navigation Component for SIMSIT.
+ * AppBreadcrumb - Canonical Breadcrumb Navigation Component for Dareliman Edu.
  *
- * Mengimplementasikan TailGrids Breadcrumbs Component standar emas:
+ * Mengimplementasikan HeroUI Breadcrumbs Component standar emas:
  * - Ikon Beranda di awal navigasi (Home icon)
  * - Pemisah halus (Chevron / Slash / Dot) terintegrasi Pengaturan Sistem
- * - Hyperlink SPA dengan efek hover hijau khas SIMSIT
+ * - Hyperlink SPA dengan efek hover hijau khas Dareliman Edu
  * - Highlight tebal untuk item halaman aktif
  * - Safe truncation & print-safe
  *

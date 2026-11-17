@@ -1,5 +1,13 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Input } from '@/components/ui/input'
+import { TextArea } from '@/components/ui/text-area'
+import {
+  PRESET_CATEGORIES,
+  COLOR_PALETTE,
+  MODULE_LINK_OPTIONS,
+  AUDIENCE_OPTIONS,
+} from './calendarConstants'
 import {
   CalendarDays,
   ChevronLeft,
@@ -50,171 +58,11 @@ import { useAuthStore } from '../../stores/authStore'
 import { academicCalendarService } from '../../services/academicCalendarService'
 import Swal from '@/components/ui/compat/swal-heroui'
 import { DatePicker } from '@/components/ui/date-picker'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { printCleanTable } from '../../utils/printHelper'
 import { usePengaturanStore, resolveFoundationName } from '../../stores/pengaturanStore'
 
-// Category Configuration & Presets (PPDB, Daftar Ulang, Ujian, Terima Rapor, KBM, Libur, Custom)
-export const PRESET_CATEGORIES = {
-  ppdb_buka: {
-    label: 'Pembukaan Pendaftaran PPDB',
-    defaultColor: 'sky',
-    icon: UserPlus,
-    defaultModule: '/dashboard/berita-informasi'
-  },
-  ppdb_ulang: {
-    label: 'Daftar Ulang PPDB',
-    defaultColor: 'teal',
-    icon: FileCheck,
-    defaultModule: '/dashboard/berita-informasi'
-  },
-  mulai_kbm: {
-    label: 'Awal KBM / Semester Baru',
-    defaultColor: 'emerald',
-    icon: BookOpen,
-    defaultModule: '/dashboard/master-kurikulum'
-  },
-  ujian: {
-    label: 'Pelaksanaan Ujian / Asesmen (PTS/PAS/PAT)',
-    defaultColor: 'purple',
-    icon: GraduationCap,
-    defaultModule: '/dashboard/lms/ujian'
-  },
-  terima_rapor: {
-    label: 'Penerimaan Rapor & Laporan Belajar',
-    defaultColor: 'indigo',
-    icon: Award,
-    defaultModule: '/dashboard/lms/rapor'
-  },
-  libur_sekolah: {
-    label: 'Libur Sekolah & Tanggal Merah',
-    defaultColor: 'rose',
-    icon: Palmtree,
-    defaultModule: ''
-  },
-  libur_semester: {
-    label: 'Libur Semester & Kenaikan Kelas',
-    defaultColor: 'amber',
-    icon: CalendarIcon,
-    defaultModule: '/dashboard/master-tahun-ajaran'
-  },
-  kegiatan: {
-    label: 'Kegiatan & Acara Sekolah',
-    defaultColor: 'cyan',
-    icon: Sparkles,
-    defaultModule: '/dashboard/berita-informasi'
-  },
-  custom: {
-    label: '+ Kategori Custom (Kategori Bebas)',
-    defaultColor: 'slate',
-    icon: Tag,
-    defaultModule: ''
-  }
-}
 
-// Color Palette Map (Badge, Dot, Border CSS Classes)
-export const COLOR_PALETTE = {
-  emerald: {
-    label: 'Hijau Zamrud',
-    badgeBg: 'bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700',
-    cardBg: 'bg-emerald-50/90 border-emerald-300/80 text-emerald-950 dark:bg-emerald-950/60 dark:border-emerald-700 dark:text-emerald-200',
-    dotBg: 'bg-emerald-500',
-    border: 'border-emerald-500',
-    hex: '#10B981'
-  },
-  rose: {
-    label: 'Merah Rose',
-    badgeBg: 'bg-rose-100 text-rose-900 border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-700',
-    cardBg: 'bg-rose-50/90 border-rose-300/80 text-rose-950 dark:bg-rose-950/60 dark:border-rose-700 dark:text-rose-200',
-    dotBg: 'bg-rose-500',
-    border: 'border-rose-500',
-    hex: '#F43F5E'
-  },
-  amber: {
-    label: 'Oranye Amber',
-    badgeBg: 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-700',
-    cardBg: 'bg-amber-50/90 border-amber-300/80 text-amber-950 dark:bg-amber-950/60 dark:border-amber-700 dark:text-amber-200',
-    dotBg: 'bg-amber-500',
-    border: 'border-amber-500',
-    hex: '#F59E0B'
-  },
-  purple: {
-    label: 'Ungu Violet',
-    badgeBg: 'bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-950/80 dark:text-purple-300 dark:border-purple-700',
-    cardBg: 'bg-purple-50/90 border-purple-300/80 text-purple-950 dark:bg-purple-950/60 dark:border-purple-700 dark:text-purple-200',
-    dotBg: 'bg-purple-500',
-    border: 'border-purple-500',
-    hex: '#A855F7'
-  },
-  sky: {
-    label: 'Biru Langit',
-    badgeBg: 'bg-sky-100 text-sky-900 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300 dark:border-sky-700',
-    cardBg: 'bg-sky-50/90 border-sky-300/80 text-sky-950 dark:bg-sky-950/60 dark:border-sky-700 dark:text-sky-200',
-    dotBg: 'bg-sky-500',
-    border: 'border-sky-500',
-    hex: '#0EA5E9'
-  },
-  teal: {
-    label: 'Hijau Laut (Teal)',
-    badgeBg: 'bg-teal-100 text-teal-900 border-teal-300 dark:bg-teal-950/80 dark:text-teal-300 dark:border-teal-700',
-    cardBg: 'bg-teal-50/90 border-teal-300/80 text-teal-950 dark:bg-teal-950/60 dark:border-teal-700 dark:text-teal-200',
-    dotBg: 'bg-teal-500',
-    border: 'border-teal-500',
-    hex: '#14B8A6'
-  },
-  indigo: {
-    label: 'Nila Indigo',
-    badgeBg: 'bg-indigo-100 text-indigo-900 border-indigo-300 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700',
-    cardBg: 'bg-indigo-50/90 border-indigo-300/80 text-indigo-950 dark:bg-indigo-950/60 dark:border-indigo-700 dark:text-indigo-200',
-    dotBg: 'bg-indigo-500',
-    border: 'border-indigo-500',
-    hex: '#6366F1'
-  },
-  pink: {
-    label: 'Merah Muda (Pink)',
-    badgeBg: 'bg-pink-100 text-pink-900 border-pink-300 dark:bg-pink-950/80 dark:text-pink-300 dark:border-pink-700',
-    cardBg: 'bg-pink-50/90 border-pink-300/80 text-pink-950 dark:bg-pink-950/60 dark:border-pink-700 dark:text-pink-200',
-    dotBg: 'bg-pink-500',
-    border: 'border-pink-500',
-    hex: '#EC4899'
-  },
-  cyan: {
-    label: 'Sian Cyan',
-    badgeBg: 'bg-cyan-100 text-cyan-900 border-cyan-300 dark:bg-cyan-950/80 dark:text-cyan-300 dark:border-cyan-700',
-    cardBg: 'bg-cyan-50/90 border-cyan-300/80 text-cyan-950 dark:bg-cyan-950/60 dark:border-cyan-700 dark:text-cyan-200',
-    dotBg: 'bg-cyan-500',
-    border: 'border-cyan-500',
-    hex: '#06B6D4'
-  },
-  slate: {
-    label: 'Abu Slate',
-    badgeBg: 'bg-slate-100 text-slate-900 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
-    cardBg: 'bg-slate-50/90 border-slate-300/80 text-slate-950 dark:bg-slate-800/40 dark:border-slate-700 dark:text-slate-200',
-    dotBg: 'bg-slate-500',
-    border: 'border-slate-500',
-    hex: '#64748B'
-  }
-}
-
-// Module shortcut options for LMS & Academic integration
-export const MODULE_LINK_OPTIONS = [
-  { value: '', label: 'Tanpa Tautan Modul' },
-  { value: '/dashboard/master-tahun-ajaran', label: 'Master Tahun Ajaran' },
-  { value: '/dashboard/master-kurikulum', label: 'Master Kurikulum Akademik' },
-  { value: '/dashboard/lms/ujian', label: 'Modul LMS Ujian & CBT' },
-  { value: '/dashboard/lms/penugasan', label: 'Modul LMS Pengumpulan Tugas' },
-  { value: '/dashboard/lms/materi', label: 'Modul LMS Materi & Modul Ajar' },
-  { value: '/dashboard/lms/rapor', label: 'Modul Rapor Akademik' },
-  { value: '/dashboard/tahfizh', label: 'Modul Tahfizh & Mutabaah' },
-  { value: '/dashboard/berita-informasi', label: 'Portal Berita & Pengumuman' }
-]
-
-// Target audience options
-export const AUDIENCE_OPTIONS = [
-  { value: 'Semua Civitas', label: 'Semua Civitas (Siswa, Orang Tua, Guru & Staf)' },
-  { value: 'Siswa & Orang Tua', label: 'Khusus Siswa & Orang Tua' },
-  { value: 'Guru & Tenaga Pendidik', label: 'Khusus Guru & Tenaga Pendidik' },
-  { value: 'Staf & Operasional', label: 'Khusus Staf & Operasional' }
-]
 
 export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = null }) {
   const navigate = useNavigate()
@@ -389,8 +237,8 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
     setIsLoading(true)
     try {
       const [fetchedEvents, fetchedUnits] = await Promise.all([
-        academicCalendarService.getEvents(),
-        academicCalendarService.getEducationUnits()
+        academicCalendarService.getEvents({ isParentOrStudent }),
+        academicCalendarService.getEducationUnits({ isParentOrStudent })
       ])
       if (Array.isArray(fetchedEvents)) {
         setEvents(fetchedEvents)
@@ -1006,7 +854,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
           {/* LEFT SECTION: BRAND TITLE & DATE SWITCHER */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2.5 pr-2 border-r border-slate-200 dark:border-slate-700">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-500/20">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-500/20">
                 <CalendarDays className="h-5 w-5 stroke-[2.2]" />
               </div>
               <div>
@@ -1099,30 +947,25 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
           {/* RIGHT SECTION: ACTIONS (CETAK, KELOLA, REFRESH, CLOSE) */}
           <div className="flex items-center gap-2">
             {/* UNIT FILTER SELECTOR */}
-            <div className="w-40 sm:w-48">
-              <select
+            <div className="w-44 sm:w-52">
+              <HeroUiFilterSelect
                 value={activeTargetUnit}
-                onChange={(e) => isFullAccessUser && !lockedUnit && setSelectedUnitFilter(e.target.value)}
+                onChange={(val) => isFullAccessUser && !lockedUnit && setSelectedUnitFilter(val)}
                 disabled={!isFullAccessUser || Boolean(lockedUnit)}
-                title={lockedUnit ? `Terkunci unit anak: ${lockedUnit}` : (!isFullAccessUser ? `Terkunci unit ${activeTargetUnit}` : 'Pilih Unit Pendidikan')}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-black text-slate-800 focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white cursor-pointer disabled:opacity-90"
-              >
-                {lockedUnit ? (
-                  <option value={lockedUnit}>
-                    {`${lockedUnit} (Unit Siswa)`}
-                  </option>
-                ) : isFullAccessUser ? (
-                  unitOptions.map((u) => (
-                    <option key={u.value} value={u.value}>
-                      {u.label || u.value}
-                    </option>
-                  ))
-                ) : (
-                  <option value={activeTargetUnit}>
-                    {`${activeTargetUnit} (Terkunci)`}
-                  </option>
-                )}
-              </select>
+                options={
+                  lockedUnit
+                    ? [{ value: lockedUnit, label: `${lockedUnit} (Unit Siswa)` }]
+                    : isFullAccessUser
+                    ? unitOptions.map((u) => ({ value: u.value, label: u.label || u.value }))
+                    : [{ value: activeTargetUnit, label: `${activeTargetUnit} (Terkunci)` }]
+                }
+                placeholder="Pilih Unit Pendidikan"
+                icon={Building}
+                ariaLabel="Filter Unit Pendidikan"
+                size="sm"
+                searchable={isFullAccessUser && !lockedUnit}
+                className="w-full"
+              />
             </div>
 
             {/* CETAK / PDF BUTTON */}
@@ -1222,24 +1065,22 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Pilih Unit Pendidikan Sekolah <span className="text-rose-500">*</span>
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={isFullAccessUser ? formData.unit : activeTargetUnit}
-                        onChange={(e) => isFullAccessUser && setFormData({ ...formData, unit: e.target.value })}
+                        onChange={(val) => isFullAccessUser && setFormData((prev) => ({ ...prev, unit: val }))}
                         disabled={!isFullAccessUser}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      >
-                        {isFullAccessUser ? (
-                          unitOptions.map((u) => (
-                            <option key={u.value} value={u.value}>
-                              {u.label || u.value}
-                            </option>
-                          ))
-                        ) : (
-                          <option value={activeTargetUnit}>
-                            {activeTargetUnit} (Terkunci Sesuai Hak Akses Anda)
-                          </option>
-                        )}
-                      </select>
+                        options={
+                          isFullAccessUser
+                            ? unitOptions.map((u) => ({ value: u.value, label: u.label || u.value }))
+                            : [{ value: activeTargetUnit, label: `${activeTargetUnit} (Terkunci Sesuai Hak Akses Anda)` }]
+                        }
+                        placeholder="Pilih Unit Pendidikan"
+                        icon={Building}
+                        ariaLabel="Pilih Unit Pendidikan Sekolah"
+                        size="md"
+                        searchable={isFullAccessUser}
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Judul Agenda */}
@@ -1247,13 +1088,13 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Nama / Judul Agenda Kegiatan <span className="text-rose-500">*</span>
                       </label>
-                      <input
+                      <Input
                         type="text"
+                        size="sm"
                         required
                         placeholder="Contoh: Pembelajaran Bahasa Indonesia, Ujian Formatif Matematika..."
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                       />
                     </div>
 
@@ -1262,17 +1103,20 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Kategori Agenda <span className="text-rose-500">*</span>
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={formData.category}
-                        onChange={(e) => handleCategorySelectChange(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      >
-                        {Object.entries(PRESET_CATEGORIES).map(([key, cat]) => (
-                          <option key={key} value={key}>
-                            {cat.label}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => handleCategorySelectChange(val)}
+                        options={Object.entries(PRESET_CATEGORIES).map(([key, cat]) => ({
+                          value: key,
+                          label: cat.label,
+                        }))}
+                        placeholder="Pilih Kategori"
+                        icon={Tag}
+                        ariaLabel="Kategori Agenda"
+                        size="md"
+                        searchable
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Custom Label if Category custom */}
@@ -1281,13 +1125,13 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                         <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                           Nama Kategori Custom <span className="text-rose-500">*</span>
                         </label>
-                        <input
+                        <Input
                           type="text"
+                          size="sm"
                           required
                           placeholder="Masukkan nama kategori baru..."
                           value={formData.customCategoryLabel}
                           onChange={(e) => setFormData({ ...formData, customCategoryLabel: e.target.value })}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                         />
                       </div>
                     )}
@@ -1297,17 +1141,19 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Warna Penanda Card / Badge
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={formData.color}
-                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      >
-                        {Object.entries(COLOR_PALETTE).map(([cKey, cVal]) => (
-                          <option key={cKey} value={cKey}>
-                            {cVal.label}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => setFormData((prev) => ({ ...prev, color: val }))}
+                        options={Object.entries(COLOR_PALETTE).map(([cKey, cVal]) => ({
+                          value: cKey,
+                          label: cVal.label,
+                        }))}
+                        placeholder="Pilih Warna"
+                        icon={Palette}
+                        ariaLabel="Warna Penanda Card / Badge"
+                        size="md"
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Tanggal Mulai */}
@@ -1350,17 +1196,17 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Tautan Pintasan Modul Fitur
                       </label>
-                      <select
-                        value={formData.targetModule}
-                        onChange={(e) => setFormData({ ...formData, targetModule: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      >
-                        {MODULE_LINK_OPTIONS.map((m) => (
-                          <option key={m.value} value={m.value}>
-                            {m.label}
-                          </option>
-                        ))}
-                      </select>
+                      <HeroUiFilterSelect
+                        value={formData.targetModule || ''}
+                        onChange={(val) => setFormData((prev) => ({ ...prev, targetModule: val }))}
+                        options={MODULE_LINK_OPTIONS.map((m) => ({ value: m.value, label: m.label }))}
+                        placeholder="Pilih Tautan Modul"
+                        icon={ExternalLink}
+                        ariaLabel="Tautan Pintasan Modul Fitur"
+                        size="md"
+                        searchable
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Sasaran Peserta */}
@@ -1368,17 +1214,16 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Target Sasaran Civitas
                       </label>
-                      <select
+                      <HeroUiFilterSelect
                         value={formData.audience}
-                        onChange={(e) => setFormData({ ...formData, audience: e.target.value })}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                      >
-                        {AUDIENCE_OPTIONS.map((aud) => (
-                          <option key={aud.value} value={aud.value}>
-                            {aud.label}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => setFormData((prev) => ({ ...prev, audience: val }))}
+                        options={AUDIENCE_OPTIONS.map((aud) => ({ value: aud.value, label: aud.label }))}
+                        placeholder="Pilih Target Sasaran"
+                        icon={Users}
+                        ariaLabel="Target Sasaran Civitas"
+                        size="md"
+                        className="w-full"
+                      />
                     </div>
 
                     {/* Catatan / Keterangan */}
@@ -1386,12 +1231,11 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                         Catatan / Keterangan Khusus
                       </label>
-                      <textarea
+                      <TextArea
                         rows={3}
                         value={formData.notes}
                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                         placeholder="Penjelasan ringkas jadwal pendaftaran, lokasi, persyaratan, atau petunjuk pelaksanaan..."
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                       />
                     </div>
                   </div>
@@ -1441,7 +1285,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                   <button
                     type="button"
                     onClick={() => handleOpenFormWithRange()}
-                    className="w-full flex items-center justify-between rounded-2xl bg-blue-600 hover:bg-blue-700 text-white p-3 shadow-md shadow-blue-600/25 transition-all active:scale-[0.98] cursor-pointer"
+                    className="w-full flex items-center justify-between rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white p-3 shadow-md shadow-emerald-600/25 transition-all active:scale-[0.98] cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5">
                       <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-white/20">
@@ -1681,13 +1525,13 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                             <div className="flex items-center justify-between w-full">
                               <span
                                 className={`text-[11px] font-black rounded-lg px-2 py-0.5 ${
-                                  isToday ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm ring-2 ring-blue-300 dark:ring-blue-700' : ''
+                                  isToday ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm ring-2 ring-emerald-300 dark:ring-emerald-700' : ''
                                 }`}
                               >
                                 {item.day}
                               </span>
                               {isToday && (
-                                <span className="rounded-md bg-blue-600 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-white shadow-xs">
+                                <span className="rounded-md bg-emerald-600 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-white shadow-xs">
                                   HARI INI
                                 </span>
                               )}
@@ -1768,7 +1612,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                               {col.day}
                             </span>
                             {col.isToday && (
-                              <span className="rounded-md bg-blue-600 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider text-white shadow-xs">
+                              <span className="rounded-md bg-emerald-600 px-1.5 py-0.2 text-[8px] font-black uppercase tracking-wider text-white shadow-xs">
                                 HARI INI
                               </span>
                             )}
@@ -1884,7 +1728,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                   {/* DETAIL HEADER */}
                   <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
                     <div className="flex items-center gap-2.5">
-                      <span className="h-3 w-3 rounded-full bg-blue-600 shrink-0" />
+                      <span className="h-3 w-3 rounded-full bg-emerald-600 shrink-0" />
                       <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">
                         {currentDetailEvent.title}
                       </h3>
@@ -1920,7 +1764,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       <button
                         type="button"
                         onClick={() => handleEditClick(currentDetailEvent)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-2 text-xs font-black shadow-md shadow-blue-600/20 transition-all cursor-pointer"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-xs font-black shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
                       >
                         <Edit2 className="h-3.5 w-3.5" />
                         <span>Edit</span>
@@ -2032,7 +1876,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                           <span className="font-extrabold text-slate-900 dark:text-white">
                             {getCategoryLabel(currentDetailEvent)}
                           </span>
-                          <span className="h-2 w-2 rounded-full bg-blue-600" />
+                          <span className="h-2 w-2 rounded-full bg-emerald-600" />
                         </div>
                       </div>
 
@@ -2067,15 +1911,20 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                           Konfirmasi Kehadiran
                         </label>
-                        <select
+                        <HeroUiFilterSelect
                           value={rsvpStatus}
-                          onChange={(e) => setRsvpStatus(e.target.value)}
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-extrabold text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white cursor-pointer"
-                        >
-                          <option value="hadir">Anda akan hadir ✓</option>
-                          <option value="ragu">Mungkin hadir</option>
-                          <option value="tidak">Tidak dapat hadir</option>
-                        </select>
+                          onChange={(val) => setRsvpStatus(val)}
+                          options={[
+                            { value: 'hadir', label: 'Anda akan hadir ✓' },
+                            { value: 'ragu', label: 'Mungkin hadir' },
+                            { value: 'tidak', label: 'Tidak dapat hadir' },
+                          ]}
+                          placeholder="Pilih Konfirmasi"
+                          icon={UserCheck}
+                          ariaLabel="Konfirmasi Kehadiran"
+                          size="sm"
+                          className="w-full"
+                        />
                       </div>
                     </div>
                   ) : activeDetailTab === 'peserta' ? (

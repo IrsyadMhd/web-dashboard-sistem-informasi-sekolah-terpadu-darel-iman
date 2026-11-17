@@ -59,7 +59,7 @@ import PersonAvatar from '../components/ui/PersonAvatar'
 import GlobalSearchModal from '../components/GlobalSearchModal'
 import NotificationCenter from '../components/app/NotificationCenter'
 import AppBottomNavigation from '../components/app/AppBottomNavigation'
-import { isMusyrifRole, isParentRole, isStudentRole, isTeacherRole, isTuOrKepsek, resolveDefaultPortal, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
+import { canSwitchEducationUnit, isMusyrifRole, isParentRole, isStudentRole, isTeacherRole, isTuOrKepsek, resolveDefaultPortal, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import AuthToast, { showAuthToast } from '../components/ui/AuthToast'
 import AuthPopup from '../components/ui/AuthPopup'
 import AcademicCalendarModal from '../components/calendar/AcademicCalendarModal'
@@ -85,17 +85,21 @@ export default function DashboardLayout() {
   const roles = Array.isArray(user?.roles) ? user.roles : []
   const permissions = Array.isArray(user?.permissions) ? user.permissions : []
   const userLevel = getUserRoleLevel(user)
+  const accessPolicy = user?.access_policy || null
+  const portalGroup = accessPolicy?.portal_group || null
   const hasRole = (...names) => names.some((name) => roles.some((role) => String(role).toLowerCase().replace(/[\s_-]+/g, '') === String(name).toLowerCase().replace(/[\s_-]+/g, '')))
-  const hasFullMenuAccess = userLevel === ROLE_LEVELS.ADMIN_SISTEM || hasRole('Super Admin', 'Admin') // Level 1
+  const hasFullMenuAccess = portalGroup === 'super_admin' || portalGroup === 'admin' || userLevel === ROLE_LEVELS.ADMIN_SISTEM || hasRole('Super Admin', 'Admin') // Level 1
   const can = (...names) => hasFullMenuAccess || names.some((name) => permissions.includes(name))
-  const isTataUsaha = userLevel === ROLE_LEVELS.OPERATOR || hasRole('Tata Usaha', 'TU', 'tu', 'tata_usaha') // Level 3
-  const isKepalaSekolah = userLevel === ROLE_LEVELS.KEPALA_SEKOLAH || hasRole('Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek') // Level 4
-  const isDivisiPendidikan = userLevel === ROLE_LEVELS.DIVISI_PENDIDIKAN || hasRole('Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'Pengawasan Akademik') // Level 4
-  const isPureMusyrif = (userLevel === ROLE_LEVELS.MUSYRIF || isMusyrifRole(roles)) && userLevel > ROLE_LEVELS.GURU
-  const isMusyrifUser = userLevel === ROLE_LEVELS.MUSYRIF || isMusyrifRole(roles) || isPureMusyrif || hasRole('Musyrif', 'Musyrifah', 'musyrif', 'musyrifah', 'Pengasuh', 'Wali Asrama', 'Pembimbing') // Level 6
+  const isTataUsaha = portalGroup ? (portalGroup === 'tu' || portalGroup === 'operator') : (userLevel === ROLE_LEVELS.OPERATOR || hasRole('Tata Usaha', 'TU', 'tu', 'tata_usaha')) // Level 3
+  const isKepalaSekolah = portalGroup ? portalGroup === 'principal' : (userLevel === ROLE_LEVELS.KEPALA_SEKOLAH || hasRole('Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek')) // Level 4
+  const isDivisiPendidikan = portalGroup ? portalGroup === 'education' : (userLevel === ROLE_LEVELS.DIVISI_PENDIDIKAN || hasRole('Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'Pengawasan Akademik')) // Level 4
+  const isPureMusyrif = portalGroup ? portalGroup === 'musyrif' : ((userLevel === ROLE_LEVELS.MUSYRIF || isMusyrifRole(roles)) && userLevel > ROLE_LEVELS.GURU)
+  const isMusyrifUser = portalGroup ? portalGroup === 'musyrif' : (userLevel === ROLE_LEVELS.MUSYRIF || isMusyrifRole(roles) || isPureMusyrif || hasRole('Musyrif', 'Musyrifah', 'musyrif', 'musyrifah', 'Pengasuh', 'Wali Asrama', 'Pembimbing')) // Level 6
   const isGuruTahfizhScope = hasRole('Guru Tahfizh', 'guru_tahfizh', 'Musyrif', 'musyrif', 'Musyrifah', 'musyrifah', 'Musyrif / Musyrifah')
-  const isStaffOrTeacherUser = userLevel <= ROLE_LEVELS.MUSYRIF || hasFullMenuAccess || isTeacherRole(roles) || isTuOrKepsek(roles) || isDivisiPendidikan || isMusyrifUser // Level 1 s/d 6 (Staf Internal)
-  const isTeacherOnly = userLevel === ROLE_LEVELS.GURU || (
+  const isStaffOrTeacherUser = portalGroup
+    ? !['parent', 'student', 'alumni'].includes(portalGroup)
+    : (userLevel <= ROLE_LEVELS.MUSYRIF || hasFullMenuAccess || isTeacherRole(roles) || isTuOrKepsek(roles) || isDivisiPendidikan || isMusyrifUser) // Level 1 s/d 6 (Staf Internal)
+  const isTeacherOnly = portalGroup ? portalGroup === 'teacher' : (userLevel === ROLE_LEVELS.GURU || (
     isTeacherRole(roles) &&
     !hasFullMenuAccess &&
     !hasRole(
@@ -104,8 +108,8 @@ export default function DashboardLayout() {
       'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan',
       'Tata Usaha', 'TU', 'tu', 'tata_usaha', 'Operator', 'operator'
     )
-  )
-  const isGuruUser = userLevel === ROLE_LEVELS.GURU || (
+  ))
+  const isGuruUser = portalGroup ? portalGroup === 'teacher' : (userLevel === ROLE_LEVELS.GURU || (
     !hasFullMenuAccess &&
     (isTeacherOnly || isTeacherRole(roles) || hasRole('Guru', 'guru', 'Guru Mata Pelajaran', 'Guru Tahfizh', 'Guru BK', 'Wali Kelas')) &&
     !hasRole(
@@ -114,10 +118,11 @@ export default function DashboardLayout() {
       'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan',
       'Tata Usaha', 'TU', 'tu', 'tata_usaha', 'Operator', 'operator'
     )
-  )
-  const isPureStudent = userLevel === ROLE_LEVELS.SISWA || (isStudentRole(roles) && !isStaffOrTeacherUser) // Level 8
-  const isPureParent = userLevel === ROLE_LEVELS.ORANG_TUA || (isParentRole(roles) && !isStaffOrTeacherUser) // Level 7
+  ))
+  const isPureStudent = portalGroup ? portalGroup === 'student' : (userLevel === ROLE_LEVELS.SISWA || (isStudentRole(roles) && !isStaffOrTeacherUser)) // Level 8
+  const isPureParent = portalGroup ? portalGroup === 'parent' : (userLevel === ROLE_LEVELS.ORANG_TUA || (isParentRole(roles) && !isStaffOrTeacherUser)) // Level 7
   const canViewEducationUnits = can('unit.view', 'unit.view_all', 'foundation.unit.view', 'sistem.master_data')
+  const canSwitchUnits = canSwitchEducationUnit(user) && canViewEducationUnits
   const canViewStudents = can('student.view', 'student.view_all', 'kesiswaan.data_lengkap_siswa')
   const canCreateStudent = can('student.create')
   const isPortalUser = isPureStudent || isPureParent
@@ -236,7 +241,7 @@ export default function DashboardLayout() {
   }, [muatPengaturanRef])
 
   useEffect(() => {
-    document.title = pengaturan.application_name || 'Sistem Manajemen Sekolah'
+    document.title = (pengaturan.application_name && !pengaturan.application_name.includes('Sistem Manajemen Sekolah')) ? pengaturan.application_name : 'Dareliman Edu - Yayasan Dar El-Iman'
     let favicon = document.querySelector("link[rel~='icon']")
     if (!favicon) {
       favicon = document.createElement('link')
@@ -755,11 +760,26 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
   const normalizePath = (to) => (to || '').split('?')[0].replace(/\/+$/, '') || '/'
 
   const dynamicSidebarMenu = useMemo(() => {
-    // 1. Sidebar Khusus Role Orang Tua / Wali Murid: Seluruh tab portal dipetakan ke modul terstruktur
-    if (isPureParent) {
-      const currentChild = new URLSearchParams(location.search).get('child')
-      const childSuffix = currentChild ? `&child=${currentChild}` : ''
-      const pUrl = (tab) => `/portal-orangtua?tab=${tab}${childSuffix}`
+    const dbModules = Array.isArray(navData?.modules) ? navData.modules : []
+    const currentChild = isPureParent
+      ? new URLSearchParams(location.search).get('child')
+      : null
+    const childSuffix = currentChild ? `child=${encodeURIComponent(currentChild)}` : ''
+    const hasDbPortalOrtu = dbModules.some(
+      (m) =>
+        String(m.id || '').startsWith('portal-ortu') ||
+        (m.items || []).some((it) => String(it.path || '').startsWith('/portal-orangtua'))
+    )
+    const hasDbPortalSiswa = dbModules.some(
+      (m) =>
+        String(m.id || '').startsWith('portal-siswa') ||
+        (m.items || []).some((it) => String(it.path || '').startsWith('/portal-siswa'))
+    )
+
+    // 1. Fallback Sidebar Role Orang Tua apabila modul portal-ortu belum tersedia di DB
+    if (isPureParent && !hasDbPortalOrtu) {
+      const fallbackSuffix = currentChild ? `&child=${currentChild}` : ''
+      const pUrl = (tab) => `/portal-orangtua?tab=${tab}${fallbackSuffix}`
 
       return [
         {
@@ -817,8 +837,8 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
       ]
     }
 
-    // 2. Sidebar Khusus Role Siswa: Seluruh tab portal siswa dipetakan ke modul terstruktur
-    if (isPureStudent) {
+    // 2. Fallback Sidebar Role Siswa apabila modul portal-siswa belum tersedia di DB
+    if (isPureStudent && !hasDbPortalSiswa) {
       return [
         {
           key: 'portal-utama',
@@ -874,14 +894,22 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
       ]
     }
 
-    if (!navData?.modules || !Array.isArray(navData.modules) || navData.modules.length === 0) {
+    if (dbModules.length === 0) {
       return []
     }
 
     const seenPaths = new Set()
     const result = []
 
-    for (const mod of navData.modules) {
+    const resolveDynamicItemPath = (rawPath) => {
+      if (!rawPath) return ''
+      if (isPureParent && childSuffix && rawPath.startsWith('/portal-orangtua') && !rawPath.includes('child=')) {
+        return `${rawPath}${rawPath.includes('?') ? '&' : '?'}${childSuffix}`
+      }
+      return rawPath
+    }
+
+    for (const mod of dbModules) {
       if (isKepalaSekolah && mod.id === 'pengaturan') {
         continue
       }
@@ -894,13 +922,14 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
         return !shouldHideSubmenu(mod, itemObj)
       })
 
-      // 2. Deduplikasi rute yang duplikat
+      // 2. Deduplikasi rute (mempertahankan query string agar tab ?tab=... tidak bertabrakan)
       const uniqueItems = []
       for (const sub of filteredItems) {
-        const norm = normalizePath(sub.path)
-        if (norm && !seenPaths.has(norm)) {
-          seenPaths.add(norm)
-          uniqueItems.push(sub)
+        const resolvedPath = resolveDynamicItemPath(sub.path)
+        const dedupKey = resolvedPath.trim().replace(/\/+$/, '') || '/'
+        if (dedupKey && !seenPaths.has(dedupKey)) {
+          seenPaths.add(dedupKey)
+          uniqueItems.push({ ...sub, resolvedPath })
         }
       }
 
@@ -914,7 +943,7 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
           key: mod.id,
           label: first.name || mod.name,
           icon: resolveSidebarIcon(first.icon) || ModIcon,
-          to: first.path,
+          to: first.resolvedPath,
         })
       } else {
         result.push({
@@ -922,10 +951,10 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
           label: mod.name.toUpperCase(),
           icon: ModIcon,
           submenus: uniqueItems.map((sub) => ({
-            to: sub.path,
+            to: sub.resolvedPath,
             label: sub.id === 'mutabaah-tahfizh' ? setoranTahfizhMenuLabel : sub.name,
             icon: resolveSidebarIcon(sub.icon),
-            action: sub.path?.includes('/kalender') ? 'calendar' : undefined,
+            action: sub.resolvedPath?.includes('/kalender') ? 'calendar' : undefined,
           })),
         })
       }
@@ -1058,7 +1087,7 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
                         <h1 className="text-xs font-black tracking-wider text-slate-900 dark:text-white uppercase truncate font-sans">
                           {namaSekolah}
                         </h1>
-                        <p className="text-[10px] font-bold tracking-widest text-emerald-600 dark:text-emerald-400">{pengaturan.application_name || 'Sistem Manajemen Sekolah'}</p>
+                        <p className="text-[10px] font-bold tracking-widest text-emerald-600 dark:text-emerald-400">{(pengaturan.application_name && !pengaturan.application_name.includes('Sistem Manajemen Sekolah')) ? pengaturan.application_name : 'Dareliman Edu'}</p>
                       </div>
                     )}
                   </div>
@@ -1380,13 +1409,13 @@ const getSubmenuIconBadgeClass = (sub, sIdx) => {
                 </div>
               </div>
 
-              {/* 1. Active Unit Indicator (Static Badge for Teacher / Dropdown Switcher for Admin) */}
-              {isGuruUser || isTeacherOnly || !canViewEducationUnits ? (
+              {/* 1. Active Unit Indicator (Static Badge for Unit-Scoped Staff/Teacher / Dropdown Switcher for Global Admin & Yayasan) */}
+              {!canSwitchUnits ? (
                 <div className="flex items-center gap-2 rounded-2xl border border-emerald-200/90 bg-emerald-50/80 px-3.5 py-2 text-xs font-bold text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-xs shrink-0 select-none">
                   <Layers className="h-4 w-4 text-emerald-600 dark:text-emerald-400 stroke-[2.2]" />
                   <span className="hidden sm:inline text-emerald-700/80 dark:text-emerald-400/80 font-medium">Unit:</span>
                   <span className="font-extrabold text-emerald-900 dark:text-emerald-200 max-w-[120px] xs:max-w-[160px] sm:max-w-none truncate inline-block">
-                    {user?.education_unit_name || user?.unit_name || user?.unit || currentUnitObj?.name || (activeUnit && activeUnit !== 'SEMUA' ? activeUnit : 'Unit Pengajaran')}
+                    {user?.education_unit_name || user?.unit_name || user?.unit?.name || (typeof user?.unit === 'string' ? user.unit : '') || currentUnitObj?.name || (activeUnit && activeUnit !== 'SEMUA' && activeUnit !== 'semua' ? activeUnit : 'Unit Sekolah')}
                   </span>
                 </div>
               ) : (

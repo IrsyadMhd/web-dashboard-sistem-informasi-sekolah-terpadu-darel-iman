@@ -128,14 +128,14 @@ export const JadwalSholatWidget = ({ kabkotaId = '1' }) => {
               key={item.key}
               className={`rounded-xl p-3.5 transition-all flex flex-col items-center justify-center text-center border backdrop-blur-md ${
                 isNext
-                  ? 'bg-white text-gray-900 border-emerald-300 shadow-lg scale-105 ring-2 ring-emerald-400'
+                  ? 'bg-white text-slate-900 border-emerald-300 shadow-lg scale-105 ring-2 ring-emerald-400'
                   : 'bg-white/10 text-white border-white/15 hover:bg-white/15'
               }`}
             >
               <div className={`p-2 rounded-lg mb-1.5 ${isNext ? 'bg-emerald-100 text-emerald-700' : 'bg-white/10 text-emerald-200'}`}>
                 <IconComp className="w-4 h-4" />
               </div>
-              <span className={`text-xs font-semibold ${isNext ? 'text-gray-700' : 'text-emerald-100/90'}`}>{item.label}</span>
+              <span className={`text-xs font-semibold ${isNext ? 'text-slate-700' : 'text-emerald-100/90'}`}>{item.label}</span>
               <span className={`text-base font-extrabold tracking-tight mt-0.5 ${isNext ? 'text-emerald-800' : 'text-white'}`}>
                 {timeVal}
               </span>

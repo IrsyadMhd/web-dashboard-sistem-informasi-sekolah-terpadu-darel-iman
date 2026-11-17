@@ -278,6 +278,28 @@ export const isLevel7OrangTua = (userOrRoles) => getUserRoleLevel(userOrRoles) =
 export const isLevel8Siswa = (userOrRoles) => getUserRoleLevel(userOrRoles) === 8
 export const isLevel9Alumni = (userOrRoles) => getUserRoleLevel(userOrRoles) === 9
 
+/** Ambil access_policy dinamis dari user object (hasil UserProfileResource / /api/auth/me) */
+export const getUserAccessPolicy = (userOrRoles) => {
+  if (!userOrRoles || Array.isArray(userOrRoles) || typeof userOrRoles !== 'object') {
+    return null
+  }
+  const user = userOrRoles.user?.data || userOrRoles.user || userOrRoles
+  return user?.access_policy || userOrRoles?.access_policy || null
+}
+
+/** Cek apakah pengguna memiliki izin ganti Unit Pendidikan secara dinamis dari DB */
+export const canSwitchEducationUnit = (userOrRoles = null) => {
+  const policy = getUserAccessPolicy(userOrRoles)
+  if (policy) {
+    return Boolean(
+      policy.can_switch_unit
+      || policy.scope_type === 'global'
+      || policy.scope_type === 'cross_unit'
+    )
+  }
+  return isGlobalAccessManager(userOrRoles) || hasAnyRole(userOrRoles, ROLES.DIVISI)
+}
+
 /** Cek apakah pengguna memiliki setidaknya satu dari role yang diizinkan */
 export const hasAnyRole = (roles = [], allowedRoles = []) => {
   const current = (Array.isArray(roles) ? roles : [roles]).map(normalizeRole)
@@ -290,22 +312,38 @@ export const hasAnyRole = (roles = [], allowedRoles = []) => {
 
 /**
  * Global Access Manager — kelola data seluruh unit pendidikan.
- * Termasuk: Super Admin & Admin (1), Pengurus Yayasan (2)
+ * Memprioritaskan access_policy DB (`scope_type === 'global'` / `can_manage_global_access`).
  */
-export const isGlobalAccessManager = (roles = []) => {
-  const lvl = getUserRoleLevel(roles)
+export const isGlobalAccessManager = (userOrRoles = []) => {
+  const policy = getUserAccessPolicy(userOrRoles)
+  if (policy) {
+    if (policy.can_manage_global_access || policy.scope_type === 'global') return true
+    if (policy.scope_type) return false
+  }
+  const lvl = getUserRoleLevel(userOrRoles)
   if (lvl === 1 || lvl === 2) return true
-  return hasAnyRole(roles, [...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.YAYASAN])
+  return hasAnyRole(userOrRoles, [...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.YAYASAN])
 }
 
 /**
- * Unit Access Manager — kelola data unit sendiri saja.
- * Termasuk: Operator / TU (3), Kepala Sekolah & Divisi (4)
+ * Unit Access Manager — kelola hak akses/role unit secara dinamis berbasis permission.
  */
-export const isUnitAccessManager = (roles = []) => {
-  const lvl = getUserRoleLevel(roles)
-  if (lvl === 3 || lvl === 4) return true
-  return hasAnyRole(roles, [...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH, ...ROLES.TATA_USAHA])
+export const isUnitAccessManager = (userOrRoles = []) => {
+  const policy = getUserAccessPolicy(userOrRoles)
+  if (userOrRoles && !Array.isArray(userOrRoles) && typeof userOrRoles === 'object') {
+    const permissions = Array.isArray(userOrRoles.permissions) ? userOrRoles.permissions : []
+    if (permissions.some((p) => ['employee.role_access.manage', 'sistem.hak_akses', 'permission.manage', 'role.manage'].includes(p))) {
+      return true
+    }
+    if (policy?.portal_group && ['education', 'principal'].includes(policy.portal_group)) {
+      return true
+    }
+    const roles = userOrRoles.roles || (userOrRoles.role ? [userOrRoles.role] : [])
+    return hasAnyRole(roles, [...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH])
+  }
+  const lvl = getUserRoleLevel(userOrRoles)
+  if (lvl === 4) return true
+  return hasAnyRole(userOrRoles, [...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -381,31 +419,67 @@ export const isOrangTuaOrSiswa = (roles = []) => {
 }
 
 /** Tenaga Pendidik semua jenis (Level 5) */
-export const isTeacherRole = (roles = []) => {
-  const lvl = getUserRoleLevel(roles)
+export const isTeacherRole = (userOrRoles = []) => {
+  const policy = getUserAccessPolicy(userOrRoles)
+  if (policy?.portal_group) {
+    return policy.portal_group === 'teacher'
+  }
+  const lvl = getUserRoleLevel(userOrRoles)
   if (lvl === 5) return true
-  return hasAnyRole(roles, ROLES.GURU)
+  return hasAnyRole(userOrRoles, ROLES.GURU)
+}
+
+/**
+ * Menentukan apakah pengguna berstatus Guru murni yang harus diarahkan ke Workspace Guru
+ * saat mencoba membuka halaman master/operasional sekolah (kecuali diberi akses jalur eksplisit di DB).
+ */
+export const isRestrictedToTeacherWorkspace = (user, targetPath = '') => {
+  if (!user) return false
+  const policy = getUserAccessPolicy(user)
+  const paths = Array.isArray(user?.accessible_paths) ? user.accessible_paths : []
+  if (
+    targetPath &&
+    paths.some((p) => p && (targetPath === p || (p !== '/' && p !== '/dashboard' && targetPath.startsWith(p + '/'))))
+  ) {
+    return false
+  }
+  if (policy?.portal_group) {
+    return policy.portal_group === 'teacher' && !policy.can_manage_global_access && !policy.is_above_tu
+  }
+  return isTeacherRole(user) && !isUnitAccessManager(user) && !isGlobalAccessManager(user)
 }
 
 /** Musyrif / Pembimbing Asrama (Level 6) */
-export const isMusyrifRole = (roles = []) => {
-  const lvl = getUserRoleLevel(roles)
+export const isMusyrifRole = (userOrRoles = []) => {
+  const policy = getUserAccessPolicy(userOrRoles)
+  if (policy?.portal_group) {
+    return policy.portal_group === 'musyrif'
+  }
+  const lvl = getUserRoleLevel(userOrRoles)
   if (lvl === 6) return true
-  return hasAnyRole(roles, ROLES.MUSYRIF)
+  return hasAnyRole(userOrRoles, ROLES.MUSYRIF)
 }
 
 /** Orang Tua / Wali Murid (Level 7) */
-export const isParentRole = (roles = []) => {
-  const lvl = getUserRoleLevel(roles)
+export const isParentRole = (userOrRoles = []) => {
+  const policy = getUserAccessPolicy(userOrRoles)
+  if (policy?.portal_group) {
+    return policy.portal_group === 'parent'
+  }
+  const lvl = getUserRoleLevel(userOrRoles)
   if (lvl === 7) return true
-  return hasAnyRole(roles, ROLES.ORANG_TUA)
+  return hasAnyRole(userOrRoles, ROLES.ORANG_TUA)
 }
 
 /** Siswa / Peserta Didik (Level 8) */
-export const isStudentRole = (roles = []) => {
-  const lvl = getUserRoleLevel(roles)
+export const isStudentRole = (userOrRoles = []) => {
+  const policy = getUserAccessPolicy(userOrRoles)
+  if (policy?.portal_group) {
+    return policy.portal_group === 'student'
+  }
+  const lvl = getUserRoleLevel(userOrRoles)
   if (lvl === 8) return true
-  return hasAnyRole(roles, ROLES.SISWA)
+  return hasAnyRole(userOrRoles, ROLES.SISWA)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -413,19 +487,25 @@ export const isStudentRole = (roles = []) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Resolusi workspace utama berdasarkan role pengguna.
- * Redirect dari API hanya dipakai sebagai fallback untuk akun
- * yang belum memiliki pemetaan role di client.
+ * Resolusi workspace utama berdasarkan access_policy DB atau role pengguna.
  */
 export const resolveDefaultPortal = (source = {}) => {
   const user = source.user?.data || source.user || source
+  const dbRoute = user?.access_policy?.default_route || source.default_redirect || user.default_redirect
+  if (
+    typeof dbRoute === 'string'
+    && (dbRoute.startsWith('/dashboard') || dbRoute.startsWith('/portal'))
+    && !dbRoute.startsWith('//')
+  ) {
+    return dbRoute
+  }
+
   const roles = Array.isArray(user.roles) ? user.roles : user.role ? [user.role] : []
   const roleRoute = ROLE_ROUTES.find(({ roles: allowedRoles }) => hasAnyRole(roles, allowedRoles))?.route
 
   if (roleRoute) return roleRoute
 
-  const explicitRoute = source.default_redirect || user.default_redirect
-  return PORTAL_ROUTES.has(explicitRoute) ? explicitRoute : '/dashboard'
+  return PORTAL_ROUTES.has(dbRoute) ? dbRoute : '/dashboard'
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -569,7 +649,14 @@ export const canEditRole = (userRoles = [], targetRoleName = '') => {
     return { allowed: true, scope: 'global' }
   }
   const tier = getTierForRole(targetRoleName)
-  if (!tier || !hasAnyRole(userRoles, tier.canEditBy)) {
+  if (!tier) {
+    // Role kustom (dinamis di DB): bisa diubah oleh Admin / Pengurus Yayasan dengan global scope
+    if (hasAnyRole(userRoles, [...ROLES.ADMIN, ...ROLES.YAYASAN])) {
+      return { allowed: true, scope: 'global' }
+    }
+    return { allowed: false, scope: null }
+  }
+  if (!hasAnyRole(userRoles, tier.canEditBy)) {
     return { allowed: false, scope: null }
   }
   const isGlobalEditor = hasAnyRole(userRoles, [...ROLES.SUPER_ADMIN, ...ROLES.ADMIN])
@@ -606,7 +693,14 @@ export const getEditableTiers = (userRoles = []) => {
  */
 export const isFoundationUser = (userOrRoles = null) => {
   if (!userOrRoles) return false
+  const policy = getUserAccessPolicy(userOrRoles)
+  if (policy && typeof policy.is_read_only === 'boolean') {
+    if (policy.portal_group === 'super_admin' || policy.portal_group === 'admin') return false
+    return policy.is_read_only
+  }
   const userLevel = getUserRoleLevel(userOrRoles)
   if (userLevel === ROLE_LEVELS.SUPER_ADMIN || userLevel === ROLE_LEVELS.ADMIN) return false
   return userLevel === ROLE_LEVELS.YAYASAN || hasAnyRole(userOrRoles, ROLES.YAYASAN)
 }
+
+export const isReadOnlyUser = isFoundationUser

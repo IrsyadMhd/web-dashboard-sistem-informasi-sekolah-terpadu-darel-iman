@@ -901,7 +901,7 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                   <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Kisi-kisi Ujian (Exam Blueprint)
                   </h1>
-                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                     Cetak biru penyelarasan CP, TP, dan Taksonomi Bloom — fondasi utama sebelum menyusun bank soal dan asesmen CBT.
                   </p>
                 </div>

@@ -9,7 +9,7 @@ export default function BeritaPublikPage() {
   const pengaturan = usePengaturanStore((state) => state.pengaturan)
   const logoUrl = pengaturan?.logo_url || pengaturan?.logoUrl || ''
   const namaSekolah = pengaturan?.school_name || pengaturan?.namaSekolah || 'Yayasan Pendidikan Islam'
-  const namaAplikasi = pengaturan?.application_name || 'Sistem Manajemen Sekolah Terpadu'
+  const namaAplikasi = pengaturan?.application_name || 'Dareliman Edu'
 
   const [beritaList, setBeritaList] = useState([])
   const [loading, setLoading] = useState(true)

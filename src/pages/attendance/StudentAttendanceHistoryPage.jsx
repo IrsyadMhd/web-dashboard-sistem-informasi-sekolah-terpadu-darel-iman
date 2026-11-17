@@ -193,7 +193,7 @@ export default function StudentAttendanceHistoryPage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Riwayat & Historis Kehadiran
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Arsip lengkap riwayat presensi harian siswa berdasarkan rentang tanggal, status kehadiran (Hadir, Sakit, Izin, Alpa, Terlambat), dan mata pelajaran.
                 </p>
               </div>
@@ -217,7 +217,7 @@ export default function StudentAttendanceHistoryPage() {
         </div>
       </motion.div>
 
-      {/* TailGrids Card KPI Metric Grid */}
+      {/* HeroUI Card KPI Metric Grid */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         <KpiTintedCard
           icon={CalendarRange}

@@ -98,7 +98,7 @@ export function downloadSpreadsheetTemplate(data, fileName, format = 'xlsx', she
 
   if (format === 'csv') {
     const csvOutput = XLSX.utils.sheet_to_csv(worksheet)
-    const blob = new Blob([csvOutput], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['\uFEFF' + csvOutput], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

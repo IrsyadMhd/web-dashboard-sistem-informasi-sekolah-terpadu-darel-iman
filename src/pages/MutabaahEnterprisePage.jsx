@@ -22,6 +22,7 @@ import {
 } from '../components/master-data'
 import { Pagination } from '@/components/ui/pagination'
 import { Button } from '@/components/ui/button'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import { downloadPdfTable, printCleanTable } from '../utils/printHelper'
 import './MutabaahEnterprisePage.css'
 import './MutabaahEnterpriseEnhancements.css'
@@ -59,151 +60,27 @@ const formSchema = z.record(z.string(), z.any()).superRefine((values, ctx) => {
   if (values.start_date && values.end_date && values.end_date < values.start_date) ctx.addIssue({ code: 'custom', path: ['end_date'], message: 'Tanggal selesai tidak boleh sebelum tanggal mulai.' })
 })
 const read = (row, path) => path.split('.').reduce((value, key) => value?.[key], row)
+const normalizeDateInput = (value) => {
+  if (!value) return ''
+  const raw = String(value).trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return raw.slice(0, 10)
+  const year = parsed.getFullYear()
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  const day = String(parsed.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 const period = (row) => `${dateText(row.start_date)} – ${row.end_date ? dateText(row.end_date) : 'seterusnya'}`
-const dateText = (value) => value ? new Date(value).toLocaleDateString('id-ID') : '-'
+const dateText = (value) => {
+  const isoDate = normalizeDateInput(value)
+  if (!isoDate) return '-'
+  const [y, m, d] = isoDate.split('-').map(Number)
+  if (!y || !m || !d) return new Date(value).toLocaleDateString('id-ID')
+  return new Date(y, m - 1, d).toLocaleDateString('id-ID')
+}
 const blank = (config) => Object.fromEntries(config.fields.map((field) => [field.name, field.type === 'boolean' ? true : field.type === 'number' ? 0 : field.type === 'status' ? 'active' : '']))
 
-// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
-function HeroUiFilterSelect({
-  value,
-  onChange,
-  options = [],
-  placeholder = 'Pilih...',
-  icon: IconComponent = null,
-  className = '',
-  popoverWidth = 'min-w-[180px]',
-  searchable = false,
-  disabled = false,
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const containerRef = useRef(null)
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setIsOpen(false)
-      }
-    }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isOpen])
-
-  const selectedOption = useMemo(() => {
-    return options.find((opt) => String(opt.value) === String(value))
-  }, [options, value])
-
-  const filteredOptions = useMemo(() => {
-    if (!searchable || !search.trim()) return options
-    const q = search.toLowerCase()
-    return options.filter((opt) =>
-      opt.label && String(opt.label).toLowerCase().includes(q)
-    )
-  }, [options, search, searchable])
-
-  return (
-    <div className={`relative ${className}`} ref={containerRef}>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => {
-          if (!disabled) {
-            setIsOpen((prev) => !prev)
-            setSearch('')
-          }
-        }}
-        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
-          disabled
-            ? 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-800/60 cursor-not-allowed'
-            : isOpen
-            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
-            : value !== '' && value !== undefined && value !== null && value !== 'all'
-            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
-            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-slate-600'
-        }`}
-      >
-        <div className="flex items-center gap-1.5 truncate">
-          {IconComponent && (
-            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          )}
-          <span className="truncate">
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
-        </div>
-        <ChevronDown
-          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
-        />
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: -4 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
-          >
-            {searchable && options.length > 5 && (
-              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
-                <div className="relative">
-                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Cari..."
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50/60 pl-8 pr-2.5 py-1 text-[11px] font-medium text-slate-800 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                    autoFocus
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5">
-              {filteredOptions.length === 0 ? (
-                <div className="px-3 py-3 text-center text-xs text-slate-400">
-                  Tidak ada data
-                </div>
-              ) : (
-                filteredOptions.map((opt) => {
-                  const isSelected = String(opt.value) === String(value)
-                  return (
-                    <button
-                      key={String(opt.value)}
-                      type="button"
-                      disabled={opt.disabled}
-                      onClick={() => {
-                        onChange(opt.value)
-                        setIsOpen(false)
-                      }}
-                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-500/15 text-emerald-900 font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
-                          : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-800/60'
-                      }`}
-                    >
-                      <span className="truncate">{opt.label}</span>
-                      {isSelected && (
-                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5" />
-                      )}
-                    </button>
-                  )
-                })
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
 
 // ── HEROUI MODAL FORM SELECT DROPDOWN COMPONENT ──
 function HeroUiModalSelect({
@@ -629,25 +506,22 @@ function EnterpriseWorkspace({ resource }) {
         <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
         <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
-        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-4 min-w-0">
+        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-1 items-start gap-4 min-w-0">
             <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
               <BookOpen className="size-6 sm:size-7 text-white" />
             </div>
-            <div className="min-w-0">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
                   <Sparkles className="size-3 text-amber-300 animate-pulse" />
                   Konfigurasi Mutaba’ah Terpadu
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
-                  Resource: {resource}
-                </span>
               </div>
               <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 {config.title}
               </h1>
-              <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+              <p className="mt-0.5 w-full text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
                 {config.subtitle}
               </p>
             </div>
@@ -937,7 +811,7 @@ class MutabaahErrorBoundary extends Component {
 }
 
 function CrudDrawer({ config, state, options, close, save, saving }) {
-  const defaults = state.row ? Object.fromEntries(config.fields.map((f) => [f.name, f.type === 'date' ? state.row[f.name]?.slice?.(0, 10) || '' : state.row[f.name] ?? (f.type === 'boolean' ? true : '')])) : blank(config)
+  const defaults = state.row ? Object.fromEntries(config.fields.map((f) => [f.name, f.type === 'date' ? normalizeDateInput(state.row[f.name]) : state.row[f.name] ?? (f.type === 'boolean' ? true : '')])) : blank(config)
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({ resolver: zodResolver(formSchema), defaultValues: defaults })
   const selectedUnit = options.units?.find((u) => u.id === watch('education_unit_id'))
   const boarding = /pesantren|ma.?had/i.test(selectedUnit?.name || '')

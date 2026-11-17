@@ -19,11 +19,29 @@ import {
   X,
   Layers,
   Info,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  RefreshCcw,
 } from 'lucide-react'
 import Swal from '@/components/ui/compat/swal-heroui'
 import { studentStatusService } from '../services/studentStatusService'
 import PageContainer from '../components/app/PageContainer'
+import { useToast } from '../components/app'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogBody,
+  DialogFooter,
+} from '../components/ui/dialog'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { FieldLabel } from '../components/ui/field'
+import { TextArea } from '../components/ui/text-area'
+import { Spinner } from '../components/ui/spinner'
 import { useAuthStore } from '../stores/authStore'
 import { hasRoleLevel, ROLE_LEVELS, isFoundationUser } from '../auth/portalResolver'
 import { SmartScrollFab } from '../components/common'
@@ -73,10 +91,14 @@ export default function MasterStatusSiswaPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((s) => s.user)
 
-  // Validasi role level angka: Level 1 (Super Admin), Level 2 (Admin), Level 3 (Operator)
-  // Menolak bila tingkat privilege > 3 atau pengguna adalah Pengurus Yayasan (read-only/monitoring)
   const isFoundation = isFoundationUser(user)
-  const canManage = !isFoundation && hasRoleLevel(user, ROLE_LEVELS.OPERATOR) // level <= 3
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : []
+  const canManage =
+    !isFoundation &&
+    (hasRoleLevel(user, ROLE_LEVELS.ADMIN) ||
+      ['sistem.master_data', 'student.manage', 'operator.manage'].some((perm) =>
+        permissions.includes(perm)
+      ))
 
   // Search & Filter
   const [searchInput, setSearchInput] = useState('')
@@ -98,6 +120,14 @@ export default function MasterStatusSiswaPage() {
 
   // Delete Dialog State
   const [deleteTarget, setDeleteTarget] = useState(null)
+
+  // Import Modal & Duplicate States
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [importFile, setImportFile] = useState(null)
+  const [overwriteExisting, setOverwriteExisting] = useState(false)
+  const [duplicateModalData, setDuplicateModalData] = useState(null)
+  const toast = useToast()
+  const notify = (title, message = '', type = 'success') => toast(title, message, type)
 
   // Query Data
   const { data: responseData, isLoading, refetch } = useQuery({
@@ -183,6 +213,56 @@ export default function MasterStatusSiswaPage() {
       })
     },
   })
+
+  const importMutation = useMutation({
+    mutationFn: (formPayload) => studentStatusService.prosesImport(formPayload),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['student-statuses'] })
+      queryClient.invalidateQueries({ queryKey: ['student-statuses-dropdown'] })
+      const resData = res?.data || {}
+      const duplikatCount = resData.duplikat || 0
+      const diperbaruiCount = resData.diperbarui || 0
+      const berhasilCount = resData.berhasil || 0
+      const totalCount = resData.total || 0
+
+      if (duplikatCount > 0 || (diperbaruiCount > 0 && overwriteExisting)) {
+        const titleMsg = overwriteExisting ? 'Impor Selesai (Data Ditimpa)' : 'Pemberitahuan Data Duplikat'
+        const detailMsg = overwriteExisting
+          ? `${berhasilCount} baru, ${diperbaruiCount} berhasil ditimpa dari total ${totalCount} data.`
+          : `${berhasilCount} berhasil, ${duplikatCount} data dilewati karena sudah ada.`
+        notify(titleMsg, detailMsg, overwriteExisting ? 'info' : 'warning')
+      } else {
+        notify('Import Data Berhasil', res?.message || `${berhasilCount} data status siswa berhasil diimpor.`, 'success')
+      }
+
+      if (Array.isArray(resData.duplicates) && resData.duplicates.length > 0) {
+        setDuplicateModalData(resData)
+      }
+      setIsImportModalOpen(false)
+      setImportFile(null)
+      setOverwriteExisting(false)
+    },
+    onError: (err) => {
+      notify('Gagal Mengimpor', err.response?.data?.message || 'Proses impor gagal.', 'danger')
+    },
+  })
+
+  const handleImportSubmit = (e) => {
+    e.preventDefault()
+    if (!importFile) {
+      notify('Peringatan', 'Pilih file spreadsheet Excel/CSV terlebih dahulu.', 'warning')
+      return
+    }
+    const form = new FormData()
+    form.append('file', importFile)
+    form.append('overwrite', overwriteExisting ? '1' : '0')
+    importMutation.mutate(form)
+  }
+
+  const handleDownloadTemplate = () => {
+    studentStatusService.downloadTemplate()
+    notify('Template Diunduh', 'Berkas template CSV berhasil diunduh.', 'success')
+  }
 
   const resetForm = () => {
     setEditingItem(null)
@@ -285,13 +365,24 @@ export default function MasterStatusSiswaPage() {
           </div>
 
           {canManage && (
-            <button
-              onClick={handleOpenAdd}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/25 transition-all hover:from-emerald-700 hover:to-teal-700 active:scale-95"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Tambah Status Siswa</span>
-            </button>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-sky-600/25 transition-all hover:brightness-105 active:scale-95 cursor-pointer border border-sky-300/40"
+              >
+                <Upload className="h-4 w-4" />
+                <span>Import Data</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenAdd}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md shadow-emerald-600/25 transition-all hover:from-emerald-700 hover:to-teal-700 active:scale-95 cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Tambah Status Siswa</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -335,7 +426,7 @@ export default function MasterStatusSiswaPage() {
         </div>
 
         {/* Status Non-Aktif */}
-        <div className="group relative overflow-hidden rounded-2xl border border-slate-300/70 bg-gradient-to-br from-slate-50/80 via-gray-50/40 to-white p-5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900">
+        <div className="group relative overflow-hidden rounded-2xl border border-slate-300/70 bg-gradient-to-br from-slate-50/80 via-slate-50/40 to-white p-5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-400">
               Status Nonaktif
@@ -576,314 +667,573 @@ export default function MasterStatusSiswaPage() {
         </div>
       </div>
 
-      {/* ================= MODAL TAMBAH / UBAH STATUS ================= */}
-      <AnimatePresence>
-        {isFormOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsFormOpen(false)}
-              className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
-            />
+      {/* ================= MODAL TAMBAH / UBAH STATUS (HEROUI) ================= */}
+      <Dialog
+        isOpen={Boolean(isFormOpen)}
+        onClose={() => setIsFormOpen(false)}
+        className="max-w-lg p-0"
+      >
+        <div className="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <DialogHeader className="mb-0 pr-8">
+            <div className="flex items-center gap-3 text-left">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
+                <Tag className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base">
+                  {editingItem ? 'Ubah Status Siswa' : 'Tambah Status Siswa Baru'}
+                </DialogTitle>
+                <DialogDescription>
+                  Konfigurasi opsi status operasional peserta didik
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        </div>
 
-            {/* Modal Dialog Card */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-emerald-300/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-emerald-800/80 dark:bg-slate-900"
-            >
-              {/* Garis Aksen Gradasi Emerald */}
-              <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+        <form onSubmit={handleSubmit}>
+          <DialogBody className="max-h-[70vh] overflow-y-auto px-6 py-4 space-y-4">
+            {formErrors.submit && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+                {formErrors.submit}
+              </div>
+            )}
 
-              {/* Header Modal */}
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
-                    <Tag className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                      {editingItem ? 'Ubah Status Siswa' : 'Tambah Status Siswa Baru'}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Konfigurasi opsi status operasional peserta didik
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsFormOpen(false)}
-                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+            <div>
+              <FieldLabel className="text-xs font-bold uppercase tracking-wider">
+                Kode Status (System Identifier) <span className="text-rose-500">*</span>
+              </FieldLabel>
+              <Input
+                type="text"
+                useNative
+                placeholder="contoh: aktif, lulus, mutasi_keluar"
+                value={formData.code}
+                isError={Boolean(formErrors.code)}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    code: e.target.value.toLowerCase().replace(/\s+/g, '_'),
+                  }))
+                }
+                className="font-mono"
+              />
+              {formErrors.code && (
+                <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+                  {formErrors.code}
+                </p>
+              )}
+              <p className="mt-1 text-[11px] text-slate-400">
+                Kode unik yang disimpan pada record tabel siswa di database.
+              </p>
+            </div>
+
+            <div>
+              <FieldLabel className="text-xs font-bold uppercase tracking-wider">
+                Nama / Label Status <span className="text-rose-500">*</span>
+              </FieldLabel>
+              <Input
+                type="text"
+                useNative
+                placeholder="contoh: Aktif, Lulus, Mutasi Keluar"
+                value={formData.name}
+                isError={Boolean(formErrors.name)}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                }
+              />
+              {formErrors.name && (
+                <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+                  {formErrors.name}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <FieldLabel className="text-xs font-bold uppercase tracking-wider">
+                Warna Badge Tampilan
+              </FieldLabel>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {Object.entries(BADGE_COLOR_MAP).map(([key, item]) => {
+                  const isSelected = formData.badge_color === key
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, badge_color: key }))
+                      }
+                      className={cn(
+                        'flex items-center gap-2 rounded-xl border p-2 text-left text-xs font-medium transition-all cursor-pointer',
+                        isSelected
+                          ? 'border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-950/40'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60 dark:hover:bg-slate-800'
+                      )}
+                    >
+                      <span className={cn('h-3.5 w-3.5 shrink-0 rounded-full', item.dot)} />
+                      <span className="truncate text-slate-800 dark:text-slate-200 capitalize">
+                        {key}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
 
-              {/* Form Body */}
-              <form onSubmit={handleSubmit}>
-                <div className="max-h-[70vh] overflow-y-auto px-6 py-4 space-y-4">
-                  {formErrors.submit && (
-                    <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
-                      {formErrors.submit}
-                    </div>
+              <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-800/40">
+                <span className="text-xs text-slate-500">Pratinjau:</span>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold',
+                    (BADGE_COLOR_MAP[formData.badge_color] || BADGE_COLOR_MAP.emerald).badge
                   )}
-
-                  {/* Kode Status */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                      Kode Status (System Identifier) <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="contoh: aktif, lulus, mutasi_keluar"
-                      value={formData.code}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          code: e.target.value.toLowerCase().replace(/\s+/g, '_'),
-                        }))
-                      }
-                      className={cn(
-                        'mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2 font-mono text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 dark:bg-slate-800 dark:text-white',
-                        formErrors.code
-                          ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
-                          : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-500/20 dark:border-slate-700'
-                      )}
-                    />
-                    {formErrors.code && (
-                      <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
-                        {formErrors.code}
-                      </p>
+                >
+                  <span
+                    className={cn(
+                      'h-1.5 w-1.5 rounded-full',
+                      (BADGE_COLOR_MAP[formData.badge_color] || BADGE_COLOR_MAP.emerald).dot
                     )}
-                    <p className="mt-1 text-[11px] text-slate-400">
-                      Kode unik yang disimpan pada record tabel siswa di database.
-                    </p>
-                  </div>
+                  />
+                  {formData.name || 'Contoh Status'}
+                </span>
+              </div>
+            </div>
 
-                  {/* Nama Status */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                      Nama / Label Status <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="contoh: Aktif, Lulus, Mutasi Keluar"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, name: e.target.value }))
-                      }
-                      className={cn(
-                        'mt-1.5 w-full rounded-xl border bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 dark:bg-slate-800 dark:text-white',
-                        formErrors.name
-                          ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
-                          : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-500/20 dark:border-slate-700'
-                      )}
-                    />
-                    {formErrors.name && (
-                      <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
-                        {formErrors.name}
-                      </p>
-                    )}
-                  </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <FieldLabel className="text-xs font-bold uppercase tracking-wider">
+                  Urutan Tampilan
+                </FieldLabel>
+                <Input
+                  type="number"
+                  min="0"
+                  useNative
+                  value={formData.order}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      order: parseInt(e.target.value, 10) || 0,
+                    }))
+                  }
+                />
+              </div>
 
-                  {/* Warna Badge & Pratinjau */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                      Warna Badge Tampilan
-                    </label>
-                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {Object.entries(BADGE_COLOR_MAP).map(([key, item]) => {
-                        const isSelected = formData.badge_color === key
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() =>
-                              setFormData((prev) => ({ ...prev, badge_color: key }))
-                            }
-                            className={cn(
-                              'flex items-center gap-2 rounded-xl border p-2 text-left text-xs font-medium transition-all',
-                              isSelected
-                                ? 'border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-950/40'
-                                : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-800/60 dark:hover:bg-slate-800'
-                            )}
-                          >
-                            <span className={cn('h-3.5 w-3.5 shrink-0 rounded-full', item.dot)} />
-                            <span className="truncate text-slate-800 dark:text-slate-200 capitalize">
-                              {key}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
+              <div>
+                <FieldLabel className="text-xs font-bold uppercase tracking-wider">
+                  Status Sistem
+                </FieldLabel>
+                <label className="mt-2.5 flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_active}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, is_active: e.target.checked }))
+                    }
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800"
+                  />
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Aktifkan Status Ini
+                  </span>
+                </label>
+              </div>
+            </div>
 
-                    {/* Pratinjau Badge Terpilih */}
-                    <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-800/40">
-                      <span className="text-xs text-slate-500">Pratinjau:</span>
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold',
-                          (BADGE_COLOR_MAP[formData.badge_color] || BADGE_COLOR_MAP.emerald).badge
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'h-1.5 w-1.5 rounded-full',
-                            (BADGE_COLOR_MAP[formData.badge_color] || BADGE_COLOR_MAP.emerald).dot
-                          )}
-                        />
-                        {formData.name || 'Contoh Status'}
-                      </span>
-                    </div>
-                  </div>
+            <div>
+              <FieldLabel className="text-xs font-bold uppercase tracking-wider">
+                Keterangan / Deskripsi
+              </FieldLabel>
+              <TextArea
+                rows={2}
+                placeholder="Keterangan opsional mengenai alur status ini..."
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, description: e.target.value }))
+                }
+              />
+            </div>
+          </DialogBody>
 
-                  {/* Urutan & Status Aktif */}
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                        Urutan Tampilan
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={formData.order}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            order: parseInt(e.target.value, 10) || 0,
-                          }))
-                        }
-                        className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                      />
-                    </div>
+          <DialogFooter className="mt-0 px-6 py-4 bg-slate-50 dark:bg-slate-900/60">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFormOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              variant="success"
+              size="sm"
+              disabled={createMutation.isPending || updateMutation.isPending}
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md shadow-emerald-600/25"
+            >
+              {(createMutation.isPending || updateMutation.isPending) && (
+                <Spinner size="xs" />
+              )}
+              <span>{editingItem ? 'Simpan Perubahan' : 'Tambah Status'}</span>
+            </Button>
+          </DialogFooter>
+        </form>
+      </Dialog>
 
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                        Status Sistem
-                      </label>
-                      <label className="mt-2.5 flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.is_active}
-                          onChange={(e) =>
-                            setFormData((prev) => ({ ...prev, is_active: e.target.checked }))
-                          }
-                          className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800"
-                        />
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          Aktifkan Status Ini
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Keterangan */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                      Keterangan / Deskripsi
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Keterangan opsional mengenai alur status ini..."
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, description: e.target.value }))
-                      }
-                      className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                    />
-                  </div>
+      {/* ================= MODAL KONFIRMASI HAPUS (HEROUI) ================= */}
+      <Dialog
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        className="max-w-md border-rose-300/80 dark:border-rose-800/80"
+      >
+        {deleteTarget && (
+          <>
+            <DialogHeader className="mb-3 pr-8">
+              <div className="flex items-center gap-3.5 text-left">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
+                  <Trash2 className="h-6 w-6" />
                 </div>
+                <div>
+                  <DialogTitle className="text-base">Hapus Status Siswa?</DialogTitle>
+                  <DialogDescription>
+                    Tindakan ini akan menghapus opsi status dari daftar pilihan.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
 
-                {/* Footer Modal */}
-                <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/60">
+            <DialogBody className="py-1">
+              <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
+                <p className="font-semibold">Perhatian:</p>
+                <p className="mt-0.5">
+                  Status <strong>&ldquo;{deleteTarget.name}&rdquo;</strong> (kode:{' '}
+                  <code>{deleteTarget.code}</code>) tidak akan lagi tersedia pada formulir pendaftaran dan filter siswa.
+                </p>
+              </div>
+            </DialogBody>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteTarget(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                className="bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 shadow-md shadow-rose-600/25"
+              >
+                {deleteMutation.isPending && <Spinner size="xs" />}
+                <span>Ya, Hapus Status</span>
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </Dialog>
+
+      {/* ── HARMONIZED BATCH IMPORT MODAL (z-50) ────────────────────────────── */}
+      <AnimatePresence>
+        {isImportModalOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="status-siswa-import-title"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="my-auto w-full max-w-xl font-sans"
+            >
+              <div className="flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-sky-200/80 bg-white shadow-2xl shadow-sky-950/20 dark:border-sky-900/50 dark:bg-[#182232]">
+                {/* Top accent bar — sky blue */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-sky-400 via-sky-500 to-blue-600 shrink-0" />
+
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 p-2.5 text-white shadow-md shadow-sky-500/25 border border-sky-300/40">
+                      <FileSpreadsheet className="size-5 text-white" strokeWidth={2.25} />
+                    </div>
+                    <div>
+                      <h3 id="status-siswa-import-title" className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Import Master Status Siswa</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 dark:bg-sky-950/80 px-2 py-0.5 text-[10px] font-extrabold text-sky-800 dark:text-sky-300">
+                          <Sparkles className="size-3" />
+                          Batch Excel / CSV
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Unggah berkas spreadsheet untuk sinkronisasi data master status siswa
+                      </p>
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setIsFormOpen(false)}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    onClick={() => {
+                      setIsImportModalOpen(false)
+                      setImportFile(null)
+                      setOverwriteExisting(false)
+                    }}
+                    aria-label="Tutup modal import"
+                    className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 transition cursor-pointer"
                   >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={createMutation.isPending || updateMutation.isPending}
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2 text-xs font-semibold text-white shadow-md shadow-emerald-600/25 transition-all hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50"
-                  >
-                    {(createMutation.isPending || updateMutation.isPending) && (
-                      <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    )}
-                    <span>{editingItem ? 'Simpan Perubahan' : 'Tambah Status'}</span>
+                    <X className="size-4" strokeWidth={2.25} />
                   </button>
                 </div>
-              </form>
+
+                {/* Form Body */}
+                <form onSubmit={handleImportSubmit} className="p-6 space-y-4 overflow-y-auto">
+                  {/* Download Template Banner */}
+                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800">
+                    <div className="flex items-center gap-2.5">
+                      <FileSpreadsheet className="size-5 text-emerald-700 dark:text-emerald-400" />
+                      <div>
+                        <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200">Unduh Format Template</p>
+                        <p className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80">Gunakan format CSV resmi agar kolom terpetakan otomatis</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDownloadTemplate}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                    >
+                      <Download className="size-3.5" />
+                      <span>Template</span>
+                    </button>
+                  </div>
+
+                  {/* Dropzone */}
+                  <div className="rounded-2xl border-2 border-dashed border-sky-300 bg-sky-50/40 p-6 text-center dark:border-sky-700 dark:bg-sky-950/20">
+                    <FileSpreadsheet className="mx-auto mb-2 size-10 text-sky-600 dark:text-sky-400" />
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                      {importFile ? importFile.name : 'Pilih berkas Excel (.xlsx, .xls) atau CSV'}
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Ukuran maksimal file 10 MB</p>
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls, .csv"
+                      onChange={(e) => setImportFile(e.target.files[0] || null)}
+                      className="mt-3 text-xs w-full text-slate-600 dark:text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-sky-600 file:text-white file:cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Opsi Timpa Data (Overwrite) */}
+                  <div className={cn(
+                    "rounded-2xl border p-4 transition-all duration-200",
+                    overwriteExisting
+                      ? "border-amber-300/90 bg-gradient-to-r from-amber-50/70 via-orange-50/30 to-amber-50/70 dark:border-amber-700/60 dark:bg-amber-950/30"
+                      : "border-slate-200/80 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40"
+                  )}>
+                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                      <div className="pt-0.5">
+                        <input
+                          type="checkbox"
+                          id="overwrite-status-siswa-checkbox"
+                          checked={overwriteExisting}
+                          onChange={(e) => setOverwriteExisting(e.target.checked)}
+                          className="size-4.5 rounded-md border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                            Timpa Data Jika Kode / Nama Status Sudah Ada
+                          </span>
+                          {overwriteExisting ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800 border border-amber-300/80 dark:bg-amber-950 dark:text-amber-300">
+                              <RefreshCcw className="size-2.5" />
+                              Opsi Timpa Aktif
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              Lewati Duplikat (Default)
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                          {overwriteExisting
+                            ? 'Jika baris data pada berkas memiliki Kode atau Nama yang sudah terdaftar, data status siswa lama akan diperbarui otomatis.'
+                            : 'Jika baris data pada berkas memiliki Kode atau Nama yang sudah ada di database, baris tersebut akan dilewati dan data lama tetap utuh.'}
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between border-t border-slate-100 bg-white pt-4 dark:border-slate-800 dark:bg-slate-950">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsImportModalOpen(false)
+                        setImportFile(null)
+                        setOverwriteExisting(false)
+                      }}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+                    >
+                      <X className="size-3.5 text-white" strokeWidth={2.2} />
+                      <span>Batal</span>
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!importFile || importMutation.isPending}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white px-5 py-2.5 text-xs font-extrabold border border-sky-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50"
+                    >
+                      <Upload className="size-3.5 text-white" strokeWidth={2.25} />
+                      <span>{importMutation.isPending ? 'Mengimpor...' : 'Upload & Impor'}</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* ================= MODAL KONFIRMASI HAPUS ================= */}
+      {/* ── MODAL HASIL IMPOR & PEMBERITAHUAN DATA DUPLIKAT ── */}
       <AnimatePresence>
-        {deleteTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {duplicateModalData && (
+          <div
+            className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="status-siswa-duplicate-report-title"
+          >
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDeleteTarget(null)}
-              className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
-            />
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-md overflow-hidden rounded-3xl border border-rose-300/80 bg-white shadow-2xl shadow-rose-950/20 dark:border-rose-800/80 dark:bg-slate-900"
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="my-auto w-full max-w-2xl font-sans"
             >
-              <div className="h-1.5 bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
-              <div className="p-6">
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
-                    <Trash2 className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                      Hapus Status Siswa?
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Tindakan ini akan menghapus opsi status dari daftar pilihan.
-                    </p>
-                  </div>
-                </div>
+              <div className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                {/* Top Accent Gradient Bar */}
+                <div className={cn(
+                  "h-1.5 w-full shrink-0",
+                  duplicateModalData.diperbarui > 0
+                    ? "bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600"
+                    : duplicateModalData.duplikat > 0
+                      ? "bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-500"
+                      : "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600"
+                )} />
 
-                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
-                  <p className="font-semibold">Perhatian:</p>
-                  <p className="mt-0.5">
-                    Status <strong>"{deleteTarget.name}"</strong> (kode:{' '}
-                    <code>{deleteTarget.code}</code>) tidak akan lagi tersedia pada formulir pendaftaran dan filter siswa.
-                  </p>
-                </div>
-
-                <div className="mt-6 flex items-center justify-end gap-3">
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "rounded-2xl p-2.5 text-white shadow-md shrink-0 border",
+                      duplicateModalData.diperbarui > 0
+                        ? "bg-gradient-to-br from-amber-500 to-orange-600 border-amber-300/30 shadow-amber-500/30"
+                        : "bg-gradient-to-br from-emerald-500 to-teal-700 border-emerald-300/30 shadow-emerald-500/30"
+                    )}>
+                      {duplicateModalData.diperbarui > 0 ? (
+                        <RefreshCcw className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      ) : (
+                        <CheckCircle2 className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      )}
+                    </div>
+                    <div>
+                      <h3 id="status-siswa-duplicate-report-title" className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Hasil Impor & Pemberitahuan Data</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          Total {duplicateModalData.total} Data
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Ringkasan sinkronisasi dan status pemrosesan data status siswa
+                      </p>
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setDeleteTarget(null)}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                    onClick={() => setDuplicateModalData(null)}
+                    aria-label="Tutup ringkasan impor"
+                    className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 transition cursor-pointer"
                   >
-                    Batal
+                    <X className="size-4" strokeWidth={2.25} />
                   </button>
+                </div>
+
+                {/* Body */}
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6 text-sm text-slate-700 dark:text-slate-200">
+                  {/* KPI Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-3 text-center dark:border-emerald-800/60 dark:bg-emerald-950/30">
+                      <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Baru</p>
+                      <p className="text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{duplicateModalData.berhasil || 0}</p>
+                    </div>
+                    <div className="rounded-2xl border border-amber-200/80 bg-amber-50/50 p-3 text-center dark:border-amber-800/60 dark:bg-amber-950/30">
+                      <p className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Ditimpa</p>
+                      <p className="text-lg font-black text-amber-700 dark:text-amber-300 mt-0.5">{duplicateModalData.diperbarui || 0}</p>
+                    </div>
+                    <div className="rounded-2xl border border-sky-200/80 bg-sky-50/50 p-3 text-center dark:border-sky-800/60 dark:bg-sky-950/30">
+                      <p className="text-[10px] font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider">Dilewati</p>
+                      <p className="text-lg font-black text-sky-700 dark:text-sky-300 mt-0.5">{duplicateModalData.duplikat || 0}</p>
+                    </div>
+                    <div className="rounded-2xl border border-rose-200/80 bg-rose-50/50 p-3 text-center dark:border-rose-800/60 dark:bg-rose-950/30">
+                      <p className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">Gagal</p>
+                      <p className="text-lg font-black text-rose-700 dark:text-rose-300 mt-0.5">{duplicateModalData.gagal || 0}</p>
+                    </div>
+                  </div>
+
+                  {/* Duplicate / Updated Rows List */}
+                  {Array.isArray(duplicateModalData.duplicates) && duplicateModalData.duplicates.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                        <span>Rincian Data Yang Sesuai / Terdeteksi Duplikat</span>
+                        <span className="text-[11px] text-slate-500 font-normal">
+                          {duplicateModalData.duplicates.length} item
+                        </span>
+                      </p>
+                      <div className="max-h-56 overflow-auto rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900/60">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-slate-50/80 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 border-b border-slate-200/80 dark:border-slate-800 font-bold sticky top-0">
+                            <tr>
+                              <th className="px-3.5 py-2.5">Baris</th>
+                              <th className="px-3.5 py-2.5">Kode Status</th>
+                              <th className="px-3.5 py-2.5">Nama Status</th>
+                              <th className="px-3.5 py-2.5">Status</th>
+                              <th className="px-3.5 py-2.5">Keterangan</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[11px]">
+                            {duplicateModalData.duplicates.map((dup, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                                <td className="px-3.5 py-2 font-mono text-slate-500">#{dup.baris || idx + 1}</td>
+                                <td className="px-3.5 py-2 font-mono font-semibold text-slate-900 dark:text-white">{dup.kode || '-'}</td>
+                                <td className="px-3.5 py-2 font-medium text-slate-700 dark:text-slate-200">{dup.nama || '-'}</td>
+                                <td className="px-3.5 py-2">
+                                  <span className={cn(
+                                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                    dup.status === 'Ditimpa'
+                                      ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                      : "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300"
+                                  )}>
+                                    {dup.status}
+                                  </span>
+                                </td>
+                                <td className="px-3.5 py-2 text-slate-500 dark:text-slate-400">{dup.keterangan || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-end border-t border-slate-100 bg-slate-50/50 px-6 py-3.5 dark:border-slate-800 dark:bg-slate-900/30">
                   <button
                     type="button"
-                    disabled={deleteMutation.isPending}
-                    onClick={() => deleteMutation.mutate(deleteTarget.id)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-5 py-2 text-xs font-semibold text-white shadow-md shadow-rose-600/25 transition-all hover:from-rose-700 hover:to-red-700 disabled:opacity-50"
+                    onClick={() => setDuplicateModalData(null)}
+                    className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white px-5 py-2 text-xs font-bold shadow-md hover:from-emerald-700 hover:to-teal-800 transition cursor-pointer"
                   >
-                    {deleteMutation.isPending && (
-                      <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    )}
-                    <span>Ya, Hapus Status</span>
+                    <span>Mengerti</span>
                   </button>
                 </div>
               </div>

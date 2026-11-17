@@ -21,9 +21,9 @@ import {
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { Breadcrumbs } from '../ui/breadcrumbs'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import {
   Button as HeroButton,
-  Tooltip as HeroTooltip,
 } from '@heroui/react'
 import {
   AppBadge,
@@ -126,7 +126,7 @@ export function MasterHeaderActions({ children }) {
   return <div className="master-header-actions grid grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-center">{children}</div>
 }
 
-// ── Tombol Aksi Berlabel (§H.3/§H.6 Tailgrids_Pengaturan_Halaman) ──
+// ── Tombol Aksi Berlabel (§H.3/§H.6 HeroUI_Pengaturan_Halaman) ──
 // Bahasa visual = tombol submit modal: vivid gradient rounded-2xl + ikon dalam
 // wrapper putih/20. Varian secondary = slate outline netral (bukan cancel).
 const actionIcons = {
@@ -183,7 +183,7 @@ export function MasterActionButton({ variant = 'primary', icon: CustomIcon, chil
   )
 }
 
-// ── Vivid Gradient Squircle (§H Tailgrids_Pengaturan_Halaman — kontrak global) ──
+// ── Vivid Gradient Squircle (§H HeroUI_Pengaturan_Halaman — kontrak global) ──
 // WAJIB: bg-gradient-to-br + border [warna]-300/40 TANPA shadow.
 // DILARANG: pastel flat, solid, shadow-md/lg, bg-gradient-to-r.
 const squircleVariants = {
@@ -306,14 +306,15 @@ export function SquircleActionButton({
   const isDisabled = disabled || loading
   const effectiveLabel = label || props.title || defaultSquircleLabels[variant] || 'Aksi'
 
+  const pressHandler = onPress || onClick
   const buttonNode = (
     <HeroButton
       isIconOnly
-      onPress={onPress || onClick}
-      onClick={onClick}
+      onPress={pressHandler}
       isDisabled={isDisabled}
       aria-label={effectiveLabel}
       aria-busy={loading || undefined}
+      title={effectiveLabel}
       className={`
         flex size-10 items-center justify-center rounded-2xl
         ${config.classes}
@@ -332,18 +333,19 @@ export function SquircleActionButton({
   )
 
   return (
-    <HeroTooltip>
-      <HeroTooltip.Trigger>
-        {buttonNode}
-      </HeroTooltip.Trigger>
-      <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+    <span className="group/tooltip relative inline-flex">
+      {buttonNode}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute -top-9 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white opacity-0 shadow-xl transition-opacity duration-150 group-hover/tooltip:opacity-100 group-focus-within/tooltip:opacity-100 dark:bg-slate-100 dark:text-slate-900"
+      >
         {effectiveLabel}
-      </HeroTooltip.Content>
-    </HeroTooltip>
+      </span>
+    </span>
   )
 }
 
-// ── Kartu Akses Cepat Horizontal (§H.7 Tailgrids_Pengaturan_Halaman) ──
+// ── Kartu Akses Cepat Horizontal (§H.7 HeroUI_Pengaturan_Halaman) ──
 // Navigasi modul dashboard: ikon squircle putih/20 + judul + subjudul di atas
 // gradient vivid. Dilarang versi pastel flat.
 const quickAccessTones = {
@@ -471,11 +473,52 @@ export function MasterSearchInput({ className = '', ...props }) {
   return <AppSearch className={className} {...props} />
 }
 
-export function MasterFilterSelect({ className = '', children, ...props }) {
+export function MasterFilterSelect({
+  className = '',
+  children,
+  value,
+  onChange,
+  disabled = false,
+  placeholder = 'Pilih...',
+  size = 'md',
+  ...props
+}) {
+  const flattenOptions = (nodes) => {
+    const result = []
+    React.Children.forEach(nodes, (child) => {
+      if (!child) return
+      if (Array.isArray(child)) {
+        result.push(...flattenOptions(child))
+      } else if (React.isValidElement(child)) {
+        if (child.type === React.Fragment) {
+          result.push(...flattenOptions(child.props.children))
+        } else if (child.type === 'option') {
+          const optValue = child.props.value !== undefined ? String(child.props.value) : String(child.props.children ?? '')
+          const optLabel = Array.isArray(child.props.children)
+            ? child.props.children.join('')
+            : String(child.props.children ?? optValue)
+          result.push({ value: optValue, label: optLabel })
+        }
+      }
+    })
+    return result
+  }
+
+  const options = flattenOptions(children)
+  const stringValue = value !== undefined && value !== null ? String(value) : ''
+
   return (
-    <div className={`relative min-w-38 ${className}`}>
-      <select className={`${masterStyles.control} w-full appearance-none px-3.5 pr-9`} {...props}>{children}</select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    <div className={`min-w-38 ${className}`}>
+      <HeroUiFilterSelect
+        id={props.id}
+        value={stringValue}
+        onChange={(nextVal) => onChange?.({ target: { value: nextVal } })}
+        options={options}
+        placeholder={placeholder}
+        disabled={disabled}
+        size={size}
+        ariaLabel={props['aria-label'] || props.ariaLabel || placeholder}
+      />
     </div>
   )
 }

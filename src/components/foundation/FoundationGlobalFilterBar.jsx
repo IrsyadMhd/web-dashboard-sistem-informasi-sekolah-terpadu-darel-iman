@@ -3,6 +3,7 @@ import { Filter, RotateCcw, Check, ChevronDown, Calendar, Building2, MapPin, Tag
 import { useSearchParams } from 'react-router-dom'
 import { educationUnitService } from '../../services/educationUnitService'
 import { tahunAjaranService } from '../../services/tahunAjaranService'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 
 export function FoundationGlobalFilterBar({ onFilterChange }) {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -94,77 +95,87 @@ export function FoundationGlobalFilterBar({ onFilterChange }) {
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
         <div>
           <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">Tahun Ajaran</label>
-          <select
-            value={academicYear}
-            onChange={(e) => setAcademicYear(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-emerald-600 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          >
-            <option value="all">Semua Tahun</option>
-            {academicYearOptions.map((ay) => (
-              <option key={ay.id} value={ay.id}>{ay.nama || ay.tahun_ajaran}</option>
-            ))}
-          </select>
+          <HeroUiFilterSelect
+            size="sm"
+            value={String(academicYear)}
+            onChange={setAcademicYear}
+            ariaLabel="Tahun Ajaran"
+            options={[
+              { value: 'all', label: 'Semua Tahun' },
+              ...academicYearOptions.map((ay) => ({
+                value: String(ay.id),
+                label: ay.nama || ay.tahun_ajaran,
+              })),
+            ]}
+          />
         </div>
 
         <div>
           <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">Semester</label>
-          <select
+          <HeroUiFilterSelect
+            size="sm"
             value={semester}
-            onChange={(e) => setSemester(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-emerald-600 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          >
-            <option value="Ganjil">Ganjil</option>
-            <option value="Genap">Genap</option>
-          </select>
+            onChange={setSemester}
+            ariaLabel="Semester"
+            options={[
+              { value: 'Ganjil', label: 'Ganjil' },
+              { value: 'Genap', label: 'Genap' },
+            ]}
+          />
         </div>
 
         <div>
           <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">Unit Pendidikan</label>
-          <select
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-emerald-600 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          >
-            <option value="all">Semua Unit</option>
-            {unitOptions.map((u) => (
-              <option key={u.id} value={u.id}>{u.nama || u.nama_unit}</option>
-            ))}
-          </select>
+          <HeroUiFilterSelect
+            size="sm"
+            value={String(unit)}
+            onChange={setUnit}
+            ariaLabel="Unit Pendidikan"
+            options={[
+              { value: 'all', label: 'Semua Unit' },
+              ...unitOptions.map((u) => ({
+                value: String(u.id),
+                label: u.nama || u.nama_unit,
+              })),
+            ]}
+          />
         </div>
 
         <div>
           <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">Jenis Unit</label>
-          <select
+          <HeroUiFilterSelect
+            size="sm"
             value={jenisUnit}
-            onChange={(e) => setJenisUnit(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-emerald-600 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          >
-            <option value="all">Semua Jenjang</option>
-          </select>
+            onChange={setJenisUnit}
+            ariaLabel="Jenis Unit"
+            options={[{ value: 'all', label: 'Semua Jenjang' }]}
+          />
         </div>
 
         <div>
           <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">Lokasi</label>
-          <select
+          <HeroUiFilterSelect
+            size="sm"
             value={lokasi}
-            onChange={(e) => setLokasi(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-emerald-600 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          >
-            <option value="all">Semua Lokasi</option>
-          </select>
+            onChange={setLokasi}
+            ariaLabel="Lokasi"
+            options={[{ value: 'all', label: 'Semua Lokasi' }]}
+          />
         </div>
 
         <div>
           <label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">Periode</label>
-          <select
+          <HeroUiFilterSelect
+            size="sm"
             value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs font-medium text-slate-700 outline-none focus:border-emerald-600 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          >
-            <option value="year">Tahun Ini</option>
-            <option value="semester">Semester Ini</option>
-            <option value="month">Bulan Ini</option>
-          </select>
+            onChange={setPeriod}
+            ariaLabel="Periode"
+            options={[
+              { value: 'year', label: 'Tahun Ini' },
+              { value: 'semester', label: 'Semester Ini' },
+              { value: 'month', label: 'Bulan Ini' },
+            ]}
+          />
         </div>
       </div>
 

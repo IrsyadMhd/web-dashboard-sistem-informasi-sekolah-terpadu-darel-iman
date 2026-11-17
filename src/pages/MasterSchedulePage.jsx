@@ -39,12 +39,13 @@ import {
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { useAuthStore } from '../stores/authStore'
-import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS, ROLES } from '../auth/portalResolver'
+import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS, ROLES, isRestrictedToTeacherWorkspace } from '../auth/portalResolver'
 import { scheduleService } from '../services/scheduleService'
 import { educationUnitService } from '../services/educationUnitService'
 import { tahunAjaranService } from '../services/tahunAjaranService'
 import { printCleanTable, downloadPdfTable, printMatrixSchedule } from '../utils/printHelper'
 import { parseSpreadsheetFile, downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
+import { downloadFileFromApi } from '../utils/exportUtils'
 import {
   ActionDropdown,
   AppBadge,
@@ -70,7 +71,7 @@ import {
   SquircleActionButton,
 } from '../components/master-data'
 
-// ── 1. DEFINISI TONE WARNA KARTU KPI MODERN (TAILGRIDS GOLD STANDARD) ──
+// ── 1. DEFINISI TONE WARNA KARTU KPI MODERN (HEROUI GOLD STANDARD) ──
 const MODERN_CARD_TONES = {
   emerald: {
     card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
@@ -293,7 +294,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  
+
   // ── AUTH & ROLE SCOPING ──
   const authUser = useAuthStore((state) => state.user)
   const userRoles = useMemo(() => {
@@ -317,12 +318,10 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   // Multi-unit supervision: Super Admin, Yayasan, and Divisi Pendidikan
   const canSelectUnit = isSuperAdminOrYayasan || isDivisiPendidikan
 
-  const isGuru = useMemo(() => {
-    if (authLevel === ROLE_LEVELS.GURU) return true
-    const hasGuru = userRoles.some((r) => /guru|pendidik|pengajar|walas|wali[\s_]*kelas/i.test(r))
-    const hasAdminOrKepsek = userRoles.some((r) => /admin|super|kepala[\s_]*sekolah|kepsek|waka|tata[\s_]*usaha|tu|operator|divisi|yayasan/i.test(r))
-    return hasGuru && !hasAdminOrKepsek
-  }, [authLevel, userRoles])
+  const isGuru = useMemo(
+    () => isRestrictedToTeacherWorkspace(authUser, '/dashboard/akademik/jadwal'),
+    [authUser]
+  )
   const isTu = useMemo(() => authLevel === ROLE_LEVELS.OPERATOR || authLevel === ROLE_LEVELS.TATA_USAHA || userRoles.some(r => /tata[\s_]*usaha|tu|staf[\s_]*tu|admin[\s_]*tu/i.test(r)), [authLevel, userRoles])
   const isKepsek = useMemo(() => {
     if (canSelectUnit) return false
@@ -390,6 +389,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const [importFile, setImportFile] = useState(null)
   const [importPreviewData, setImportPreviewData] = useState([])
   const [isImporting, setIsImporting] = useState(false)
+  const [importFailures, setImportFailures] = useState([])
   const [showExportModal, setShowExportModal] = useState(false)
   const [exportFormat, setExportFormat] = useState('xlsx')
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
@@ -561,12 +561,12 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const unitOptions = useMemo(() => {
     if (unitsList.length > 0) return unitsList
     const map = new Map()
-    ;(options.kelas || []).forEach((k) => {
-      if (k.unitPendidikan || k.unit_pendidikan) {
-        const u = k.unitPendidikan || k.unit_pendidikan
-        map.set(u.id, u)
-      }
-    })
+      ; (options.kelas || []).forEach((k) => {
+        if (k.unitPendidikan || k.unit_pendidikan) {
+          const u = k.unitPendidikan || k.unit_pendidikan
+          map.set(u.id, u)
+        }
+      })
     return Array.from(map.values())
   }, [unitsList, options.kelas])
 
@@ -970,7 +970,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     setFormErrors({})
     setConflictWarning('')
     setIsDirty(false)
-    
+
     // Detect unit_pendidikan_id from item's class or subject or employee
     const detectedUnitId =
       item.kelas?.unit_pendidikan_id ||
@@ -1044,7 +1044,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
       // If Kelas is selected directly: auto-populate unit, year, semester if empty
       if (field === 'kelas_id' && value) {
-        const selectedKelas = (options.kelas || []).find((k) => k.id === value)
+        const selectedKelas = (options.kelas || []).find((k) => String(k.id) === String(value))
         if (selectedKelas) {
           if (selectedKelas.unit_pendidikan_id) {
             updated.unit_pendidikan_id = selectedKelas.unit_pendidikan_id
@@ -1157,6 +1157,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     const file = e.target.files?.[0]
     if (!file) return
     setImportFile(file)
+    setImportFailures([])
 
     try {
       const rows = await parseSpreadsheetFile(file)
@@ -1172,6 +1173,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const handleProcessImport = async () => {
     if (!importFile) return
     setIsImporting(true)
+    setImportFailures([])
     try {
       const allRows = await parseSpreadsheetFile(importFile)
       if (allRows.length === 0) {
@@ -1185,29 +1187,57 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
       for (let index = 0; index < allRows.length; index += 1) {
         const row = allRows[index]
         try {
-          await scheduleService.tambah({
+          const payload = {
             ...row,
+            academic_year_id: row.academic_year_id || yearFilter || undefined,
+            semester_id: row.semester_id || semesterFilter || undefined,
             day_of_week: Number(row.day_of_week),
+            time_start: String(row.time_start || '').trim().slice(0, 5),
+            time_end: String(row.time_end || '').trim().slice(0, 5),
             is_active: !['0', 'false', 'nonaktif'].includes(String(row.is_active).toLowerCase()),
-          })
+          }
+          await scheduleService.tambah(payload)
           success += 1
         } catch (error) {
-          failures.push(`baris ${index + 2}: ${error.response?.data?.message || 'gagal'}`)
+          const resData = error.response?.data
+          let detailMsg = resData?.message || 'Data tidak valid'
+          if (resData?.errors && typeof resData.errors === 'object') {
+            const errList = Object.values(resData.errors).flat()
+            if (errList.length > 0) {
+              detailMsg = errList.join(' • ')
+            }
+          }
+          failures.push({
+            row: index + 2,
+            message: detailMsg,
+            data: row,
+          })
         }
       }
       queryClient.invalidateQueries({ queryKey: ['schedules'] })
-      setShowImportModal(false)
-      setImportFile(null)
-      setImportPreviewData([])
       setIsImporting(false)
+
       if (failures.length === 0) {
+        setShowImportModal(false)
+        setImportFile(null)
+        setImportPreviewData([])
+        setImportFailures([])
         pushToast('Import Berhasil', `${success} jadwal pelajaran berhasil diimport.`, 'success')
       } else {
-        pushToast(
-          'Import Sebagian Berhasil',
-          `${success} berhasil, ${failures.length} gagal (${failures.slice(0, 2).join(', ')}...).`,
-          'warning'
-        )
+        setImportFailures(failures)
+        if (success > 0) {
+          pushToast(
+            'Import Sebagian Berhasil',
+            `${success} jadwal berhasil, ${failures.length} baris gagal divalidasi. Periksa rincian pada banner di atas.`,
+            'warning'
+          )
+        } else {
+          pushToast(
+            'Import Gagal',
+            `Seluruh ${failures.length} baris data gagal divalidasi oleh server (Error 422). Periksa rincian pada banner merah di atas.`,
+            'error'
+          )
+        }
       }
     } catch (err) {
       setIsImporting(false)
@@ -1237,13 +1267,13 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   // Harmonized Batch Export Handler
   const handleProcessExport = async () => {
     setShowExportModal(false)
-    if (!items || items.length === 0) {
-      pushToast('Peringatan', 'Tidak ada data jadwal untuk diekspor.', 'warning')
-      return
-    }
 
     if (exportFormat === 'pdf') {
       const allRows = Array.isArray(items) ? items : []
+      if (allRows.length === 0) {
+        pushToast('Peringatan', 'Tidak ada data jadwal untuk diekspor.', 'warning')
+        return
+      }
       downloadPdfTable({
         title: 'Laporan Data Jadwal Pelajaran',
         subtitle: 'Daftar Sesi Pelajaran & Jam Mengajar Sekolah Islam Terpadu',
@@ -1251,7 +1281,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         rows: allRows.map((row, i) => [
           i + 1,
           `${row.nama_hari || DAYS_MAP.find((d) => d.id === row.day_of_week)?.name || 'Senin'} (${formatTime(row.time_start)} - ${formatTime(row.time_end)})`,
-          `${subjectName(row.subject) || row.subject_name || '-'}${row.subject?.kode_mapel || row.subject?.code ? ` [${row.subject.kode_mapel || row.subject.code}]` : ''}`,
+          `${subjectName(row.subject) || row.activity_name || row.subject_name || '-'}${row.subject?.kode_mapel || row.subject?.code ? ` [${row.subject.kode_mapel || row.subject.code}]` : ''}`,
           `${row.kelas?.nama_kelas || row.school_class?.name || row.kelas_name || '-'}${row.kelas?.unit_pendidikan?.name || row.unit_name ? ` (${row.kelas?.unit_pendidikan?.name || row.unit_name})` : ''}`,
           `${row.employee?.nama_lengkap || row.teacher?.name || row.guru_name || '-'}${row.employee?.niy ? ` (NIY ${row.employee.niy})` : ''}`,
           `${row.academic_year?.name || row.tahun_ajaran_name || '-'}${row.semester?.name ? ` - ${row.semester.name}` : ''}`,
@@ -1263,36 +1293,85 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
       return
     }
 
-    // CSV / Excel (.xlsx, .xls)
+    // Excel (.xlsx, .xls) / CSV
     try {
-      const headers = ['NO', 'GURU', 'MATA PELAJARAN', 'KELAS', 'HARI', 'JAM MULAI', 'JAM SELESAI', 'STATUS']
-      let csvStr = headers.join(',') + '\n'
-      items.forEach((row, i) => {
-        const line = [
-          i + 1,
-          `"${row.employee?.nama_lengkap || row.guru_name || ''}"`,
-          `"${row.subject?.nama_mapel || row.mapel_name || ''}"`,
-          `"${row.kelas?.nama_kelas || row.kelas_name || ''}"`,
-          `"${row.nama_hari || DAYS_MAP.find((d) => d.id === row.day_of_week)?.name || ''}"`,
-          `"${row.time_start || ''}"`,
-          `"${row.time_end || ''}"`,
-          `"${row.is_active ? 'Aktif' : 'Nonaktif'}"`,
-        ].join(',')
-        csvStr += line + '\n'
-      })
-      const ext = exportFormat === 'xlsx' ? 'xlsx' : exportFormat === 'xls' ? 'xls' : 'csv'
-      const mime = exportFormat === 'csv' ? 'text/csv;charset=utf-8;' : 'application/vnd.ms-excel;charset=utf-8;'
-      const blob = new Blob([csvStr], { type: mime })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `export_jadwal_${new Date().toISOString().slice(0, 10)}.${ext}`)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      pushToast('Export Berhasil', `Data jadwal berhasil diekspor ke format .${ext.toUpperCase()}.`, 'success')
-    } catch {
-      pushToast('Error', 'Gagal mengunduh berkas ekspor.', 'error')
+      const params = {
+        search: search || undefined,
+        unit_pendidikan_id: unitFilter || undefined,
+        program_type: programTypeFilter || undefined,
+        academic_year_id: yearFilter || undefined,
+        semester_id: semesterFilter || undefined,
+        subject_id: subjectFilter || undefined,
+        kelas_id: classFilter || undefined,
+        day_of_week: effectiveDayFilter || undefined,
+        employee_id: teacherFilter || undefined,
+        is_active: statusFilter || undefined,
+      }
+
+      const res = await downloadFileFromApi(
+        '/schedules/export',
+        params,
+        exportFormat,
+        `export_jadwal_${new Date().toISOString().slice(0, 10)}`
+      )
+
+      if (res?.success) {
+        pushToast('Export Berhasil', `Data jadwal berhasil diekspor ke format .${exportFormat.toUpperCase()}.`, 'success')
+        return
+      }
+
+      // Fallback ke Client-Side via XLSX (SheetJS) jika API backend tidak merespons berkas binary
+      if (items && items.length > 0) {
+        const exportData = items.map((row, i) => ({
+          'No': i + 1,
+          'Hari': row.nama_hari || DAYS_MAP.find((d) => d.id === row.day_of_week)?.name || 'Senin',
+          'Jam Mulai': row.time_start || row.start_time || '',
+          'Jam Selesai': row.time_end || row.end_time || '',
+          'Mata Pelajaran': subjectName(row.subject) || row.activity_name || row.subject_name || '-',
+          'Kelas': row.kelas?.nama_kelas || row.school_class?.name || row.kelas_name || '-',
+          'Unit': row.kelas?.unit_pendidikan?.name || row.unit_name || '-',
+          'Guru Pengampu': row.employee?.nama_lengkap || row.teacher?.name || row.guru_name || '-',
+          'Tahun Ajaran': row.academic_year?.name || row.tahun_ajaran_name || '-',
+          'Semester': row.semester?.name || row.semester_name || '-',
+          'Status': row.is_active ? 'Aktif' : 'Nonaktif',
+        }))
+        downloadSpreadsheetTemplate(
+          exportData,
+          `export_jadwal_${new Date().toISOString().slice(0, 10)}`,
+          exportFormat,
+          'Jadwal Pelajaran'
+        )
+        pushToast('Export Berhasil', `Data jadwal berhasil diekspor ke format .${exportFormat.toUpperCase()}.`, 'success')
+      } else {
+        pushToast('Error', 'Gagal mengunduh berkas ekspor jadwal.', 'error')
+      }
+    } catch (err) {
+      console.error('Export schedule error:', err)
+      // Ultimate fallback: XLSX client-side
+      if (items && items.length > 0) {
+        const exportData = items.map((row, i) => ({
+          'No': i + 1,
+          'Hari': row.nama_hari || DAYS_MAP.find((d) => d.id === row.day_of_week)?.name || 'Senin',
+          'Jam Mulai': row.time_start || row.start_time || '',
+          'Jam Selesai': row.time_end || row.end_time || '',
+          'Mata Pelajaran': subjectName(row.subject) || row.activity_name || row.subject_name || '-',
+          'Kelas': row.kelas?.nama_kelas || row.school_class?.name || row.kelas_name || '-',
+          'Unit': row.kelas?.unit_pendidikan?.name || row.unit_name || '-',
+          'Guru Pengampu': row.employee?.nama_lengkap || row.teacher?.name || row.guru_name || '-',
+          'Tahun Ajaran': row.academic_year?.name || row.tahun_ajaran_name || '-',
+          'Semester': row.semester?.name || row.semester_name || '-',
+          'Status': row.is_active ? 'Aktif' : 'Nonaktif',
+        }))
+        downloadSpreadsheetTemplate(
+          exportData,
+          `export_jadwal_${new Date().toISOString().slice(0, 10)}`,
+          exportFormat,
+          'Jadwal Pelajaran'
+        )
+        pushToast('Export Berhasil', `Data jadwal berhasil diekspor ke format .${exportFormat.toUpperCase()}.`, 'success')
+      } else {
+        pushToast('Error', 'Gagal mengunduh berkas ekspor.', 'error')
+      }
     }
   }
 
@@ -1329,11 +1408,11 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     const printTeacher = (options.guru || []).find((g) => g.id === printTeacherFilter)
     const rowsToPrint = printTeacherFilter
       ? allRows.filter(
-          (r) =>
-            r.employee_id === printTeacherFilter ||
-            r.employee?.id === printTeacherFilter ||
-            r.teacher_id === printTeacherFilter
-        )
+        (r) =>
+          r.employee_id === printTeacherFilter ||
+          r.employee?.id === printTeacherFilter ||
+          r.teacher_id === printTeacherFilter
+      )
       : allRows
 
     const printConfig = {
@@ -1888,6 +1967,38 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
                 {/* Modal Body */}
                 <div className="modal-body min-h-0 flex-1 space-y-4.5 overflow-y-auto p-6 text-sm text-slate-700 dark:text-slate-200">
+                  {/* Error Banner Rincian Gagal Validasi Server */}
+                  {importFailures.length > 0 && (
+                    <div className="flex flex-col gap-2 rounded-2xl border-2 border-rose-300 bg-rose-50/95 p-4 text-rose-900 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200 shadow-sm animate-fadeIn">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 font-black text-xs text-rose-800 dark:text-rose-300 uppercase tracking-wide">
+                          <AlertTriangle className="size-4.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                          <span>Gagal Memvalidasi {importFailures.length} Baris Jadwal (Error 422)</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setImportFailures([])}
+                          className="text-[11px] font-bold text-rose-700 hover:text-rose-900 dark:text-rose-300 dark:hover:text-white underline cursor-pointer"
+                        >
+                          Tutup Banner
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-rose-700 dark:text-rose-300 leading-relaxed">
+                        Server menolak data berikut karena tidak memenuhi syarat validasi (ID relasi tidak terdaftar, jadwal bentrok waktu/ruang/guru, atau format waktu tidak sesuai):
+                      </p>
+                      <div className="max-h-40 overflow-y-auto space-y-2 text-xs pr-1">
+                        {importFailures.map((f, idx) => (
+                          <div key={idx} className="rounded-xl border border-rose-200 bg-white/90 p-2.5 dark:border-rose-900/60 dark:bg-slate-900/70 flex items-start gap-2">
+                            <span className="font-bold text-rose-800 dark:text-rose-300 shrink-0 rounded bg-rose-100 dark:bg-rose-900/60 px-1.5 py-0.5 text-[10px]">
+                              Baris {f.row}
+                            </span>
+                            <p className="text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{f.message}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Unduh Template Card */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-sky-200/70 bg-gradient-to-r from-sky-50/50 via-teal-50/20 to-white p-4 dark:border-sky-850/50 dark:bg-slate-900/40">
                     <div className="flex items-center gap-3">
@@ -1942,6 +2053,17 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                     )}
                     <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileSelect} className="hidden" />
                   </label>
+
+                  {/* Guidance Banner */}
+                  <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-3.5 dark:border-emerald-800/50 dark:bg-emerald-950/30 flex items-start gap-2.5">
+                    <ShieldCheck className="size-4.5 text-[#0E5C44] dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1 text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
+                      <p className="font-bold text-[#0E5C44] dark:text-emerald-300">Panduan Pengisian Berkas Impor:</p>
+                      <p>• Kolom <strong>kelas_id</strong>, <strong>employee_id</strong>, dan <strong>subject_id</strong> wajib berupa UUID unik terdaftar di sistem.</p>
+                      <p>• Jam <strong>time_start</strong> &amp; <strong>time_end</strong> wajib format <code>HH:mm</code> (contoh: <code>07:30</code> dan <code>09:00</code>).</p>
+                      <p>• Hari <strong>day_of_week</strong> diisi angka 1 (Senin) hingga 7 (Minggu).</p>
+                    </div>
+                  </div>
 
                   {/* Table Preview */}
                   {importPreviewData.length > 0 && (
@@ -2019,7 +2141,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         </div>
       )}
 
-      {/* ── Modern Hero Header (TailGrids Standard) ── */}
+      {/* ── Modern Hero Header (HeroUI Standard) ── */}
       {!shouldHideHeader && (
         <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
           <div className="pointer-events-none absolute -left-12 -top-12 h-44 w-44 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-transparent blur-3xl" />
@@ -2043,7 +2165,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Jadwal Pelajaran & Plot Mengajar
                 </h1>
-                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                   Kelola alokasi jam mengajar guru, rombongan belajar, dan mata pelajaran terintegrasi akademik sekolah.
                 </p>
               </div>
@@ -2059,7 +2181,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         </div>
       )}
 
-      {/* ── Stats Summary Cards (Modern 5-Card Grid - TailGrids Gold Standard) ── */}
+      {/* ── Stats Summary Cards (Modern 5-Card Grid - HeroUI Gold Standard) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <ModernKpiCard
           icon={CalendarDays}
@@ -2182,7 +2304,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
       {/* ── UNIFIED MASTER DATA CONTAINER (EMERALD DATATABLE CONTAINER) ── */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
-        {/* ── TOOLBAR 3-BARIS TERPADU (TailGrids Benchmark Standard) ── */}
+        {/* ── TOOLBAR 3-BARIS TERPADU (HeroUI Benchmark Standard) ── */}
         <div className="border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-4 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent print:hidden">
           {/* Baris 1: Header Action Row */}
           <div className="flex flex-col gap-3.5 xl:flex-row xl:items-center xl:justify-between border-b border-emerald-100 dark:border-emerald-900/50 pb-3.5">
@@ -2257,7 +2379,11 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                 <span>
                   {unitOptions.find((u) => String(u.id) === String(unitFilter))?.name ||
                     unitOptions.find((u) => String(u.id) === String(unitFilter))?.nama ||
-                    (isKepsek ? 'Unit Sekolah Anda' : (isTu ? 'Unit Kerja TU' : 'Unit Anda'))}
+                    authUser?.unit?.name ||
+                    authUser?.unit_name ||
+                    authUser?.employee?.unit?.name ||
+                    authUser?.metadata?.unit_name ||
+                    'Unit Terkunci'}
                 </span>
               </div>
             ) : (
@@ -2648,7 +2774,12 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                           {item.kelas?.nama_kelas || item.school_class?.name || '-'}
                         </div>
                         <div className="text-xs text-slate-500 truncate">
-                          {item.kelas?.unit_pendidikan?.name || '-'}
+                          {item.kelas?.unit_pendidikan?.name ||
+                            item.kelas?.unit_pendidikan?.nama ||
+                            item.school_class?.unit_pendidikan?.name ||
+                            item.unit_pendidikan?.name ||
+                            item.unit_name ||
+                            '-'}
                         </div>
                       </td>
                       <td className="p-4">
@@ -2886,8 +3017,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                     {detailDrawerItem.week_type === 'odd'
                       ? 'Minggu Ganjil'
                       : detailDrawerItem.week_type === 'even'
-                      ? 'Minggu Genap'
-                      : 'Setiap Minggu'}
+                        ? 'Minggu Genap'
+                        : 'Setiap Minggu'}
                   </div>
                 </div>
               </div>
@@ -3124,11 +3255,10 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
               <button
                 type="button"
                 onClick={() => handleFormChange('activity_type', 'kbm')}
-                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                  (form.activity_type || 'kbm') === 'kbm'
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
-                }`}
+                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all cursor-pointer ${(form.activity_type || 'kbm') === 'kbm'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
+                  }`}
               >
                 <BookOpen className="h-4 w-4 shrink-0" />
                 <span>KBM Mata Pelajaran</span>
@@ -3137,11 +3267,10 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
               <button
                 type="button"
                 onClick={() => handleFormChange('activity_type', 'activity')}
-                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                  form.activity_type !== 'kbm'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
-                }`}
+                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all cursor-pointer ${form.activity_type !== 'kbm'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
+                  }`}
               >
                 <Sparkles className="h-4 w-4 shrink-0" />
                 <span>Kegiatan Non-KBM (Aktivitas Sekolah)</span>
@@ -3189,9 +3318,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                     value={form.activity_name || ''}
                     onChange={(e) => handleFormChange('activity_name', e.target.value)}
                     placeholder="Contoh: Upacara, Dzikir Pagi, Waktu Istirahat, ISHOMA, Senam, dll."
-                    className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-[#111827] ${
-                      formErrors.activity_name ? 'border-rose-500' : 'border-slate-200'
-                    }`}
+                    className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-[#111827] ${formErrors.activity_name ? 'border-rose-500' : 'border-slate-200'
+                      }`}
                   />
                   {formErrors.activity_name && (
                     <p className="mt-1.5 text-[11px] font-medium text-rose-500">
@@ -3455,9 +3583,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                         type="time"
                         value={form.time_start}
                         onChange={(e) => handleFormChange('time_start', e.target.value)}
-                        className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                          formErrors.time_start ? 'border-rose-500' : 'border-slate-200'
-                        }`}
+                        className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${formErrors.time_start ? 'border-rose-500' : 'border-slate-200'
+                          }`}
                       />
                       {formErrors.time_start && (
                         <p className="mt-1 text-[11px] font-medium text-rose-500">
@@ -3477,9 +3604,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                         type="time"
                         value={form.time_end}
                         onChange={(e) => handleFormChange('time_end', e.target.value)}
-                        className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                          formErrors.time_end ? 'border-rose-500' : 'border-slate-200'
-                        }`}
+                        className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${formErrors.time_end ? 'border-rose-500' : 'border-slate-200'
+                          }`}
                       />
                       {formErrors.time_end && (
                         <p className="mt-1 text-[11px] font-medium text-rose-500">
@@ -3495,15 +3621,20 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                       <Layers className="size-3 text-emerald-600" />
                       <span>Pola Minggu</span>
                     </label>
-                    <select
-                      value={form.week_type}
-                      onChange={(e) => handleFormChange('week_type', e.target.value)}
-                      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827]"
-                    >
-                      <option value="all">Setiap Minggu</option>
-                      <option value="odd">Minggu Ganjil</option>
-                      <option value="even">Minggu Genap</option>
-                    </select>
+                    <HeroUiFilterSelect
+                      value={form.week_type || 'all'}
+                      onChange={(val) => handleFormChange('week_type', val)}
+                      options={[
+                        { value: 'all', label: 'Setiap Minggu' },
+                        { value: 'odd', label: 'Minggu Ganjil' },
+                        { value: 'even', label: 'Minggu Genap' },
+                      ]}
+                      placeholder="Pilih Pola Minggu"
+                      icon={Layers}
+                      ariaLabel="Pola Minggu"
+                      size="md"
+                      className="w-full"
+                    />
                   </div>
 
                   {/* Live Status Jam Terpilih */}
@@ -3715,11 +3846,10 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                           handleFormChange('employee_id', guru.id)
                           setGuruPickerOpen(false)
                         }}
-                        className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'
-                            : 'border-slate-100 hover:border-emerald-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40'
-                        }`}
+                        className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${isSelected
+                          ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'
+                          : 'border-slate-100 hover:border-emerald-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40'
+                          }`}
                       >
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-2xl bg-emerald-100 font-bold text-emerald-800 flex items-center justify-center text-sm shadow-sm">
@@ -3739,11 +3869,10 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                             handleFormChange('employee_id', guru.id)
                             setGuruPickerOpen(false)
                           }}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-                            isSelected
-                              ? 'bg-[#0E5C44] text-white'
-                              : 'bg-slate-100 text-slate-700 hover:bg-[#0E5C44] hover:text-white dark:bg-slate-800 dark:text-slate-200'
-                          }`}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${isSelected
+                            ? 'bg-[#0E5C44] text-white'
+                            : 'bg-slate-100 text-slate-700 hover:bg-[#0E5C44] hover:text-white dark:bg-slate-800 dark:text-slate-200'
+                            }`}
                         >
                           {isSelected ? 'Terpilih' : 'Pilih Guru'}
                         </button>

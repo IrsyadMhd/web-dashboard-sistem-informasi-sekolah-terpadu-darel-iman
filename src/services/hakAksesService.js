@@ -13,6 +13,11 @@ export const hakAksesService = {
     return data
   },
 
+  getNavigationOptions: async () => {
+    const { data } = await api.get('/hak-akses/navigation-options')
+    return data?.data || {}
+  },
+
   getDetailRole: async (id) => {
     const { data } = await api.get(`/hak-akses/roles/${id}`)
     return data?.data || {}
@@ -101,6 +106,45 @@ export const hakAksesService = {
 
   hapusUser: async (id) => {
     const { data } = await api.delete(`/hak-akses/users/${id}`)
+    return data
+  },
+
+  importUsers: async (payload) => {
+    let dataToSend = payload
+    let config = {}
+    if (payload instanceof FormData) {
+      config = { headers: { 'Content-Type': 'multipart/form-data' } }
+    } else if (payload?.file) {
+      const fd = new FormData()
+      fd.append('file', payload.file)
+      if (payload.overwrite !== undefined) {
+        fd.append('overwrite', payload.overwrite ? '1' : '0')
+      }
+      dataToSend = fd
+      config = { headers: { 'Content-Type': 'multipart/form-data' } }
+    }
+    const { data } = await api.post('/hak-akses/users/import', dataToSend, config)
+    return data
+  },
+
+  downloadUserTemplate: async () => {
+    const response = await api.get('/hak-akses/users/import-template', {
+      responseType: 'blob',
+    })
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'Template_Import_Akun_Pengguna.csv')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  },
+
+  syncEntities: async (payload = {}) => {
+    const { data } = await api.post('/hak-akses/users/sync-entities', payload, {
+      timeout: 120000,
+    })
     return data
   },
 }

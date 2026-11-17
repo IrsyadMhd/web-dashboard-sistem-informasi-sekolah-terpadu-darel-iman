@@ -2,44 +2,42 @@ import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PropTypes from 'prop-types'
 import {
-  Button as AriaButton,
-  Header as AriaHeader,
-  Menu as AriaMenu,
-  MenuItem as AriaMenuItem,
-  MenuSection as AriaMenuSection,
-  MenuTrigger as AriaMenuTrigger,
-  Popover as AriaPopover,
-  Separator as AriaSeparator,
-} from 'react-aria-components'
+  Dropdown as HeroDropdown,
+  Header as HeroHeader,
+  Separator as HeroSeparator,
+} from '@heroui/react'
 import { cn } from '../../lib/utils'
 
 export function DropdownMenu(props) {
-  return <AriaMenuTrigger {...props} />
+  return <HeroDropdown.Root {...props} />
 }
 
 export function DropdownMenuTrigger({ className, ...props }) {
-  return <AriaButton className={cn('outline-none cursor-pointer', className)} {...props} />
+  return <HeroDropdown.Trigger className={cn('outline-none cursor-pointer', className)} {...props} />
 }
 
-export function DropdownMenuContent({ children, className, ...props }) {
+export function DropdownMenuContent({ children, className, placement, ...props }) {
   return (
-    <AriaPopover {...props}>
-      <AriaMenu
+    <HeroDropdown.Popover placement={placement}>
+      <HeroDropdown.Menu
+        {...props}
         className={cn(
-          'outline-none shadow-xl rounded-2xl overflow-hidden min-w-44 bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 p-1 text-slate-800 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-100',
+          'outline-none shadow-xl rounded-2xl overflow-hidden min-w-44 bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 p-1 text-slate-800 dark:text-slate-100',
           className
         )}
       >
         {children}
-      </AriaMenu>
-    </AriaPopover>
+      </HeroDropdown.Menu>
+    </HeroDropdown.Popover>
   )
 }
 
-export function DropdownMenuItem({ className, ...props }) {
+export function DropdownMenuItem({ className, onAction, onClick, onPress, ...props }) {
+  const handleSelect = onAction || onClick || onPress
   return (
-    <AriaMenuItem
+    <HeroDropdown.Item
       {...props}
+      onAction={handleSelect}
       className={cn(
         'group text-slate-700 dark:text-slate-200 text-xs font-semibold focus:text-emerald-950 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 dark:focus:text-emerald-200 flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 outline-none transition-colors data-[disabled]:opacity-50 data-[disabled]:pointer-events-none',
         className
@@ -49,12 +47,12 @@ export function DropdownMenuItem({ className, ...props }) {
 }
 
 export function DropdownMenuSection({ className, ...props }) {
-  return <AriaMenuSection {...props} className={cn('py-1', className)} />
+  return <HeroDropdown.Section {...props} className={cn('py-1', className)} />
 }
 
 export function DropdownMenuHeader({ className, ...props }) {
   return (
-    <AriaHeader
+    <HeroHeader
       {...props}
       className={cn('px-3 py-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider', className)}
     />
@@ -63,7 +61,7 @@ export function DropdownMenuHeader({ className, ...props }) {
 
 export function DropdownMenuSeparator({ className, ...props }) {
   return (
-    <AriaSeparator
+    <HeroSeparator
       className={cn('h-px my-1 bg-slate-100 dark:bg-slate-800 border-none', className)}
       {...props}
     />

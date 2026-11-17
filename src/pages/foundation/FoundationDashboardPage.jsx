@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import HeroUiFilterSelect from '../../components/ui/HeroUiFilterSelect'
 import { SmartScrollFab } from '../../components/common'
+import FoundationDisciplineExecutiveSection from '../../components/foundation/FoundationDisciplineExecutiveSection'
 
 const containerVariants = {
   hidden: { opacity: 0, y: 15 },
@@ -664,8 +665,8 @@ export function FoundationDashboardPage() {
                     <span>T.A. {activeYearName} • {activeSemesterName}</span>
                   </span>
                 </div>
-                <p className="mt-1.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-3xl leading-relaxed">
-                  Pusat kendali eksekutif: monitoring terpadu kinerja SDM guru & pegawai, rekapitulasi santri & siswa, analisis akademik, dan supervisi 15 unit pendidikan yayasan.
+                <p className="mt-1.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
+                  Pusat kendali eksekutif: monitoring terpadu kinerja SDM guru & pegawai, rekapitulasi santri & siswa, analisis akademik, dan supervisi {formatNumber(kpis.unit_pendidikan?.total ?? kpis.total_unit_aktif ?? unitsList.length)} unit pendidikan yayasan.
                 </p>
               </div>
             </div>
@@ -929,7 +930,7 @@ export function FoundationDashboardPage() {
         <SectionHeader
           icon={Building2}
           title="Kinerja Eksekutif Yayasan"
-          subtitle="Ringkasan agregat real-time dari PostgreSQL seluruh 15 unit pendidikan"
+          subtitle={`Ringkasan agregat real-time dari PostgreSQL seluruh ${formatNumber(kpis.unit_pendidikan?.total ?? kpis.total_unit_aktif ?? unitsList.length)} unit pendidikan`}
           badge="Monitoring Real-Time"
         />
 
@@ -941,7 +942,7 @@ export function FoundationDashboardPage() {
             trendText="unit baru bulan ini"
             icon={Building2}
             tone="emerald"
-            tag="15 UNIT"
+            tag={`${formatNumber(kpis.unit_pendidikan?.total ?? kpis.total_unit_aktif ?? unitsList.length)} UNIT`}
             onClick={() => setActiveModal('total_unit')}
           />
 
@@ -1398,9 +1399,10 @@ export function FoundationDashboardPage() {
         </div>
       </motion.section>
 
-
-
-
+      {/* Tata Kelola Kedisiplinan & Critical Watchlist Yayasan */}
+      <motion.section variants={itemVariants} className="mt-8">
+        <FoundationDisciplineExecutiveSection />
+      </motion.section>
 
       {/* Modal Quick View KPI (Data PostgreSQL Real) */}
       <ModalErrorBoundary onClose={() => setActiveModal(null)}>

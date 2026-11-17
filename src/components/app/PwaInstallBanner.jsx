@@ -4,7 +4,7 @@ import { Download, Smartphone, CheckCircle2, X, Sparkles, ShieldCheck } from 'lu
 import { usePengaturanStore } from '../../stores/pengaturanStore'
 import { resolveSystemLogoUrl } from '../../utils/printHelper'
 
-export function isPWAStandalone() {
+function isPWAStandalone() {
   if (typeof window === 'undefined') return false
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
@@ -29,7 +29,7 @@ if (typeof window !== 'undefined') {
   })
 }
 
-export function usePwaInstall() {
+function usePwaInstall() {
   const [prompt, setPrompt] = useState(deferredPrompt)
   const [isStandalone, setIsStandalone] = useState(false)
 

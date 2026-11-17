@@ -32,6 +32,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [errorTitle, setErrorTitle] = useState('Gagal Autentikasi')
   const [sessionNotice, setSessionNotice] = useState(null)
   const [successNotice, setSuccessNotice] = useState(null)
   const [workspaceOptions, setWorkspaceOptions] = useState([])
@@ -192,14 +193,39 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
         setLoading(false)
         return
       }
+
+      const status = err?.response?.status
+      const errCode = err?.response?.data?.code
+      let resolvedTitle = 'Username / Password Salah'
+      let fallbackMsg = 'Username, NIP, NIS, NIK, atau password tidak valid.'
+
+      if (status === 0 || err?.code === 'ERR_NETWORK' || errCode === 'SERVER_UNREACHABLE' || errCode === 'CLIENT_OFFLINE') {
+        const isClientOffline = typeof navigator !== 'undefined' && !navigator.onLine
+        resolvedTitle = isClientOffline ? 'Koneksi Internet Terputus' : 'Server Tidak Terjangkau'
+        fallbackMsg = isClientOffline
+          ? 'Perangkat Anda sedang tidak terhubung ke jaringan internet. Periksa koneksi internet Anda.'
+          : 'Tidak dapat terhubung ke server backend. Pastikan server aktif dan coba kembali.'
+      } else if (status === 503 || errCode === 'DATABASE_CONNECTION_ERROR') {
+        resolvedTitle = 'Gangguan Basis Data'
+        fallbackMsg = 'Layanan database sedang tidak dapat dijangkau. Silakan hubungi administrator sistem.'
+      } else if (status === 502 || status === 504) {
+        resolvedTitle = 'Server Tidak Merespons'
+        fallbackMsg = 'Server backend membutuhkan waktu terlalu lama untuk merespons (Gateway Timeout).'
+      } else if (status === 500) {
+        resolvedTitle = 'Gangguan Sistem Server'
+        fallbackMsg = 'Terjadi kendala teknis pada server backend. Silakan hubungi administrator.'
+      }
+
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.errors?.identifier?.[0] ||
-        'Username, NIP, NIS, NIK, atau password tidak valid.'
+        fallbackMsg
+
+      setErrorTitle(resolvedTitle)
       setError(msg)
       showAuthPopup({
         type: 'error',
-        title: 'Username / Password Salah',
+        title: resolvedTitle,
         message: msg,
       })
       setLoading(false)
@@ -298,7 +324,8 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
 
   const logoUrl = pengaturan?.logo_url || pengaturan?.logoUrl || ''
   const namaSekolah = pengaturan?.school_name || pengaturan?.namaSekolah || 'Yayasan Pendidikan Islam'
-  const namaAplikasi = pengaturan?.application_name || 'Sistem Manajemen Sekolah Terpadu'
+  const rawApp = pengaturan?.application_name
+  const namaAplikasi = (!rawApp || rawApp === 'Sistem Manajemen Sekolah Terpadu' || rawApp === 'Dareliman Edu') ? 'Dareliman Edu' : rawApp
 
   return (
     <div className="w-full max-w-md mx-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-emerald-100/80 dark:border-slate-800 transition-all duration-300">
@@ -346,7 +373,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
 
         {/* Form Input */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Success Notice Banner with TailGrids Alert */}
+          {/* Success Notice Banner with HeroUI Alert */}
           {successNotice && (
             <Alert status="success" className="animate-fade-in">
               <AlertIndicator />
@@ -357,7 +384,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
             </Alert>
           )}
 
-          {/* Session Notice Banner with TailGrids Alert */}
+          {/* Session Notice Banner with HeroUI Alert */}
           {sessionNotice && !successNotice && (
             <Alert
               status={typeof sessionNotice === 'object' ? sessionNotice.status : 'error'}
@@ -377,12 +404,12 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
             </Alert>
           )}
 
-          {/* Error Banner with TailGrids Alert */}
+          {/* Error Banner with HeroUI Alert */}
           {error && !successNotice && (
             <Alert status="error" className="animate-fade-in">
               <AlertIndicator />
               <AlertContent>
-                <AlertTitle>Gagal Autentikasi</AlertTitle>
+                <AlertTitle>{errorTitle || 'Gagal Autentikasi'}</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </AlertContent>
             </Alert>
@@ -479,7 +506,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
             </button>
           </div>
 
-          {/* Submit Button with TailGrids Button & Spinner */}
+          {/* Submit Button with HeroUI Button & Spinner */}
           <Button
             type="submit"
             disabled={loading || Boolean(successNotice)}

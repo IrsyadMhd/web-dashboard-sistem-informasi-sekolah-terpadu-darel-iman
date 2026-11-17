@@ -87,12 +87,12 @@ const SISWA_MODAL_PAGE_SIZE = 8
 // ── MAPPING JENJANG → DAFTAR TINGKAT YANG VALID ────────────────────────────────
 // Menentukan opsi Tingkat Kelas yang relevan berdasarkan Jenjang yang dipilih
 const JENJANG_TINGKAT_MAP = {
-  TKIT:   { labels: ['TK A', 'TK B'],                values: ['TK A', 'TK B'] },
-  SDIT:   { labels: ['Tingkat 1', 'Tingkat 2', 'Tingkat 3', 'Tingkat 4', 'Tingkat 5', 'Tingkat 6'],   values: ['1', '2', '3', '4', '5', '6'] },
-  MIT:    { labels: ['Tingkat 1', 'Tingkat 2', 'Tingkat 3', 'Tingkat 4', 'Tingkat 5', 'Tingkat 6'],   values: ['1', '2', '3', '4', '5', '6'] },
-  SMPIT:  { labels: ['Tingkat 7 (Kelas 1 SMP)', 'Tingkat 8 (Kelas 2 SMP)', 'Tingkat 9 (Kelas 3 SMP)'], values: ['7', '8', '9'] },
-  SMAIT:  { labels: ['Tingkat 10 (Kelas 1 SMA)', 'Tingkat 11 (Kelas 2 SMA)', 'Tingkat 12 (Kelas 3 SMA)'], values: ['10', '11', '12'] },
-  MA:     { labels: ['Tingkat 10 (Kelas 1 MA)', 'Tingkat 11 (Kelas 2 MA)', 'Tingkat 12 (Kelas 3 MA)'],  values: ['10', '11', '12'] },
+  TKIT: { labels: ['TK A', 'TK B'], values: ['TK A', 'TK B'] },
+  SDIT: { labels: ['Tingkat 1', 'Tingkat 2', 'Tingkat 3', 'Tingkat 4', 'Tingkat 5', 'Tingkat 6'], values: ['1', '2', '3', '4', '5', '6'] },
+  MIT: { labels: ['Tingkat 1', 'Tingkat 2', 'Tingkat 3', 'Tingkat 4', 'Tingkat 5', 'Tingkat 6'], values: ['1', '2', '3', '4', '5', '6'] },
+  SMPIT: { labels: ['Tingkat 7 (Kelas 1 SMP)', 'Tingkat 8 (Kelas 2 SMP)', 'Tingkat 9 (Kelas 3 SMP)'], values: ['7', '8', '9'] },
+  SMAIT: { labels: ['Tingkat 10 (Kelas 1 SMA)', 'Tingkat 11 (Kelas 2 SMA)', 'Tingkat 12 (Kelas 3 SMA)'], values: ['10', '11', '12'] },
+  MA: { labels: ['Tingkat 10 (Kelas 1 MA)', 'Tingkat 11 (Kelas 2 MA)', 'Tingkat 12 (Kelas 3 MA)'], values: ['10', '11', '12'] },
 }
 // Fallback untuk jenjang tidak dikenal: semua tingkat
 const TINGKAT_DEFAULT_ALL = {
@@ -110,13 +110,13 @@ function getUnitBadgeStyle(type) {
   )
 }
 
-function initialFormState() {
+function initialFormState(defaultJenjang = '') {
   return {
     id: null,
     unit_pendidikan_id: '',
     tahun_ajaran_id: '',
     semester_id: '',
-    jenjang: 'SDIT',
+    jenjang: defaultJenjang,
     tingkat: '1',
     kode_kelas: '',
     nama_kelas: '',
@@ -203,9 +203,8 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald
       onClick={onClick}
       role={isClickable ? 'button' : undefined}
       tabIndex={isClickable ? 0 : undefined}
-      className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${
-        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
-      } ${t.card}`}
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+        } ${t.card}`}
     >
       {/* Ambient Glow */}
       <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
@@ -324,13 +323,12 @@ function HeroUiFilterSelect({
             setSearch('')
           }
         }}
-        className={`h-9 sm:h-10 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
-          isOpen
-            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
-            : hasValue
+        className={`h-9 sm:h-10 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${isOpen
+          ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
+          : hasValue
             ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
             : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
-        }`}
+          }`}
       >
         <div className="flex items-center gap-2 truncate">
           {IconComponent && (
@@ -341,9 +339,8 @@ function HeroUiFilterSelect({
           </span>
         </div>
         <ChevronDown
-          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+            }`}
         />
       </button>
 
@@ -389,11 +386,10 @@ function HeroUiFilterSelect({
                         setIsOpen(false)
                         setSearch('')
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
-                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
-                      }`}
+                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${isSelected
+                        ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                        : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
+                        }`}
                     >
                       <div className="truncate pr-2">
                         <div className="truncate">{opt.label}</div>
@@ -435,15 +431,19 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
   const userLevel = useMemo(() => getUserRoleLevel(user), [user])
   const isSuperAdminOrYayasan = userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
 
-  // Deteksi role Divisi Pendidikan (akses supervisi lintas unit)
+  // Deteksi role Divisi Pendidikan (akses supervisi lintas unit, tidak termasuk Kepala Sekolah/TU/Operator)
+  const isUnitScopedRole = useMemo(
+    () => userRoles.some((r) => /kepala[\s_]*sekolah|kepsek|tata[\s_]*usaha|operator|guru|wali[\s_]*kelas|musyrif|tahfizh/i.test(r)),
+    [userRoles]
+  )
   const isDivisiPendidikan = useMemo(() => {
-    if (isSuperAdminOrYayasan) return false
+    if (isSuperAdminOrYayasan || isUnitScopedRole) return false
     return (
       userLevel === ROLE_LEVELS.DIVISI_PENDIDIKAN ||
       hasAnyRole(userRoles, ROLES.DIVISI) ||
       userRoles.some((r) => /divisi|bidang[\s_]*pendidikan|pengawasan[\s_]*akademik/i.test(r))
     )
-  }, [userLevel, userRoles, isSuperAdminOrYayasan])
+  }, [userLevel, userRoles, isSuperAdminOrYayasan, isUnitScopedRole])
 
   // Role Access Check for Unit Pendidikan Filter (Super Admin, Admin, Yayasan, dan Divisi Pendidikan)
   const canSeeUnitFilter = isSuperAdminOrYayasan || isDivisiPendidikan
@@ -502,6 +502,11 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
   }, [user])
 
   const canImport = canCreate
+  const canExport = useMemo(() => {
+    if (canCreate) return true
+    const permissions = Array.isArray(user?.permissions) ? user.permissions : []
+    return permissions.some((p) => ['master.export', 'academic.class.export', 'sistem.master_data'].includes(p))
+  }, [canCreate, user])
 
   const userUnitId = useMemo(() => {
     return (
@@ -566,10 +571,23 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
 
   const masterUnits = optionsData?.units || EMPTY_OPTIONS
   const selectedUnitName = useMemo(() => {
-    if (!selectedUnitFilter) return ''
+    if (!selectedUnitFilter) {
+      if (!canSeeUnitFilter) {
+        return (
+          masterUnits[0]?.name ??
+          masterUnits[0]?.nama ??
+          masterUnits[0]?.nama_unit ??
+          user?.unit_name ??
+          user?.metadata?.unit_name ??
+          user?.unit?.name ??
+          ''
+        )
+      }
+      return ''
+    }
     const found = masterUnits.find((u) => String(u.id ?? u.unit_id) === String(selectedUnitFilter))
-    return found?.name ?? found?.nama ?? found?.nama_unit ?? user?.unit_name ?? ''
-  }, [masterUnits, selectedUnitFilter, user])
+    return found?.name ?? found?.nama ?? found?.nama_unit ?? user?.unit_name ?? user?.metadata?.unit_name ?? ''
+  }, [masterUnits, selectedUnitFilter, user, canSeeUnitFilter])
   const masterTahunAjaran = optionsData?.tahun_ajaran || EMPTY_OPTIONS
   const masterSemesters = optionsData?.semesters || EMPTY_OPTIONS
   const masterEmployees = optionsData?.employees || optionsData?.guru || EMPTY_OPTIONS
@@ -875,9 +893,10 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
     setCurrentStep(1)
     setFormErrors({})
     const defaultUnit = masterUnits[0]?.id || ''
+    const defaultJenjang = masterUnits[0]?.jenjang || masterUnits[0]?.level || masterUnits[0]?.type || masterJenjang[0]?.value || masterJenjang[0] || ''
     const defaultTahun = masterTahunAjaran.find((t) => t.is_active)?.id || masterTahunAjaran[0]?.id || ''
     const defaultSem = masterSemesters.find((s) => s.is_active)?.id || masterSemesters[0]?.id || ''
-    setFormData({ ...initialFormState(), unit_pendidikan_id: defaultUnit, tahun_ajaran_id: defaultTahun, semester_id: defaultSem })
+    setFormData({ ...initialFormState(defaultJenjang), unit_pendidikan_id: defaultUnit, tahun_ajaran_id: defaultTahun, semester_id: defaultSem })
     setIsFormModalOpen(true)
   }
 
@@ -885,12 +904,13 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
     setIsEditMode(true)
     setCurrentStep(1)
     setFormErrors({})
+    const unitObj = masterUnits.find((u) => String(u.id ?? u.unit_id) === String(item.unit_pendidikan_id))
     setFormData({
       id: item.id,
       unit_pendidikan_id: item.unit_pendidikan_id || '',
       tahun_ajaran_id: item.tahun_ajaran_id || '',
       semester_id: item.semester_id || '',
-      jenjang: item.jenjang || 'SDIT',
+      jenjang: item.jenjang || unitObj?.jenjang || unitObj?.level || '',
       tingkat: item.tingkat || '1',
       kode_kelas: item.kode_kelas || '',
       nama_kelas: item.nama_kelas || '',
@@ -975,6 +995,8 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
   const [importFile, setImportFile] = useState(null)
   const [importPreviewData, setImportPreviewData] = useState([])
   const [isImporting, setIsImporting] = useState(false)
+  const [overwriteExisting, setOverwriteExisting] = useState(false)
+  const [duplicateModalData, setDuplicateModalData] = useState(null)
 
   // ── Print Payload Builder ────────────────────────────────────────────────
   const getPrintPayload = (mode = 'all') => {
@@ -1061,14 +1083,15 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
 
   // ── Import Handlers ──────────────────────────────────────────────────────
   const handleDownloadTemplate = (format = 'csv') => {
-    const headers = ['Kode Kelas', 'Nama Kelas', 'Jenjang', 'Tingkat', 'Unit Pendidikan ID', 'Tahun Ajaran ID', 'Semester ID', 'Kapasitas', 'Ruangan', 'Status']
-    const sample = ['KLS-1A', 'Kelas 1A Al-Fatih', 'SDIT', '1', 'uuid-unit-001', 'uuid-tahun-001', 'uuid-semester-001', '32', 'Ruang 101', 'Aktif']
-    const csvContent = [headers.join(','), sample.map(v => `"${v}"`).join(',')].join('\n')
+    const headers = ['Kode Kelas', 'Nama Kelas', 'Jenjang', 'Tingkat', 'Unit Pendidikan', 'Tahun Ajaran', 'Semester', 'Kapasitas', 'Ruangan', 'Status']
+    const sample1 = ['KLS-1A', 'Kelas 1A Abu Bakar', 'SDIT', '1', 'SDIT 1', '2026/2027', 'Ganjil', '30', 'Ruang 101', 'Aktif']
+    const sample2 = ['KLS-1B', 'Kelas 1B Umar Bin Khattab', 'SDIT', '1', 'SDIT 1', '2026/2027', 'Ganjil', '30', 'Ruang 102', 'Aktif']
+    const csvContent = [headers.join(','), sample1.map(v => `"${v}"`).join(','), sample2.map(v => `"${v}"`).join(',')].join('\n')
     const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `Template_Import_Kelas.csv`
+    a.download = format === 'xlsx' ? 'Template_Import_Kelas.csv' : 'Template_Import_Kelas.csv'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -1079,8 +1102,18 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
     setImportFile(file)
     setImportPreviewData([])
     const ext = file.name.split('.').pop()?.toLowerCase()
+
+    const existingCodes = new Set((rawList || []).map(k => String(k.kode_kelas || k.kode || '').trim().toLowerCase()).filter(Boolean))
+    const existingNames = new Set((rawList || []).map(k => String(k.nama_kelas || k.nama || '').trim().toLowerCase()).filter(Boolean))
+
     if (ext === 'xlsx' || ext === 'xls') {
-      setImportPreviewData([{ kode: '(Auto)', nama: file.name, tingkat: ext.toUpperCase(), status: 'Siap Impor' }])
+      setImportPreviewData([{
+        kode: '(Auto)',
+        nama: file.name,
+        tingkat: ext.toUpperCase(),
+        status: 'Siap Impor',
+        isDuplicate: false,
+      }])
       return
     }
     const reader = new FileReader()
@@ -1114,7 +1147,14 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
         const kode = idxKode !== -1 ? (cols[idxKode] || '') : (cols[0] || '')
         const nama = idxNama !== -1 ? (cols[idxNama] || '') : (cols[1] || '')
         const tingkat = idxTingkat !== -1 ? (cols[idxTingkat] || '') : (cols[2] || '')
-        return { kode, nama, tingkat, status: nama ? 'Valid' : 'Tidak valid' }
+        const isDuplicate = (kode && existingCodes.has(kode.toLowerCase())) || (nama && existingNames.has(nama.toLowerCase()))
+        let status = 'Baru'
+        if (!nama && !kode) {
+          status = 'Tidak valid'
+        } else if (isDuplicate) {
+          status = 'Sudah Ada'
+        }
+        return { kode, nama, tingkat, status, isDuplicate }
       })
       setImportPreviewData(rowsData.filter(r => r.nama || r.kode))
     }
@@ -1127,6 +1167,10 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
     try {
       const formData = new FormData()
       formData.append('file', importFile)
+      formData.append('overwrite', overwriteExisting ? '1' : '0')
+      if (selectedUnitFilter) {
+        formData.append('unit_pendidikan_id', selectedUnitFilter)
+      }
       const res = await kelasService.prosesImport(formData)
       const resData = res?.data || res || {}
       setIsImporting(false)
@@ -1134,11 +1178,46 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
       setImportFile(null)
       setShowImportModal(false)
       queryClient.invalidateQueries({ queryKey: ['kelas-list'] })
-      pushToast(
-        'Import Berhasil',
-        `Data kelas berhasil diimpor. Berhasil: ${resData.berhasil || 0}, Duplikat/Skip: ${resData.duplikat || 0}, Gagal: ${resData.gagal || 0}`,
-        resData.gagal > 0 && resData.berhasil === 0 ? 'error' : 'success'
-      )
+
+      const duplicateList = resData.duplicates || []
+      const duplicateCount = resData.duplikat || 0
+      const updatedCount = resData.diperbarui || 0
+      const createdCount = resData.berhasil || 0
+      const failedCount = resData.gagal || 0
+
+      // Tampilkan modal hasil jika ada data yang sama (duplikat atau ditimpa) atau ada error
+      if (duplicateList.length > 0 || duplicateCount > 0 || updatedCount > 0 || failedCount > 0) {
+        setDuplicateModalData({
+          total: resData.total || (createdCount + updatedCount + duplicateCount + failedCount),
+          berhasil: createdCount,
+          diperbarui: updatedCount,
+          duplikat: duplicateCount,
+          gagal: failedCount,
+          overwrite: overwriteExisting,
+          duplicates: duplicateList,
+          errors: resData.errors || [],
+        })
+      }
+
+      if (updatedCount > 0) {
+        pushToast(
+          'Import Selesai (Ditimpa)',
+          `${createdCount} kelas baru ditambahkan, ${updatedCount} data kelas yang sama berhasil ditimpa/diperbarui.${duplicateCount > 0 ? ` (${duplicateCount} dilewati)` : ''}${failedCount > 0 ? ` (${failedCount} gagal)` : ''}`,
+          failedCount > 0 && createdCount === 0 && updatedCount === 0 ? 'error' : 'success'
+        )
+      } else if (duplicateCount > 0) {
+        pushToast(
+          'Pemberitahuan Duplikat',
+          `${createdCount} data baru ditambahkan. Ditemukan ${duplicateCount} data kelas yang sudah ada dan dilewati karena opsi timpa tidak diaktifkan.${failedCount > 0 ? ` (${failedCount} gagal)` : ''}`,
+          'warning'
+        )
+      } else {
+        pushToast(
+          'Import Berhasil',
+          `Data kelas berhasil diimpor. Berhasil: ${createdCount}, Gagal: ${failedCount}`,
+          failedCount > 0 && createdCount === 0 ? 'error' : 'success'
+        )
+      }
     } catch (err) {
       setIsImporting(false)
       const msg = err?.response?.data?.message || err.message || 'Gagal memproses impor data kelas.'
@@ -1189,21 +1268,23 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
       )}
 
       {/* Export / Download Button (Vivid Amber / Orange Squircle) */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Export Data Kelas"
-          aria-label="Export Data Kelas"
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
-          onClick={() => setShowExportModal(true)}
-        >
-          <Download className="size-5 text-white" strokeWidth={2.2} />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Export Data
+      {canExport && (
+        <div className="group relative inline-flex">
+          <button
+            type="button"
+            title="Export Data Kelas"
+            aria-label="Export Data Kelas"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+            onClick={() => setShowExportModal(true)}
+          >
+            <Download className="size-5 text-white" strokeWidth={2.2} />
+          </button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Export Data
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Tambah Kelas Button (Vivid Emerald / Teal Squircle) */}
       {canCreate && (
@@ -1232,7 +1313,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
   return (
     <PageContainer maxW="7xl">
       {/* ══════════════════════════════════════════════════════════════════
-          EXPORT DIALOG — Harmonized TailGrids Batch Modal
+          EXPORT DIALOG — Harmonized HeroUI Batch Modal
           ══════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {showExportModal && (
@@ -1345,7 +1426,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
       </AnimatePresence>
 
       {/* ══════════════════════════════════════════════════════════════════
-          IMPORT DIALOG — Harmonized TailGrids Batch Modal
+          IMPORT DIALOG — Harmonized HeroUI Batch Modal
           ══════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {showImportModal && (
@@ -1483,11 +1564,17 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                                 <TableCell className="px-3 py-2">
                                   <span className={cn(
                                     "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold",
-                                    r.status === 'Valid' || r.status === 'Siap Impor'
+                                    r.status === 'Valid' || r.status === 'Siap Impor' || r.status === 'Baru'
                                       ? "bg-emerald-50 text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60"
-                                      : "bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60"
+                                      : r.isDuplicate || r.status === 'Sudah Ada'
+                                        ? overwriteExisting
+                                          ? "bg-amber-50 text-amber-800 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300"
+                                          : "bg-sky-50 text-sky-800 border border-sky-300 dark:bg-sky-950/60 dark:text-sky-300"
+                                        : "bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60"
                                   )}>
-                                    {r.status}
+                                    {r.isDuplicate
+                                      ? (overwriteExisting ? 'Sudah Ada (Akan Ditimpa)' : 'Sudah Ada (Dilewati)')
+                                      : r.status}
                                   </span>
                                 </TableCell>
                               </TableRow>
@@ -1497,6 +1584,48 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                       </div>
                     </div>
                   )}
+
+                  {/* Opsi Timpa Data (Overwrite) */}
+                  <div className={cn(
+                    "rounded-2xl border p-4 transition-all duration-200",
+                    overwriteExisting
+                      ? "border-amber-300/90 bg-gradient-to-r from-amber-50/70 via-orange-50/30 to-amber-50/70 dark:border-amber-700/60 dark:bg-amber-950/30"
+                      : "border-slate-200/80 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40"
+                  )}>
+                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                      <div className="pt-0.5">
+                        <input
+                          type="checkbox"
+                          id="overwrite-kelas-checkbox"
+                          checked={overwriteExisting}
+                          onChange={e => setOverwriteExisting(e.target.checked)}
+                          className="size-4.5 rounded-md border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                            Timpa Data Jika Kode Kelas Sudah Ada
+                          </span>
+                          {overwriteExisting ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800 border border-amber-300/80 dark:bg-amber-950 dark:text-amber-300">
+                              <RefreshCcw className="size-2.5" />
+                              Opsi Timpa Aktif
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              Lewati Duplikat (Default)
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                          {overwriteExisting
+                            ? 'Jika baris data pada berkas memiliki Kode Kelas yang sudah terdaftar, data kelas lama akan diperbarui otomatis dengan data berkas terbaru.'
+                            : 'Jika baris data pada berkas memiliki Kode Kelas yang sudah ada di database, baris tersebut akan dilewati dan data lama tetap utuh.'}
+                        </p>
+                      </div>
+                    </label>
+                  </div>
 
                   {/* Guidance Banner */}
                   <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-3.5 dark:border-emerald-800/50 dark:bg-emerald-950/30 flex items-start gap-2.5">
@@ -1539,8 +1668,178 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
         )}
       </AnimatePresence>
 
+      {/* ── MODAL HASIL IMPOR & PEMBERITAHUAN DATA DUPLIKAT ── */}
+      <AnimatePresence>
+        {duplicateModalData && (
+          <div
+            className="overlay modal fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="kelas-duplicate-report-title"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="modal-dialog font-sans my-auto w-full max-w-2xl"
+            >
+              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                {/* Top Accent Gradient Bar */}
+                <div className={cn(
+                  "h-1.5 w-full shrink-0",
+                  duplicateModalData.diperbarui > 0
+                    ? "bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600"
+                    : duplicateModalData.duplikat > 0
+                      ? "bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-500"
+                      : "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600"
+                )} />
+
+                {/* Header */}
+                <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "rounded-2xl p-2.5 text-white shadow-md shrink-0 border",
+                      duplicateModalData.diperbarui > 0
+                        ? "bg-gradient-to-br from-amber-500 to-orange-600 border-amber-300/30 shadow-amber-500/30"
+                        : "bg-gradient-to-br from-emerald-500 to-teal-700 border-emerald-300/30 shadow-emerald-500/30"
+                    )}>
+                      {duplicateModalData.diperbarui > 0 ? (
+                        <RefreshCcw className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      ) : (
+                        <CheckCircle2 className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      )}
+                    </div>
+                    <div>
+                      <h3 id="kelas-duplicate-report-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Hasil Impor & Pemberitahuan Data</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          Total {duplicateModalData.total} Data
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Ringkasan sinkronisasi dan status pemrosesan data kelas
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateModalData(null)}
+                    aria-label="Tutup ringkasan impor"
+                    className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 transition cursor-pointer"
+                  >
+                    <X className="size-4" strokeWidth={2.25} />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="modal-body min-h-0 flex-1 space-y-4 overflow-y-auto p-6 text-sm text-slate-700 dark:text-slate-200">
+                  {/* KPI Summary Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="p-3 rounded-2xl border border-emerald-200/80 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/30 text-center">
+                      <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">Baru Ditambah</p>
+                      <p className="text-xl font-black text-emerald-700 dark:text-emerald-400 mt-0.5">{duplicateModalData.berhasil}</p>
+                    </div>
+                    <div className="p-3 rounded-2xl border border-amber-200/80 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/30 text-center">
+                      <p className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase">Ditimpa / Diupdate</p>
+                      <p className="text-xl font-black text-amber-700 dark:text-amber-400 mt-0.5">{duplicateModalData.diperbarui}</p>
+                    </div>
+                    <div className="p-3 rounded-2xl border border-sky-200/80 bg-sky-50/50 dark:border-sky-900/40 dark:bg-sky-950/30 text-center">
+                      <p className="text-[10px] font-bold text-sky-800 dark:text-sky-300 uppercase">Duplikat Dilewati</p>
+                      <p className="text-xl font-black text-sky-700 dark:text-sky-400 mt-0.5">{duplicateModalData.duplikat}</p>
+                    </div>
+                    <div className="p-3 rounded-2xl border border-rose-200/80 bg-rose-50/50 dark:border-rose-900/40 dark:bg-rose-950/30 text-center">
+                      <p className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase">Gagal Diproses</p>
+                      <p className="text-xl font-black text-rose-700 dark:text-rose-400 mt-0.5">{duplicateModalData.gagal}</p>
+                    </div>
+                  </div>
+
+                  {/* Duplicate Detail Table if exists */}
+                  {duplicateModalData.duplicates && duplicateModalData.duplicates.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <AlertTriangle className="size-3.5 text-amber-600 dark:text-amber-400" />
+                          <span>Daftar Data yang Sama (Kode Kelas Terdaftar)</span>
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                            {duplicateModalData.duplicates.length} baris
+                          </span>
+                        </p>
+                      </div>
+                      <div className="max-h-56 overflow-auto rounded-2xl border border-slate-200/80 bg-white shadow-2xs dark:border-slate-800 dark:bg-[#182232]">
+                        <TableRoot className="w-full text-left text-[11px]">
+                          <TableHeader className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200/80 dark:border-slate-800 font-bold text-slate-700 dark:text-slate-300">
+                            <TableRow>
+                              <TableHead className="px-3 py-2 w-14">Baris</TableHead>
+                              <TableHead className="px-3 py-2">Kode</TableHead>
+                              <TableHead className="px-3 py-2">Nama Kelas</TableHead>
+                              <TableHead className="px-3 py-2">Status Aksi</TableHead>
+                              <TableHead className="px-3 py-2">Keterangan</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {duplicateModalData.duplicates.map((item, idx) => (
+                              <TableRow key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40">
+                                <TableCell className="px-3 py-2 font-mono text-slate-500">{item.baris}</TableCell>
+                                <TableCell className="px-3 py-2 font-mono font-bold text-slate-800 dark:text-slate-200">{item.kode}</TableCell>
+                                <TableCell className="px-3 py-2 font-semibold text-slate-900 dark:text-white">{item.nama}</TableCell>
+                                <TableCell className="px-3 py-2">
+                                  <span className={cn(
+                                    "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                    item.status === 'Ditimpa'
+                                      ? "bg-amber-100 text-amber-800 border border-amber-300/80 dark:bg-amber-950 dark:text-amber-300"
+                                      : "bg-sky-100 text-sky-800 border border-sky-300/80 dark:bg-sky-950 dark:text-sky-300"
+                                  )}>
+                                    {item.status}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="px-3 py-2 text-slate-600 dark:text-slate-400 text-[10px]">{item.keterangan}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </TableRoot>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error List if exists */}
+                  {duplicateModalData.errors && duplicateModalData.errors.length > 0 && (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3.5 dark:border-rose-900/50 dark:bg-rose-950/30 text-xs">
+                      <p className="font-bold text-rose-800 dark:text-rose-300 flex items-center gap-1.5 mb-1.5">
+                        <XCircle className="size-3.5" />
+                        <span>Catatan Kesalahan Baris Data:</span>
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 text-rose-700 dark:text-rose-400 text-[11px]">
+                        {duplicateModalData.errors.slice(0, 5).map((err, i) => (
+                          <li key={i}>{err}</li>
+                        ))}
+                        {duplicateModalData.errors.length > 5 && (
+                          <li className="font-semibold italic">...dan {duplicateModalData.errors.length - 5} kesalahan lainnya.</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="modal-footer flex items-center justify-end border-t border-slate-100 bg-slate-50/50 px-6 py-3.5 dark:border-slate-800 dark:bg-slate-900/30">
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateModalData(null)}
+                    className="inline-flex items-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 text-xs font-bold transition shadow-sm cursor-pointer"
+                  >
+                    <Check className="size-3.5" strokeWidth={2.2} />
+                    <span>Tutup & Mengerti</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* ══════════════════════════════════════════════════════════════════
-          CETAK & PDF DIALOG — Harmonized TailGrids Scope Selection Modal
+          CETAK & PDF DIALOG — Harmonized HeroUI Scope Selection Modal
           ══════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {printOptionModalOpen && (
@@ -1603,15 +1902,13 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                     {/* Mode 1: Seluruh Data Kelas */}
                     <div
                       onClick={() => setPrintScopeMode('all')}
-                      className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all duration-200 ${
-                        printScopeMode === 'all'
-                          ? 'border-[#0E5C44] bg-emerald-50/70 dark:border-emerald-500 dark:bg-emerald-950/40 shadow-xs ring-1 ring-[#0E5C44]'
-                          : 'border-slate-200/80 bg-white hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/40'
-                      }`}
+                      className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all duration-200 ${printScopeMode === 'all'
+                        ? 'border-[#0E5C44] bg-emerald-50/70 dark:border-emerald-500 dark:bg-emerald-950/40 shadow-xs ring-1 ring-[#0E5C44]'
+                        : 'border-slate-200/80 bg-white hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/40'
+                        }`}
                     >
-                      <div className={`mt-0.5 size-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                        printScopeMode === 'all' ? 'border-[#0E5C44] bg-[#0E5C44] text-white' : 'border-slate-300 dark:border-slate-600'
-                      }`}>
+                      <div className={`mt-0.5 size-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${printScopeMode === 'all' ? 'border-[#0E5C44] bg-[#0E5C44] text-white' : 'border-slate-300 dark:border-slate-600'
+                        }`}>
                         {printScopeMode === 'all' && <span className="size-2 rounded-full bg-white" />}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1630,15 +1927,13 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                     {/* Mode 2: Laporan Wali Kelas */}
                     <div
                       onClick={() => setPrintScopeMode('wali')}
-                      className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all duration-200 ${
-                        printScopeMode === 'wali'
-                          ? 'border-[#0E5C44] bg-emerald-50/70 dark:border-emerald-500 dark:bg-emerald-950/40 shadow-xs ring-1 ring-[#0E5C44]'
-                          : 'border-slate-200/80 bg-white hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/40'
-                      }`}
+                      className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all duration-200 ${printScopeMode === 'wali'
+                        ? 'border-[#0E5C44] bg-emerald-50/70 dark:border-emerald-500 dark:bg-emerald-950/40 shadow-xs ring-1 ring-[#0E5C44]'
+                        : 'border-slate-200/80 bg-white hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/40'
+                        }`}
                     >
-                      <div className={`mt-0.5 size-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                        printScopeMode === 'wali' ? 'border-[#0E5C44] bg-[#0E5C44] text-white' : 'border-slate-300 dark:border-slate-600'
-                      }`}>
+                      <div className={`mt-0.5 size-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${printScopeMode === 'wali' ? 'border-[#0E5C44] bg-[#0E5C44] text-white' : 'border-slate-300 dark:border-slate-600'
+                        }`}>
                         {printScopeMode === 'wali' && <span className="size-2 rounded-full bg-white" />}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1657,15 +1952,13 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                     {/* Mode 3: Laporan Kapasitas & Ruangan */}
                     <div
                       onClick={() => setPrintScopeMode('kapasitas')}
-                      className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all duration-200 ${
-                        printScopeMode === 'kapasitas'
-                          ? 'border-[#0E5C44] bg-emerald-50/70 dark:border-emerald-500 dark:bg-emerald-950/40 shadow-xs ring-1 ring-[#0E5C44]'
-                          : 'border-slate-200/80 bg-white hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/40'
-                      }`}
+                      className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all duration-200 ${printScopeMode === 'kapasitas'
+                        ? 'border-[#0E5C44] bg-emerald-50/70 dark:border-emerald-500 dark:bg-emerald-950/40 shadow-xs ring-1 ring-[#0E5C44]'
+                        : 'border-slate-200/80 bg-white hover:bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/40'
+                        }`}
                     >
-                      <div className={`mt-0.5 size-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                        printScopeMode === 'kapasitas' ? 'border-[#0E5C44] bg-[#0E5C44] text-white' : 'border-slate-300 dark:border-slate-600'
-                      }`}>
+                      <div className={`mt-0.5 size-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${printScopeMode === 'kapasitas' ? 'border-[#0E5C44] bg-[#0E5C44] text-white' : 'border-slate-300 dark:border-slate-600'
+                        }`}>
                         {printScopeMode === 'kapasitas' && <span className="size-2 rounded-full bg-white" />}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1763,12 +2056,12 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
             <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
             <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
-            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-4 min-w-0">
+            <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-1 items-start gap-4 min-w-0">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
                   <School className="h-6 w-6" />
                 </div>
-                <div className="min-w-0">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                       Data Kelas & Rombongan Belajar
@@ -1778,7 +2071,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                       {isDivisiPendidikan ? 'Supervisi Divisi Pendidikan' : 'Manajemen Rombel'}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-1 w-full text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
                     Pengelolaan seluruh rombongan belajar, penugasan wali kelas, alokasi ruangan, dan pemindahan kelas siswa.
                   </p>
                 </div>
@@ -1814,7 +2107,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   {canSeeUnitFilter
                     ? `Pilih unit pendidikan untuk melihat total kelas & KPI rombel unit spesifik, atau pilih "Semua Unit" untuk melihat seluruh unit${isDivisiPendidikan ? ' (Supervisi Divisi Pendidikan)' : ''}.`
-                    : `Menampilkan total rombel, keaktifan kelas, dan KPI khusus untuk unit ${selectedUnitName || user?.unit_name || 'sekolah Anda'}.`}
+                    : `Menampilkan total rombel, keaktifan kelas, dan KPI khusus untuk unit ${selectedUnitName || user?.unit?.name || user?.unit_name || user?.employee?.unit?.name || 'Unit Terkunci'}.`}
                 </p>
               </div>
             </div>
@@ -2294,24 +2587,22 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                           <label className="mb-1.5 block text-xs font-bold text-slate-800 dark:text-slate-100">
                             Unit Pendidikan *
                           </label>
-                          <div className="relative">
-                            <Building2 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400" />
-                            <select
-                              required
-                              value={formData.unit_pendidikan_id}
-                              onChange={(e) => setFormData((prev) => ({ ...prev, unit_pendidikan_id: e.target.value }))}
-                              className={`h-11 w-full rounded-xl border bg-white pl-10 pr-3.5 text-xs font-medium outline-none transition-all focus:border-[#0E5C44] focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
-                                formErrors.unit_pendidikan_id ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200'
-                              }`}
-                            >
-                              <option value="">-- Pilih Unit Pendidikan --</option>
-                              {masterUnits.map((u) => (
-                                <option key={u.id} value={u.id}>
-                                  {u.name} ({u.level})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <HeroUiFilterSelect
+                            value={formData.unit_pendidikan_id}
+                            onChange={(val) => setFormData((prev) => ({ ...prev, unit_pendidikan_id: val }))}
+                            options={[
+                              { value: '', label: '-- Pilih Unit Pendidikan --' },
+                              ...masterUnits.map((u) => ({
+                                value: String(u.id),
+                                label: `${u.name} (${u.level})`,
+                              })),
+                            ]}
+                            placeholder="-- Pilih Unit Pendidikan --"
+                            icon={Building2}
+                            ariaLabel="Pilih unit pendidikan"
+                            searchable
+                            className="w-full"
+                          />
                           {formErrors.unit_pendidikan_id && (
                             <p className="mt-1 text-[11px] font-medium text-rose-500">
                               {formErrors.unit_pendidikan_id[0]}
@@ -2323,24 +2614,21 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                           <label className="mb-1.5 block text-xs font-bold text-slate-800 dark:text-slate-100">
                             Tahun Ajaran *
                           </label>
-                          <div className="relative">
-                            <Calendar className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400" />
-                            <select
-                              required
-                              value={formData.tahun_ajaran_id}
-                              onChange={(e) => setFormData((prev) => ({ ...prev, tahun_ajaran_id: e.target.value }))}
-                              className={`h-11 w-full rounded-xl border bg-white pl-10 pr-3.5 text-xs font-medium outline-none transition-all focus:border-[#0E5C44] focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
-                                formErrors.tahun_ajaran_id ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200'
-                              }`}
-                            >
-                              <option value="">-- Pilih Tahun Ajaran --</option>
-                              {masterTahunAjaran.map((t) => (
-                                <option key={t.id} value={t.id}>
-                                  {t.name} {t.is_active ? '(Aktif)' : ''}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <HeroUiFilterSelect
+                            value={formData.tahun_ajaran_id}
+                            onChange={(val) => setFormData((prev) => ({ ...prev, tahun_ajaran_id: val }))}
+                            options={[
+                              { value: '', label: '-- Pilih Tahun Ajaran --' },
+                              ...masterTahunAjaran.map((t) => ({
+                                value: String(t.id),
+                                label: `${t.name} ${t.is_active ? '(Aktif)' : ''}`,
+                              })),
+                            ]}
+                            placeholder="-- Pilih Tahun Ajaran --"
+                            icon={Calendar}
+                            ariaLabel="Pilih tahun ajaran"
+                            className="w-full"
+                          />
                           {formErrors.tahun_ajaran_id && (
                             <p className="mt-1 text-[11px] font-medium text-rose-500">
                               {formErrors.tahun_ajaran_id[0]}
@@ -2352,24 +2640,21 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                           <label className="mb-1.5 block text-xs font-bold text-slate-800 dark:text-slate-100">
                             Semester *
                           </label>
-                          <div className="relative">
-                            <Calendar className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400" />
-                            <select
-                              required
-                              value={formData.semester_id}
-                              onChange={(e) => setFormData((prev) => ({ ...prev, semester_id: e.target.value }))}
-                              className={`h-11 w-full rounded-xl border bg-white pl-10 pr-3.5 text-xs font-medium outline-none transition-all focus:border-[#0E5C44] focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
-                                formErrors.semester_id ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200'
-                              }`}
-                            >
-                              <option value="">-- Pilih Semester --</option>
-                              {availableSemestersForm.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                  {s.name} ({s.academic_year_name || 'TA'})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <HeroUiFilterSelect
+                            value={formData.semester_id}
+                            onChange={(val) => setFormData((prev) => ({ ...prev, semester_id: val }))}
+                            options={[
+                              { value: '', label: '-- Pilih Semester --' },
+                              ...availableSemestersForm.map((s) => ({
+                                value: String(s.id),
+                                label: `${s.name} (${s.academic_year_name || 'TA'})`,
+                              })),
+                            ]}
+                            placeholder="-- Pilih Semester --"
+                            icon={Calendar}
+                            ariaLabel="Pilih semester"
+                            className="w-full"
+                          />
                           {formErrors.semester_id && (
                             <p className="mt-1 text-[11px] font-medium text-rose-500">
                               {formErrors.semester_id[0]}
@@ -2399,9 +2684,8 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                               value={formData.nama_kelas}
                               onChange={(e) => setFormData((prev) => ({ ...prev, nama_kelas: e.target.value }))}
                               placeholder="Contoh: 7-A Tahfizh, Kelas 1 Binar"
-                              className={`h-11 w-full rounded-xl border bg-white pl-10 pr-3.5 text-xs font-medium outline-none transition-all focus:border-[#0E5C44] focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
-                                formErrors.nama_kelas ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200'
-                              }`}
+                              className={`h-11 w-full rounded-xl border bg-white pl-10 pr-3.5 text-xs font-medium outline-none transition-all focus:border-[#0E5C44] focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${formErrors.nama_kelas ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200'
+                                }`}
                             />
                           </div>
                           {formErrors.nama_kelas && (
@@ -2423,9 +2707,8 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                               value={formData.kode_kelas}
                               onChange={(e) => setFormData((prev) => ({ ...prev, kode_kelas: e.target.value }))}
                               placeholder="Contoh: KLS-7A-SMP"
-                              className={`h-11 w-full rounded-xl border bg-white pl-10 pr-3.5 font-mono text-xs font-medium outline-none transition-all focus:border-[#0E5C44] focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
-                                formErrors.kode_kelas ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200'
-                              }`}
+                              className={`h-11 w-full rounded-xl border bg-white pl-10 pr-3.5 font-mono text-xs font-medium outline-none transition-all focus:border-[#0E5C44] focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${formErrors.kode_kelas ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200'
+                                }`}
                             />
                           </div>
                           {formErrors.kode_kelas && (
@@ -2439,51 +2722,40 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                           <label className="mb-1.5 block text-xs font-bold text-slate-800 dark:text-slate-100">
                             Jenjang *
                           </label>
-                          <div className="relative">
-                            <School className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400" />
-                            <select
-                              required
-                              value={formData.jenjang}
-                              onChange={(e) => {
-                                const newJenjang = e.target.value
-                                const map = JENJANG_TINGKAT_MAP[newJenjang] || TINGKAT_DEFAULT_ALL
-                                // Reset tingkat ke nilai pertama yang valid untuk jenjang baru
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  jenjang: newJenjang,
-                                  tingkat: map.values[0] || '1',
-                                }))
-                              }}
-                              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3.5 text-xs font-medium outline-none transition-all focus:border-[#0E5C44] focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
-                            >
-                              {masterJenjang.map((j) => (
-                                <option key={j} value={j}>
-                                  {j}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <HeroUiFilterSelect
+                            value={formData.jenjang}
+                            onChange={(val) => {
+                              const map = JENJANG_TINGKAT_MAP[val] || TINGKAT_DEFAULT_ALL
+                              setFormData((prev) => ({
+                                ...prev,
+                                jenjang: val,
+                                tingkat: map.values[0] || '1',
+                              }))
+                            }}
+                            options={masterJenjang.map((j) => ({ value: j, label: j }))}
+                            placeholder="Pilih Jenjang"
+                            icon={School}
+                            ariaLabel="Pilih jenjang"
+                            className="w-full"
+                          />
                         </div>
 
                         <div>
                           <label className="mb-1.5 block text-xs font-bold text-slate-800 dark:text-slate-100">
                             Tingkat Kelas *
                           </label>
-                          <div className="relative">
-                            <Layers className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400" />
-                            <select
-                              required
-                              value={formData.tingkat}
-                              onChange={(e) => setFormData((prev) => ({ ...prev, tingkat: e.target.value }))}
-                              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3.5 text-xs font-medium outline-none transition-all focus:border-[#0E5C44] focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
-                            >
-                              {filteredTingkat.values.map((val, idx) => (
-                                <option key={val} value={val}>
-                                  {filteredTingkat.labels[idx]}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <HeroUiFilterSelect
+                            value={formData.tingkat}
+                            onChange={(val) => setFormData((prev) => ({ ...prev, tingkat: val }))}
+                            options={filteredTingkat.values.map((val, idx) => ({
+                              value: val,
+                              label: filteredTingkat.labels[idx],
+                            }))}
+                            placeholder="Pilih Tingkat"
+                            icon={Layers}
+                            ariaLabel="Pilih tingkat"
+                            className="w-full"
+                          />
                         </div>
 
                         <div className="sm:col-span-2">
@@ -2516,21 +2788,22 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                           <label className="mb-1.5 block text-xs font-bold text-slate-800 dark:text-slate-100">
                             Penugasan Wali Kelas
                           </label>
-                          <div className="relative">
-                            <UserCheck className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400" />
-                            <select
-                              value={formData.wali_kelas_id}
-                              onChange={(e) => setFormData((prev) => ({ ...prev, wali_kelas_id: e.target.value }))}
-                              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3.5 text-xs font-medium outline-none transition-all focus:border-[#0E5C44] focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
-                            >
-                              <option value="">-- Pilih Wali Kelas (Opsional) --</option>
-                              {filteredEmployeesForm.map((emp) => (
-                                <option key={emp.id} value={emp.id}>
-                                  {emp.nama_tampil || emp.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <HeroUiFilterSelect
+                            value={formData.wali_kelas_id}
+                            onChange={(val) => setFormData((prev) => ({ ...prev, wali_kelas_id: val }))}
+                            options={[
+                              { value: '', label: '-- Pilih Wali Kelas (Opsional) --' },
+                              ...filteredEmployeesForm.map((emp) => ({
+                                value: String(emp.id),
+                                label: emp.nama_tampil || emp.name,
+                              })),
+                            ]}
+                            placeholder="-- Pilih Wali Kelas (Opsional) --"
+                            icon={UserCheck}
+                            ariaLabel="Pilih wali kelas"
+                            searchable
+                            className="w-full"
+                          />
                         </div>
 
                         <div className="sm:col-span-2">
@@ -2556,19 +2829,17 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                           </label>
                           <div
                             onClick={() => setFormData((p) => ({ ...p, status: p.status === 'Aktif' ? 'Tidak Aktif' : 'Aktif' }))}
-                            className={`group relative flex items-center justify-between gap-3.5 rounded-2xl border-2 p-3.5 sm:p-4 transition-all duration-200 cursor-pointer ${
-                              formData.status === 'Aktif'
-                                ? 'border-emerald-500/35 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-emerald-50/60 shadow-xs shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-slate-900/60'
-                                : 'border-slate-200/90 bg-slate-50/60 hover:bg-slate-100/60 dark:border-slate-800 dark:bg-slate-900/40 dark:hover:bg-slate-800/40'
-                            }`}
+                            className={`group relative flex items-center justify-between gap-3.5 rounded-2xl border-2 p-3.5 sm:p-4 transition-all duration-200 cursor-pointer ${formData.status === 'Aktif'
+                              ? 'border-emerald-500/35 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-emerald-50/60 shadow-xs shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-slate-900/60'
+                              : 'border-slate-200/90 bg-slate-50/60 hover:bg-slate-100/60 dark:border-slate-800 dark:bg-slate-900/40 dark:hover:bg-slate-800/40'
+                              }`}
                           >
                             <div className="flex items-center gap-3.5 min-w-0">
                               <div
-                                className={`flex size-11 shrink-0 items-center justify-center rounded-2xl border transition-all duration-200 ${
-                                  formData.status === 'Aktif'
-                                    ? 'border-emerald-300/80 bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-emerald-500/20 text-[#0E5C44] shadow-xs dark:border-emerald-700/60 dark:from-emerald-950/80 dark:to-teal-950/60 dark:text-[#3FBF75]'
-                                    : 'border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500'
-                                }`}
+                                className={`flex size-11 shrink-0 items-center justify-center rounded-2xl border transition-all duration-200 ${formData.status === 'Aktif'
+                                  ? 'border-emerald-300/80 bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-emerald-500/20 text-[#0E5C44] shadow-xs dark:border-emerald-700/60 dark:from-emerald-950/80 dark:to-teal-950/60 dark:text-[#3FBF75]'
+                                  : 'border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500'
+                                  }`}
                               >
                                 {formData.status === 'Aktif' ? (
                                   <ShieldCheck className="size-5.5 transition-transform group-hover:scale-110" strokeWidth={2.25} />
@@ -2596,11 +2867,10 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
 
                             <div className="flex items-center gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
                               <span
-                                className={`text-xs font-black transition-colors ${
-                                  formData.status === 'Aktif'
-                                    ? 'text-emerald-700 dark:text-emerald-400'
-                                    : 'text-slate-400 dark:text-slate-500'
-                                }`}
+                                className={`text-xs font-black transition-colors ${formData.status === 'Aktif'
+                                  ? 'text-emerald-700 dark:text-emerald-400'
+                                  : 'text-slate-400 dark:text-slate-500'
+                                  }`}
                               >
                                 {formData.status === 'Aktif' ? 'Aktif' : 'Nonaktif'}
                               </span>
@@ -2610,16 +2880,14 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                                 aria-checked={formData.status === 'Aktif'}
                                 aria-label="Toggle status operasional kelas"
                                 onClick={() => setFormData((p) => ({ ...p, status: p.status === 'Aktif' ? 'Tidak Aktif' : 'Aktif' }))}
-                                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-4 focus:ring-emerald-500/20 ${
-                                  formData.status === 'Aktif'
-                                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 shadow-sm shadow-emerald-700/30'
-                                    : 'bg-slate-300 dark:bg-slate-700'
-                                }`}
+                                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-4 focus:ring-emerald-500/20 ${formData.status === 'Aktif'
+                                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 shadow-sm shadow-emerald-700/30'
+                                  : 'bg-slate-300 dark:bg-slate-700'
+                                  }`}
                               >
                                 <span
-                                  className={`pointer-events-none inline-flex size-5.5 items-center justify-center transform rounded-full bg-white shadow-md ring-0 transition-transform duration-200 ease-in-out ${
-                                    formData.status === 'Aktif' ? 'translate-x-5' : 'translate-x-0.5'
-                                  }`}
+                                  className={`pointer-events-none inline-flex size-5.5 items-center justify-center transform rounded-full bg-white shadow-md ring-0 transition-transform duration-200 ease-in-out ${formData.status === 'Aktif' ? 'translate-x-5' : 'translate-x-0.5'
+                                    }`}
                                 >
                                   {formData.status === 'Aktif' ? (
                                     <Check className="size-3 text-emerald-700" strokeWidth={3} />
@@ -3162,21 +3430,22 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                     <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5">
                       Pilih Kelas Tujuan Rombel (Tingkat {selectedKelasSiswa.tingkat || 1}) *
                     </label>
-                    <div className="relative">
-                      <School className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-purple-600 dark:text-purple-400" />
-                      <select
-                        value={targetKelasId}
-                        onChange={(e) => setTargetKelasId(e.target.value)}
-                        className="w-full h-11 pl-10 pr-3.5 text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none transition-all focus:border-purple-600 focus:ring-2 focus:ring-purple-500/20"
-                      >
-                        <option value="">-- Pilih Kelas Tujuan (Tingkat {selectedKelasSiswa.tingkat || 1}) --</option>
-                        {destinationClasses.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.nama_kelas} (Kode: {c.kode_kelas}) - Tingkat {c.tingkat}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <HeroUiFilterSelect
+                      value={targetKelasId}
+                      onChange={(val) => setTargetKelasId(val)}
+                      options={[
+                        { value: '', label: `-- Pilih Kelas Tujuan (Tingkat ${selectedKelasSiswa.tingkat || 1}) --` },
+                        ...destinationClasses.map((c) => ({
+                          value: String(c.id),
+                          label: `${c.nama_kelas} (Kode: ${c.kode_kelas}) - Tingkat ${c.tingkat}`,
+                        })),
+                      ]}
+                      placeholder={`-- Pilih Kelas Tujuan (Tingkat ${selectedKelasSiswa.tingkat || 1}) --`}
+                      icon={School}
+                      ariaLabel="Pilih kelas tujuan rombel"
+                      searchable
+                      className="w-full"
+                    />
                   </div>
                 </div>
 
@@ -3216,7 +3485,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
         )}
       </AnimatePresence>
 
-      {/* MODAL: KONFIRMASI SIMPAN / UPDATE DATA KELAS (HARMONIZED TAILGRIDS) */}
+      {/* MODAL: KONFIRMASI SIMPAN / UPDATE DATA KELAS (HARMONIZED HEROUI) */}
       <AnimatePresence>
         {showSaveConfirmModal && (
           <div
@@ -3402,7 +3671,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
         )}
       </AnimatePresence>
 
-      {/* MODAL: KONFIRMASI HAPUS KELAS (HARMONIZED TAILGRIDS) */}
+      {/* MODAL: KONFIRMASI HAPUS KELAS (HARMONIZED HEROUI) */}
       <AnimatePresence>
         {isDeleteModalOpen && deleteTarget && (
           <div

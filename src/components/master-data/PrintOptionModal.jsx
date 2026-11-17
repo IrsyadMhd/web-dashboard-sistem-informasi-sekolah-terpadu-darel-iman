@@ -20,6 +20,13 @@ import { useUnitStore } from '../../stores/unitStore'
 import { useAuthStore } from '../../stores/authStore'
 import { resolveUnitDetails, isCentralOrYayasanRole } from '../../utils/printHelper'
 import { PrintHeader } from '../common/PrintHeader'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '../ui/select'
 
 /**
  * @param {Object} props
@@ -334,18 +341,24 @@ export function PrintOptionModal({
                     <Users className="size-4 text-emerald-700 dark:text-emerald-400" />
                     <span>Filter Cetak Berdasarkan Guru Pengampu</span>
                   </label>
-                  <select
-                    value={selectedTeacherId}
-                    onChange={(e) => onTeacherChange && onTeacherChange(e.target.value)}
-                    className="w-full h-10 px-3 text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-emerald-600 dark:text-white shadow-2xs"
+                  <Select
+                    value={String(selectedTeacherId || '')}
+                    onChange={(val) => onTeacherChange && onTeacherChange(String(val || ''))}
                   >
-                    <option value="">-- Semua Guru (Cetak Seluruh Data) --</option>
-                    {teachersList.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.nama_lengkap} {g.niy ? `(NIY ${g.niy})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-full h-10 px-3 text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl dark:text-white shadow-2xs">
+                      <SelectValue placeholder="-- Semua Guru (Cetak Seluruh Data) --" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 max-h-60 overflow-y-auto bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1">
+                      <SelectItem id="" value="" className="text-xs font-medium py-1.5">
+                        -- Semua Guru (Cetak Seluruh Data) --
+                      </SelectItem>
+                      {teachersList.map((g) => (
+                        <SelectItem key={g.id} id={String(g.id)} value={String(g.id)} className="text-xs font-medium py-1.5">
+                          {g.nama_lengkap} {g.niy ? `(NIY ${g.niy})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 

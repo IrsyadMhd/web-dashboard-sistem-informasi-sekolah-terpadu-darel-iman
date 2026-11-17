@@ -15,7 +15,11 @@ export function useAksiSiswa() {
   const queryClient = useQueryClient()
 
   const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['students'] })
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['students'] }),
+      queryClient.invalidateQueries({ queryKey: ['students-dashboard-summary'] }),
+      queryClient.invalidateQueries({ queryKey: ['tu-dashboard-stats'] }),
+    ])
   }
 
   const tambah = useMutation({

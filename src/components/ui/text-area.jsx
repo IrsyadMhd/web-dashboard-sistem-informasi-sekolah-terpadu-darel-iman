@@ -1,11 +1,11 @@
 import * as React from 'react'
 import PropTypes from 'prop-types'
-import { TextArea as AriaTextArea } from 'react-aria-components'
+import { TextArea as HeroTextArea } from '@heroui/react'
 import { cn } from '../../lib/utils'
 
 export const TextArea = React.forwardRef(({ className, rows = 4, ...props }, ref) => {
   return (
-    <AriaTextArea
+    <HeroTextArea
       ref={ref}
       rows={rows}
       className={cn(

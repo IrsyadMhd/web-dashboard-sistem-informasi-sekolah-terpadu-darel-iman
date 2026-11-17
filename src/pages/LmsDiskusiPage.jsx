@@ -1517,7 +1517,7 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                   <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Forum Diskusi &amp; Kolaborasi Kelas
                   </h1>
-                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                     Ruang tanya jawab, pemantik diskusi, dan kolaborasi aktif antara guru dan siswa per modul ajar.
                   </p>
                 </div>

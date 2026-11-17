@@ -48,7 +48,7 @@ import ModalErrorBoundary from '../components/common/ModalErrorBoundary'
 
 import api from '../services/api'
 
-// TailGrids Core UI Components
+// HeroUI Core UI Components
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -677,7 +677,7 @@ export default function GuruDashboardPage() {
       </ModalErrorBoundary>
 
       {/* ══════════════════════════════════════════════════════════════════
-          TAILGRIDS QUICK ACTION MODALS (TAILGRIDS UI DIALOGS)
+          HEROUI QUICK ACTION MODALS (HEROUI UI DIALOGS)
           Neat Field & Label Structure with Animated Leaf Green Focus Line
           Soft Pastel Squircle Icon Buttons in Modal Footers
       ══════════════════════════════════════════════════════════════════ */}

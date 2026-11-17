@@ -41,7 +41,7 @@ export default function EmployeeCardBackVertical({
 
   const defaultBackRules =
     pengaturan?.card_rules_employee ||
-    `1. Kartu ini adalah milik resmi ${schoolName}.\n2. Wajib dibawa & dikenakan selama jam kerja.\n3. Apabila menemukan kartu ini, harap mengembalikan ke kantor yayasan.\n4. QR Code digunakan untuk absensi & verifikasi SIMSIT.`
+    `1. Kartu ini adalah milik resmi ${schoolName}.\n2. Wajib dibawa & dikenakan selama jam kerja.\n3. Apabila menemukan kartu ini, harap mengembalikan ke kantor yayasan.\n4. QR Code digunakan untuk absensi & verifikasi Dareliman Edu.`
   const resolvedRulesText = backRules
     ? backRules.replace(/Yayasan\s+Dar\s*el-?Iman/gi, schoolName)
     : defaultBackRules
@@ -54,9 +54,8 @@ export default function EmployeeCardBackVertical({
 
   return (
     <article
-      className={`employee-id-card employee-id-card--vertical employee-id-card--${template} employee-id-card--frame-${frameStyle} ${
-        isPrint ? 'employee-card-print-canvas--vertical' : ''
-      }`}
+      className={`employee-id-card employee-id-card--vertical employee-id-card--${template} employee-id-card--frame-${frameStyle} ${isPrint ? 'employee-card-print-canvas--vertical' : ''
+        }`}
     >
       {showPattern && <div className="employee-id-card__pattern" aria-hidden="true" />}
       {showWave && <div className="employee-id-card__top-wave" aria-hidden="true" />}
@@ -103,7 +102,7 @@ export default function EmployeeCardBackVertical({
         {backShowQr && (
           <div className="flex flex-col items-center justify-center p-1.5 rounded-xl bg-white/90 shadow-2xs border border-slate-200/80 dark:border-slate-700 dark:bg-slate-800/90 text-center w-[100px] my-auto">
             <QRCodeSVG
-              value={qrPayload || employee.niy || employee.email || 'SIMSIT'}
+              value={qrPayload || employee.niy || employee.email || 'DARELIMAN-EDU'}
               size={68}
               level="M"
               marginSize={2}
@@ -111,7 +110,7 @@ export default function EmployeeCardBackVertical({
               fgColor="#0f172a"
             />
             <span className="mt-0.5 text-[8px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">
-              Verifikasi SIMSIT
+              Verifikasi Dareliman Edu
             </span>
           </div>
         )}

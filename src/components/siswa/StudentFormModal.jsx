@@ -36,6 +36,7 @@ import {
 import { getProvinsiList, getKotaOptions, getKecamatanOptions, getKelurahanOptions, getBirthPlaceOptions } from './wilayahData'
 import AddressMap from './AddressMap'
 import { DatePicker } from '@/components/ui/date-picker'
+import HeroUiFilterSelect from '../ui/HeroUiFilterSelect'
 import { educationUnitService } from '../../services/educationUnitService'
 import { kelasService } from '../../services/kelasService'
 import { tahunAjaranService } from '../../services/tahunAjaranService'
@@ -79,6 +80,17 @@ export const isPnsOccupation = (occ) => {
   if (!occ) return false
   const str = String(occ).toLowerCase()
   return str.includes('pegawai negeri') || str.includes('pns') || str.includes('asn')
+}
+
+const normalizeGender = (value) => {
+  const g = String(value || '').trim().toLowerCase()
+  if (g === 'female' || g === 'p' || g === 'perempuan' || g === 'akhwat') return 'female'
+  return 'male'
+}
+
+const normalizeStudentDate = (value) => {
+  if (!value || value === '-') return ''
+  return String(value).slice(0, 10)
 }
 
 export const OCCUPATION_OPTIONS_AYAH = [
@@ -206,7 +218,6 @@ const Select = ({
   placeholder = '-- Pilih --',
   error,
   helperText,
-  ...props
 }) => {
   const safeOptions = Array.isArray(options)
     ? options
@@ -215,6 +226,48 @@ const Select = ({
     : Array.isArray(options?.options)
     ? options.options
     : []
+
+  const normalizedOptions = useMemo(() => {
+    const list = [{ value: '', label: placeholder }]
+
+    if (safeOptions.length === 0) {
+      list.push({
+        value: '__disabled_empty__',
+        label: '(Belum ada data opsi master — kelola di Pengaturan)',
+        disabled: true,
+      })
+    }
+
+    safeOptions.forEach((opt, idx) => {
+      if (typeof opt === 'string') {
+        list.push({ value: opt, label: opt })
+      } else {
+        list.push({
+          value: String(opt?.value ?? opt?.id ?? opt?.name ?? idx),
+          label: String(opt?.label ?? opt?.name ?? opt?.value ?? ''),
+        })
+      }
+    })
+
+    if (
+      value &&
+      !list.some((o) => String(o.value) === String(value))
+    ) {
+      list.push({
+        value: String(value),
+        label: `${value} (Data Historis)`,
+      })
+    }
+
+    return list
+  }, [safeOptions, placeholder, value])
+
+  const handleSelectChange = (val) => {
+    if (val === '__disabled_empty__') return
+    if (typeof onChange === 'function') {
+      onChange({ target: { name, value: val } })
+    }
+  }
 
   return (
     <div>
@@ -228,52 +281,18 @@ const Select = ({
           </span>
         )}
       </div>
-      <div className="relative flex items-center">
-        {Icon && (
-          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-            <Icon className="size-4" />
-          </div>
-        )}
-        <select
-          name={name}
-          value={value ?? ''}
-          onChange={onChange}
-          required={required}
-          disabled={disabled}
-          className={`w-full appearance-none rounded-xl border py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 outline-none hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer ${
-            disabled
-              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed dark:bg-slate-800 dark:border-slate-700'
-              : error
-              ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-rose-500/20 dark:border-rose-700 dark:bg-rose-950/20'
-              : 'bg-slate-50/50 border-slate-200/90'
-          } ${Icon ? 'pl-10 pr-9' : 'pl-3.5 pr-9'}`}
-          {...props}
-        >
-          <option value="">{placeholder}</option>
-          {safeOptions.length === 0 && (
-            <option value="" disabled>
-              (Belum ada data opsi master — kelola di Pengaturan Opsi Bisnis)
-            </option>
-          )}
-          {value && !safeOptions.some((opt) => (typeof opt === 'string' ? opt === value : (opt?.value ?? opt?.id ?? opt?.name) === value)) && (
-            <option value={value}>{value} (Data Historis)</option>
-          )}
-          {safeOptions.map((opt, idx) =>
-            typeof opt === 'string' ? (
-              <option key={`opt-str-${opt}-${idx}`} value={opt}>
-                {opt}
-              </option>
-            ) : (
-              <option key={`opt-val-${opt?.value ?? opt?.id ?? idx}-${idx}`} value={opt?.value ?? ''}>
-                {opt?.label ?? opt?.name ?? opt?.value ?? ''}
-              </option>
-            )
-          )}
-        </select>
-        <div className="pointer-events-none absolute right-3 flex items-center text-slate-400 dark:text-slate-500">
-          <ChevronDown className="size-4" />
-        </div>
-      </div>
+      <HeroUiFilterSelect
+        value={value ?? ''}
+        onChange={handleSelectChange}
+        options={normalizedOptions}
+        placeholder={placeholder}
+        icon={Icon}
+        disabled={disabled}
+        ariaLabel={label || name || 'Pilih opsi'}
+        searchable={safeOptions.length > 7}
+        size="md"
+        className="w-full"
+      />
       {error && (
         <p className="mt-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
           <span>⚠</span> {error}
@@ -325,9 +344,15 @@ export default function StudentFormModal({
       setActiveStep(0)
       setModalError(null)
       if (initialData) {
-        const meta = initialData.raw?.metadata || {}
+        const raw = initialData.raw || {}
+        const meta = raw.metadata || initialData.metadata || {}
         const orangTua = meta.orang_tua || {}
-        const parentRel = initialData.raw?.parent || {}
+        const parentRel = raw.parent || {}
+        const resolvedStatusRaw =
+          meta.akademik?.status_siswa ||
+          meta.status_siswa ||
+          (raw.is_active !== undefined ? (raw.is_active ? 'aktif' : 'nonaktif') : initialData.status)
+        const normalizedStatus = String(resolvedStatusRaw || 'aktif').trim().toLowerCase()
 
         setFormData({
           id: initialData.id,
@@ -336,12 +361,12 @@ export default function StudentFormModal({
           nik: meta.nik || '',
           no_registrasi_akta_lahir: meta.no_registrasi_akta_lahir || '',
           no_kk: meta.no_kk || '',
-          nis: initialData.nis || meta.nis || '',
-          nisn: initialData.nisn || meta.nisn || '',
-          full_name: initialData.nama || meta.full_name || '',
-          birth_date: initialData.birth_date || meta.birth_date || '',
-          birth_place: initialData.birth_place || meta.birth_place || '',
-          gender: initialData.gender || meta.gender || 'male',
+          nis: raw.nis || initialData.nis || meta.nis || '',
+          nisn: raw.nisn || (initialData.nisn !== '-' ? initialData.nisn : '') || meta.nisn || '',
+          full_name: raw.full_name || initialData.nama || meta.full_name || '',
+          birth_date: normalizeStudentDate(raw.birth_date || initialData.birth_date || initialData.tanggalLahir || meta.birth_date),
+          birth_place: raw.birth_place || (initialData.birth_place && initialData.birth_place !== '-' ? initialData.birth_place : '') || (initialData.tempatLahir && initialData.tempatLahir !== '-' ? initialData.tempatLahir : '') || meta.birth_place || '',
+          gender: normalizeGender(raw.gender || meta.gender || initialData.gender),
           agama: meta.agama || 'Islam',
           email: meta.email || '',
           anak_ke: meta.anak_ke || '',
@@ -435,18 +460,18 @@ export default function StudentFormModal({
           nomor_wa_wali: meta.nomor_wa_wali || '',
           medsos_wali: meta.medsos_wali || '',
 
-          unit_id: initialData.unit_id || meta.unit_id || '',
-          unit_pendidikan: initialData.unit || meta.unit_pendidikan || '',
+          unit_id: raw.unit_id || raw.education_unit_id || initialData.unit_id || initialData.unitId || meta.unit_id || '',
+          unit_pendidikan: raw.education_unit?.name || initialData.unit || meta.unit_pendidikan || '',
           jenis_pendaftaran: meta.jenis_pendaftaran || (meta.unit_asal_id ? 'pindahan_internal' : (meta.sekolah_asal ? 'pindahan_eksternal' : 'baru')),
           unit_asal_id: meta.unit_asal_id || '',
           no_va: meta.no_va || meta.nis_pembayaran || '',
           va_bsi_bank: meta.va_bsi_bank || meta.bank_name || '',
           nis_pembayaran: meta.nis_pembayaran || meta.no_va || '',
           tahun_ajaran_masuk: meta.tahun_ajaran_masuk || '',
-          kelas_id: initialData.kelas_id || meta.kelas_id || '',
+          kelas_id: raw.kelas_id || raw.class_id || initialData.kelas_id || initialData.kelasId || meta.kelas_id || '',
           keterangan_kelas: meta.keterangan_kelas || '',
           tahun_ajaran_berjalan: meta.tahun_ajaran_berjalan || '',
-          status_siswa: initialData.status || meta.status_siswa || 'aktif',
+          status_siswa: normalizedStatus,
           status_orang_tua: meta.status_orang_tua || 'Umum',
           niy_ortu_jika_pegawai: meta.niy_ortu_jika_pegawai || '',
           wali_kelas: meta.wali_kelas || '',
@@ -1197,7 +1222,7 @@ export default function StudentFormModal({
               {/* STEP 1: INFORMASI PRIBADI */}
               {activeStep === 0 && (
                 <div className="space-y-6">
-                  {/* Upload Foto Box - Sesuai TailGrids Dropzone Standar */}
+                  {/* Upload Foto Box - Sesuai HeroUI Dropzone Standar */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Foto Profil Siswa</label>
                     {formData.foto_url ? (

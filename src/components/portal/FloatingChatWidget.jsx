@@ -23,6 +23,7 @@ export default function FloatingChatWidget() {
   const roles = user?.roles || []
   const permissions = user?.permissions || []
   const userLevel = getUserRoleLevel(user)
+  const policy = user?.access_policy || null
 
   const roleNames = useMemo(() => {
     return Array.isArray(roles)
@@ -38,6 +39,7 @@ export default function FloatingChatWidget() {
   }, [user, roleNames])
 
   const isSuperAdmin =
+    policy?.portal_group === 'super_admin' ||
     userLevel === ROLE_LEVELS.SUPER_ADMIN ||
     Boolean(user?.is_superadmin) ||
     roleNames.some((r) => ['Super Admin', 'super_admin', 'Superadmin'].includes(r)) ||
@@ -45,14 +47,19 @@ export default function FloatingChatWidget() {
     roleStr.includes('superadmin')
 
   const isTeacher =
+    policy?.portal_group === 'teacher' ||
     userLevel === ROLE_LEVELS.GURU ||
     roleNames.some((r) => ['Guru', 'Wali Kelas', 'Guru Pengajar', 'guru'].includes(r)) ||
     roleStr.includes('guru') ||
     roleStr.includes('walas')
 
-  const canEmployeeChat =
-    userLevel <= ROLE_LEVELS.MUSYRIF || // Level 1 s/d 7 (Staf Internal)
+  const isParent = policy?.portal_group === 'parent' || userLevel === ROLE_LEVELS.ORANG_TUA || isParentRole(user || roles) || roleStr.includes('orang') || roleStr.includes('parent')
+
+  const hasInternalRole =
+    ['super_admin', 'admin', 'foundation', 'education', 'principal', 'waka', 'tu', 'operator', 'teacher', 'musyrif', 'staff'].includes(policy?.portal_group) ||
+    userLevel <= ROLE_LEVELS.MUSYRIF || // Level 1 s/d 6 (Staf Internal)
     isSuperAdmin ||
+    isTeacher ||
     roleStr.includes('super') ||
     roleStr.includes('admin') ||
     roleStr.includes('yayasan') ||
@@ -63,23 +70,23 @@ export default function FloatingChatWidget() {
     /\b(tu|tata_usaha)\b/i.test(roleStr) ||
     roleStr.includes('pegawai') ||
     roleStr.includes('staf') ||
-    permissions.includes('chat.conversation.view') ||
     permissions.includes('chat.manage')
 
+  const canEmployeeChat = !isParent && hasInternalRole
   const isStaffOrTeacher = isSuperAdmin || canEmployeeChat || isTeacher
-  const isParent = userLevel === ROLE_LEVELS.ORANG_TUA || isParentRole(roles) || roleStr.includes('orang') || roleStr.includes('parent')
-  const isPureStudent = (userLevel === ROLE_LEVELS.SISWA || isStudentRole(roles) || roleStr.includes('siswa') || roleStr.includes('student')) && !isStaffOrTeacher && !isParent
+  const isPureStudent = (policy?.portal_group === 'student' || userLevel === ROLE_LEVELS.SISWA || isStudentRole(user || roles) || roleStr.includes('siswa') || roleStr.includes('student')) && !isStaffOrTeacher && !isParent
 
-  const isEmployee = canEmployeeChat && !isPureStudent
+  const isEmployee = canEmployeeChat && !isPureStudent && !isParent
   const shouldRender = Boolean(user) && !isPureStudent && (isParent || isTeacher || isEmployee || isSuperAdmin)
 
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
   const [isDocked, setIsDocked] = useState(() => {
     try {
-      return localStorage.getItem('school_erp_chat_fab_docked') === 'true'
+      const stored = localStorage.getItem('school_erp_chat_fab_docked')
+      return stored === 'false' ? false : true
     } catch {
-      return false
+      return true
     }
   })
   const [childId, setChildId] = useState('')
@@ -91,7 +98,7 @@ export default function FloatingChatWidget() {
       const next = !prev
       try {
         localStorage.setItem('school_erp_chat_fab_docked', String(next))
-      } catch {}
+      } catch { }
       return next
     })
   }
@@ -175,11 +182,10 @@ export default function FloatingChatWidget() {
       {/* Pop-Up Window / Minimized Pill */}
       {isOpen && (
         <div
-          className={`fixed right-3 sm:right-6 z-50 transition-all duration-300 transform origin-bottom-right flex flex-col overflow-hidden ${
-            isMinimized
-              ? 'bottom-6 w-auto max-w-[200px] h-12 px-3.5 rounded-full border border-emerald-500/60 bg-gradient-to-r from-[#0E5C44] via-[#187154] to-[#3FBF75] text-white shadow-2xl shadow-emerald-950/40 cursor-pointer hover:scale-105 active:scale-95'
-              : 'bottom-20 w-[96vw] max-w-[940px] h-[640px] max-h-[calc(100vh-6.5rem)] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900 shadow-2xl shadow-slate-950/25'
-          }`}
+          className={`fixed right-3 sm:right-6 z-40 transition-all duration-300 transform origin-bottom-right flex flex-col overflow-hidden ${isMinimized
+            ? 'bottom-6 w-auto max-w-[200px] h-12 px-3.5 rounded-full border border-emerald-500/60 bg-gradient-to-r from-[#0E5C44] via-[#187154] to-[#3FBF75] text-white shadow-2xl shadow-emerald-950/40 cursor-pointer hover:scale-105 active:scale-95'
+            : 'bottom-20 w-[96vw] max-w-[940px] h-[640px] max-h-[calc(100vh-6.5rem)] rounded-3xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900 shadow-2xl shadow-slate-950/25'
+            }`}
           onClick={isMinimized ? () => setIsMinimized(false) : undefined}
         >
           {/* Header Pop-Up */}
@@ -200,8 +206,8 @@ export default function FloatingChatWidget() {
                       {widgetMode === 'employee'
                         ? 'Chat Antar Pegawai'
                         : isTeacher
-                        ? 'Komunikasi Orang Tua'
-                        : 'Chat Guru & Wali Kelas'}
+                          ? 'Komunikasi Orang Tua'
+                          : 'Chat Guru & Wali Kelas'}
                     </h3>
                     <p className="truncate text-[10px] text-emerald-100/80 font-medium">
                       {isParent
@@ -262,22 +268,20 @@ export default function FloatingChatWidget() {
                 <button
                   type="button"
                   onClick={() => setWidgetMode('employee')}
-                  className={`flex-1 py-1 text-center rounded-md transition cursor-pointer ${
-                    widgetMode === 'employee'
-                      ? 'bg-white/20 text-white shadow-xs font-black'
-                      : 'text-white/70 hover:text-white'
-                  }`}
+                  className={`flex-1 py-1 text-center rounded-md transition cursor-pointer ${widgetMode === 'employee'
+                    ? 'bg-white/20 text-white shadow-xs font-black'
+                    : 'text-white/70 hover:text-white'
+                    }`}
                 >
                   Chat Pegawai
                 </button>
                 <button
                   type="button"
                   onClick={() => setWidgetMode(isParent && !isTeacher ? 'parent' : 'teacher')}
-                  className={`flex-1 py-1 text-center rounded-md transition cursor-pointer ${
-                    widgetMode !== 'employee'
-                      ? 'bg-white/20 text-white shadow-xs font-black'
-                      : 'text-white/70 hover:text-white'
-                  }`}
+                  className={`flex-1 py-1 text-center rounded-md transition cursor-pointer ${widgetMode !== 'employee'
+                    ? 'bg-white/20 text-white shadow-xs font-black'
+                    : 'text-white/70 hover:text-white'
+                    }`}
                 >
                   {isParent && !isTeacher ? 'Chat Guru' : 'Chat Orang Tua'}
                 </button>

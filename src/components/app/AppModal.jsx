@@ -33,7 +33,7 @@ export default function AppModal({
         if (!open && onClose) onClose()
       }}
     >
-      <HeroModal.Backdrop className="bg-slate-950/70 backdrop-blur-md fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+      <HeroModal.Backdrop className="bg-slate-950/70 backdrop-blur-md fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
         <HeroModal.Container className="w-full flex items-center justify-center min-h-full my-auto">
           <HeroModal.Dialog className={cn('relative w-full overflow-hidden rounded-[24px] border-2 border-emerald-500/20 bg-white shadow-2xl dark:border-emerald-600/30 dark:bg-[#1B2433] max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2.5rem)] flex flex-col', maxWidth, className)}>
             {/* Top accent gradient line */}
@@ -74,7 +74,7 @@ export default function AppModal({
               </HeroModal.Header>
             )}
 
-            <HeroModal.Body className="overflow-y-auto p-4 sm:p-6 text-sm text-slate-700 dark:text-slate-200 flex-1">
+            <HeroModal.Body className="overflow-y-auto min-h-0 flex-1 max-h-[65vh] p-4 sm:p-6 text-sm text-slate-700 dark:text-slate-200">
               {children}
             </HeroModal.Body>
 

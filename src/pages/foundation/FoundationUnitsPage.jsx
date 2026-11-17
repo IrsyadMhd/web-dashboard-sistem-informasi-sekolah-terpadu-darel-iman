@@ -34,6 +34,7 @@ import {
 } from 'recharts'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import api from '../../services/api'
+import HeroUiFilterSelect from '../../components/ui/HeroUiFilterSelect'
 import {
   MasterActionButton,
   MasterDataPage,
@@ -290,7 +291,7 @@ export function FoundationUnitsPage() {
                     Unit Yayasan
                   </span>
                 </div>
-                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 w-full leading-relaxed">
                   Pemantauan eksekutif dan manajemen seluruh unit pendidikan (TK, SD, SMP, SMA, Ponpes, Ma'had) di bawah naungan yayasan.
                 </p>
               </div>
@@ -397,23 +398,23 @@ export function FoundationUnitsPage() {
 
           {/* Action Bar & Filter Tahun Ajaran */}
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            {/* Filter Tahun Ajaran Dropdown Squircle Pill */}
-            <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200/80 bg-emerald-50/80 px-3.5 py-1.5 shadow-xs transition-all duration-200 hover:scale-105 dark:border-emerald-800/60 dark:bg-emerald-950/50">
-              <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 shrink-0">Tahun Ajaran:</span>
-              <select
-                value={selectedAcademicYear}
-                onChange={(e) => setSelectedAcademicYear(e.target.value)}
-                className="bg-transparent text-xs font-black text-emerald-900 focus:outline-none dark:text-emerald-100 cursor-pointer"
+            {/* Filter Tahun Ajaran Dropdown HeroUI */}
+            <div className="w-56">
+              <HeroUiFilterSelect
+                size="sm"
+                searchable
+                value={String(selectedAcademicYear)}
+                onChange={(val) => setSelectedAcademicYear(val)}
+                options={[
+                  { value: 'all', label: 'Semua Tahun Ajaran' },
+                  ...academicYears.map((ay) => ({
+                    value: String(ay.id),
+                    label: `${ay.name || ay.nama_tahun_ajaran || ay.tahun_ajaran}${ay.is_active ? ' (Aktif)' : ''}`,
+                  })),
+                ]}
+                placeholder="Pilih Tahun Ajaran"
                 aria-label="Filter Grafik Tahun Ajaran"
-              >
-                <option value="all" className="text-slate-800 bg-white dark:bg-slate-900 dark:text-white">Semua Tahun Ajaran</option>
-                {academicYears.map((ay) => (
-                  <option key={ay.id} value={ay.id} className="text-slate-800 bg-white dark:bg-slate-900 dark:text-white">
-                    {ay.name || ay.nama_tahun_ajaran || ay.tahun_ajaran} {ay.is_active ? '(Aktif)' : ''}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             {/* Badges Masuk & Keluar */}

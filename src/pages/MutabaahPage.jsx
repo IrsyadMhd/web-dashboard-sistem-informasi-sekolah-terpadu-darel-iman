@@ -617,7 +617,7 @@ function MutabaahOverviewPage({ view }) {
           )}
         </section>
 
-        {/* 🟢 TAILGRIDS DIALOG: MODAL TAMBAH & EDIT TARGET MUTABA'AH */}
+        {/* 🟢 HEROUI DIALOG: MODAL TAMBAH & EDIT TARGET MUTABA'AH */}
         <OverlayWrapper isOpen={Boolean(targetModal)} onOpenChange={() => setTargetModal(null)}>
           <Backdrop isOpen={Boolean(targetModal)} onOpenChange={() => setTargetModal(null)} isDismissable={true}>
             <Dialog isOpen={Boolean(targetModal)} onClose={() => setTargetModal(null)} className="max-w-md rounded-2xl bg-white p-6 dark:bg-[#1B2433] shadow-2xl">
@@ -730,7 +730,7 @@ function MutabaahOverviewPage({ view }) {
           </Backdrop>
         </OverlayWrapper>
 
-        {/* 🟢 TAILGRIDS DIALOG: MODAL LIHAT DETAIL EVALUASI SISWA */}
+        {/* 🟢 HEROUI DIALOG: MODAL LIHAT DETAIL EVALUASI SISWA */}
         <OverlayWrapper isOpen={Boolean(selectedItem)} onOpenChange={() => setSelectedItem(null)}>
           <Backdrop isOpen={Boolean(selectedItem)} onOpenChange={() => setSelectedItem(null)} isDismissable={true}>
             <Dialog isOpen={Boolean(selectedItem)} onClose={() => setSelectedItem(null)} className="max-w-md rounded-2xl bg-white p-6 dark:bg-[#1B2433] shadow-2xl">

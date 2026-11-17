@@ -129,9 +129,8 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald
       onClick={onClick}
       role={isClickable ? 'button' : undefined}
       tabIndex={isClickable ? 0 : undefined}
-      className={`group relative overflow-hidden rounded-[18px] border-2 p-4 sm:p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${
-        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
-      } ${t.card} ${active ? '!ring-2 !ring-emerald-500 !border-emerald-500 shadow-md shadow-emerald-500/20' : ''}`}
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-4 sm:p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+        } ${t.card} ${active ? '!ring-2 !ring-emerald-500 !border-emerald-500 shadow-md shadow-emerald-500/20' : ''}`}
     >
       <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
       <div className="flex items-center justify-between mb-3">
@@ -174,7 +173,7 @@ function useNotifications() {
   const push = (title, message, tone = 'success') => {
     toast(title, message, tone)
   }
-  const dismiss = () => {}
+  const dismiss = () => { }
   return { items: [], push, dismiss }
 }
 
@@ -241,13 +240,12 @@ function HeroUiModalSelect({
             setSearch('')
           }
         }}
-        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${
-          disabled
+        className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-semibold transition-all duration-200 text-left cursor-pointer ${disabled
             ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
             : isOpen
-            ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
-            : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
-        }`}
+              ? 'border-[#0E5C44] bg-white ring-4 ring-[#0E5C44]/12 dark:border-[#3FBF75] dark:bg-slate-900 dark:ring-[#3FBF75]/20 text-slate-800 dark:text-slate-100 shadow-sm'
+              : 'border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/50 dark:hover:bg-slate-900 dark:hover:border-slate-600 text-slate-800 dark:text-slate-100'
+          }`}
       >
         <div className="flex items-center gap-2 truncate">
           {IconComponent && (
@@ -260,9 +258,8 @@ function HeroUiModalSelect({
           )}
         </div>
         <ChevronDown
-          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
+          className={`size-4 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+            }`}
         />
       </button>
 
@@ -311,11 +308,10 @@ function HeroUiModalSelect({
                         onChange(opt.value)
                         setIsOpen(false)
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-colors text-left cursor-pointer ${isSelected
                           ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
                           : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
-                      }`}
+                        }`}
                     >
                       <div className="truncate pr-2">
                         <div>{opt.label}</div>
@@ -393,13 +389,12 @@ function HeroUiFilterSelect({
           setIsOpen((prev) => !prev)
           setSearch('')
         }}
-        className={`h-9 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer ${
-          isOpen
-            ? 'border-[#0E5C44] bg-white ring-2 ring-[#0E5C44]/15 dark:border-[#3FBF75] dark:bg-[#111827] dark:ring-[#3FBF75]/20 text-slate-900 dark:text-white shadow-xs'
+        className={`h-10 w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-bold transition-all duration-200 cursor-pointer shadow-2xs ${isOpen
+            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-[#111827] dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
             : value !== '' && value !== undefined && value !== null
-            ? 'border-emerald-300/80 bg-emerald-50/50 text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200'
-            : 'border-slate-200/90 bg-white text-slate-800 hover:border-slate-300 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 dark:hover:border-slate-600'
-        }`}
+              ? 'border-emerald-500/80 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50 text-emerald-950 dark:border-emerald-600/80 dark:bg-gradient-to-r dark:from-emerald-950/60 dark:via-teal-950/40 dark:to-emerald-950/60 dark:text-emerald-200 font-extrabold shadow-emerald-500/10'
+              : 'border-slate-200/90 bg-white text-slate-700 hover:border-emerald-400 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200 dark:hover:border-emerald-600'
+          }`}
       >
         <div className="flex items-center gap-1.5 truncate">
           {IconComponent && (
@@ -410,9 +405,8 @@ function HeroUiFilterSelect({
           </span>
         </div>
         <ChevronDown
-          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
+          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
+            }`}
         />
       </button>
 
@@ -423,7 +417,7 @@ function HeroUiFilterSelect({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -4 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl dark:border-slate-700/80 dark:bg-[#182232]/95`}
+            className={`absolute left-0 top-full mt-1.5 z-[100] ${popoverWidth} max-w-[92vw] overflow-hidden rounded-2xl border border-emerald-200/90 bg-white/98 backdrop-blur-md shadow-2xl dark:border-emerald-800/80 dark:bg-[#182232]/98`}
           >
             {searchable && options.length > 5 && (
               <div className="p-2 border-b border-slate-100 dark:border-slate-800">
@@ -457,11 +451,10 @@ function HeroUiFilterSelect({
                         onChange(opt.value)
                         setIsOpen(false)
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${isSelected
                           ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
                           : 'text-slate-700 hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70'
-                      }`}
+                        }`}
                     >
                       <span className="truncate pr-2">{opt.label}</span>
                       {isSelected && (
@@ -625,11 +618,10 @@ function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }
             onDragOver={handleDrag}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`cursor-pointer rounded-2xl border-2 border-dashed p-7 text-center transition-all ${
-              dragActive
+            className={`cursor-pointer rounded-2xl border-2 border-dashed p-7 text-center transition-all ${dragActive
                 ? 'border-emerald-500 bg-emerald-50/60 dark:border-emerald-400 dark:bg-emerald-950/30'
                 : 'border-emerald-300/80 bg-slate-50/50 hover:bg-emerald-50/30 dark:border-emerald-800/70 dark:bg-slate-900/40'
-            }`}
+              }`}
           >
             <input
               ref={fileInputRef}
@@ -718,28 +710,25 @@ function HarmonizedSaveModal({ isOpen, onClose, onConfirm, isEdit, title, isSubm
         className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
       >
         <div
-          className={`h-1.5 w-full bg-gradient-to-r ${
-            isEdit ? 'from-amber-400 via-amber-500 to-orange-600' : 'from-emerald-500 via-teal-400 to-emerald-600'
-          }`}
+          className={`h-1.5 w-full bg-gradient-to-r ${isEdit ? 'from-amber-400 via-amber-500 to-orange-600' : 'from-emerald-500 via-teal-400 to-emerald-600'
+            }`}
         />
         <div className="p-6">
           <div className="flex items-center gap-3.5 mb-4">
             <div
-              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-md ${
-                isEdit
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-md ${isEdit
                   ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30'
                   : 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30'
-              }`}
+                }`}
             >
               {isEdit ? <Edit3 className="h-6 w-6" /> : <BookOpen className="h-6 w-6" />}
             </div>
             <div>
               <span
-                className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${
-                  isEdit
+                className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${isEdit
                     ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
                     : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                }`}
+                  }`}
               >
                 {isEdit ? 'Perbarui Soal' : 'Butir Soal Baru'}
               </span>
@@ -770,11 +759,10 @@ function HarmonizedSaveModal({ isOpen, onClose, onConfirm, isEdit, title, isSubm
               type="button"
               onClick={onConfirm}
               disabled={isSubmitting}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-bold text-white shadow-md transition-all ${
-                isEdit
+              className={`inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-bold text-white shadow-md transition-all ${isEdit
                   ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 shadow-amber-600/30 hover:brightness-105'
                   : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 shadow-emerald-600/30 hover:brightness-105'
-              } disabled:opacity-50`}
+                } disabled:opacity-50`}
             >
               {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}
               <span>{isSubmitting ? 'Menyimpan...' : isEdit ? 'Ya, Simpan Perubahan' : 'Ya, Tambahkan Soal'}</span>
@@ -857,17 +845,15 @@ function HarmonizedBatchExportModal({
                   key={value}
                   type="button"
                   onClick={() => setExportFormat(value)}
-                  className={`rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer ${
-                    exportFormat === value
+                  className={`rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer ${exportFormat === value
                       ? 'border-emerald-500 bg-emerald-50/70 shadow-sm dark:border-emerald-700 dark:bg-emerald-950/40'
                       : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/40'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2 mb-1.5">
                     <Icon
-                      className={`size-4 ${
-                        exportFormat === value ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'
-                      }`}
+                      className={`size-4 ${exportFormat === value ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'
+                        }`}
                     />
                     <span className="text-xs font-black text-slate-900 dark:text-white">{label}</span>
                   </div>
@@ -1758,10 +1744,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
           item.tipe_soal === 'pg'
             ? 'Pilihan Ganda'
             : item.tipe_soal === 'esai'
-            ? 'Esai / Uraian'
-            : item.tipe_soal === 'benar_salah'
-            ? 'Benar / Salah'
-            : 'Menjodohkan',
+              ? 'Esai / Uraian'
+              : item.tipe_soal === 'benar_salah'
+                ? 'Benar / Salah'
+                : 'Menjodohkan',
         'Tingkat Kesulitan': (item.tingkat_kesulitan || 'sedang').toUpperCase(),
         'Bobot Poin': item.poin || 2.5,
         'Status': item.status ? 'Aktif' : 'Nonaktif',
@@ -1866,7 +1852,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Bank Soal &amp; Repositori Ujian
                   </h1>
-                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                     Kelola repositori butir soal terintegrasi Kisi-kisi Ujian dengan dukungan Pilihan Ganda, Esai, Benar-Salah, dan Menjodohkan.
                   </p>
                 </div>
@@ -1968,11 +1954,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   <button
                     type="button"
                     onClick={() => setViewLayout('grouped')}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      viewLayout === 'grouped'
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewLayout === 'grouped'
                         ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300'
-                    }`}
+                      }`}
                     title="Tampilan Grup per Kisi-kisi & Mapel"
                   >
                     <Folder className="h-3.5 w-3.5" />
@@ -1981,11 +1966,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   <button
                     type="button"
                     onClick={() => setViewLayout('flat')}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      viewLayout === 'flat'
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewLayout === 'flat'
                         ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300'
-                    }`}
+                      }`}
                     title="Tampilan Tabel Rata Semua Soal"
                   >
                     <Table className="h-3.5 w-3.5" />
@@ -2042,7 +2026,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   setSearchInput(e.target.value)
                   setPage(1)
                 }}
-                className="h-10 sm:h-11 w-full rounded-2xl border border-emerald-200/90 bg-white pl-10 sm:pl-11 pr-10 text-xs font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-100"
+                className="h-10 w-full rounded-xl border border-emerald-300/80 bg-white pl-10 sm:pl-11 pr-10 text-xs font-medium text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-700/80 dark:bg-slate-900 dark:text-slate-100 shadow-2xs"
               />
               {searchInput && (
                 <button
@@ -2051,7 +2035,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                     setSearchInput('')
                     setPage(1)
                   }}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -2060,56 +2044,56 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
           </div>
 
           {/* Toolbar Baris 3: Dropdown Filter Horizontal & Reset */}
-          <div className="border-b border-emerald-200/80 bg-white px-4 py-3 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-[#1B2433]">
-            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
-                Filter:
-              </span>
+          <div className="border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50/60 via-teal-50/30 to-emerald-50/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 px-4 py-3 sm:px-6 md:px-8">
+            <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 w-full">
+              {/* Filter Controls Grid / Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:flex xl:flex-wrap items-center gap-2.5 flex-1 min-w-0">
+                {/* Unit Dropdown (Divisi Pendidikan / Global) atau Locked Unit Badge */}
+                {canSelectUnit ? (
+                  <HeroUiFilterSelect
+                    value={selectedUnit}
+                    onChange={(val) => {
+                      setSelectedUnit(val)
+                      setPage(1)
+                    }}
+                    placeholder={`Semua Unit (${options.units?.length || 'SIT'})`}
+                    icon={School}
+                    popoverWidth="min-w-[220px]"
+                    searchable={(options.units?.length || 0) > 5}
+                    options={[
+                      { value: '', label: `Semua Unit (${options.units?.length || 'SIT'})` },
+                      ...(options.units || []).map((u) => ({ value: String(u.id), label: u.name || u.nama_unit })),
+                    ]}
+                  />
+                ) : (
+                  <div
+                    title="Unit Terkunci: Menampilkan data khusus unit wewenang Anda"
+                    className="inline-flex h-10 items-center justify-between gap-2 rounded-xl border border-emerald-300/80 bg-white/95 dark:bg-emerald-950/60 dark:border-emerald-700/80 px-3.5 text-xs font-bold text-emerald-800 dark:text-emerald-200 shadow-2xs w-full sm:w-auto shrink-0"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <School className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="truncate max-w-[200px] font-extrabold">{userUnitName || 'Unit Terikat'}</span>
+                    </div>
+                    <Lock className="size-3 text-emerald-500/80 shrink-0 ml-1" />
+                  </div>
+                )}
 
-              {/* Unit Dropdown (Divisi Pendidikan / Global) atau Locked Unit Badge */}
-              {canSelectUnit ? (
+                {/* Filter Mata Pelajaran */}
                 <HeroUiFilterSelect
-                  value={selectedUnit}
+                  value={filters.mata_pelajaran_id || ''}
                   onChange={(val) => {
-                    setSelectedUnit(val)
+                    setFilters((prev) => ({ ...prev, mata_pelajaran_id: val }))
                     setPage(1)
                   }}
-                  placeholder={`Semua Unit (${options.units?.length || 'SIT'})`}
-                  icon={School}
-                  popoverWidth="min-w-[220px]"
-                  searchable={(options.units?.length || 0) > 5}
+                  placeholder="Semua Mata Pelajaran"
+                  icon={BookOpen}
+                  popoverWidth="min-w-[240px]"
+                  searchable
                   options={[
-                    { value: '', label: `Semua Unit (${options.units?.length || 'SIT'})` },
-                    ...(options.units || []).map((u) => ({ value: String(u.id), label: u.name || u.nama_unit })),
-                  ]}
-                />
-              ) : (
-                <div
-                  title="Terkunci: Menampilkan data khusus unit wewenang Anda"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300/80 bg-emerald-50 text-[11px] font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"
-                >
-                  <School className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>{userUnitName}</span>
-                  <Lock className="size-3 text-emerald-500 ml-0.5 opacity-80" />
-                </div>
-              )}
-
-              {/* Filter Mata Pelajaran */}
-              <HeroUiFilterSelect
-                value={filters.mata_pelajaran_id || ''}
-                onChange={(val) => {
-                  setFilters((prev) => ({ ...prev, mata_pelajaran_id: val }))
-                  setPage(1)
-                }}
-                placeholder="Semua Mata Pelajaran"
-                icon={BookOpen}
-                popoverWidth="min-w-[240px]"
-                searchable
-                options={[
-                  { value: '', label: 'Semua Mata Pelajaran' },
-                  ...(((options.subjects || options.mata_pelajaran) && (options.subjects || options.mata_pelajaran).length > 0
-                    ? (options.subjects || options.mata_pelajaran)
-                    : Array.from(
+                    { value: '', label: 'Semua Mata Pelajaran' },
+                    ...(((options.subjects || options.mata_pelajaran) && (options.subjects || options.mata_pelajaran).length > 0
+                      ? (options.subjects || options.mata_pelajaran)
+                      : Array.from(
                         new Map(
                           (options.kisi_kisi || [])
                             .filter((k) => k.mata_pelajaran_id || k.mata_pelajaran)
@@ -2120,87 +2104,89 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                             })
                         ).values()
                       )
-                  ).map((m) => ({
-                    value: m.id,
-                    label: m.name || m.nama_mapel || m.nama || m.label,
-                  }))),
-                ]}
-              />
+                    ).map((m) => ({
+                      value: m.id,
+                      label: m.name || m.nama_mapel || m.nama || m.label,
+                    }))),
+                  ]}
+                />
 
-              {/* Filter Rombel / Kelas */}
-              <HeroUiFilterSelect
-                value={filters.kelas_id || ''}
-                onChange={(val) => {
-                  setFilters((prev) => ({ ...prev, kelas_id: val }))
-                  setPage(1)
-                }}
-                placeholder="Semua Rombel / Kelas"
-                icon={Layers}
-                popoverWidth="min-w-[170px]"
-                options={[
-                  { value: '', label: 'Semua Rombel / Kelas' },
-                  ...(options.kelas || []).map((c) => ({
-                    value: c.id,
-                    label: c.nama_kelas || c.name,
-                  })),
-                ]}
-              />
+                {/* Filter Rombel / Kelas */}
+                <HeroUiFilterSelect
+                  value={filters.kelas_id || ''}
+                  onChange={(val) => {
+                    setFilters((prev) => ({ ...prev, kelas_id: val }))
+                    setPage(1)
+                  }}
+                  placeholder="Semua Rombel / Kelas"
+                  icon={Layers}
+                  popoverWidth="min-w-[180px]"
+                  options={[
+                    { value: '', label: 'Semua Rombel / Kelas' },
+                    ...(options.kelas || []).map((c) => ({
+                      value: c.id,
+                      label: c.nama_kelas || c.name,
+                    })),
+                  ]}
+                />
 
-              {/* Filter Kisi-kisi */}
-              <HeroUiFilterSelect
-                value={filters.kisi_kisi_id || ''}
-                onChange={(val) => {
-                  setFilters((prev) => ({ ...prev, kisi_kisi_id: val }))
-                  setPage(1)
-                }}
-                placeholder="Semua Kisi-kisi Ujian"
-                icon={FileText}
-                popoverWidth="min-w-[260px]"
-                searchable
-                options={[
-                  { value: '', label: 'Semua Kisi-kisi Ujian' },
-                  ...(options.kisi_kisi || []).map((k) => ({
-                    value: k.id,
-                    label: `${k.judul_kisi} (${k.jenis_ujian})`,
-                  })),
-                ]}
-              />
+                {/* Filter Kisi-kisi */}
+                <HeroUiFilterSelect
+                  value={filters.kisi_kisi_id || ''}
+                  onChange={(val) => {
+                    setFilters((prev) => ({ ...prev, kisi_kisi_id: val }))
+                    setPage(1)
+                  }}
+                  placeholder="Semua Kisi-kisi Ujian"
+                  icon={FileText}
+                  popoverWidth="min-w-[260px]"
+                  searchable
+                  options={[
+                    { value: '', label: 'Semua Kisi-kisi Ujian' },
+                    ...(options.kisi_kisi || []).map((k) => ({
+                      value: k.id,
+                      label: `${k.judul_kisi} (${k.jenis_ujian})`,
+                    })),
+                  ]}
+                />
 
-              {/* Filter Tipe Soal */}
-              <HeroUiFilterSelect
-                value={filters.tipe_soal || ''}
-                onChange={(val) => {
-                  setFilters((prev) => ({ ...prev, tipe_soal: val }))
-                  setPage(1)
-                }}
-                placeholder="Semua Tipe Soal"
-                icon={CheckSquare}
-                popoverWidth="min-w-[160px]"
-                options={[
-                  { value: '', label: 'Semua Tipe Soal' },
-                  { value: 'pg', label: 'Pilihan Ganda' },
-                  { value: 'esai', label: 'Essay / Esai' },
-                  { value: 'benar_salah', label: 'Benar / Salah' },
-                  { value: 'menjodohkan', label: 'Menjodohkan' },
-                ]}
-              />
+                {/* Filter Tipe Soal */}
+                <HeroUiFilterSelect
+                  value={filters.tipe_soal || ''}
+                  onChange={(val) => {
+                    setFilters((prev) => ({ ...prev, tipe_soal: val }))
+                    setPage(1)
+                  }}
+                  placeholder="Semua Tipe Soal"
+                  icon={CheckSquare}
+                  popoverWidth="min-w-[170px]"
+                  options={[
+                    { value: '', label: 'Semua Tipe Soal' },
+                    { value: 'pg', label: 'Pilihan Ganda' },
+                    { value: 'esai', label: 'Essay / Esai' },
+                    { value: 'benar_salah', label: 'Benar / Salah' },
+                    { value: 'menjodohkan', label: 'Menjodohkan' },
+                  ]}
+                />
 
-              {/* Filter Tingkat Kesulitan */}
-              <HeroUiFilterSelect
-                value={filters.tingkat_kesulitan || ''}
-                onChange={(val) => {
-                  setFilters((prev) => ({ ...prev, tingkat_kesulitan: val }))
-                  setPage(1)
-                }}
-                placeholder="Semua Tingkat Kesulitan"
-                popoverWidth="min-w-[170px]"
-                options={[
-                  { value: '', label: 'Semua Tingkat Kesulitan' },
-                  { value: 'mudah', label: 'Mudah' },
-                  { value: 'sedang', label: 'Sedang' },
-                  { value: 'sulit', label: 'Sulit' },
-                ]}
-              />
+                {/* Filter Tingkat Kesulitan */}
+                <HeroUiFilterSelect
+                  value={filters.tingkat_kesulitan || ''}
+                  onChange={(val) => {
+                    setFilters((prev) => ({ ...prev, tingkat_kesulitan: val }))
+                    setPage(1)
+                  }}
+                  placeholder="Semua Tingkat Kesulitan"
+                  icon={Sparkles}
+                  popoverWidth="min-w-[190px]"
+                  options={[
+                    { value: '', label: 'Semua Tingkat Kesulitan' },
+                    { value: 'mudah', label: 'Tingkat: Mudah' },
+                    { value: 'sedang', label: 'Tingkat: Sedang' },
+                    { value: 'sulit', label: 'Tingkat: Sulit' },
+                  ]}
+                />
+              </div>
 
               {/* Reset Filter Button */}
               {((canSelectUnit && selectedUnit) || searchInput || filters.mata_pelajaran_id || filters.kisi_kisi_id || filters.kelas_id || filters.tipe_soal || filters.tingkat_kesulitan) && (
@@ -2212,11 +2198,11 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                     setFilters({ mata_pelajaran_id: '', kisi_kisi_id: '', kelas_id: '', tipe_soal: '', tingkat_kesulitan: '', status: '' })
                     setPage(1)
                   }}
-                  className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 h-9.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                  className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50/90 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/60 dark:hover:bg-rose-900/80 px-3.5 text-xs font-bold text-rose-700 dark:text-rose-300 transition-all cursor-pointer shrink-0 shadow-2xs hover:scale-102 active:scale-98 self-end xl:self-center"
                   title="Reset Semua Filter"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  <span>Reset</span>
+                  <RotateCcw className="size-3.5 text-rose-600 dark:text-rose-400" />
+                  <span>Reset Filter</span>
                 </button>
               )}
             </div>
@@ -2352,11 +2338,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                           <button
                             type="button"
                             onClick={() => handleToggleStatus(item)}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all shadow-2xs ${
-                              item.status
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all shadow-2xs ${item.status
                                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                                 : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                            }`}
+                              }`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                             {item.status ? 'Aktif' : 'Non-Aktif'}
@@ -2518,11 +2503,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                                 </div>
                                 <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                   <div
-                                    className={`h-full rounded-full transition-all ${
-                                      isComplete
+                                    className={`h-full rounded-full transition-all ${isComplete
                                         ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
                                         : 'bg-gradient-to-r from-amber-400 to-emerald-500'
-                                    }`}
+                                      }`}
                                     style={{ width: `${percent}%` }}
                                   />
                                 </div>
@@ -2654,11 +2638,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                                         <button
                                           type="button"
                                           onClick={() => handleToggleStatus(item)}
-                                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all shadow-2xs ${
-                                            item.status
+                                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all shadow-2xs ${item.status
                                               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                                               : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                          }`}
+                                            }`}
                                         >
                                           <span className={`w-1.5 h-1.5 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                                           {item.status ? 'Aktif' : 'Non-Aktif'}
@@ -2882,9 +2865,8 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                 <div className="flex flex-wrap gap-2">
                   {getTipeBadge(rowDetailItem.tipe_soal)}
                   {getKesulitanBadge(rowDetailItem.tingkat_kesulitan)}
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                    rowDetailItem.status ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
-                  }`}>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${rowDetailItem.status ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                    }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${rowDetailItem.status ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                     {rowDetailItem.status ? 'Aktif' : 'Non-Aktif'}
                   </span>
@@ -2975,7 +2957,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   </div>
                   <div>
                     <h2 className="text-base font-black text-slate-900 dark:text-white">
-                      {editingItem ? 'Edit Butir Soal' : 'Form Tambah &amp; Kelola Pertanyaan Bank Soal'}
+                      {editingItem ? 'Edit Butir Soal' : 'Form Tambah & Kelola Pertanyaan Bank Soal'}
                     </h2>
                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                       Pertanyaan yang disimpan otomatis terdaftar pada kisi-kisi dan dapat diedit langsung di bawah.
@@ -3097,11 +3079,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                           key={t.id}
                           type="button"
                           onClick={() => handleTypeChange(t.id)}
-                          className={`flex items-center gap-2 p-3 rounded-2xl border text-left text-xs font-bold transition-all ${
-                            isSelected
+                          className={`flex items-center gap-2 p-3 rounded-2xl border text-left text-xs font-bold transition-all ${isSelected
                               ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500'
                               : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
-                          }`}
+                            }`}
                         >
                           <IconComp className="w-4 h-4 shrink-0" />
                           <span>{t.label}</span>
@@ -3148,11 +3129,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                               className="w-4 h-4 text-[#0E5C44] focus:ring-[#0E5C44]"
                             />
                             <span
-                              className={`w-6 h-6 rounded-full font-black text-xs flex items-center justify-center ${
-                                isCorrect
+                              className={`w-6 h-6 rounded-full font-black text-xs flex items-center justify-center ${isCorrect
                                   ? 'bg-[#0E5C44] text-white'
                                   : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                              }`}
+                                }`}
                             >
                               {optKey.toUpperCase()}
                             </span>
@@ -3199,11 +3179,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                       {['Benar', 'Salah'].map((val) => (
                         <label
                           key={val}
-                          className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-2xl border cursor-pointer font-black text-xs transition-all ${
-                            formData.kunci_jawaban === val
+                          className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-2xl border cursor-pointer font-black text-xs transition-all ${formData.kunci_jawaban === val
                               ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
                               : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                          }`}
+                            }`}
                         >
                           <input
                             type="radio"
@@ -3423,11 +3402,10 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                     ) : (
                       <div className="flex items-center gap-2 flex-wrap">
                         {selectedKisiObj?.jumlah_soal > 0 && (
-                          <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
-                            modalSessionQuestions.length >= selectedKisiObj.jumlah_soal
+                          <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${modalSessionQuestions.length >= selectedKisiObj.jumlah_soal
                               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
                               : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
-                          }`}>
+                            }`}>
                             {modalSessionQuestions.length >= selectedKisiObj.jumlah_soal
                               ? 'Target Terpenuhi (100%)'
                               : `Sisa ${selectedKisiObj.jumlah_soal - modalSessionQuestions.length} Soal Lagi`}
@@ -3456,7 +3434,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                     </div>
                   ) : modalSessionQuestions.length === 0 ? (
                     <div className="p-6 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 text-xs font-medium">
-                      Belum ada butir soal yang tersimpan untuk kisi-kisi ini. Gunakan form di atas lalu tekan <strong>"+ Tambah Pertanyaan Ke Kisi-kisi"</strong>.
+                      Belum ada butir soal yang tersimpan untuk kisi-kisi ini. Gunakan form di atas lalu tekan <strong>"Simpan &amp; Selesai"</strong> atau <strong>"Simpan &amp; Tambah Soal Kedua (#2)"</strong>.
                     </div>
                   ) : (
                     <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
@@ -3475,9 +3453,8 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                           {modalSessionQuestions.map((q, idx) => (
                             <TableRow
                               key={q.id || idx}
-                              className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${
-                                editingModalQuestionId === q.id ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''
-                              }`}
+                              className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${editingModalQuestionId === q.id ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''
+                                }`}
                             >
                               <TableCell className="py-2.5 px-3 text-center font-bold text-slate-500">{idx + 1}</TableCell>
                               <TableCell className="py-2.5 px-3 max-w-xs">
@@ -3593,16 +3570,14 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                       return (
                         <div
                           key={optKey}
-                          className={`flex items-center gap-3 p-3 rounded-2xl border text-xs ${
-                            isKey
+                          className={`flex items-center gap-3 p-3 rounded-2xl border text-xs ${isKey
                               ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-bold'
                               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
-                          }`}
+                            }`}
                         >
                           <span
-                            className={`w-6 h-6 rounded-full font-black text-xs flex items-center justify-center ${
-                              isKey ? 'bg-[#0E5C44] text-white' : 'bg-slate-200 dark:bg-slate-700'
-                            }`}
+                            className={`w-6 h-6 rounded-full font-black text-xs flex items-center justify-center ${isKey ? 'bg-[#0E5C44] text-white' : 'bg-slate-200 dark:bg-slate-700'
+                              }`}
                           >
                             {optKey.toUpperCase()}
                           </span>

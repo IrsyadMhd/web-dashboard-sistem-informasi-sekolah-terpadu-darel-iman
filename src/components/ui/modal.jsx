@@ -17,7 +17,7 @@ export function Modal({ isOpen, onClose, title, description, children, maxWidth 
         if (!open && onClose) onClose()
       }}
     >
-      <HeroModal.Backdrop className="bg-slate-950/70 backdrop-blur-md fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5">
+      <HeroModal.Backdrop className="bg-slate-950/70 backdrop-blur-md fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5">
         <HeroModal.Container className="w-full flex items-center justify-center min-h-full">
           <HeroModal.Dialog className={cn('relative w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#1B2433] max-h-[90vh] flex flex-col', maxWidth, className)}>
             <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />

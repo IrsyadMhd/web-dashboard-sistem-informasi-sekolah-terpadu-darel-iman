@@ -21,7 +21,7 @@ export default function AppFilterBar({
   return (
     <section
       className={cn(
-        'flex flex-col gap-3 rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-sm transition-all sm:flex-row sm:items-center dark:border-slate-800 dark:bg-[#1B2433]',
+        'flex flex-col gap-3 rounded-[20px] border border-emerald-300/60 bg-white p-4 shadow-xs transition-all sm:flex-row sm:items-center dark:border-emerald-800/60 dark:bg-[#1B2433]',
         className
       )}
     >

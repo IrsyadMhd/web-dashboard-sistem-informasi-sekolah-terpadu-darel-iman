@@ -53,8 +53,19 @@ export const tahunAjaranService = {
     return data
   },
 
-  prosesImport: async (rows) => {
-    const { data } = await api.post('/master/tahun-ajaran/import', { rows })
+  prosesImport: async (payload) => {
+    if (payload instanceof FormData) {
+      const { data } = await api.post('/master/tahun-ajaran/import', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return data
+    }
+    const { data } = await api.post('/master/tahun-ajaran/import', Array.isArray(payload) ? { rows: payload } : payload)
+    return data
+  },
+
+  downloadTemplate: async () => {
+    const { data } = await api.get('/master/tahun-ajaran/import-template')
     return data
   },
 

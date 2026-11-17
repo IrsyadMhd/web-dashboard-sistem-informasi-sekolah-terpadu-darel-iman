@@ -979,7 +979,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                   <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Media Pembelajaran (Multi-Format)
                   </h1>
-                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                     Kelola seluruh berkas dan sumber media pembelajaran terpadu (PDF, Video, Audio, Presentasi PPT, Dokumen Word, Gambar, &amp; Link Eksternal).
                   </p>
                 </div>
@@ -1306,7 +1306,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
           </TableRoot>
         </MasterDataTable>
 
-        {/* Pagination Footer (Modern TailGrids Emerald Squircle) */}
+        {/* Pagination Footer (Modern HeroUI Emerald Squircle) */}
         <div className="px-6 py-4 bg-emerald-50/20 dark:bg-emerald-950/10 border-t border-emerald-100/80 dark:border-emerald-900/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
           <div>
             Menampilkan <span className="font-bold text-slate-800 dark:text-white">{dataMedia.length}</span> dari{' '}

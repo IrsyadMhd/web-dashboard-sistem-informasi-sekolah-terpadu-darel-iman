@@ -1487,7 +1487,7 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
       {/* =========================================================================
           CARD 3: GATED FLOW / ROSTER PRESENSI SISWA ROMBEL
           Jika Guru Belum Check-In: Tampilkan Gated Card Hero yang elegan.
-          Jika Guru Sudah Check-In: Tampilkan Pilihan Metode & TailGrids Emerald Datatable.
+          Jika Guru Sudah Check-In: Tampilkan Pilihan Metode & HeroUI Emerald Datatable.
           ========================================================================= */}
       {!isTeacherReadyOrActive ? (
         <div className={`relative overflow-hidden rounded-[22px] border-2 border-dashed p-8 sm:p-12 text-center shadow-md space-y-4 ${
@@ -1637,7 +1637,7 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
             />
           </section>
 
-          {/* Section 3.2: TailGrids Emerald Datatable Roster Siswa */}
+          {/* Section 3.2: HeroUI Emerald Datatable Roster Siswa */}
           <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
             <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
             
@@ -2239,7 +2239,7 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
       </AnimatePresence>
 
       {/* =========================================================================
-          MODAL CATAT PELANGGARAN & POIN DISIPLIN SANTRI (TAILGRIDS UI)
+          MODAL CATAT PELANGGARAN & POIN DISIPLIN SANTRI (HEROUI UI)
           SOP: Memastikan guru mapel dapat mencatat pelanggaran santri secara
           resmi, terhubung ke Buku Poin & tersinkron ke Portal Orang Tua.
           ========================================================================= */}
@@ -2472,7 +2472,7 @@ export default function AttendanceWorkspacePage() {
                 <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Absensi Kelas & Mata Pelajaran
                 </h1>
-                <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full leading-relaxed">
                   Pencatatan presensi siswa sesuai jadwal mata pelajaran aktif dengan pengawasan keamanan jam mengajar.
                 </p>
               </div>

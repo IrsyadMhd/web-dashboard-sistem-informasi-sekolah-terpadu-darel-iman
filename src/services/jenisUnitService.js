@@ -44,8 +44,15 @@ export const jenisUnitService = {
     return data
   },
 
-  prosesImport: async (dataRows) => {
-    const { data } = await api.post('/master/jenis-unit/import', { data: dataRows })
+  prosesImport: async (payload) => {
+    if (payload instanceof FormData) {
+      const { data } = await api.post('/master/jenis-unit/import', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return data
+    }
+    const body = Array.isArray(payload) ? { data: payload } : payload
+    const { data } = await api.post('/master/jenis-unit/import', body)
     return data
   },
 

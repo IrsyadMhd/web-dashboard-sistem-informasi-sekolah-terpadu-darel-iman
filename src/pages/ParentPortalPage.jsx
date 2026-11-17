@@ -29,6 +29,7 @@ import {
   Moon,
   Receipt,
   RefreshCw,
+  ShieldAlert,
   Sparkles,
   Sun,
   TrendingUp,
@@ -48,6 +49,7 @@ import TahfizhWorkspace from '../components/portal/TahfizhWorkspace'
 import BahasaWorkspace from '../components/portal/BahasaWorkspace'
 import GradesWorkspace from '../components/portal/GradesWorkspace'
 import TeacherCommentsWorkspace from '../components/portal/TeacherCommentsWorkspace'
+import DisciplineSummaryWorkspace from '../components/portal/DisciplineSummaryWorkspace'
 import MutabaahWorkspace from '../components/portal/MutabaahWorkspace'
 import AttendanceWorkspace from '../components/portal/AttendanceWorkspace'
 import ExamGridsWorkspace from '../components/portal/ExamGridsWorkspace'
@@ -57,7 +59,7 @@ import ParentBillsWorkspace from '../components/portal/ParentBillsWorkspace'
 import ChatGuruWorkspace from '../components/portal/ChatGuruWorkspace'
 import AcademicCalendarModal from '../components/calendar/AcademicCalendarModal'
 
-// TailGrids Core Components
+// HeroUI Core Components
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -76,6 +78,7 @@ const menu = [
   ['bahasa', 'Pembiasaan Bahasa', Languages, 'bg-teal-100/90 text-teal-700 border-teal-200/90 hover:bg-teal-200'],
   ['grades', 'Nilai', Award, 'bg-teal-100/90 text-teal-600 border-teal-200/90 hover:bg-teal-200'],
   ['student-notes', 'Buku Penghubung', BookOpenCheck, 'bg-cyan-100/90 text-cyan-600 border-cyan-200/90 hover:bg-cyan-200'],
+  ['discipline', 'Tata Tertib & Poin', ShieldAlert, 'bg-rose-100/90 text-rose-600 border-rose-200/90 hover:bg-rose-200'],
   ['bills', 'Tagihan & SPP', Receipt, 'bg-emerald-100/90 text-emerald-600 border-emerald-200/90 hover:bg-emerald-200'],
   ['mutabaah', 'Mutabaah', HeartHandshake, 'bg-amber-100/90 text-amber-600 border-amber-200/90 hover:bg-amber-200'],
   ['attendance', 'Absensi', CalendarCheck, 'bg-orange-100/90 text-orange-600 border-orange-200/90 hover:bg-orange-200'],
@@ -244,6 +247,13 @@ export default function ParentPortalPage() {
         const res = await familyPortalService.list('schedules', childId).catch(() => ({ data: [] }))
         const payload = res?.data || res || []
         setRecords(payload)
+      } else if (active === 'calendar') {
+        setRecords([])
+        const res = await api.get('/portal/academic-calendar', { params: childId ? { child_id: childId } : {} }).catch(() => ({ data: { data: [] } }))
+        setRecords(unwrap(res))
+      } else if (active === 'bahasa') {
+        // BahasaWorkspace memuat /vocabulary/submissions dan /vocabulary/banks secara mandiri
+        setRecords([])
       } else {
         setRecords([])
         const res = await familyPortalService.list(active, childId).catch(() => ({ data: [] }))
@@ -405,7 +415,7 @@ export default function ParentPortalPage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Portal Orang Tua / Wali Murid
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 w-full">
                   Pantau perkembangan nilai akademik, progres tahfizh Al-Qur'an, mutabaah harian, presensi, jadwal, serta pengumuman sekolah terpadu.
                 </p>
               </div>
@@ -1530,7 +1540,7 @@ export default function ParentPortalPage() {
                           </h4>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="rounded-xl bg-blue-600 px-3 py-1 text-xs font-black text-white shadow-xs">
+                          <span className="rounded-xl bg-emerald-600 px-3 py-1 text-xs font-black text-white shadow-xs">
                             {dashboard?.tahfizh_evaluation_details?.persentase != null ? `${dashboard.tahfizh_evaluation_details.persentase}% Tercapai` : '-'}
                           </span>
                         </div>
@@ -2103,6 +2113,10 @@ export default function ParentPortalPage() {
               onSigned={load}
               student={activeChild}
             />
+          )}
+
+          {active === 'discipline' && (
+            <DisciplineSummaryWorkspace childId={childId} />
           )}
 
           {active === 'mutabaah' && (

@@ -49,10 +49,12 @@ import { SquircleActionButton } from '../components/master-data'
 import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
 import ErrorState from '../components/dashboard/ErrorState'
 import TataUsahaKpiModal from '../components/TataUsahaKpiModal'
+import HeroUiFilterSelect from '../components/ui/HeroUiFilterSelect'
 import ModalErrorBoundary from '../components/common/ModalErrorBoundary'
 
 import { managementDashboardService } from '../services/managementDashboardService'
 import { educationUnitService } from '../services/educationUnitService'
+import { useAuthStore } from '../stores/authStore'
 
 const MODERN_KPI_TONES = {
   emerald: {
@@ -195,157 +197,6 @@ function ModernTuKpiCard({ title, value, subtitle, icon: Icon, tone = 'emerald',
   )
 }
 
-// ── HEROUI FILTER BAR SELECT DROPDOWN COMPONENT ──
-function HeroUiFilterSelect({
-  value,
-  onChange,
-  options = [],
-  placeholder = 'Pilih...',
-  icon: IconComponent = null,
-  className = '',
-  popoverWidth = 'w-full',
-  searchable = false,
-  ariaLabel = '',
-  disabled = false,
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const containerRef = useRef(null)
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setIsOpen(false)
-      }
-    }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isOpen])
-
-  const selectedOption = useMemo(() => {
-    return options.find((opt) => String(opt.value) === String(value))
-  }, [options, value])
-
-  const filteredOptions = useMemo(() => {
-    if (!searchable || !search.trim()) return options
-    const q = search.toLowerCase()
-    return options.filter((opt) =>
-      (opt.label && String(opt.label).toLowerCase().includes(q)) ||
-      (opt.subtext && String(opt.subtext).toLowerCase().includes(q))
-    )
-  }, [options, search, searchable])
-
-  const hasValue = value !== '' && value !== 'semua' && value !== 'all' && value !== undefined && value !== null
-
-  return (
-    <div className={`relative ${className}`} ref={containerRef}>
-      <button
-        type="button"
-        aria-label={ariaLabel}
-        disabled={disabled}
-        onClick={() => {
-          if (!disabled) {
-            setIsOpen((prev) => !prev)
-            setSearch('')
-          }
-        }}
-        className={`h-9 w-full flex items-center justify-between gap-2 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${
-          isOpen
-            ? 'border-emerald-600 bg-white ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-slate-800 dark:ring-emerald-400/20 text-slate-900 dark:text-white shadow-xs'
-            : hasValue
-            ? 'border-emerald-400/80 bg-emerald-50/80 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200 font-bold'
-            : 'border-slate-300 dark:border-slate-700 bg-white text-slate-700 hover:border-emerald-400 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600'
-        }`}
-      >
-        <div className="flex items-center gap-2 truncate">
-          {IconComponent && (
-            <IconComponent className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          )}
-          <span className="truncate">
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
-        </div>
-        <ChevronDown
-          className={`size-3.5 text-slate-400 dark:text-slate-500 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-emerald-600 dark:text-emerald-400' : ''
-          }`}
-        />
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: -4 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className={`absolute left-0 top-full mt-1.5 z-[90] ${popoverWidth} min-w-[220px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl shadow-slate-900/10 dark:shadow-black/40`}
-          >
-            {searchable && options.length > 5 && (
-              <div className="p-1.5 border-b border-slate-100 dark:border-slate-700/60 mb-1">
-                <div className="relative">
-                  <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Cari..."
-                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 pl-8 pr-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    autoFocus
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="max-h-56 overflow-y-auto space-y-0.5">
-              {filteredOptions.length === 0 ? (
-                <div className="px-3 py-3 text-center text-xs text-slate-400 dark:text-slate-500">
-                  Tidak ada data
-                </div>
-              ) : (
-                filteredOptions.map((opt) => {
-                  const isSelected = String(opt.value) === String(value)
-                  return (
-                    <button
-                      key={String(opt.value)}
-                      type="button"
-                      onClick={() => {
-                        onChange(opt.value)
-                        setIsOpen(false)
-                        setSearch('')
-                      }}
-                      className={`w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-colors text-left cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
-                          : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700/60'
-                      }`}
-                    >
-                      <div className="truncate pr-2">
-                        <div className="truncate">{opt.label}</div>
-                        {opt.subtext && (
-                          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal truncate mt-0.5">
-                            {opt.subtext}
-                          </div>
-                        )}
-                      </div>
-                      {isSelected && (
-                        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      )}
-                    </button>
-                  )
-                })
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
 
 const tooltipStyle = {
   backgroundColor: '#1E293B',
@@ -659,6 +510,35 @@ function KelengkapanDonutChart({ data }) {
 
 export default function TataUsahaDashboardPage() {
   const navigate = useNavigate()
+  const authUser = useAuthStore((s) => s.user)
+  const canAccessPath = (targetPath, fallbackPerms = []) => {
+    const roles = Array.isArray(authUser?.roles) ? authUser.roles : (authUser?.role ? [authUser.role] : [])
+    if (roles.some((r) => String(typeof r === 'string' ? r : r?.name || '').toLowerCase() === 'super admin')) {
+      return true
+    }
+    const paths = Array.isArray(authUser?.accessible_paths) ? authUser.accessible_paths : []
+    if (paths.length > 0) {
+      return paths.includes(targetPath)
+    }
+    const perms = Array.isArray(authUser?.permissions) ? authUser.permissions : []
+    return fallbackPerms.length === 0 || perms.some((p) => fallbackPerms.includes(p))
+  }
+  const canViewStudentReport = useMemo(
+    () => canAccessPath('/dashboard/laporan-siswa', ['report.student.view', 'report.view']),
+    [authUser]
+  )
+  const canManageStudents = useMemo(
+    () => canAccessPath('/dashboard/students', ['student.view', 'students.view', 'siswa.view']),
+    [authUser]
+  )
+  const canManageEmployees = useMemo(
+    () => canAccessPath('/dashboard/employees', ['employee.view', 'employees.view', 'pegawai.view']),
+    [authUser]
+  )
+  const canManageAlumni = useMemo(
+    () => canAccessPath('/dashboard/master/alumni', ['alumni.view', 'student.view']),
+    [authUser]
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
@@ -743,11 +623,11 @@ export default function TataUsahaDashboardPage() {
           <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
           <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-4 min-w-0">
+            <div className="flex flex-1 items-center gap-4 min-w-0">
               <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
                 <Building2 className="size-6 sm:size-7 text-white" />
               </div>
-              <div className="min-w-0">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
                     <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
@@ -768,7 +648,7 @@ export default function TataUsahaDashboardPage() {
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Dashboard Tata Usaha &amp; Administrasi Sekolah
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                <p className="mt-0.5 w-full text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
                   Pusat pengelolaan master data siswa, SDM pegawai &amp; guru, rekap presensi gerbang, dan pelaporan administrasi terpadu.
                 </p>
               </div>
@@ -798,19 +678,23 @@ export default function TataUsahaDashboardPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
-              <SquircleActionButton
-                variant="view"
-                icon={Users}
-                label="Kelola Master Siswa"
-                onClick={() => navigate('/dashboard/students')}
-              />
-              <SquircleActionButton
-                variant="import"
-                icon={UserCheck}
-                label="Kelola Master Pegawai"
-                onClick={() => navigate('/dashboard/employees')}
-              />
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0 sm:overflow-x-auto py-1">
+              {canManageStudents && (
+                <SquircleActionButton
+                  variant="view"
+                  icon={Users}
+                  label="Kelola Master Siswa"
+                  onClick={() => navigate('/dashboard/students')}
+                />
+              )}
+              {canManageEmployees && (
+                <SquircleActionButton
+                  variant="import"
+                  icon={UserCheck}
+                  label="Kelola Master Pegawai"
+                  onClick={() => navigate('/dashboard/employees')}
+                />
+              )}
               <SquircleActionButton
                 variant="primary"
                 icon={CalendarCheck}
@@ -829,18 +713,22 @@ export default function TataUsahaDashboardPage() {
                 label="Rekap Absensi Gerbang"
                 onClick={() => navigate('/dashboard/rekap-absensi-gerbang')}
               />
-              <SquircleActionButton
-                variant="export"
-                icon={FileSpreadsheet}
-                label="Cetak Laporan Siswa"
-                onClick={() => navigate('/dashboard/laporan-siswa')}
-              />
-              <SquircleActionButton
-                variant="secondary"
-                icon={GraduationCap}
-                label="Kelola Alumni & Mutasi"
-                onClick={() => navigate('/dashboard/master/alumni')}
-              />
+              {canViewStudentReport && (
+                <SquircleActionButton
+                  variant="export"
+                  icon={FileSpreadsheet}
+                  label="Cetak Laporan Siswa"
+                  onClick={() => navigate('/dashboard/laporan-siswa')}
+                />
+              )}
+              {canManageAlumni && (
+                <SquircleActionButton
+                  variant="secondary"
+                  icon={GraduationCap}
+                  label="Kelola Alumni & Mutasi"
+                  onClick={() => navigate('/dashboard/master/alumni')}
+                />
+              )}
             </div>
           </div>
         </section>
